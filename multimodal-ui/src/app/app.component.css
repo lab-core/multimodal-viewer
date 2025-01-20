@@ -1,0 +1,31 @@
+.main {
+    height: calc(100% - 40px);
+    padding: 20px;
+}
+
+.map {
+    height: 100%;
+}
+
+#button-overlay {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    
+
+    margin: 20px; /* Matching .main margin */
+}
+
+#button-content {
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: flex-start;
+
+    gap: 10px;
+    margin: 20px;
+    height: calc(100% - 40px);
+
+    /* Make the buttons overlap the map */
+    position: relative;
+    z-index: 4000;
+}

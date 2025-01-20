@@ -1,0 +1,11 @@
+<main class="main">
+  <div id="button-overlay">
+    <div id="button-content">
+      <button mat-raised-button>Happy</button>
+      <button mat-raised-button (click)="printLongLatZoom()">PRINT Long/Lat/Zoom</button>
+    </div>
+  </div>
+  <div class="map" leaflet [leafletOptions]="options" (leafletMapReady)="onMapReady($event)">
+  </div>
+</main>
+<router-outlet />
