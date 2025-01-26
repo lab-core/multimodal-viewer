@@ -46,18 +46,6 @@ export class AppComponent {
 
   constructor(private readonly communicationService: CommunicationService) {}
 
-  connect(): void {
-    this.communicationService.connect();
-  }
-
-  disconnect(): void {
-    this.communicationService.disconnect();
-  }
-
-  terminate(): void {
-    this.communicationService.emit('terminate');
-  }
-
   onMapReady(map: Map) {
     this.mapService.map = map;
     this.plugPixiOverlayQuickstart();
