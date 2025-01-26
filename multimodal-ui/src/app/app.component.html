@@ -2,10 +2,19 @@
   <div id="button-overlay">
     <div id="button-content">
       <button mat-raised-button>Happy</button>
-      <button mat-raised-button (click)="printLongLatZoom()">PRINT Long/Lat/Zoom</button>
+      <button mat-raised-button (click)="printLongLatZoom()">
+        PRINT Long/Lat/Zoom
+      </button>
+      <button mat-raised-button (click)="connect()">Connect</button>
+      <button mat-raised-button (click)="disconnect()">Disconnect</button>
+      <button mat-raised-button (click)="terminate()">Terminate</button>
     </div>
   </div>
-  <div class="map" leaflet [leafletOptions]="options" (leafletMapReady)="onMapReady($event)">
-  </div>
+  <div
+    class="map"
+    leaflet
+    [leafletOptions]="options"
+    (leafletMapReady)="onMapReady($event)"
+  ></div>
 </main>
 <router-outlet />
