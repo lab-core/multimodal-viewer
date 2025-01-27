@@ -46,13 +46,29 @@ export class AppComponent {
   };
 
   constructor(private readonly communicationService: CommunicationService) {
+    this.communicationService.on('simulationStarted', (name) => {
+      console.log(`Simulation started: ${name}`);
+    });
+
     this.communicationService.on('simulationEnded', (name) => {
       console.log(`Simulation ended: ${name}`);
     });
+
+    this.communicationService.on('simulationAlreadyRunning', (name) => {
+      console.log(`Simulation already running: ${name}`);
+    });
+
+    this.communicationService.on('simulationNotRunning', (name) => {
+      console.log(`Simulation not running: ${name}`);
+    });
   }
 
-  simulate() {
+  startSimulation() {
     this.communicationService.emit('startSimulation', 'test');
+  }
+
+  stopSimulation() {
+    this.communicationService.emit('stopSimulation', 'test');
   }
 
   onMapReady(map: Map) {
