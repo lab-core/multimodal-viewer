@@ -6,9 +6,9 @@ from socketio import Client, exceptions
 sio = Client()
 
 try:
-  sio.connect(f'http://{HOST}:{PORT}', auth='terminate_server.py')
+  sio.connect(f'http://{HOST}:{PORT}', auth={'type': 'script'})
 
-  sio.emit('terminate')
+  sio.emit('script/terminate')
 
   time.sleep(1)
 

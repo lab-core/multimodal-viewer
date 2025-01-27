@@ -22,6 +22,7 @@ import { CommunicationService } from './services/communication.service';
     MatDividerModule,
     MatIconModule,
   ],
+  providers: [CommunicationService],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
 })
@@ -44,7 +45,15 @@ export class AppComponent {
     center: latLng(45.523066, -73.652687),
   };
 
-  constructor(private readonly communicationService: CommunicationService) {}
+  constructor(private readonly communicationService: CommunicationService) {
+    this.communicationService.on('simulationEnded', (name) => {
+      console.log(`Simulation ended: ${name}`);
+    });
+  }
+
+  simulate() {
+    this.communicationService.emit('startSimulation', 'test');
+  }
 
   onMapReady(map: Map) {
     this.mapService.map = map;

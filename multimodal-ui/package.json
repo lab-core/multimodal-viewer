@@ -24,9 +24,9 @@
     "@bluehalo/ngx-leaflet": "^19.0.0",
     "leaflet": "^1.9.4",
     "leaflet-pixi-overlay": "^1.9.4",
+    "ngx-socket-io": "^4.8.2",
     "pixi.js": "^7.4.2",
     "rxjs": "~7.8.0",
-    "socket.io-client": "^4.8.1",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"
   },
