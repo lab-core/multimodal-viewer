@@ -40,6 +40,8 @@ export class AppComponent {
   options = {
     layers: [
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        noWrap: true,
+        minZoom: 3,
         maxZoom: 18,
         attribution:
           '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
