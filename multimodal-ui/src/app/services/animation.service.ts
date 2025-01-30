@@ -8,82 +8,60 @@ import 'leaflet-pixi-overlay';
   providedIn: 'root'
 })
 export class AnimationService {
-
   private markers: PIXI.Sprite[] = [];
-  private textures: PIXI.Texture[] = [];
   private container = new PIXI.Container();
-
   private utils: L.PixiOverlayUtils;
 
 
-  private zoom: number; 
-  private renderer: PIXI.IRenderer;
-  private project: L.LatLngToLayerPointFn; 
-  private scale: number;
-  private invScale: number;
 
-  constructor() {
-    this.loadTextures();
+  constructor() { 
+  
   }
 
-  private async loadTextures() {
-    const texture = await PIXI.Assets.load('img/marker-icon.png');
-    this.textures.push(texture);
-  }
+  private addEntity(latlng: L.LatLng, type: string="sample-marker") {
+    let marker = PIXI.Sprite.from(`images/${type}.png`);
 
-  private addMarker(latlng: L.LatLng) {
-    let marker = PIXI.Sprite.from(this.textures[0]);
-    let coords = this.project(latlng);
+    let coords = this.utils.latLngToLayerPoint(latlng);
     marker.x = coords.x;
     marker.y = coords.y;
     marker.anchor.set(0.5, 0.5);
-    marker.scale.set(this.invScale);
+    marker.scale.set(1 / this.utils.getScale());
 
     this.container.addChild(marker);
     this.markers.push(marker);
   }
 
+  // Called once when Pixi layer is added.
+  private onAdd(utils: L.PixiOverlayUtils) {
+    console.log('PixiJS layer added.');
+  }
+
+  private onMoveEnd(event: L.LeafletEvent) {
+    // this.markers.forEach((marker) => {
+    //   marker.scale.set(1 / this.utils.getScale());
+    // });
+  }
+
+  private onRedraw(event: L.LeafletEvent) {
+    this.markers.forEach((marker) => {
+      marker.x += 0.05 * event.delta;
+      marker.y += 0.05 * event.delta;
+    });
+  }
+
+
   addPixiOverlay(map: L.Map) {
-    map.attributionControl.setPosition('bottomleft');
-    map.zoomControl.setPosition('bottomright');
     map.on('click', (e) => {
-      this.addMarker(e.latlng);
+      this.addEntity(e.latlng);
     });
 
-    var previousZoom: number | null = null;
     var pixiLayer = (() => {
-      // var colorScale = d3.scaleLinear()
-      //     .domain([0, 50, 100])
-      //     .range(["#c6233c", "#ffd300", "#008000"]);
-
       return L.pixiOverlay((utils, event) => {
-        this.zoom = utils.getMap().getZoom();
-        // this.container = utils.getContainer();
-        this.renderer = utils.getRenderer();
-        this.project = utils.latLngToLayerPoint;
-        this.scale = utils.getScale();
-        this.invScale = 1 / this.scale;
-
-
-        if (event.type === 'add') {
-        }
-
-        if (event.type === 'moveend' && previousZoom !== this.zoom) {
-          this.markers.forEach((marker) => {
-            marker.scale.set(this.invScale);
-          });
-          previousZoom = this.zoom;
-        }
-
-        if (event.type === 'redraw') {
-          this.markers.forEach((marker) => {
-            marker.x += 0.05 * event.delta;
-            marker.y += 0.05 * event.delta;
-          });
-        }
-
-        this.renderer.render(this.container);
-
+        this.utils = utils;
+        if (event.type === 'add') this.onAdd(utils);
+        if (event.type === 'moveend') this.onMoveEnd(event);
+        if (event.type === 'redraw') this.onRedraw(event);
+        this.utils.getRenderer().render(this.container);
       }, this.container, {
         doubleBuffering: true
       });
