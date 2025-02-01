@@ -1,0 +1,28 @@
+<main
+  class="main flex-column align-center"
+  [class.dimmed]="shouldDimMapSignal()"
+>
+  <!-- MARK: Main Menu
+  -->
+  @if (shouldShowMainMenuSignal()) {
+  <div class="main-menu flex-column align-main-center gap-1-rem">
+    <h1 class="enable-pointer-events main-menu-title">
+      Multimodal Simulation Visualization
+    </h1>
+    <button mat-raised-button class="enable-pointer-events">
+      <mat-icon>add_circle_outline</mat-icon>
+      <span>Start a simulation TODO</span>
+    </button>
+
+    <button mat-raised-button class="enable-pointer-events">
+      <mat-icon>folder_open</mat-icon>
+      <span>Browse simulations TODO</span>
+    </button>
+
+    <button mat-raised-button class="enable-pointer-events">
+      <mat-icon>info</mat-icon>
+      <span>About Us TODO</span>
+    </button>
+  </div>
+  }
+</main>

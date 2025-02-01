@@ -7,7 +7,7 @@ import * as PIXI from 'pixi.js';
 import { MapService } from '../../services/map.service';
 
 @Component({
-  selector: 'app-map-component',
+  selector: 'app-map',
   imports: [LeafletModule],
   templateUrl: './map.component.html',
   styleUrl: './map.component.css',
