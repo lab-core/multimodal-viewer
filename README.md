@@ -39,6 +39,6 @@ python -m pip install -r requirements.txt
 python setup.py install
 
 # Installing Server Requirements
-cd ../../server
+cd ../../multimodal-server
 python -m pip install -r requirements.txt
 ```

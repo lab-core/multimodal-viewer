@@ -1,23 +1,13 @@
-<main class="main">
-  <div id="button-overlay">
-    <div id="button-content">
-      <button mat-raised-button>Happy</button>
-      <button mat-raised-button (click)="startSimulation()">
-        Start Simulation
-      </button>
-      <button mat-raised-button (click)="stopSimulation()">
-        Stop Simulation
-      </button>
-      <button mat-raised-button (click)="printLongLatZoom()">
-        PRINT Long/Lat/Zoom
-      </button>
-    </div>
+<div id="button-overlay">
+  <div id="button-content">
+    <button mat-raised-button>Happy</button>
+    <button mat-raised-button (click)="startSimulation()">
+      Start Simulation
+    </button>
+    <button mat-raised-button (click)="stopSimulation()">
+      Stop Simulation
+    </button>
   </div>
-  <div
-    class="map"
-    leaflet
-    [leafletOptions]="options"
-    (leafletMapReady)="onMapReady($event)"
-  ></div>
-</main>
-<router-outlet />
+</div>
+
+<app-map-component></app-map-component>
