@@ -9,9 +9,13 @@
     <h1 class="enable-pointer-events main-menu-title">
       Multimodal Simulation Visualization
     </h1>
-    <button mat-raised-button class="enable-pointer-events">
+    <button
+      mat-raised-button
+      class="enable-pointer-events"
+      (click)="onStartSimulation()"
+    >
       <mat-icon>add_circle_outline</mat-icon>
-      <span>Start a simulation TODO</span>
+      <span>Start a simulation</span>
     </button>
 
     <button mat-raised-button class="enable-pointer-events">

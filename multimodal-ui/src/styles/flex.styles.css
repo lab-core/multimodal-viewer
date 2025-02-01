@@ -34,6 +34,14 @@
   align-items: flex-start;
 }
 
+.gap-0-5-rem {
+  gap: 0.5rem;
+}
+
 .gap-1-rem {
   gap: 1rem;
+}
+
+.flex-1 {
+  flex: 1;
 }

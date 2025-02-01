@@ -47,5 +47,6 @@
 }
 
 .dimmed {
-  background-color: rgba(0, 0, 0, 0.4);
+  /* Same as when a dialog is open */
+  background-color: rgba(0, 0, 0, 0.32);
 }
