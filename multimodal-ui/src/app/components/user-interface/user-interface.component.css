@@ -32,9 +32,10 @@
 }
 
 .main-menu {
-  position: relative;
-  right: 25vw;
-  bottom: 15vh;
+  position: absolute;
+  top: 50%;
+  left: 25%;
+  transform: translate(-50%, -50%);
 
   max-width: 20rem;
 }
@@ -49,4 +50,26 @@
 .dimmed {
   /* Same as when a dialog is open */
   background-color: rgba(0, 0, 0, 0.32);
+}
+
+.search-bar {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 30rem;
+}
+
+.information-panel {
+  position: absolute;
+  bottom: 1rem;
+  /* 40px is the width of the zoom buttons */
+  left: calc(40px + 1rem);
+  top: 1rem;
+  width: 20rem;
+}
+
+.show-information-panel-button {
+  position: absolute;
+  top: 1rem;
+  left: calc(40px + 1rem);
 }

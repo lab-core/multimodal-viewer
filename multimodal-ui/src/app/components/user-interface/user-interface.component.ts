@@ -1,9 +1,15 @@
 import { Component, Signal } from '@angular/core';
-import { UserInterfaceService } from '../../services/user-interface.service';
+import {
+  UserInterfaceService,
+  UserInterfaceView,
+} from '../../services/user-interface.service';
 
 import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
 import { MatDialog } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { firstValueFrom } from 'rxjs';
 import {
   SimulationConfigurationDialogComponent,
@@ -13,7 +19,13 @@ import {
 
 @Component({
   selector: 'app-user-interface',
-  imports: [MatButtonModule, MatIconModule],
+  imports: [
+    MatButtonModule,
+    MatIconModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatCardModule,
+  ],
   templateUrl: './user-interface.component.html',
   styleUrl: './user-interface.component.css',
 })
@@ -22,8 +34,11 @@ export class UserInterfaceComponent {
     private readonly userInterfaceService: UserInterfaceService,
     private readonly matDialog: MatDialog
   ) {
-    this.userInterfaceService.showMainMenu();
-    this.userInterfaceService.dimMap();
+    this.userInterfaceService.navigateToMainMenu();
+  }
+
+  get currentViewSignal(): Signal<UserInterfaceView> {
+    return this.userInterfaceService.viewSignal;
   }
 
   get shouldShowMainMenuSignal(): Signal<boolean> {
@@ -32,6 +47,22 @@ export class UserInterfaceComponent {
 
   get shouldDimMapSignal(): Signal<boolean> {
     return this.userInterfaceService.shouldDimMapSignal;
+  }
+
+  get shouldShowSearchBarSignal(): Signal<boolean> {
+    return this.userInterfaceService.shouldShowSearchBarSignal;
+  }
+
+  get shouldShowInformationPanelSignal(): Signal<boolean> {
+    return this.userInterfaceService.shouldShowInformationPanelSignal;
+  }
+
+  hideInformationPanel() {
+    this.userInterfaceService.hideInformationPanel();
+  }
+
+  showInformationPanel() {
+    this.userInterfaceService.showInformationPanel();
   }
 
   async onStartSimulation() {
@@ -57,5 +88,8 @@ export class UserInterfaceComponent {
       this.userInterfaceService.showMainMenu();
       return;
     }
+
+    // TODO Start simulation
+    this.userInterfaceService.navigateToSimulation();
   }
 }
