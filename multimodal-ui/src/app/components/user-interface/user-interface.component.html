@@ -15,9 +15,13 @@
       <span>Start a simulation</span>
     </button>
 
-    <button mat-raised-button class="enable-pointer-events">
+    <button
+      mat-raised-button
+      class="enable-pointer-events"
+      (click)="onBrowseSimulations()"
+    >
       <mat-icon>folder_open</mat-icon>
-      <span>Browse simulations TODO</span>
+      <span>Browse simulations</span>
     </button>
 
     <button mat-raised-button class="enable-pointer-events">

@@ -16,6 +16,7 @@ import {
   SimulationConfigurationDialogData,
   SimulationConfigurationDialogResult,
 } from '../simulation-configuration-dialog/simulation-configuration-dialog.component';
+import { SimulationListDialogComponent } from '../simulation-list-dialog/simulation-list-dialog.component';
 
 @Component({
   selector: 'app-user-interface',
@@ -91,5 +92,33 @@ export class UserInterfaceComponent {
 
     // TODO Start simulation
     this.userInterfaceService.navigateToSimulation();
+  }
+
+  async onBrowseSimulations() {
+    this.userInterfaceService.hideMainMenu();
+
+    const result = await firstValueFrom(
+      this.matDialog
+        .open<
+          SimulationListDialogComponent,
+          SimulationConfigurationDialogData,
+          SimulationConfigurationDialogResult
+        >(SimulationListDialogComponent, {
+          data: null,
+          disableClose: true,
+          autoFocus: false,
+          maxWidth: '80vw',
+          maxHeight: '80vh',
+          minWidth: '30vw',
+        })
+        .afterClosed()
+    );
+
+    if (!result) {
+      this.userInterfaceService.showMainMenu();
+      return;
+    }
+
+    // TODO
   }
 }

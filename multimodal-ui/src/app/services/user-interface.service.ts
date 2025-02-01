@@ -5,7 +5,6 @@ import {
   signal,
   WritableSignal,
 } from '@angular/core';
-import { MatDialog } from '@angular/material/dialog';
 
 export type UserInterfaceView = 'main-menu' | 'simulation';
 @Injectable({
@@ -24,8 +23,6 @@ export class UserInterfaceService {
     signal<boolean>(false);
   private readonly _shouldShowInformationPanelSignal: WritableSignal<boolean> =
     signal<boolean>(false);
-
-  constructor(private readonly matDialog: MatDialog) {}
 
   // MARK: Signal Getters
   get viewSignal(): Signal<UserInterfaceView> {
