@@ -2,6 +2,7 @@ import logging  # Required to modify the log level
 import multiprocessing
 import time
 from typing import Optional
+from log_manager import register_log
 
 from multimodalsim.observer.environment_observer import (
     EnvironmentObserver, StandardEnvironmentObserver)
@@ -45,6 +46,7 @@ def run_simulation(name):
                 log_message = f"Visualizing environment at time {env.current_time}"        
             
             # logging.info(log_message)      
+            register_log(name, log_message)
             self.sio.emit('simulation/logEvent', log_message)
 
     class CustomObserver(EnvironmentObserver):
