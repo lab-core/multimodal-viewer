@@ -62,8 +62,7 @@
 .information-panel {
   position: absolute;
   bottom: 1rem;
-  /* 40px is the width of the zoom buttons */
-  left: calc(40px + 1rem);
+  left: calc(1rem);
   top: 1rem;
   width: 20rem;
 }
