@@ -6,17 +6,11 @@ import {
 
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { firstValueFrom } from 'rxjs';
-import {
-  SimulationConfigurationDialogComponent,
-  SimulationConfigurationDialogData,
-  SimulationConfigurationDialogResult,
-} from '../simulation-configuration-dialog/simulation-configuration-dialog.component';
-import { SimulationListDialogComponent } from '../simulation-list-dialog/simulation-list-dialog.component';
+import { DialogService } from '../../services/dialog.service';
+import { SimulationControlBarComponent } from '../simulation-control-bar/simulation-control-bar.component';
 
 @Component({
   selector: 'app-user-interface',
@@ -26,6 +20,7 @@ import { SimulationListDialogComponent } from '../simulation-list-dialog/simulat
     MatFormFieldModule,
     MatInputModule,
     MatCardModule,
+    SimulationControlBarComponent,
   ],
   templateUrl: './user-interface.component.html',
   styleUrl: './user-interface.component.css',
@@ -33,9 +28,9 @@ import { SimulationListDialogComponent } from '../simulation-list-dialog/simulat
 export class UserInterfaceComponent {
   constructor(
     private readonly userInterfaceService: UserInterfaceService,
-    private readonly matDialog: MatDialog
+    private readonly dialogService: DialogService
   ) {
-    this.userInterfaceService.navigateToMainMenu();
+    this.userInterfaceService.navigateToSimulation();
   }
 
   get currentViewSignal(): Signal<UserInterfaceView> {
@@ -58,6 +53,10 @@ export class UserInterfaceComponent {
     return this.userInterfaceService.shouldShowInformationPanelSignal;
   }
 
+  get shouldShowControlBarSignal(): Signal<boolean> {
+    return this.userInterfaceService.shouldShowControlBarSignal;
+  }
+
   hideInformationPanel() {
     this.userInterfaceService.hideInformationPanel();
   }
@@ -69,21 +68,10 @@ export class UserInterfaceComponent {
   async onStartSimulation() {
     this.userInterfaceService.hideMainMenu();
 
-    const result = await firstValueFrom(
-      this.matDialog
-        .open<
-          SimulationConfigurationDialogComponent,
-          SimulationConfigurationDialogData,
-          SimulationConfigurationDialogResult
-        >(SimulationConfigurationDialogComponent, {
-          data: { mode: 'start', currentConfiguration: null },
-          disableClose: true,
-          autoFocus: false,
-          maxWidth: '80vw',
-          maxHeight: '80vh',
-        })
-        .afterClosed()
-    );
+    const result = await this.dialogService.openSimulationConfigurationDialog({
+      mode: 'start',
+      currentConfiguration: null,
+    });
 
     if (!result) {
       this.userInterfaceService.showMainMenu();
@@ -97,22 +85,7 @@ export class UserInterfaceComponent {
   async onBrowseSimulations() {
     this.userInterfaceService.hideMainMenu();
 
-    const result = await firstValueFrom(
-      this.matDialog
-        .open<
-          SimulationListDialogComponent,
-          SimulationConfigurationDialogData,
-          SimulationConfigurationDialogResult
-        >(SimulationListDialogComponent, {
-          data: null,
-          disableClose: true,
-          autoFocus: false,
-          maxWidth: '80vw',
-          maxHeight: '80vh',
-          minWidth: '30vw',
-        })
-        .afterClosed()
-    );
+    const result = await this.dialogService.openSimulationListDialog();
 
     if (!result) {
       this.userInterfaceService.showMainMenu();

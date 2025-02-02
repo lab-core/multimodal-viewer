@@ -23,6 +23,8 @@ export class UserInterfaceService {
     signal<boolean>(false);
   private readonly _shouldShowInformationPanelSignal: WritableSignal<boolean> =
     signal<boolean>(false);
+  private readonly _shouldShowControlBarSignal: WritableSignal<boolean> =
+    signal<boolean>(false);
 
   // MARK: Signal Getters
   get viewSignal(): Signal<UserInterfaceView> {
@@ -60,6 +62,15 @@ export class UserInterfaceService {
     });
   }
 
+  get shouldShowControlBarSignal(): Signal<boolean> {
+    return computed(() => {
+      return (
+        this._viewSignal() === 'simulation' &&
+        this._shouldShowControlBarSignal()
+      );
+    });
+  }
+
   // MARK: Signal Setters
   showMainMenu() {
     this._shouldShowMainMenuSignal.set(true);
@@ -93,6 +104,14 @@ export class UserInterfaceService {
     this._shouldShowInformationPanelSignal.set(false);
   }
 
+  showControlBar() {
+    this._shouldShowControlBarSignal.set(true);
+  }
+
+  hideControlBar() {
+    this._shouldShowControlBarSignal.set(false);
+  }
+
   // MARK: Navigation
   navigateToMainMenu() {
     this._viewSignal.set('main-menu');
@@ -100,6 +119,7 @@ export class UserInterfaceService {
     this.dimMap();
     this.hideSearchBar();
     this.hideInformationPanel();
+    this.hideControlBar();
   }
 
   navigateToSimulation() {
@@ -108,5 +128,6 @@ export class UserInterfaceService {
     this.unDimMap();
     this.showSearchBar();
     this.showInformationPanel();
+    this.showControlBar();
   }
 }
