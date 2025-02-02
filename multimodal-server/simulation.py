@@ -31,24 +31,26 @@ def run_simulation(name):
     sio.emit('simulation/started', name)
     class CustomVisualizer(Visualizer):
         
-        def __init__(self) -> None:
+        def __init__(self, sio) -> None:
             super().__init__()
+            self.sio = sio
 
         def visualize_environment(self, env: Environment,
                                 current_event: Optional[Event] = None,
                                 event_index: Optional[int] = None,
                                 event_priority: Optional[int] = None) -> None:
             if current_event is not None:  
-                logging.info(f"Visualizing environment at time {env.current_time} with event {current_event.name}")
-            else:          
-                logging.info(f"Visualizing environment at time {env.current_time}")      
-
-            # TODO Send data to server
+                log_message = f"Visualizing environment at time {env.current_time} with event {current_event.name}"
+            else:  
+                log_message = f"Visualizing environment at time {env.current_time}"        
             
+            # logging.info(log_message)      
+            self.sio.emit('simulation/logEvent', log_message)
+
     class CustomObserver(EnvironmentObserver):
 
-        def __init__(self) -> None:
-            super().__init__(visualizers=CustomVisualizer())
+        def __init__(self, sio) -> None:
+            super().__init__(visualizers=CustomVisualizer(sio))
             
     
 
@@ -70,7 +72,7 @@ def run_simulation(name):
     opt = Optimization(dispatcher, splitter)
 
     # Initialize the observer.
-    environment_observer = CustomObserver()
+    environment_observer = CustomObserver(sio)
 
     # Initialize the simulation.
     simulation = Simulation(opt, trips, vehicles, routes_by_vehicle_id,
