@@ -1,0 +1,21 @@
+<mat-chip
+  [style.background-color]="
+    isConnectedSignal()
+      ? 'var(--success-background-color)'
+      : 'var(--error-background-color)'
+  "
+>
+  <div
+    class="flex-row align-center gap-0-5-rem"
+    [class.text-error]="!isConnectedSignal()"
+    [class.text-success]="isConnectedSignal()"
+  >
+    @if (isConnectedSignal()) {
+      <mat-icon>wifi</mat-icon>
+      Connected
+    } @else {
+      <mat-icon>wifi_off</mat-icon>
+      Disconnected
+    }
+  </div>
+</mat-chip>

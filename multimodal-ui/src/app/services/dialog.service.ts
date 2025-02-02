@@ -1,11 +1,16 @@
 import { Injectable } from '@angular/core';
-import { MatDialog } from '@angular/material/dialog';
+import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
 import {
   ConfirmationDialogComponent,
   ConfirmationDialogData,
   ConfirmationDialogResult,
 } from '../components/confirmation-dialog/confirmation-dialog.component';
+import {
+  DisconnectedDialogComponent,
+  DisconnectedDialogData,
+  DisconnectedDialogResult,
+} from '../components/disconnected-dialog/disconnected-dialog.component';
 import {
   InformationDialogComponent,
   InformationDialogData,
@@ -107,5 +112,23 @@ export class DialogService {
         })
         .afterClosed()
     );
+  }
+
+  openDisconnectedDialog(): MatDialogRef<
+    DisconnectedDialogComponent,
+    DisconnectedDialogResult
+  > {
+    return this.matDialog.open<
+      DisconnectedDialogComponent,
+      DisconnectedDialogData,
+      DisconnectedDialogResult
+    >(DisconnectedDialogComponent, {
+      data: null,
+      disableClose: true,
+      autoFocus: false,
+      maxWidth: '80vw',
+      maxHeight: '80vh',
+      width: '500px',
+    });
   }
 }
