@@ -1,0 +1,71 @@
+<main class="main" [class.dimmed]="shouldDimMapSignal()">
+  <!-- MARK: Main Menu
+  -->
+  @if (shouldShowMainMenuSignal()) {
+  <div class="main-menu flex-column align-main-center gap-1-rem">
+    <h1 class="enable-pointer-events main-menu-title">
+      Multimodal Simulation Visualization
+    </h1>
+    <button
+      mat-raised-button
+      class="enable-pointer-events"
+      (click)="onStartSimulation()"
+    >
+      <mat-icon>add_circle_outline</mat-icon>
+      <span>Start a simulation</span>
+    </button>
+
+    <button
+      mat-raised-button
+      class="enable-pointer-events"
+      (click)="onBrowseSimulations()"
+    >
+      <mat-icon>folder_open</mat-icon>
+      <span>Browse simulations</span>
+    </button>
+
+    <button mat-raised-button class="enable-pointer-events">
+      <mat-icon>info</mat-icon>
+      <span>About Us TODO</span>
+    </button>
+  </div>
+  }
+
+  <!-- MARK: Search Bar
+  -->
+  @if (shouldShowSearchBarSignal()) {
+  <mat-form-field class="search-bar enable-pointer-events">
+    <input matInput />
+    <mat-label>Search in the simulation TODO</mat-label>
+    <mat-icon matSuffix>search</mat-icon>
+  </mat-form-field>
+  }
+
+  <!-- MARK: Information Panel
+  -->
+  @if (currentViewSignal() === 'simulation') {@if (
+  shouldShowInformationPanelSignal()) {
+  <mat-card class="flex-column information-panel enable-pointer-events">
+    <mat-card-content class="flex-1">
+      <mat-card-title>Simulation Information</mat-card-title>
+    </mat-card-content>
+    <mat-card-actions align="end">
+      <button mat-button (click)="hideInformationPanel()">Hide</button>
+    </mat-card-actions>
+  </mat-card>
+  } @else {
+  <button
+    mat-fab
+    class="enable-pointer-events show-information-panel-button"
+    (click)="showInformationPanel()"
+  >
+    <mat-icon>info</mat-icon>
+  </button>
+  } }
+</main>
+
+<!-- MARK: Control Bar
+-->
+@if (shouldShowControlBarSignal()) {
+<app-simulation-control-bar class="enable-pointer-events" />
+}

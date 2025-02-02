@@ -3,12 +3,11 @@ import {
   importProvidersFrom,
   provideZoneChangeDetection,
 } from '@angular/core';
+import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { provideRouter } from '@angular/router';
 
-import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
-import { routes } from './app.routes';
-
 import { SocketIoConfig, SocketIoModule } from 'ngx-socket-io';
+import { routes } from './app.routes';
 
 const config: SocketIoConfig = {
   url: 'http://127.0.0.1:5000',
