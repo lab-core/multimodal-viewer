@@ -11,6 +11,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { DialogService } from '../../services/dialog.service';
 import { SimulationControlBarComponent } from '../simulation-control-bar/simulation-control-bar.component';
+import { CommunicationService } from '../../services/communication.service';
 
 @Component({
   selector: 'app-user-interface',
@@ -28,6 +29,7 @@ import { SimulationControlBarComponent } from '../simulation-control-bar/simulat
 export class UserInterfaceComponent {
   constructor(
     private readonly userInterfaceService: UserInterfaceService,
+    private readonly communicationService: CommunicationService,
     private readonly dialogService: DialogService
   ) {
     this.userInterfaceService.navigateToMainMenu();
@@ -80,6 +82,9 @@ export class UserInterfaceComponent {
 
     // TODO Start simulation
     this.userInterfaceService.navigateToSimulation();
+    // Remove console.log
+    this.communicationService.on('simulationStarted', () => console.log(result.general.name));
+    this.communicationService.emit('startSimulation', result.general.name)
   }
 
   async onBrowseSimulations() {
