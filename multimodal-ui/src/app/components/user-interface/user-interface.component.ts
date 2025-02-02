@@ -83,8 +83,8 @@ export class UserInterfaceComponent {
     // TODO Start simulation
     this.userInterfaceService.navigateToSimulation();
     // Remove console.log
+    this.communicationService.on('logEvent', (log_message) => console.log(log_message));
     this.communicationService.on('simulationStarted', () => console.log(result.general.name));
-    this.communicationService.on('logEvent', () => console.log('Log goes here'));
     this.communicationService.emit('startSimulation', result.general.name)
   }
 

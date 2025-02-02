@@ -112,7 +112,7 @@ def on_simulation_end(name):
 @socketio.on('simulation/logEvent')
 def on_simulation_log_event(log_message):
     log(f'Log received by server: {log_message}', 'simulation')
-    emit('client/logEvent', log_message)   
+    emit('client/logEvent', log_message, broadcast=True)   
 
 # MARK: Server
 def run_server():
