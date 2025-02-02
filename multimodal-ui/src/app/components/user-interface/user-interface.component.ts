@@ -30,7 +30,7 @@ export class UserInterfaceComponent {
     private readonly userInterfaceService: UserInterfaceService,
     private readonly dialogService: DialogService
   ) {
-    this.userInterfaceService.navigateToSimulation();
+    this.userInterfaceService.navigateToMainMenu();
   }
 
   get currentViewSignal(): Signal<UserInterfaceView> {
