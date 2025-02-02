@@ -5,4 +5,4 @@ venv
 __pycache__/
 
 # Savec logs
-multimodal-server/saved-logs/
+multimodal-server/saved_logs/
