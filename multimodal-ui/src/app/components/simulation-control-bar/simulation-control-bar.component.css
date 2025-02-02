@@ -1,0 +1,25 @@
+@import "../../../styles/flex.styles.css";
+
+:host {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+
+  /* 40px is the width of the zoom buttons */
+  /* 20rem is the width of the information panel */
+  /* 1rem for the gaps */
+  width: calc(100% - 2 * (20rem + 1rem + 40px + 1rem));
+
+  ::ng-deep .mat-mdc-card-content {
+    padding: 0.5rem !important;
+  }
+}
+
+.slider {
+  padding-inline: 1rem;
+
+  mat-slider {
+    width: 100%;
+  }
+}

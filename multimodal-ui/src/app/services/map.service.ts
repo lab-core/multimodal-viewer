@@ -5,5 +5,5 @@ import { Map } from 'leaflet';
   providedIn: 'root',
 })
 export class MapService {
-  map: Map | undefined;
+  map: Map | null = null;
 }
