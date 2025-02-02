@@ -12,7 +12,6 @@
     left: 0;
     bottom: 0;
     
-
     margin: 20px; /* Matching .main margin */
 }
 
@@ -23,9 +22,25 @@
 
     gap: 10px;
     margin: 20px;
+    margin-bottom: 40px;
     height: calc(100% - 40px);
 
     /* Make the buttons overlap the map */
     position: relative;
     z-index: 4000;
+}
+
+#info-overlay {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    top: 0;
+    
+    margin: 20px; /* Matching .main margin */
+    z-index: 4000;
+}
+
+#info-content {
+    position: relative;
+    margin: 20px;
 }
