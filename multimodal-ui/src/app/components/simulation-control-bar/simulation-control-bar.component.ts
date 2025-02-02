@@ -11,6 +11,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSliderModule } from '@angular/material/slider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { DialogService } from '../../services/dialog.service';
+import { UserInterfaceService } from '../../services/user-interface.service';
+import { CommunicationService } from '../../services/communication.service';
 
 @Component({
   selector: 'app-simulation-control-bar',
@@ -31,7 +33,10 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
 
   readonly isPausedSignal: WritableSignal<boolean> = signal<boolean>(true);
 
-  constructor(private readonly dialogService: DialogService) {}
+  constructor(private readonly dialogService: DialogService,
+    private readonly userInterfaceService: UserInterfaceService,
+    private readonly communicationService: CommunicationService,
+  ) { }
 
   togglePause(): void {
     this.isPausedSignal.update((isPaused) => !isPaused);
@@ -71,13 +76,20 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
   }
 
   async stopSimulation() {
-    await this.dialogService.openConfirmationDialog({
+    const result = await this.dialogService.openConfirmationDialog({
       title: 'Stopping Simulation',
       message:
         'Are you sure you want to stop the simulation? This action cannot be undone.',
     });
 
-    // TODO
+    if (!result) {
+      return;
+    }
+    // TODO Change name test to real name
+    this.communicationService.emit('stopSimulation', 'test');
+    this.userInterfaceService.navigateToMainMenu();
+    // navigateToMainMenu
+    // emit stop
   }
 
   async leaveVisualization() {
