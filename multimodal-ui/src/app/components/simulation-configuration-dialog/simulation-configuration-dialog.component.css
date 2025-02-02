@@ -1,0 +1,10 @@
+@import "../../../styles/flex.styles.css";
+
+.error-icon {
+  min-width: 24px;
+}
+
+.error-message {
+  /* 212px for each input and 1rem for the gap */
+  max-width: calc(2 * 212px + 1rem);
+}

@@ -1,0 +1,75 @@
+@import "../../../styles/flex.styles.css";
+
+:host {
+  /* The user interface is positioned on top of the map */
+  display: block;
+  width: 100%;
+  height: 100%;
+
+  position: absolute;
+  top: 0;
+  left: 0;
+
+  /* Map is at 400 */
+  z-index: 500;
+}
+
+.main {
+  /* The user interface is positioned on top of the map */
+  width: 100%;
+  height: 100%;
+}
+
+.disable-pointer-events,
+:host {
+  /* Pointer events are disabled to allow the user to interact with the map */
+  pointer-events: none;
+}
+
+.enable-pointer-events {
+  /* Pointer events are enabled to allow the user to interact with the user interface */
+  pointer-events: auto;
+}
+
+.main-menu {
+  position: absolute;
+  top: 50%;
+  left: 25%;
+  transform: translate(-50%, -50%);
+
+  max-width: 20rem;
+}
+
+.main-menu-title {
+  font-size: 3.5rem;
+  font-weight: bold;
+  text-align: center;
+  color: white;
+}
+
+.dimmed {
+  /* Same as when a dialog is open */
+  background-color: rgba(0, 0, 0, 0.32);
+}
+
+.search-bar {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 30rem;
+}
+
+.information-panel {
+  position: absolute;
+  bottom: 1rem;
+  /* 40px is the width of the zoom buttons */
+  left: calc(40px + 1rem);
+  top: 1rem;
+  width: 20rem;
+}
+
+.show-information-panel-button {
+  position: absolute;
+  top: 1rem;
+  left: calc(40px + 1rem);
+}

@@ -1,0 +1,32 @@
+import { Component, Inject } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import {
+  MAT_DIALOG_DATA,
+  MatDialogActions,
+  MatDialogClose,
+  MatDialogContent,
+  MatDialogTitle,
+} from '@angular/material/dialog';
+
+export interface InformationDialogData {
+  title: string;
+  message: string;
+}
+
+export type InformationDialogResult = null;
+
+@Component({
+  selector: 'app-information-dialog',
+  imports: [
+    MatDialogClose,
+    MatDialogActions,
+    MatDialogContent,
+    MatDialogTitle,
+    MatButtonModule,
+  ],
+  templateUrl: './information-dialog.component.html',
+  styleUrl: './information-dialog.component.css',
+})
+export class InformationDialogComponent {
+  constructor(@Inject(MAT_DIALOG_DATA) public data: InformationDialogData) {}
+}

@@ -1,0 +1,47 @@
+.flex-row {
+  display: flex;
+  flex-direction: row;
+}
+
+.flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.align-center,
+.align-main-center {
+  justify-content: center;
+}
+
+.align-center,
+.align-cross-center {
+  align-items: center;
+}
+
+.align-main-end {
+  justify-content: flex-end;
+}
+
+.align-cross-end {
+  align-items: flex-end;
+}
+
+.align-main-start {
+  justify-content: flex-start;
+}
+
+.align-cross-start {
+  align-items: flex-start;
+}
+
+.gap-0-5-rem {
+  gap: 0.5rem;
+}
+
+.gap-1-rem {
+  gap: 1rem;
+}
+
+.flex-1 {
+  flex: 1;
+}
