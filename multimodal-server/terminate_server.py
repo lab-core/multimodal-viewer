@@ -8,7 +8,7 @@ sio = Client()
 try:
   sio.connect(f'http://{HOST}:{PORT}', auth={'type': 'script'})
 
-  sio.emit('script/terminate')
+  sio.emit('terminate')
 
   time.sleep(1)
 

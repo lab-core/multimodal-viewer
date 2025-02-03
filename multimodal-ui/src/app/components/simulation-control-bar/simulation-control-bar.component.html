@@ -1,3 +1,5 @@
+@let simulation = simulationInputSignal();
+
 <mat-card>
   <mat-card-content class="flex-row align-center">
     <button
@@ -11,12 +13,12 @@
     </button>
 
     @if (isPausedSignal()) {
-    <button mat-icon-button [matTooltip]="'Step one event backward'">
-      <mat-icon>skip_previous</mat-icon>
-    </button>
-    <button mat-icon-button [matTooltip]="'Step one event forward'">
-      <mat-icon>skip_next</mat-icon>
-    </button>
+      <button mat-icon-button [matTooltip]="'Step one event backward'">
+        <mat-icon>skip_previous</mat-icon>
+      </button>
+      <button mat-icon-button [matTooltip]="'Step one event forward'">
+        <mat-icon>skip_next</mat-icon>
+      </button>
     }
 
     <div>{{ currentTimeSignal().toLocaleTimeString() }}</div>
@@ -37,7 +39,7 @@
     <button
       mat-icon-button
       [matTooltip]="'Stop the simulation'"
-      (click)="stopSimulation()"
+      (click)="stopSimulation(simulation)"
     >
       <mat-icon>stop</mat-icon>
     </button>

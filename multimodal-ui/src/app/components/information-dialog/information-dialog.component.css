@@ -1,0 +1,6 @@
+@import "../../../styles/flex.styles.css";
+@import "../../../styles/color.styles.css";
+
+mat-icon {
+  min-width: 24px;
+}

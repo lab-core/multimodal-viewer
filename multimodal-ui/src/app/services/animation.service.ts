@@ -2,8 +2,7 @@ import { Injectable } from '@angular/core';
 import * as L from 'leaflet';
 import 'leaflet-pixi-overlay';
 import * as PIXI from 'pixi.js';
-import { Entity } from '../interfaces/entity';
-
+import { Entity } from '../interfaces/entity.model';
 
 @Injectable({
   providedIn: 'root'

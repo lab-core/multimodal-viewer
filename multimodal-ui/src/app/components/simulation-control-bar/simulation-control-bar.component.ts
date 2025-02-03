@@ -1,5 +1,7 @@
 import {
   Component,
+  input,
+  InputSignal,
   OnDestroy,
   OnInit,
   signal,
@@ -11,6 +13,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSliderModule } from '@angular/material/slider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
+import { Simulation } from '../../interfaces/simulation.model';
 import { CommunicationService } from '../../services/communication.service';
 import { DialogService } from '../../services/dialog.service';
 
@@ -33,10 +37,14 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
 
   readonly isPausedSignal: WritableSignal<boolean> = signal<boolean>(false);
 
+  readonly simulationInputSignal: InputSignal<Simulation> =
+    // eslint-disable-next-line @angular-eslint/no-input-rename
+    input.required<Simulation>({ alias: 'simulation' });
+
   constructor(
     private readonly dialogService: DialogService,
     private readonly communicationService: CommunicationService,
-    private readonly router: Router
+    private readonly router: Router,
   ) {}
 
   togglePause(): void {
@@ -52,7 +60,7 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
     this.interval = setInterval(() => {
       if (!this.isPausedSignal()) {
         this.currentTimeSignal.update(
-          (previousTime) => new Date(previousTime.getTime() + 1000)
+          (previousTime) => new Date(previousTime.getTime() + 1000),
         );
       }
     }, 1000) as unknown as number;
@@ -69,10 +77,14 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
   }
 
   async editSimulationConfiguration() {
-    const result = await this.dialogService.openSimulationConfigurationDialog({
-      mode: 'edit',
-      currentConfiguration: null,
-    });
+    const result = await firstValueFrom(
+      this.dialogService
+        .openSimulationConfigurationDialog({
+          mode: 'edit',
+          currentConfiguration: null,
+        })
+        .afterClosed(),
+    );
 
     if (result) {
       return;
@@ -81,31 +93,41 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
     // TODO
   }
 
-  async stopSimulation() {
-    const result = await this.dialogService.openConfirmationDialog({
-      title: 'Stopping Simulation',
-      message:
-        'Are you sure you want to stop the simulation? This action cannot be undone.',
-    });
+  async stopSimulation(simulation: Simulation) {
+    const result = await firstValueFrom(
+      this.dialogService
+        .openConfirmationDialog({
+          title: 'Stopping Simulation',
+          message:
+            'Are you sure you want to stop the simulation? This action cannot be undone.',
+        })
+        .afterClosed(),
+    );
 
     if (!result) {
       return;
     }
-    // TODO Change name test to real name
-    this.communicationService.emit('stopSimulation', 'test');
-    // navigateToMainMenu
-    // emit stop
+
+    this.communicationService.emit(
+      'stopSimulation',
+      // TODO Change this to id
+      simulation.name,
+    );
   }
 
   async leaveVisualization() {
-    await this.dialogService.openInformationDialog({
-      title: 'Leaving Visualization',
-      message:
-        'You are about to leave the visualization, but the simulation will continue running in the background. You can return to the visualization at any time.',
-    });
+    await firstValueFrom(
+      this.dialogService
+        .openInformationDialog({
+          title: 'Leaving Visualization',
+          message:
+            'You are about to leave the visualization, but the simulation will continue running in the background. You can return to the visualization at any time.',
+          type: 'warning',
+          closeButtonOverride: 'Continue',
+        })
+        .afterClosed(),
+    );
 
-    // TODO
-
-    this.router.navigate(['home']);
+    await this.router.navigate(['home']);
   }
 }

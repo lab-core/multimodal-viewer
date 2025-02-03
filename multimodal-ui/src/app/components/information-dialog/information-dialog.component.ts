@@ -7,10 +7,13 @@ import {
   MatDialogContent,
   MatDialogTitle,
 } from '@angular/material/dialog';
+import { MatIcon } from '@angular/material/icon';
 
 export interface InformationDialogData {
   title: string;
   message: string;
+  type: 'error' | 'warning' | 'info';
+  closeButtonOverride: string | null;
 }
 
 export type InformationDialogResult = null;
@@ -23,6 +26,7 @@ export type InformationDialogResult = null;
     MatDialogContent,
     MatDialogTitle,
     MatButtonModule,
+    MatIcon,
   ],
   templateUrl: './information-dialog.component.html',
   styleUrl: './information-dialog.component.css',

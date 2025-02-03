@@ -11,6 +11,7 @@ module.exports = tseslint.config(
       ...tseslint.configs.recommended,
       ...tseslint.configs.stylistic,
       ...angular.configs.tsRecommended,
+      ...tseslint.configs.recommendedTypeChecked,
     ],
     processor: angular.processInlineTemplates,
     rules: {
@@ -30,6 +31,18 @@ module.exports = tseslint.config(
           style: "kebab-case",
         },
       ],
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          args: "none",
+          varsIgnorePattern: "^_",
+          argsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+          destructuredArrayIgnorePattern: "^_",
+        },
+      ],
+      "@typescript-eslint/no-floating-promises": ["error"],
+      "@typescript-eslint/no-misused-promises": ["error"],
     },
   },
   {
@@ -41,5 +54,13 @@ module.exports = tseslint.config(
     rules: {
       "@angular-eslint/template/attributes-order": ["error"],
     },
-  }
+  },
+  {
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: ".",
+      },
+    },
+  },
 );

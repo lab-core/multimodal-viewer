@@ -10,75 +10,99 @@
     </button>
   </section>
 
-  <h3>Running Simulations</h3>
+  @let runningSimulations = runningSimulationsSignal();
 
-  <section class="flex-column gap-0-5-rem">
-    @for (simulation of runningSimulationsSignal(); track simulation.name) {
-      <div
-        class="list-item flex-row align-main-start align-cross-center gap-1-rem"
-      >
-        <mat-icon>refresh </mat-icon>
-        <div class="flex-column">
-          <div class="bold">{{ simulation.name }}</div>
-          <div
-            class="light"
-            [class.text-success]="simulation.status === 'running'"
-            [class.text-warning]="simulation.status === 'paused'"
-          >
-            {{ simulation.completion }}% - {{ simulation.status }}
+  <h3>Running Simulations ({{ runningSimulations.length }})</h3>
+
+  @if (runningSimulations.length > 0) {
+    <section class="flex-column gap-0-5-rem">
+      @for (simulation of runningSimulationsSignal(); track simulation.name) {
+        <div
+          class="list-item flex-row align-main-start align-cross-center gap-1-rem"
+        >
+          <mat-icon>refresh </mat-icon>
+          <div class="flex-column">
+            <div class="bold">{{ simulation.name }}</div>
+            <div
+              class="light"
+              [class.text-success]="simulation.status === 'running'"
+              [class.text-warning]="simulation.status === 'paused'"
+            >
+              {{ simulation.completion }}% - {{ simulation.status }}
+            </div>
+          </div>
+          <div class="actions align-self-end flex-row gap-0-5-rem">
+            @if (simulation.status === "running") {
+              <!-- TODO -->
+              <button mat-icon-button [matTooltip]="'Pause'">
+                <mat-icon>pause</mat-icon>
+              </button>
+            } @else {
+              <button mat-icon-button [matTooltip]="'Resume'">
+                <mat-icon>play_arrow</mat-icon>
+              </button>
+            }
+            <button
+              mat-icon-button
+              [matTooltip]="'Stop'"
+              (click)="stopSimulation(simulation)"
+            >
+              <mat-icon>stop</mat-icon>
+            </button>
+            <button
+              mat-icon-button
+              [matTooltip]="'Visualize'"
+              (click)="visualizeSimulation(simulation)"
+            >
+              <mat-icon>visibility</mat-icon>
+            </button>
           </div>
         </div>
-        <div class="actions align-self-end flex-row gap-0-5-rem">
-          @if (simulation.status === "running") {
+      }
+    </section>
+  } @else {
+    <span class="light">No running simulations</span>
+  }
+
+  @let completedSimulations = completedSimulationsSignal();
+
+  <h3>Completed Simulations ({{ completedSimulations.length }})</h3>
+
+  @if (completedSimulations.length > 0) {
+    <section class="flex-column gap-0-5-rem">
+      @for (simulation of completedSimulationsSignal(); track simulation.name) {
+        <div
+          class="list-item flex-row align-main-start align-cross-center gap-1-rem"
+        >
+          <mat-icon>save </mat-icon>
+          <div class="flex-column">
+            <div class="bold">{{ simulation.name }}</div>
+            <div class="light">
+              {{ simulation.status }}
+            </div>
+          </div>
+          <div class="actions align-self-end flex-row gap-0-5-rem">
             <!-- TODO -->
-            <button mat-icon-button [matTooltip]="'Pause'">
-              <mat-icon>pause</mat-icon>
+            <button mat-icon-button [matTooltip]="'Export'">
+              <mat-icon>cloud_download</mat-icon>
             </button>
-          } @else {
-            <button mat-icon-button [matTooltip]="'Resume'">
-              <mat-icon>play_arrow</mat-icon>
+            <button mat-icon-button [matTooltip]="'Delete'">
+              <mat-icon>delete</mat-icon>
             </button>
-          }
-          <button mat-icon-button [matTooltip]="'Stop'">
-            <mat-icon>stop</mat-icon>
-          </button>
-          <button mat-icon-button [matTooltip]="'Visualize'">
-            <mat-icon>visibility</mat-icon>
-          </button>
-        </div>
-      </div>
-    }
-  </section>
-
-  <h3>Completed Simulations</h3>
-
-  <section class="flex-column gap-0-5-rem">
-    @for (simulation of completedSimulationsSignal(); track simulation.name) {
-      <div
-        class="list-item flex-row align-main-start align-cross-center gap-1-rem"
-      >
-        <mat-icon>save </mat-icon>
-        <div class="flex-column">
-          <div class="bold">{{ simulation.name }}</div>
-          <div class="light">
-            {{ simulation.status }}
+            <button
+              mat-icon-button
+              [matTooltip]="'Visualize'"
+              (click)="visualizeSimulation(simulation)"
+            >
+              <mat-icon>visibility</mat-icon>
+            </button>
           </div>
         </div>
-        <div class="actions align-self-end flex-row gap-0-5-rem">
-          <!-- TODO -->
-          <button mat-icon-button [matTooltip]="'Export'">
-            <mat-icon>cloud_download</mat-icon>
-          </button>
-          <button mat-icon-button [matTooltip]="'Delete'">
-            <mat-icon>delete</mat-icon>
-          </button>
-          <button mat-icon-button [matTooltip]="'Visualize'">
-            <mat-icon>visibility</mat-icon>
-          </button>
-        </div>
-      </div>
-    }
-  </section>
+      }
+    </section>
+  } @else {
+    <span class="light">No completed simulations</span>
+  }
 </mat-dialog-content>
 
 <mat-dialog-actions>

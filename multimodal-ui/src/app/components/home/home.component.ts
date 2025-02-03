@@ -2,6 +2,7 @@ import { Component, signal, WritableSignal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { Router } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import { CommunicationService } from '../../services/communication.service';
 import { DialogService } from '../../services/dialog.service';
 import { LoadingService } from '../../services/loading.service';
@@ -25,10 +26,14 @@ export class HomeComponent {
   async onStartSimulation() {
     this.shouldShowMainMenuSignal.set(false);
 
-    const result = await this.dialogService.openSimulationConfigurationDialog({
-      mode: 'start',
-      currentConfiguration: null,
-    });
+    const result = await firstValueFrom(
+      this.dialogService
+        .openSimulationConfigurationDialog({
+          mode: 'start',
+          currentConfiguration: null,
+        })
+        .afterClosed(),
+    );
 
     if (!result) {
       this.shouldShowMainMenuSignal.set(true);
@@ -36,10 +41,17 @@ export class HomeComponent {
     }
 
     if (!this.communicationService.isConnectedSignal()) {
-      await this.dialogService.openInformationDialog({
-        title: 'Disconnected',
-        message: 'A connection to the server is needed to create a simulation.',
-      });
+      await firstValueFrom(
+        this.dialogService
+          .openInformationDialog({
+            title: 'Disconnected',
+            message:
+              'A connection to the server is needed to create a simulation.',
+            type: 'error',
+            closeButtonOverride: null,
+          })
+          .afterClosed(),
+      );
       this.shouldShowMainMenuSignal.set(true);
       return;
     }
@@ -47,9 +59,10 @@ export class HomeComponent {
     this.loadingService.start('Starting simulation');
 
     this.communicationService.on('logEvent', (message) => console.log(message));
-    this.communicationService.on('simulationStarted', (name: string) => {
+    this.communicationService.on('simulationStarted', async (name: string) => {
       this.loadingService.stop();
-      this.router.navigate([`visualize/${name}`]);
+      await this.router.navigate([`visualize/${name}`]);
+      this.shouldShowMainMenuSignal.set(true);
     });
 
     this.communicationService.emit('startSimulation', result.general.name);
@@ -58,13 +71,21 @@ export class HomeComponent {
   async onBrowseSimulations() {
     this.shouldShowMainMenuSignal.set(false);
 
-    const result = await this.dialogService.openSimulationListDialog();
+    const result = await firstValueFrom(
+      this.dialogService.openSimulationListDialog().afterClosed(),
+    );
 
     if (!result || !result.simulationToVisualize) {
       this.shouldShowMainMenuSignal.set(true);
       return;
     }
 
-    this.router.navigate([`visualize/${result.simulationToVisualize.name}`]);
+    await this.router.navigate([
+      `visualize/${result.simulationToVisualize.name}`,
+    ]);
+  }
+
+  onAboutUs() {
+    // TODO
   }
 }
