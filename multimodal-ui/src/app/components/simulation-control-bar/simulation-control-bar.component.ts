@@ -31,7 +31,7 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
 
   private interval: number | null = null;
 
-  readonly isPausedSignal: WritableSignal<boolean> = signal<boolean>(true);
+  readonly isPausedSignal: WritableSignal<boolean> = signal<boolean>(false);
 
   constructor(private readonly dialogService: DialogService,
     private readonly userInterfaceService: UserInterfaceService,
@@ -40,6 +40,11 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
 
   togglePause(): void {
     this.isPausedSignal.update((isPaused) => !isPaused);
+    // TODO change to real name
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    this.isPausedSignal() ?
+      this.communicationService.emit('pauseSimulation', 'test')
+      : this.communicationService.emit('resumeSimulation', 'test');
   }
 
   ngOnInit(): void {

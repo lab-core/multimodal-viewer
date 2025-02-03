@@ -53,41 +53,26 @@ def run_simulation(name):
 
         def __init__(self) -> None:
             super().__init__(visualizers=CustomVisualizer())
-            
-    # Read input data from files with a DataReader. The DataReader returns a
-    # list of Vehicle objects and a list of Trip objects.
-    # gtfs_folder_path = "../data/instance_19/gtfs/"
-    # requests_file_path = "../data/instance_19/requests.csv"
-    # data_reader = GTFSReader(gtfs_folder_path, requests_file_path)
-
-    # To estimate the coordinates from an OSRM server, use the following:
-    # coordinates = CoordinatesOSRM()
-
-    # vehicles, routes_by_vehicle_id = data_reader.get_vehicles()
-    # trips = data_reader.get_trips()
-
-    # Initialize the optimizer.
-    # splitter = OneLegSplitter()
-    # dispatcher = FixedLineDispatcher()
-    # opt = Optimization(dispatcher, splitter)
 
     # Initialize the observer.
     environment_observer = CustomObserver()
 
+    # Set directory TODO
     simulation_directory = "../data/instance_19/"
+
     simulator = Simulator(simulation_directory, environment_observer.visualizers)
-    simulation_thread = threading.Thread(target=simulator.simulate,
-                                         name="test")
+    # TODO change to the real name
+    simulation_thread = threading.Thread(target=simulator.simulate, name="test")
     simulation_thread.start()
 
-    # # Initialize the simulation.
-    # simulation = Simulation(opt, trips, vehicles, routes_by_vehicle_id,
-    #                         environment_observer=environment_observer, config='simulation.ini')
+    # In simulation event
+    @sio.on('simulation/pauseSimulation')
+    def pauseSimulator():
+        simulator.pause()
 
-    # # Execute the simulation.
-    # simulation.simulate()
-
-    # sio.emit('simulation/ended', name)
+    @sio.on('simulation/resumeSimulation')
+    def resumeSimulator():
+        simulator.resume()
 
     @sio.on('simulation/simulationEnd')
     def stopSimulator():
