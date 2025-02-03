@@ -77,9 +77,10 @@ def on_client_stop_simulation(name):
     log(f"stopping simulation {name}", 'client')
     simulation_session_id = simulation_session_id_by_name[name]
     simulation_name_by_session_id.pop(simulation_session_id)
-    process = simulation_process_by_name.pop(name)
-    process.terminate()
-    process.join()
+    simulation_process_by_name.pop(name)
+    emit('simulation/simulationEnd', to=simulation_session_id)
+    # process.terminate()
+    # process.join()
     emit('client/simulationEnded', name)
 
 # MARK: Script events
