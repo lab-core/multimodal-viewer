@@ -1,11 +1,9 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
 import { Component, inject } from '@angular/core';
 
 import { LeafletModule } from '@bluehalo/ngx-leaflet';
 import { latLng, Map, tileLayer } from 'leaflet';
-import * as PIXI from 'pixi.js';
-import { MapService } from '../../services/map.service';
 import { AnimationService } from '../../services/animation.service';
+import { MapService } from '../../services/map.service';
 
 @Component({
   selector: 'app-map',
@@ -15,7 +13,7 @@ import { AnimationService } from '../../services/animation.service';
 })
 export class MapComponent {
   animationService: AnimationService = inject(AnimationService);
-  
+
   options = {
     layers: [
       tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {

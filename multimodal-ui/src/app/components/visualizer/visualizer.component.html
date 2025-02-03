@@ -1,0 +1,32 @@
+<!-- MARK: Search Bar
+  -->
+<mat-form-field class="search-bar enable-pointer-events">
+  <input matInput />
+  <mat-label>Search in the simulation TODO</mat-label>
+  <mat-icon matSuffix>search</mat-icon>
+</mat-form-field>
+
+<!-- MARK: Information Panel
+    -->
+@if (shouldShowInformationPanelSignal()) {
+<mat-card class="flex-column information-panel enable-pointer-events">
+  <mat-card-content class="flex-1">
+    <mat-card-title>Simulation Information</mat-card-title>
+  </mat-card-content>
+  <mat-card-actions align="end">
+    <button mat-button (click)="hideInformationPanel()">Hide</button>
+  </mat-card-actions>
+</mat-card>
+} @else {
+<button
+  mat-fab
+  class="enable-pointer-events show-information-panel-button"
+  (click)="showInformationPanel()"
+>
+  <mat-icon>info</mat-icon>
+</button>
+}
+
+<!-- MARK: Control Bar
+-->
+<app-simulation-control-bar class="enable-pointer-events" />

@@ -1,0 +1,34 @@
+* {
+  --error-text-color: #ff0000;
+  --error-background-color: #ffdddd;
+
+  --warning-text-color: #ee8800;
+  --warning-background-color: #ffebcc;
+
+  --success-text-color: #00aa00;
+  --success-background-color: #ccffcc;
+}
+
+.text-error {
+  color: var(--error-text-color);
+}
+
+.background-error {
+  background-color: var(--error-background-color);
+}
+
+.text-warning {
+  color: var(--warning-text-color);
+}
+
+.background-warning {
+  background-color: var(--warning-background-color);
+}
+
+.text-success {
+  color: var(--success-text-color);
+}
+
+.background-success {
+  background-color: var(--success-background-color);
+}

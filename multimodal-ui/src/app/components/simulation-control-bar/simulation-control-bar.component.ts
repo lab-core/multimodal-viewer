@@ -10,9 +10,9 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSliderModule } from '@angular/material/slider';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { DialogService } from '../../services/dialog.service';
-import { UserInterfaceService } from '../../services/user-interface.service';
+import { Router } from '@angular/router';
 import { CommunicationService } from '../../services/communication.service';
+import { DialogService } from '../../services/dialog.service';
 
 @Component({
   selector: 'app-simulation-control-bar',
@@ -33,17 +33,18 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
 
   readonly isPausedSignal: WritableSignal<boolean> = signal<boolean>(false);
 
-  constructor(private readonly dialogService: DialogService,
-    private readonly userInterfaceService: UserInterfaceService,
+  constructor(
+    private readonly dialogService: DialogService,
     private readonly communicationService: CommunicationService,
-  ) { }
+    private readonly router: Router
+  ) {}
 
   togglePause(): void {
     this.isPausedSignal.update((isPaused) => !isPaused);
     // TODO change to real name
     // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-    this.isPausedSignal() ?
-      this.communicationService.emit('pauseSimulation', 'test')
+    this.isPausedSignal()
+      ? this.communicationService.emit('pauseSimulation', 'test')
       : this.communicationService.emit('resumeSimulation', 'test');
   }
 
@@ -92,7 +93,6 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
     }
     // TODO Change name test to real name
     this.communicationService.emit('stopSimulation', 'test');
-    this.userInterfaceService.navigateToMainMenu();
     // navigateToMainMenu
     // emit stop
   }
@@ -105,5 +105,7 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
     });
 
     // TODO
+
+    this.router.navigate(['home']);
   }
 }
