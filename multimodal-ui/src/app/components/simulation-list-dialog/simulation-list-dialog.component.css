@@ -1,12 +1,5 @@
 @import "../../../styles/flex.styles.css";
-
-.green {
-  color: #7bb662 !important;
-}
-
-.yellow {
-  color: #e2b213 !important;
-}
+@import "../../../styles/color.styles.css";
 
 .align-self-end {
   margin-inline-start: auto;
