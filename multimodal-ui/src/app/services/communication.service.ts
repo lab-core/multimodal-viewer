@@ -18,7 +18,7 @@ export class CommunicationService {
 
   constructor(
     private readonly socket: Socket,
-    private readonly dialogService: DialogService
+    private readonly dialogService: DialogService,
   ) {
     effect(() => {
       const isConnected = this.isConnectedSignal();
@@ -42,11 +42,11 @@ export class CommunicationService {
       }
     });
 
-    this.socket.on('connect', () => {
+    this.onConnect(() => {
       this._isConnectedSignal.set(true);
     });
 
-    this.socket.on('disconnect', () => {
+    this.onDisconnect(() => {
       this._isConnectedSignal.set(false);
     });
   }
@@ -63,5 +63,17 @@ export class CommunicationService {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   on(event: string, listener: (...args: any[]) => void): void {
     this.socket.on('client/' + event, listener);
+  }
+
+  onDisconnect(listener: () => void): void {
+    this.socket.on('disconnect', listener);
+  }
+
+  onConnect(listener: () => void): void {
+    this.socket.on('connect', listener);
+  }
+
+  removeAllListeners(event: string): void {
+    this.socket.removeAllListeners(event);
   }
 }

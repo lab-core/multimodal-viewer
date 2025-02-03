@@ -10,9 +10,9 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSliderModule } from '@angular/material/slider';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { DialogService } from '../../services/dialog.service';
-import { UserInterfaceService } from '../../services/user-interface.service';
+import { Router } from '@angular/router';
 import { CommunicationService } from '../../services/communication.service';
+import { DialogService } from '../../services/dialog.service';
 
 @Component({
   selector: 'app-simulation-control-bar',
@@ -33,10 +33,11 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
 
   readonly isPausedSignal: WritableSignal<boolean> = signal<boolean>(true);
 
-  constructor(private readonly dialogService: DialogService,
-    private readonly userInterfaceService: UserInterfaceService,
+  constructor(
+    private readonly dialogService: DialogService,
     private readonly communicationService: CommunicationService,
-  ) { }
+    private readonly router: Router
+  ) {}
 
   togglePause(): void {
     this.isPausedSignal.update((isPaused) => !isPaused);
@@ -85,11 +86,11 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
     if (!result) {
       return;
     }
+
     // TODO Change name test to real name
     this.communicationService.emit('stopSimulation', 'test');
-    this.userInterfaceService.navigateToMainMenu();
-    // navigateToMainMenu
-    // emit stop
+
+    // TODO Change component state or navigate home
   }
 
   async leaveVisualization() {
@@ -100,5 +101,7 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
     });
 
     // TODO
+
+    this.router.navigate(['home']);
   }
 }
