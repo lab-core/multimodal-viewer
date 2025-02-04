@@ -77,10 +77,32 @@ def on_client_stop_simulation(name):
     log(f"stopping simulation {name}", 'client')
     simulation_session_id = simulation_session_id_by_name[name]
     simulation_name_by_session_id.pop(simulation_session_id)
-    process = simulation_process_by_name.pop(name)
-    process.terminate()
-    process.join()
+    simulation_process_by_name.pop(name)
+    emit('simulation/simulationEnd', to=simulation_session_id)
     emit('client/simulationEnded', name)
+
+@socketio.on('client/pauseSimulation')
+def on_client_pause_simulation(name):
+    if name not in simulation_process_by_name:
+        log(f"simulation {name} not running", 'client')
+        emit('client/simulationNotRunning', name)
+        return
+    # Le log de la simulation dit deja que c'est en pause
+    log(f"pausing simulation {name}", 'client')
+    simulation_session_id = simulation_session_id_by_name[name]
+    emit('simulation/pauseSimulation', to=simulation_session_id)
+
+@socketio.on('client/resumeSimulation')
+def on_client_resume_simulation(name):
+    if name not in simulation_process_by_name:
+        log(f"simulation {name} not running", 'client')
+        emit('client/simulationNotRunning', name)
+        return
+    
+    # Le log de la simulation dit deja que c'est resumed
+    log(f"resuming simulation {name}", 'client')
+    simulation_session_id = simulation_session_id_by_name[name]
+    emit('simulation/resumeSimulation', to=simulation_session_id)
 
 # MARK: Script events
 @socketio.on('script/terminate')
