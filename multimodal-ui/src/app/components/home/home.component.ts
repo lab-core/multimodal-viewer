@@ -58,14 +58,51 @@ export class HomeComponent {
 
     this.loadingService.start('Starting simulation');
 
-    this.communicationService.on('logEvent', (message) => console.log(message));
-    this.communicationService.on('simulationStarted', async (name: string) => {
-      this.loadingService.stop();
-      await this.router.navigate([`visualize/${name}`]);
-      this.shouldShowMainMenuSignal.set(true);
-    });
+    // Start the simulation and navigate to the visualization page
+    // if the simulation starts in less than 5 seconds.
+    // Otherwise, show an error message.
+    try {
+      await new Promise<void>((resolve, reject) => {
+        console.log('Starting simulation');
+        const timeout = setTimeout(() => {
+          console.log('Timeout');
+          reject(new Error('Timeout'));
+        }, 5000);
 
-    this.communicationService.emit('startSimulation', result.general.name);
+        this.communicationService.on(
+          'simulationStart',
+          async (name: string) => {
+            clearTimeout(timeout);
+            console.log('Simulation started');
+            this.loadingService.stop();
+            await this.router.navigate([`visualize/${name}`]);
+            resolve();
+          },
+        );
+
+        this.communicationService.emit('startSimulation', result.general.name);
+      });
+    } catch (_error) {
+      this.loadingService.stop();
+
+      await firstValueFrom(
+        this.dialogService
+          .openInformationDialog({
+            title: 'Timeout',
+            message:
+              'The simulation took too long to start. Please verify the status of the server.',
+            type: 'error',
+            closeButtonOverride: null,
+          })
+          .afterClosed(),
+      );
+
+      this.shouldShowMainMenuSignal.set(true);
+      return;
+    }
+
+    console.log('Removing listener');
+    this.communicationService.removeAllListeners('simulationStart');
   }
 
   async onBrowseSimulations() {

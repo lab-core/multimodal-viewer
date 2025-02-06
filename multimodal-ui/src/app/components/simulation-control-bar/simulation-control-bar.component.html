@@ -1,13 +1,12 @@
 @let simulation = simulationInputSignal();
+@let isPaused = isPausedSignal();
 
 <mat-card>
   <mat-card-content class="flex-row align-center">
     <button
       mat-icon-button
-      [matTooltip]="
-        isPausedSignal() ? 'Resume the simulation' : 'Pause the simulation'
-      "
-      (click)="togglePause()"
+      [matTooltip]="isPaused ? 'Resume the simulation' : 'Pause the simulation'"
+      (click)="togglePause(isPaused, simulation.name)"
     >
       <mat-icon>{{ isPausedSignal() ? "play_arrow" : "pause" }}</mat-icon>
     </button>

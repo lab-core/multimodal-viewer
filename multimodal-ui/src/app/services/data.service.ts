@@ -41,6 +41,10 @@ export class DataService {
         (availableData as string[]).sort(),
       );
     });
+
+    this.communicationService.on('log', (data) => {
+      console.log(data);
+    });
   }
 
   private query() {

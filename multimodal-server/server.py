@@ -25,6 +25,18 @@ simulation_session_id_by_name = dict()
 simulation_name_by_session_id = dict()
 
 
+# TODO Change with the real data
+def send_simulations():
+    emit(
+        "simulations",
+        [
+            {"name": name, "status": "running", "completion": 0, "data": "none"}
+            for name in simulation_process_by_name.keys()
+        ],
+        to=CLIENT_ROOM,
+    )
+
+
 def getSessionId():
     return request.sid
 
@@ -34,6 +46,7 @@ def log(message, auth_type, level=logging.INFO):
         logging.log(level, f"[{auth_type}] {message}")
     else:
         logging.log(level, f"[{auth_type}] {getSessionId()} {message}")
+        emit("log", f"{level} [{auth_type}] {getSessionId()} {message}", to=CLIENT_ROOM)
 
 
 # MARK: Main events
@@ -61,14 +74,7 @@ def on_disconnect(reason):
         process.terminate()
         process.join()
         emit("simulationEnded", name, to=CLIENT_ROOM)
-        emit(
-            "simulations",
-            [
-                {"name": name, "status": "running", "completion": 0, "data": "none"}
-                for name in simulation_process_by_name.keys()
-            ],
-            to=CLIENT_ROOM,
-        )
+        send_simulations()
 
 
 # MARK: Client events
@@ -84,14 +90,6 @@ def on_client_start_simulation(name):
     simulation_process = multiprocessing.Process(target=run_simulation, args=(name,))
     simulation_process.start()
     simulation_process_by_name[name] = simulation_process
-    emit(
-        "simulations",
-        [
-            {"name": name, "status": "running", "completion": 0, "data": "none"}
-            for name in simulation_process_by_name.keys()
-        ],
-        to=CLIENT_ROOM,
-    )
 
 
 @socketio.on("stopSimulation")
@@ -104,32 +102,38 @@ def on_client_stop_simulation(name):
 
     log(f"stopping simulation {name}", "client")
     simulation_session_id = simulation_session_id_by_name[name]
-    simulation_name_by_session_id.pop(simulation_session_id)
-    process = simulation_process_by_name.pop(name)
-    process.terminate()
-    process.join()
-    emit("simulationEnded", name, to=CLIENT_ROOM)
-    emit(
-        "simulations",
-        [
-            {"name": name, "status": "running", "completion": 0, "data": "none"}
-            for name in simulation_process_by_name.keys()
-        ],
-        to=CLIENT_ROOM,
-    )
+    emit("stopSimulation", to=simulation_session_id)
+
+
+@socketio.on("pauseSimulation")
+def on_client_pause_simulation(name):
+    if name not in simulation_process_by_name:
+        log(f"simulation {name} not running", "client")
+        emit("simulationNotRunning", name, to=CLIENT_ROOM)
+        return
+    # Le log de la simulation dit deja que c'est en pause
+    log(f"pausing simulation {name}", "client")
+    simulation_session_id = simulation_session_id_by_name[name]
+    emit("pauseSimulation", to=simulation_session_id)
+
+
+@socketio.on("resumeSimulation")
+def on_client_resume_simulation(name):
+    if name not in simulation_process_by_name:
+        log(f"simulation {name} not running", "client")
+        emit("simulationNotRunning", name, to=CLIENT_ROOM)
+        return
+
+    # Le log de la simulation dit deja que c'est resumed
+    log(f"resuming simulation {name}", "client")
+    simulation_session_id = simulation_session_id_by_name[name]
+    emit("resumeSimulation", to=simulation_session_id)
 
 
 @socketio.on("getSimulations")
 def on_client_get_simulations():
     log("getting simulations", "client")
-    emit(
-        "simulations",
-        [
-            {"name": name, "status": "running", "completion": 0, "data": "none"}
-            for name in simulation_process_by_name.keys()
-        ],
-        to=CLIENT_ROOM,
-    )
+    send_simulations()
 
 
 @socketio.on("getAvailableData")
@@ -140,36 +144,12 @@ def on_client_get_data():
     emit("availableData", os.listdir(data_dir), to=CLIENT_ROOM)
 
 
-@socketio.on("pauseSimulation")
-def on_client_pause_simulation(name):
-    if name not in simulation_process_by_name:
-        log(f"simulation {name} not running", "client")
-        emit("simulationNotRunning", name)
-        return
-    # Le log de la simulation dit deja que c'est en pause
-    log(f"pausing simulation {name}", "client")
-    simulation_session_id = simulation_session_id_by_name[name]
-    emit("pause", to=simulation_session_id)
-
-
-@socketio.on("resumeSimulation")
-def on_client_resume_simulation(name):
-    if name not in simulation_process_by_name:
-        log(f"simulation {name} not running", "client")
-        emit("simulationNotRunning", name)
-        return
-
-    # Le log de la simulation dit deja que c'est resumed
-    log(f"resuming simulation {name}", "client")
-    simulation_session_id = simulation_session_id_by_name[name]
-    emit("resume", to=simulation_session_id)
-
-
 # MARK: Script events
 @socketio.on("terminate")
 def on_script_terminate():
     log("terminating server", "script")
 
+    # TODO Maybe not
     # Terminate all running simulations
     for name, process in simulation_process_by_name.items():
         process.terminate()
@@ -181,24 +161,44 @@ def on_script_terminate():
 
 
 # MARK: Simulation events
-@socketio.on("simulationStarted")
+@socketio.on("simulationStart")
 def on_simulation_start(name):
     log(f"simulation {name} started", "simulation")
-    emit("simulationStarted", name)
+    emit("simulationStart", name, to=CLIENT_ROOM)
     simulation_name_by_session_id[getSessionId()] = name
     simulation_session_id_by_name[name] = getSessionId()
+    send_simulations()
 
 
-@socketio.on("simulationEnded")
+@socketio.on("simulationEnd")
 def on_simulation_end(name):
     log(f"simulation {name} ended", "simulation")
-    emit("simulationEnded", name)
+    emit("simulationEnd", name, to=CLIENT_ROOM)
+
+    simulation_session_id = simulation_name_by_session_id.pop(name)
+    simulation_name_by_session_id.pop(simulation_session_id)
+    simulation_process_by_name.pop(name)
+
+    send_simulations()
+
+
+@socketio.on("simulationPause")
+def on_simulation_pause(name):
+    log(f"simulation {name} paused", "simulation")
+    emit("simulationPause", name, to=CLIENT_ROOM)
+    send_simulations()
+
+
+@socketio.on("simulationResume")
+def on_simulation_resume(name):
+    log(f"simulation {name} resumed", "simulation")
+    emit("simulationResume", name, to=CLIENT_ROOM)
+    send_simulations()
 
 
 @socketio.on("log")
-def on_simulation_log_event(log_message):
-    log(f"Log received by server: {log_message}", "simulation")
-    emit("logEvent", log_message, to=CLIENT_ROOM)
+def on_simulation_log_event(name, message):
+    log(f"simulation  {name}: {message}", "simulation")
 
 
 # MARK: Server

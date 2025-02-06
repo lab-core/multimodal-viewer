@@ -22,7 +22,7 @@ def run_simulation(name):
 
     class CustomVisualizer(Visualizer):
 
-        def __init__(self, sio) -> None:
+        def __init__(self, sio: Client) -> None:
             super().__init__()
             self.sio = sio
 
@@ -34,13 +34,13 @@ def run_simulation(name):
             event_priority: Optional[int] = None,
         ) -> None:
             if current_event is not None:
-                log_message = f"Visualizing environment at time {env.current_time} with event {current_event.name}"
+                message = f"Visualizing environment at time {env.current_time} with event {current_event.name}"
             else:
-                log_message = f"Visualizing environment at time {env.current_time}"
+                message = f"Visualizing environment at time {env.current_time}"
 
             # logging.info(log_message)
-            register_log(name, log_message)
-            self.sio.emit("log", {"name": name, "message": log_message})
+            register_log(name, message)
+            self.sio.emit("log", (name, message))
 
     class CustomObserver(EnvironmentObserver):
 
@@ -71,9 +71,6 @@ def run_simulation(name):
     @sio.on("stopSimulation")
     def stopSimulator():
         simulator.stop()
-        simulation_thread.join()
-        sio.emit("simulationEnd", name)
-        sio.disconnect()
 
     simulation_thread.join()
     if sio.connected:

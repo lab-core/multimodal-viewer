@@ -47,13 +47,13 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
     private readonly router: Router,
   ) {}
 
-  togglePause(): void {
-    this.isPausedSignal.update((isPaused) => !isPaused);
-    // TODO change to real name
-    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-    this.isPausedSignal()
-      ? this.communicationService.emit('pauseSimulation', 'test')
-      : this.communicationService.emit('resumeSimulation', 'test');
+  togglePause(wasPaused: boolean, name: string): void {
+    this.isPausedSignal.update((previousValue) => !previousValue);
+    if (wasPaused) {
+      this.communicationService.emit('resumeSimulation', name);
+    } else {
+      this.communicationService.emit('pauseSimulation', name);
+    }
   }
 
   ngOnInit(): void {
