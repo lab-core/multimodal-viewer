@@ -1,21 +1,28 @@
-<mat-chip
-  [style.background-color]="
-    isConnectedSignal()
-      ? 'var(--success-background-color)'
-      : 'var(--error-background-color)'
-  "
->
-  <div
-    class="flex-row align-center gap-0-5-rem"
-    [class.text-error]="!isConnectedSignal()"
-    [class.text-success]="isConnectedSignal()"
-  >
-    @if (isConnectedSignal()) {
-      <mat-icon>wifi</mat-icon>
-      Connected
-    } @else {
-      <mat-icon>wifi_off</mat-icon>
-      Disconnected
-    }
-  </div>
-</mat-chip>
+@let communicationStatus = this.communicationStatusSignal();
+
+@switch (communicationStatus) {
+  @case ("connecting") {
+    <mat-chip [style.background-color]="'var(--disabled-background-color)'">
+      <div class="flex-row align-center gap-0-5-rem text-disabled">
+        <mat-icon class="spin">autorenew</mat-icon>
+        Connecting...
+      </div>
+    </mat-chip>
+  }
+  @case ("connected") {
+    <mat-chip [style.background-color]="'var(--success-background-color)'">
+      <div class="flex-row align-center gap-0-5-rem text-success">
+        <mat-icon>wifi</mat-icon>
+        Connected
+      </div>
+    </mat-chip>
+  }
+  @case ("disconnected") {
+    <mat-chip [style.background-color]="'var(--error-background-color)'">
+      <div class="flex-row align-center gap-0-5-rem text-error">
+        <mat-icon>wifi_off</mat-icon>
+        Disconnected
+      </div>
+    </mat-chip>
+  }
+}

@@ -1,5 +1,8 @@
-import { Component } from '@angular/core';
-import { CommunicationService } from '../../services/communication.service';
+import { Component, Signal } from '@angular/core';
+import {
+  CommunicationService,
+  CommunicationStatus,
+} from '../../services/communication.service';
 
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
@@ -12,7 +15,7 @@ import { MatIconModule } from '@angular/material/icon';
 export class ConnectionStatusComponent {
   constructor(private readonly communicationService: CommunicationService) {}
 
-  get isConnectedSignal() {
-    return this.communicationService.isConnectedSignal;
+  get communicationStatusSignal(): Signal<CommunicationStatus> {
+    return this.communicationService.communicationStatusSignal;
   }
 }
