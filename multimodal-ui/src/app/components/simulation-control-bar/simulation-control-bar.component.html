@@ -18,6 +18,13 @@
       <button mat-icon-button [matTooltip]="'Step one event forward'">
         <mat-icon>skip_next</mat-icon>
       </button>
+    } @else {
+      <button mat-icon-button [matTooltip]="'Slow down the simulation'">
+        <mat-icon>fast_rewind</mat-icon>
+      </button>
+      <button mat-icon-button [matTooltip]="'Speed up the simulation'">
+        <mat-icon>fast_forward</mat-icon>
+      </button>
     }
 
     <div>{{ currentTimeSignal().toLocaleTimeString() }}</div>
