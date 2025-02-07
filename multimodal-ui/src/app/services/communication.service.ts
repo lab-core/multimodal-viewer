@@ -1,4 +1,11 @@
-import { effect, Injectable, Signal, signal } from '@angular/core';
+import {
+  computed,
+  effect,
+  Injectable,
+  Signal,
+  signal,
+  WritableSignal,
+} from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { Socket } from 'ngx-socket-io';
 import {
@@ -7,14 +14,15 @@ import {
 } from '../components/information-dialog/information-dialog.component';
 import { DialogService } from './dialog.service';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Listener = (...args: any[]) => void | Promise<void>;
+export type CommunicationStatus = 'connected' | 'disconnected' | 'connecting';
 
 @Injectable({
   providedIn: 'root',
 })
 export class CommunicationService {
-  private readonly _isConnectedSignal = signal(false);
+  private readonly _communicationStatusSignal: WritableSignal<
+    'connected' | 'disconnected' | 'connecting'
+  > = signal('connecting');
 
   private disconnectedDialogRef: MatDialogRef<
     InformationDialogComponent,
@@ -26,15 +34,21 @@ export class CommunicationService {
     private readonly dialogService: DialogService,
   ) {
     effect(() => {
-      const isConnected = this.isConnectedSignal();
+      const communicationStatus = this._communicationStatusSignal();
 
-      if (isConnected) {
-        console.log('Connected to server');
-      } else {
-        console.log('Disconnected from server');
+      switch (communicationStatus) {
+        case 'connected':
+          console.log('Connected to server');
+          break;
+        case 'disconnected':
+          console.log('Disconnected from server');
+          break;
+        case 'connecting':
+          console.log('Connecting to server');
+          break;
       }
 
-      if (!isConnected) {
+      if (communicationStatus === 'disconnected') {
         if (this.disconnectedDialogRef === null) {
           this.disconnectedDialogRef = this.dialogService.openInformationDialog(
             {
@@ -55,16 +69,30 @@ export class CommunicationService {
     });
 
     this.onConnect(() => {
-      this._isConnectedSignal.set(true);
+      this._communicationStatusSignal.set('connected');
     });
 
     this.onDisconnect(() => {
-      this._isConnectedSignal.set(false);
+      this._communicationStatusSignal.set('disconnected');
     });
+
+    // If the connection is not established after 1 second, set the status to disconnected
+    setTimeout(() => {
+      this._communicationStatusSignal.update((status) => {
+        if (status === 'connecting') {
+          return 'disconnected';
+        }
+        return status;
+      });
+    }, 1000);
   }
 
   get isConnectedSignal(): Signal<boolean> {
-    return this._isConnectedSignal;
+    return computed(() => this._communicationStatusSignal() === 'connected');
+  }
+
+  get communicationStatusSignal(): Signal<CommunicationStatus> {
+    return this._communicationStatusSignal;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

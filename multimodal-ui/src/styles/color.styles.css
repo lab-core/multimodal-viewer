@@ -7,6 +7,9 @@
 
   --success-text-color: #00aa00;
   --success-background-color: #ccffcc;
+
+  --disabled-text-color: #666666;
+  --disabled-background-color: #f0f0f0;
 }
 
 .text-error {
@@ -31,4 +34,12 @@
 
 .background-success {
   background-color: var(--success-background-color);
+}
+
+.text-disabled {
+  color: var(--disabled-text-color);
+}
+
+.background-disabled {
+  background-color: var(--disabled-background-color);
 }
