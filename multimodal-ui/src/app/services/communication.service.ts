@@ -14,6 +14,12 @@ import {
 } from '../components/information-dialog/information-dialog.component';
 import { DialogService } from './dialog.service';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type SocketEventArguments = any[];
+export type SocketEventListener = (
+  ...args: SocketEventArguments
+) => void | Promise<void>;
+
 export type CommunicationStatus = 'connected' | 'disconnected' | 'connecting';
 
 @Injectable({
@@ -95,21 +101,20 @@ export class CommunicationService {
     return this._communicationStatusSignal;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  emit(event: string, ...args: any[]): void {
+  emit(event: string, ...args: SocketEventArguments): void {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     this.socket.emit(event, ...args);
   }
 
-  on(event: string, listener: Listener): void {
+  on(event: string, listener: SocketEventListener): void {
     this.socket.on(event, listener);
   }
 
-  onDisconnect(listener: Listener): void {
+  onDisconnect(listener: SocketEventListener): void {
     this.socket.on('disconnect', listener);
   }
 
-  onConnect(listener: Listener): void {
+  onConnect(listener: SocketEventListener): void {
     this.socket.on('connect', listener);
   }
 
