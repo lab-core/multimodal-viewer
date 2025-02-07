@@ -1,4 +1,4 @@
-import { Component, computed, signal, Signal } from '@angular/core';
+import { Component, computed, Signal } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -6,6 +6,7 @@ import {
   MatDialogActions,
   MatDialogClose,
   MatDialogContent,
+  MatDialogRef,
   MatDialogTitle,
 } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -13,14 +14,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
-
-// TODO
-export interface Simulation {
-  name: string;
-  data: string;
-  completion: number;
-  status: 'paused' | 'running' | 'completed';
-}
+import { firstValueFrom } from 'rxjs';
+import { Simulation } from '../../interfaces/simulation.model';
+import { CommunicationService } from '../../services/communication.service';
+import { DataService } from '../../services/data.service';
+import { DialogService } from '../../services/dialog.service';
 
 export type SimulationListDialogData = null;
 
@@ -48,87 +46,55 @@ export interface SimulationListDialogResult {
   styleUrl: './simulation-list-dialog.component.css',
 })
 export class SimulationListDialogComponent {
-  simulationsSignal: Signal<Simulation[]> = signal([
-    {
-      name: 'Simulation 1',
-      data: 'Data 1',
-      status: 'paused',
-      completion: 50,
-    },
-    {
-      name: 'Simulation 2',
-      data: 'Data 2',
-      status: 'running',
-      completion: 25,
-    },
-    {
-      name: 'Simulation 3',
-      data: 'Data 3',
-      status: 'completed',
-      completion: 100,
-    },
-    {
-      name: 'Simulation 4',
-      data: 'Data 4',
-      status: 'completed',
-      completion: 100,
-    },
-    {
-      name: 'Simulation 5',
-      data: 'Data 5',
-      status: 'running',
-      completion: 90,
-    },
-    {
-      name: 'Simulation 6',
-      data: 'Data 6',
-      status: 'completed',
-      completion: 100,
-    },
-    {
-      name: 'Simulation 7',
-      data: 'Data 7',
-      status: 'completed',
-      completion: 100,
-    },
-    {
-      name: 'Simulation 8',
-      data: 'Data 8',
-      status: 'completed',
-      completion: 100,
-    },
-    {
-      name: 'Simulation 9',
-      data: 'Data 9',
-      status: 'completed',
-      completion: 100,
-    },
-    {
-      name: 'Simulation 10',
-      data: 'Data 10',
-      status: 'completed',
-      completion: 100,
-    },
-    {
-      name: 'Simulation 11',
-      data: 'Data 11',
-      status: 'completed',
-      completion: 100,
-    },
-  ]);
+  constructor(
+    private readonly dataService: DataService,
+    private readonly communicationService: CommunicationService,
+    private readonly dialogService: DialogService,
+    private readonly matDialogRef: MatDialogRef<SimulationListDialogComponent>,
+  ) {}
 
-  runningSimulationsSignal: Signal<Simulation[]> = computed(() =>
-    this.simulationsSignal()
-      .filter(
-        (simulation) =>
-          simulation.status === 'running' || simulation.status === 'paused'
-      )
-      .sort((a, b) => a.completion - b.completion)
-  );
+  private get simulationsSignal(): Signal<Simulation[]> {
+    return this.dataService.simulationsSignal;
+  }
 
-  completedSimulationsSignal: Signal<Simulation[]> = computed(() =>
-    this.simulationsSignal().filter(
-      (simulation) => simulation.status === 'completed'
-    )
-  );
+  get runningSimulationsSignal(): Signal<Simulation[]> {
+    return computed(() =>
+      this.simulationsSignal()
+        .filter(
+          (simulation) =>
+            simulation.status === 'running' || simulation.status === 'paused',
+        )
+        .sort((a, b) => a.completion - b.completion),
+    );
+  }
+
+  get completedSimulationsSignal(): Signal<Simulation[]> {
+    return computed(() =>
+      this.simulationsSignal().filter(
+        (simulation) => simulation.status === 'completed',
+      ),
+    );
+  }
+
+  visualizeSimulation(simulation: Simulation): void {
+    this.matDialogRef.close({ simulationToVisualize: simulation });
+  }
+
+  async stopSimulation(simulation: Simulation): Promise<void> {
+    const result = await firstValueFrom(
+      this.dialogService
+        .openConfirmationDialog({
+          title: 'Stopping Simulation',
+          message:
+            'Are you sure you want to stop the simulation? This action cannot be undone.',
+        })
+        .afterClosed(),
+    );
+
+    if (!result) {
+      return;
+    }
+
+    this.communicationService.emit('stopSimulation', simulation.name);
+  }
 }

@@ -2,18 +2,23 @@ import { effect, Injectable, Signal, signal } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { Socket } from 'ngx-socket-io';
 import {
-  DisconnectedDialogComponent,
-  DisconnectedDialogResult,
-} from '../components/disconnected-dialog/disconnected-dialog.component';
+  InformationDialogComponent,
+  InformationDialogResult,
+} from '../components/information-dialog/information-dialog.component';
 import { DialogService } from './dialog.service';
 
-@Injectable()
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Listener = (...args: any[]) => void | Promise<void>;
+
+@Injectable({
+  providedIn: 'root',
+})
 export class CommunicationService {
   private readonly _isConnectedSignal = signal(false);
 
   private disconnectedDialogRef: MatDialogRef<
-    DisconnectedDialogComponent,
-    DisconnectedDialogResult
+    InformationDialogComponent,
+    InformationDialogResult
   > | null = null;
 
   constructor(
@@ -31,8 +36,15 @@ export class CommunicationService {
 
       if (!isConnected) {
         if (this.disconnectedDialogRef === null) {
-          this.disconnectedDialogRef =
-            this.dialogService.openDisconnectedDialog();
+          this.disconnectedDialogRef = this.dialogService.openInformationDialog(
+            {
+              title: 'Disconnected',
+              message:
+                'The connection to the server has been lost. Please verify that the server is running and try again. The application will attempt to reconnect automatically.',
+              type: 'error',
+              closeButtonOverride: 'Continue Anyway',
+            },
+          );
         }
       } else {
         if (this.disconnectedDialogRef !== null) {
@@ -57,19 +69,19 @@ export class CommunicationService {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   emit(event: string, ...args: any[]): void {
-    this.socket.emit('client/' + event, ...args);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    this.socket.emit(event, ...args);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  on(event: string, listener: (...args: any[]) => void): void {
-    this.socket.on('client/' + event, listener);
+  on(event: string, listener: Listener): void {
+    this.socket.on(event, listener);
   }
 
-  onDisconnect(listener: () => void): void {
+  onDisconnect(listener: Listener): void {
     this.socket.on('disconnect', listener);
   }
 
-  onConnect(listener: () => void): void {
+  onConnect(listener: Listener): void {
     this.socket.on('connect', listener);
   }
 

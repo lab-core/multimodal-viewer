@@ -1,6 +1,7 @@
 @import "../../../styles/flex.styles.css";
 
-:host {
+:host,
+.no-simulation {
   /* The user interface is positioned on top of the map */
   display: block;
   width: 100%;
@@ -12,6 +13,25 @@
 
   /* Map is at 400 */
   z-index: 500;
+}
+
+.no-simulation {
+  /* Same as when a dialog is open */
+  background-color: rgba(0, 0, 0, 0.32);
+
+  mat-card {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: 500px;
+    max-width: 80vw;
+
+    mat-icon {
+      min-width: 24px;
+    }
+  }
 }
 
 .disable-pointer-events,

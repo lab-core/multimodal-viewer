@@ -1,6 +1,8 @@
 import { Injectable, Signal, signal, WritableSignal } from '@angular/core';
 
-export type UserInterfaceView = 'main-menu' | 'simulation';
+/**
+ * Allows to save the state of the user interface even when the component is destroyed.
+ */
 @Injectable({
   providedIn: 'root',
 })

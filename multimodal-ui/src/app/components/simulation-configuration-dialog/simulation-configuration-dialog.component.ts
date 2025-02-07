@@ -1,4 +1,4 @@
-import { Component, Inject, OnDestroy } from '@angular/core';
+import { Component, Inject, OnDestroy, Signal } from '@angular/core';
 import {
   FormBuilder,
   FormControl,
@@ -21,13 +21,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { Subject, takeUntil } from 'rxjs';
-
-export interface SimulationConfiguration {
-  maxTime: number | null;
-  speed: number | null;
-  timeStep: number | null;
-  positionTimeStep: number | null;
-}
+import { SimulationConfiguration } from '../../interfaces/simulation.model';
+import { DataService } from '../../services/data.service';
 
 export interface SimulationConfigurationDialogData {
   mode: 'start' | 'edit';
@@ -81,18 +76,21 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
   constructor(
     @Inject(MAT_DIALOG_DATA)
     public readonly data: SimulationConfigurationDialogData,
+    public readonly dataService: DataService,
     private readonly dialogRef: MatDialogRef<
       SimulationConfigurationDialogComponent,
       SimulationConfigurationDialogResult
     >,
-    private readonly formBuilder: FormBuilder
+    private readonly formBuilder: FormBuilder,
   ) {
     // TODO Validators
     // Initialize form
     this.nameFormControl = this.formBuilder.control(null, [
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       Validators.required,
     ]);
     this.dataFormControl = this.formBuilder.control(null, [
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       Validators.required,
     ]);
     this.shouldRunInBackgroundFormControl = this.formBuilder.control(false);
@@ -125,10 +123,10 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
       this.maxTimeFormControl.setValue(this.data.currentConfiguration.maxTime);
       this.speedFormControl.setValue(this.data.currentConfiguration.speed);
       this.timeStepFormControl.setValue(
-        this.data.currentConfiguration.timeStep
+        this.data.currentConfiguration.timeStep,
       );
       this.positionTimeStepFormControl.setValue(
-        this.data.currentConfiguration.positionTimeStep
+        this.data.currentConfiguration.positionTimeStep,
       );
     }
 
@@ -163,6 +161,10 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     } else {
       console.error('Invalid form', this.formGroup);
     }
+  }
+
+  get availableSimulationDataSignal(): Signal<string[]> {
+    return this.dataService.availableSimulationDataSignal;
   }
 
   private buildResult(): SimulationConfigurationDialogResult {

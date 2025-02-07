@@ -3,44 +3,43 @@
 
 <mat-dialog-content>
   <form [formGroup]="formGroup">
-    @if (data.mode === 'start') {
-    <h3>General</h3>
+    @if (data.mode === "start") {
+      <h3>General</h3>
 
-    <div formGroupName="general">
-      <section class="flex-row gap-1-rem">
-        <mat-form-field>
-          <input matInput formControlName="name" />
-          <mat-label>Name TODO</mat-label>
-        </mat-form-field>
+      <div formGroupName="general">
+        <section class="flex-row gap-1-rem">
+          <mat-form-field>
+            <input matInput formControlName="name" />
+            <mat-label>Name TODO</mat-label>
+          </mat-form-field>
 
-        <mat-form-field>
-          <mat-select formControlName="data">
-            <!-- TODO -->
-            <mat-option [value]="'first'">First</mat-option>
-            <mat-option [value]="'second'">Second</mat-option>
-            <mat-option [value]="'third'">Third</mat-option>
-          </mat-select>
-          <mat-label>Data TODO</mat-label>
-        </mat-form-field>
-      </section>
+          <mat-form-field>
+            <mat-select formControlName="data">
+              @for (data of availableSimulationDataSignal(); track data) {
+                <mat-option [value]="data">{{ data }}</mat-option>
+              }
+            </mat-select>
+            <mat-label>Data TODO</mat-label>
+          </mat-form-field>
+        </section>
 
-      <mat-checkbox formControlName="shouldRunInBackground">
-        Run in background TODO
-      </mat-checkbox>
-    </div>
+        <mat-checkbox formControlName="shouldRunInBackground">
+          Run in background TODO
+        </mat-checkbox>
+      </div>
     }
 
     <h3>Simulation</h3>
 
     <div formGroupName="configuration" class="flex-column gap-1-rem">
-      @if (data.mode === 'start' && !dataFormControl.valid) {
-      <span class="error-message flex-row align-cross-center gap-0-5-rem">
-        <mat-icon class="error-icon">error</mat-icon>
-        <span
-          >Select a valid data source before changing the configuration the
-          simulation</span
-        >
-      </span>
+      @if (data.mode === "start" && !dataFormControl.valid) {
+        <span class="error-message flex-row align-cross-center gap-0-5-rem">
+          <mat-icon class="error-icon">error</mat-icon>
+          <span
+            >Select a valid data source before changing the configuration the
+            simulation</span
+          >
+        </span>
       }
 
       <div>
@@ -76,6 +75,13 @@
   <button mat-button mat-dialog-close>Cancel</button>
 
   <button mat-button (click)="onSave()">
-    @switch(data.mode) { @case ('start') {Start} @case ('edit') { Save} }
+    @switch (data.mode) {
+      @case ("start") {
+        Start
+      }
+      @case ("edit") {
+        Save
+      }
+    }
   </button>
 </mat-dialog-actions>

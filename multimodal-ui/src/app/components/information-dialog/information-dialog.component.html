@@ -1,9 +1,26 @@
 <h2 mat-dialog-title>{{ data.title }}</h2>
 
 <mat-dialog-content>
-  <p>{{ data.message }}</p>
+  <div class="flex-row align-main-start align-cross-center gap-1-rem">
+    @switch (data.type) {
+      @case ("error") {
+        <mat-icon class="text-error"> error </mat-icon>
+      }
+      @case ("warning") {
+        <mat-icon class="text-warning"> warning </mat-icon>
+      }
+      @case ("info") {
+        <mat-icon> info </mat-icon>
+      }
+    }
+    <p>
+      {{ data.message }}
+    </p>
+  </div>
 </mat-dialog-content>
 
 <mat-dialog-actions>
-  <button mat-button mat-dialog-close>Close</button>
+  <button mat-button mat-dialog-close>
+    {{ data.closeButtonOverride ?? "Close" }}
+  </button>
 </mat-dialog-actions>
