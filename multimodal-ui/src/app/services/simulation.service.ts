@@ -35,8 +35,7 @@ export class SimulationService {
       const simulations = this.dataService.simulationsSignal();
 
       const currentSimulation = simulations.find(
-        // TODO Change to id
-        (simulation) => simulation.name === activeSimulationId,
+        (simulation) => simulation.id === activeSimulationId,
       );
 
       return currentSimulation ?? null;

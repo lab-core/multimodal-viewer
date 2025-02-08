@@ -58,29 +58,31 @@ export class HomeComponent {
 
     this.loadingService.start('Starting simulation');
 
+    // create a unique string to temporarily identify the simulation
+    const uniqueId = Math.random().toString(36).substring(7) + Date.now();
+
     // Start the simulation and navigate to the visualization page
     // if the simulation starts in less than 5 seconds.
     // Otherwise, show an error message.
     try {
       await new Promise<void>((resolve, reject) => {
-        console.log('Starting simulation');
         const timeout = setTimeout(() => {
-          console.log('Timeout');
           reject(new Error('Timeout'));
         }, 5000);
 
-        this.communicationService.on(
-          'simulationStart',
-          async (name: string) => {
-            clearTimeout(timeout);
-            console.log('Simulation started');
-            this.loadingService.stop();
-            await this.router.navigate([`visualize/${name}`]);
-            resolve();
-          },
-        );
+        this.communicationService.on(uniqueId, async (id: string) => {
+          clearTimeout(timeout);
+          this.loadingService.stop();
+          await this.router.navigate([`visualize/${id}`]);
+          resolve();
+        });
 
-        this.communicationService.emit('startSimulation', result.general.name);
+        this.communicationService.emit(
+          'startSimulation',
+          result.general.name,
+          result.general.data,
+          uniqueId,
+        );
       });
     } catch (_error) {
       this.loadingService.stop();
@@ -101,8 +103,7 @@ export class HomeComponent {
       return;
     }
 
-    console.log('Removing listener');
-    this.communicationService.removeAllListeners('simulationStart');
+    this.communicationService.removeAllListeners(uniqueId);
   }
 
   async onBrowseSimulations() {
@@ -118,11 +119,11 @@ export class HomeComponent {
     }
 
     await this.router.navigate([
-      `visualize/${result.simulationToVisualize.name}`,
+      `visualize/${result.simulationToVisualize.id}`,
     ]);
   }
 
   onAboutUs() {
-    // TODO
+    // TODO Add about us page
   }
 }

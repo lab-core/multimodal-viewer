@@ -27,7 +27,7 @@
 
   /* Make the buttons overlap the map */
   position: relative;
-  z-index: 4000;
+  z-index: 500;
 }
 
 #info-overlay {
@@ -37,7 +37,7 @@
   top: 0;
 
   margin: 20px; /* Matching .main margin */
-  z-index: 4000;
+  z-index: 500;
 }
 
 #info-content {
@@ -47,9 +47,9 @@
 
 app-connection-status {
   position: absolute;
-  /* 44px for the zoom control and a gap of 1rem */
-  right: calc(44px + 1rem);
-  bottom: 1rem;
+  /* 44px for the zoom control and a gap of 10px */
+  right: calc(44px + 10px);
+  bottom: 10px;
 
-  z-index: 4000;
+  z-index: 500;
 }

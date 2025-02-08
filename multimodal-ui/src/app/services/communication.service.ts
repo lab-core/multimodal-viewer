@@ -26,9 +26,8 @@ export type CommunicationStatus = 'connected' | 'disconnected' | 'connecting';
   providedIn: 'root',
 })
 export class CommunicationService {
-  private readonly _communicationStatusSignal: WritableSignal<
-    'connected' | 'disconnected' | 'connecting'
-  > = signal('connecting');
+  private readonly _communicationStatusSignal: WritableSignal<CommunicationStatus> =
+    signal('connecting');
 
   private disconnectedDialogRef: MatDialogRef<
     InformationDialogComponent,
@@ -41,18 +40,6 @@ export class CommunicationService {
   ) {
     effect(() => {
       const communicationStatus = this._communicationStatusSignal();
-
-      switch (communicationStatus) {
-        case 'connected':
-          console.log('Connected to server');
-          break;
-        case 'disconnected':
-          console.log('Disconnected from server');
-          break;
-        case 'connecting':
-          console.log('Connecting to server');
-          break;
-      }
 
       if (communicationStatus === 'disconnected') {
         if (this.disconnectedDialogRef === null) {

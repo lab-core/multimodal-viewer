@@ -26,12 +26,10 @@ import { DataService } from '../../services/data.service';
 
 export interface SimulationConfigurationDialogData {
   mode: 'start' | 'edit';
-  // TODO
   currentConfiguration: SimulationConfiguration | null;
 }
 
 export interface SimulationConfigurationDialogResult {
-  // TODO
   general: {
     name: string;
     data: string;
@@ -155,7 +153,6 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
   }
 
   onSave() {
-    // TODO
     if (this.formGroup.valid) {
       this.dialogRef.close(this.buildResult());
     } else {
