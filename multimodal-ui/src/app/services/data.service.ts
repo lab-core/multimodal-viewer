@@ -141,4 +141,9 @@ export class DataService {
       })
       .filter((simulation) => !!simulation);
   }
+
+  refreshAvailableSimulationData() {
+    this.communicationService.emit('getAvailableData');
+  }
+  
 }

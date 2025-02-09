@@ -193,4 +193,12 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     this.timeStepFormControl.enable();
     this.positionTimeStepFormControl.enable();
   }
+
+  refreshAvailableData() {
+    this.dataService.refreshAvailableSimulationData();
+  }
+  
 }
+
+
+
