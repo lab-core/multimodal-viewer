@@ -145,5 +145,16 @@ export class DataService {
   refreshAvailableSimulationData() {
     this.communicationService.emit('getAvailableData');
   }
+
+  importFolder(folderPath: string) {
+    this.communicationService.emit('importFolder', folderPath, (response: { success: boolean; error?: string }) => {
+      if (response.success) {
+        console.log(`Folder ${folderPath} imported successfully.`);
+        this.refreshAvailableSimulationData();
+      } else {
+        console.error(`Failed to import folder: ${response.error}`);
+      }
+    });
+  }
   
 }

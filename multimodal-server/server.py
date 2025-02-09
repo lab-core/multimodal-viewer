@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+import shutil
 
 from flask import Flask
 from flask_socketio import SocketIO, emit, join_room, leave_room
@@ -17,6 +18,13 @@ def run_server():
     sockets_types_by_session_id = dict()
 
     simulation_manager = SimulationManager()
+
+    # Define the data directory
+    current_dir = os.path.dirname(os.path.realpath(__file__))
+    data_dir = os.path.join(current_dir, "..", "data")
+
+    # Ensure the data directory exists
+    os.makedirs(data_dir, exist_ok=True)
 
     # MARK: Main events
     @socketio.on("connect")
@@ -71,6 +79,34 @@ def run_server():
         current_dir = os.path.dirname(os.path.realpath(__file__))
         data_dir = os.path.join(current_dir, "..", "data")
         emit("availableData", os.listdir(data_dir), to=CLIENT_ROOM)
+
+    @socketio.on("importFolder")
+    def on_import_folder(folder_path):
+        try:
+            log(f"Importing folder: {folder_path}", "client")
+
+            if not os.path.exists(folder_path):
+                emit("importFolderResponse", {"success": False, "error": "Source folder does not exist"})
+                return
+
+            folder_name = os.path.basename(folder_path)
+            destination_path = os.path.join(data_dir, folder_name)
+
+            if os.path.exists(destination_path):
+                emit("importFolderResponse", {"success": False, "error": "Folder already exists in data directory"})
+                return
+
+            # Copy folder recursively
+            shutil.copytree(folder_path, destination_path)
+
+            log(f"Folder {folder_name} imported successfully", "client")
+
+            # Emit updated available data list
+            emit("availableData", os.listdir(data_dir), to=CLIENT_ROOM)
+            emit("importFolderResponse", {"success": True})
+
+        except Exception as e:
+            emit("importFolderResponse", {"success": False, "error": str(e)})
 
     # MARK: Script events
     @socketio.on("terminate")
