@@ -47,12 +47,12 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
     private readonly router: Router,
   ) {}
 
-  togglePause(wasPaused: boolean, name: string): void {
+  togglePause(wasPaused: boolean, id: string): void {
     this.isPausedSignal.update((previousValue) => !previousValue);
     if (wasPaused) {
-      this.communicationService.emit('resumeSimulation', name);
+      this.communicationService.emit('resumeSimulation', id);
     } else {
-      this.communicationService.emit('pauseSimulation', name);
+      this.communicationService.emit('pauseSimulation', id);
     }
   }
 
@@ -90,7 +90,7 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // TODO
+    // TODO Update simulation configuration
   }
 
   async stopSimulation(simulation: Simulation) {
@@ -108,11 +108,7 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.communicationService.emit(
-      'stopSimulation',
-      // TODO Change this to id
-      simulation.name,
-    );
+    this.communicationService.emit('stopSimulation', simulation.id);
   }
 
   async leaveVisualization() {

@@ -6,7 +6,7 @@
     <button
       mat-icon-button
       [matTooltip]="isPaused ? 'Resume the simulation' : 'Pause the simulation'"
-      (click)="togglePause(isPaused, simulation.name)"
+      (click)="togglePause(isPaused, simulation.id)"
     >
       <mat-icon>{{ isPausedSignal() ? "play_arrow" : "pause" }}</mat-icon>
     </button>

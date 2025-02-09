@@ -1,4 +1,4 @@
-<!-- TODO Add Help -->
+<!-- TODO Add Help and validation -->
 <h2 mat-dialog-title>Configure Simulation</h2>
 
 <mat-dialog-content>
@@ -10,7 +10,7 @@
         <section class="flex-row gap-1-rem">
           <mat-form-field>
             <input matInput formControlName="name" />
-            <mat-label>Name TODO</mat-label>
+            <mat-label>Name</mat-label>
           </mat-form-field>
 
           <mat-form-field>
@@ -19,12 +19,12 @@
                 <mat-option [value]="data">{{ data }}</mat-option>
               }
             </mat-select>
-            <mat-label>Data TODO</mat-label>
+            <mat-label>Data</mat-label>
           </mat-form-field>
         </section>
 
         <mat-checkbox formControlName="shouldRunInBackground">
-          Run in background TODO
+          Run in background
         </mat-checkbox>
       </div>
     }
@@ -46,24 +46,24 @@
         <section class="flex-row gap-1-rem">
           <mat-form-field>
             <input type="number" matInput formControlName="maxTime" />
-            <mat-label>Max Time TODO</mat-label>
+            <mat-label>Max Time</mat-label>
           </mat-form-field>
 
           <mat-form-field>
             <input type="number" matInput formControlName="speed" />
-            <mat-label>Speed TODO</mat-label>
+            <mat-label>Speed</mat-label>
           </mat-form-field>
         </section>
 
         <section class="flex-row gap-1-rem">
           <mat-form-field>
             <input type="number" matInput formControlName="timeStep" />
-            <mat-label>Time Step TODO</mat-label>
+            <mat-label>Time Step</mat-label>
           </mat-form-field>
 
           <mat-form-field>
             <input type="number" matInput formControlName="positionTimeStep" />
-            <mat-label>Position Time Step TODO</mat-label>
+            <mat-label>Position Time Step</mat-label>
           </mat-form-field>
         </section>
       </div>

@@ -14,15 +14,20 @@ import {
 } from '../components/information-dialog/information-dialog.component';
 import { DialogService } from './dialog.service';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type SocketEventArguments = any[];
+export type SocketEventListener = (
+  ...args: SocketEventArguments
+) => void | Promise<void>;
+
 export type CommunicationStatus = 'connected' | 'disconnected' | 'connecting';
 
 @Injectable({
   providedIn: 'root',
 })
 export class CommunicationService {
-  private readonly _communicationStatusSignal: WritableSignal<
-    'connected' | 'disconnected' | 'connecting'
-  > = signal('connecting');
+  private readonly _communicationStatusSignal: WritableSignal<CommunicationStatus> =
+    signal('connecting');
 
   private disconnectedDialogRef: MatDialogRef<
     InformationDialogComponent,
@@ -35,18 +40,6 @@ export class CommunicationService {
   ) {
     effect(() => {
       const communicationStatus = this._communicationStatusSignal();
-
-      switch (communicationStatus) {
-        case 'connected':
-          console.log('Connected to server');
-          break;
-        case 'disconnected':
-          console.log('Disconnected from server');
-          break;
-        case 'connecting':
-          console.log('Connecting to server');
-          break;
-      }
 
       if (communicationStatus === 'disconnected') {
         if (this.disconnectedDialogRef === null) {
@@ -95,21 +88,20 @@ export class CommunicationService {
     return this._communicationStatusSignal;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  emit(event: string, ...args: any[]): void {
+  emit(event: string, ...args: SocketEventArguments): void {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     this.socket.emit(event, ...args);
   }
 
-  on(event: string, listener: Listener): void {
+  on(event: string, listener: SocketEventListener): void {
     this.socket.on(event, listener);
   }
 
-  onDisconnect(listener: Listener): void {
+  onDisconnect(listener: SocketEventListener): void {
     this.socket.on('disconnect', listener);
   }
 
-  onConnect(listener: Listener): void {
+  onConnect(listener: SocketEventListener): void {
     this.socket.on('connect', listener);
   }
 

@@ -1,5 +1,6 @@
 <h2 mat-dialog-title>Configure Simulation</h2>
 
+<!-- TODO Edit configuration -->
 <mat-dialog-content>
   <h3>Actions</h3>
 
@@ -27,17 +28,19 @@
               class="light"
               [class.text-success]="simulation.status === 'running'"
               [class.text-warning]="simulation.status === 'paused'"
+              [class.text-error]="simulation.status === 'stopped'"
             >
-              {{ simulation.completion }}% - {{ simulation.status }}
+              {{ simulation.status }}
             </div>
           </div>
           <div class="actions align-self-end flex-row gap-0-5-rem">
             @if (simulation.status === "running") {
-              <!-- TODO -->
+              <!-- TODO Pause -->
               <button mat-icon-button [matTooltip]="'Pause'">
                 <mat-icon>pause</mat-icon>
               </button>
             } @else {
+              <!-- TODO Resume -->
               <button mat-icon-button [matTooltip]="'Resume'">
                 <mat-icon>play_arrow</mat-icon>
               </button>
@@ -82,10 +85,11 @@
             </div>
           </div>
           <div class="actions align-self-end flex-row gap-0-5-rem">
-            <!-- TODO -->
+            <!-- TODO Export -->
             <button mat-icon-button [matTooltip]="'Export'">
               <mat-icon>cloud_download</mat-icon>
             </button>
+            <!-- TODO Delete -->
             <button mat-icon-button [matTooltip]="'Delete'">
               <mat-icon>delete</mat-icon>
             </button>

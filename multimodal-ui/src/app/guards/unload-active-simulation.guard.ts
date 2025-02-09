@@ -11,7 +11,5 @@ export const unloadActiveSimulationGuard: CanDeactivateFn<unknown> = (
   const simulationService: SimulationService = inject(SimulationService);
 
   simulationService.unsetActiveSimulationId();
-
-  console.log('Unloading active simulation');
   return true;
 };

@@ -1,0 +1,23 @@
+import logging
+
+from flask import request
+from flask_socketio import emit
+
+HOST = "127.0.0.1"
+PORT = 5000
+
+CLIENT_ROOM = "client"
+SIMULATION_ROOM = "simulation"
+SCRIPT_ROOM = "script"
+
+
+def getSessionId():
+    return request.sid
+
+
+def log(message, auth_type, level=logging.INFO):
+    if auth_type == "server":
+        logging.log(level, f"[{auth_type}] {message}")
+    else:
+        logging.log(level, f"[{auth_type}] {getSessionId()} {message}")
+        emit("log", f"{level} [{auth_type}] {getSessionId()} {message}", to=CLIENT_ROOM)

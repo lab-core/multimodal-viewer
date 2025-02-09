@@ -8,7 +8,5 @@ export const loadActiveSimulationGuard: CanActivateFn = (route, state) => {
   const simulationService: SimulationService = inject(SimulationService);
 
   simulationService.setActiveSimulationId(simulationId);
-
-  console.log('Loading simulation', simulationId);
   return true;
 };

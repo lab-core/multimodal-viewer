@@ -59,12 +59,10 @@ export class SimulationListDialogComponent {
 
   get runningSimulationsSignal(): Signal<Simulation[]> {
     return computed(() =>
-      this.simulationsSignal()
-        .filter(
-          (simulation) =>
-            simulation.status === 'running' || simulation.status === 'paused',
-        )
-        .sort((a, b) => a.completion - b.completion),
+      this.simulationsSignal().filter(
+        (simulation) =>
+          simulation.status === 'running' || simulation.status === 'paused',
+      ),
     );
   }
 
@@ -95,6 +93,6 @@ export class SimulationListDialogComponent {
       return;
     }
 
-    this.communicationService.emit('stopSimulation', simulation.name);
+    this.communicationService.emit('stopSimulation', simulation.id);
   }
 }
