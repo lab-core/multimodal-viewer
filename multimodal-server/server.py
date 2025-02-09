@@ -2,6 +2,8 @@ import logging
 import os
 import time
 import shutil
+import base64
+
 
 from flask import Flask
 from flask_socketio import SocketIO, emit, join_room, leave_room
@@ -81,23 +83,27 @@ def run_server():
         emit("availableData", os.listdir(data_dir), to=CLIENT_ROOM)
 
     @socketio.on("importFolder")
-    def on_import_folder(folder_path):
+    def on_import_folder(data):
         try:
-            log(f"Importing folder: {folder_path}", "client")
+            folder_name = data["folderName"]
+            files = data["files"]
 
-            if not os.path.exists(folder_path):
-                emit("importFolderResponse", {"success": False, "error": "Source folder does not exist"})
-                return
-
-            folder_name = os.path.basename(folder_path)
             destination_path = os.path.join(data_dir, folder_name)
 
             if os.path.exists(destination_path):
                 emit("importFolderResponse", {"success": False, "error": "Folder already exists in data directory"})
                 return
 
-            # Copy folder recursively
-            shutil.copytree(folder_path, destination_path)
+            os.makedirs(destination_path)  # Create the folder
+
+            for file in files:
+                file_path = os.path.join(data_dir, file["name"])
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+                # Decode and save the file
+                file_content = file["content"].split(",", 1)[1]  # Remove the "data:<type>;base64," prefix
+                with open(file_path, "wb") as f:
+                    f.write(base64.b64decode(file_content))
 
             log(f"Folder {folder_name} imported successfully", "client")
 

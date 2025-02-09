@@ -202,19 +202,38 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     const input = document.createElement('input');
     input.type = 'file';
     input.webkitdirectory = true; // Allows selecting folders
-    // input.directory = true;
-    input.multiple = true; 
+    input.multiple = true;
   
     input.addEventListener('change', (event: Event) => {
       const files = (event.target as HTMLInputElement).files;
       if (files && files.length > 0) {
-        const folderPath = files[0].webkitRelativePath.split('/')[0]; // Get the folder name
-        this.dataService.importFolder(folderPath);
+        const folderName = files[0].webkitRelativePath.split('/')[0]; // Get the folder name
+        const fileList = [];
+  
+        for (const file of files) {
+          fileList.push(this.readFileAsBase64(file)); // Read each file
+        }
+  
+        Promise.all(fileList).then((encodedFiles) => {
+          this.dataService.importFolder(folderName, encodedFiles);
+        });
       }
     });
   
     input.click();
   }
+  
+  // Helper function to read file as Base64
+  readFileAsBase64(file: File): Promise<{ name: string; content: string }> {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        resolve({ name: file.webkitRelativePath, content: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  
   
 }
 
