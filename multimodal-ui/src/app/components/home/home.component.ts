@@ -62,13 +62,13 @@ export class HomeComponent {
     const uniqueId = Math.random().toString(36).substring(7) + Date.now();
 
     // Start the simulation and navigate to the visualization page
-    // if the simulation starts in less than 5 seconds.
+    // if the simulation starts in less than 10 seconds.
     // Otherwise, show an error message.
     try {
       await new Promise<void>((resolve, reject) => {
         const timeout = setTimeout(() => {
           reject(new Error('Timeout'));
-        }, 5000);
+        }, 10000);
 
         this.communicationService.on(uniqueId, async (id: string) => {
           clearTimeout(timeout);
