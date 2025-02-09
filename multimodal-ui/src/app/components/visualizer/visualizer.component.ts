@@ -14,6 +14,8 @@ import { SimulationService } from '../../services/simulation.service';
 import { UserInterfaceService } from '../../services/user-interface.service';
 import { InformationDialogComponent } from '../information-dialog/information-dialog.component';
 import { SimulationControlBarComponent } from '../simulation-control-bar/simulation-control-bar.component';
+import { ActivatedRoute } from '@angular/router';
+
 
 @Component({
   selector: 'app-visualizer',
@@ -32,6 +34,7 @@ export class VisualizerComponent {
   readonly simulationSignal: Signal<Simulation | null>;
 
   private matDialogRef: MatDialogRef<InformationDialogComponent> | null = null;
+  simulationName: string = 'Simulation';
 
   constructor(
     private readonly simulationService: SimulationService,
@@ -39,6 +42,7 @@ export class VisualizerComponent {
     private readonly router: Router,
     private readonly communicationService: CommunicationService,
     private readonly dialogService: DialogService,
+    private route: ActivatedRoute
   ) {
     this.simulationSignal = this.simulationService.activeSimulationSignal;
     effect(() => {
@@ -80,6 +84,14 @@ export class VisualizerComponent {
           .catch((error) => {
             console.error(error);
           });
+      }
+    });
+
+    this.route.url.subscribe(urlSegments => {
+      if (urlSegments.length > 0) {
+        const fullName = decodeURIComponent(urlSegments[urlSegments.length - 1].path);
+        const match = fullName.match(/^\d{8}-\d+-([\w\d]+)$/); // Extracts the part after the timestamp
+        this.simulationName = match ? match[1] : fullName; // Default to fullName if regex fails
       }
     });
   }
