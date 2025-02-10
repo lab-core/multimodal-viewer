@@ -59,7 +59,7 @@ export class DataService {
   }
 
   /**
-   * Validate and extract simulation data from the raw data.
+   * Validate and extract simulation from the raw data.
    */
   private extractSimulations(data: Simulation[]): Simulation[] {
     return data
@@ -73,25 +73,25 @@ export class DataService {
 
         const id = rawSimulation['id'];
         if (!id) {
-          console.error('Invalid simulation id: ', id);
+          console.error('Simulation ID not found: ', id);
           return null;
         }
 
         const name: string = rawSimulation['name'];
         if (!name) {
-          console.error('Invalid simulation name: ', name);
+          console.error('Simulation name not found: ', name);
           return null;
         }
 
         const data: string = rawSimulation['data'];
         if (!data) {
-          console.error('Invalid simulation data: ', data);
+          console.error('Simulation data not found: ', data);
           return null;
         }
 
         const status: SimulationStatus = rawSimulation['status'];
         if (!status) {
-          console.error('Invalid simulation status: ', status);
+          console.error('Simulation status not found: ', status);
           return null;
         }
         if (!SIMULATION_STATUSES.includes(status)) {
@@ -103,7 +103,7 @@ export class DataService {
           'startTime'
         ] as unknown as string;
         if (!rawStartTime) {
-          console.error(`Invalid simulation start time: ${rawStartTime}`);
+          console.error(`Simulation start time not found: ${rawStartTime}`);
           return null;
         }
 

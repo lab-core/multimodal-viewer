@@ -1,9 +1,11 @@
 import {
   Component,
+  computed,
   input,
   InputSignal,
   OnDestroy,
   OnInit,
+  Signal,
   signal,
   WritableSignal,
 } from '@angular/core';
@@ -35,11 +37,13 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
 
   private interval: number | null = null;
 
-  readonly isPausedSignal: WritableSignal<boolean> = signal<boolean>(false);
-
   readonly simulationInputSignal: InputSignal<Simulation> =
     // eslint-disable-next-line @angular-eslint/no-input-rename
     input.required<Simulation>({ alias: 'simulation' });
+
+  readonly isPausedSignal: Signal<boolean> = computed(
+    () => this.simulationInputSignal().status === 'paused',
+  );
 
   constructor(
     private readonly dialogService: DialogService,
@@ -48,7 +52,6 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
   ) {}
 
   togglePause(wasPaused: boolean, id: string): void {
-    this.isPausedSignal.update((previousValue) => !previousValue);
     if (wasPaused) {
       this.communicationService.emit('resumeSimulation', id);
     } else {

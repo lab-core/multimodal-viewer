@@ -3,6 +3,7 @@ import threading
 from typing import Optional
 
 from log_manager import register_log
+from multimodalsim.config.simulation_config import SimulationConfig
 from multimodalsim.observer.data_collector import DataCollector
 from multimodalsim.observer.environment_observer import EnvironmentObserver
 from multimodalsim.observer.visualizer import Visualizer
@@ -77,10 +78,13 @@ def run_simulation(simulation_id: str, data: str) -> None:
     current_directory = os.path.dirname(os.path.abspath(__file__))
     simulation_directory = f"{current_directory}/../data/{data}/"
 
+    simulation_configuration_file = f"{current_directory}/simulation.ini"
+    simulation_configuration = SimulationConfig(simulation_configuration_file)
     simulator = Simulator(
         simulation_directory,
         visualizers=environment_observer.visualizers,
         data_collectors=environment_observer.data_collectors,
+        simulation_configuration=simulation_configuration,
     )
     simulation_thread = threading.Thread(target=simulator.simulate)
     simulation_thread.start()
@@ -111,3 +115,10 @@ def run_simulation(simulation_id: str, data: str) -> None:
 
     simulation_thread.join()
     sio.wait()
+
+
+if __name__ == "__main__":
+    # configuration = SimulationConfig("simulation.ini")
+    current_directory = os.path.dirname(os.path.abspath(__file__))
+    simulation_configuration_file = f"{current_directory}/simulation.ini"
+    configuration = SimulationConfig(simulation_configuration_file)

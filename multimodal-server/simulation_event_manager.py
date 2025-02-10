@@ -43,22 +43,36 @@ class Serializable:
         raise NotImplementedError()
 
 
-class VisualizedVehicle(Serializable):
-    vehicle_id: str
-    mode: str
-    status: VehicleStatus
+def convertPassengerStatus(status: PassengerStatus) -> str:
+    if status == PassengerStatus.RELEASE:
+        return "release"
+    elif status == PassengerStatus.ASSIGNED:
+        return "assigned"
+    elif status == PassengerStatus.READY:
+        return "ready"
+    elif status == PassengerStatus.ONBOARD:
+        return "onboard"
+    elif status == PassengerStatus.COMPLETE:
+        return "complete"
+    else:
+        raise ValueError(f"Unknown PassengerStatus {status}")
 
-    def __init__(self, vehicle: Vehicle) -> None:
-        self.vehicle_id = vehicle.id
-        self.mode = vehicle.mode
-        self.status = vehicle.status
 
-    def serialize(self) -> dict:
-        return {
-            "vehicle_id": self.vehicle_id,
-            "mode": self.mode,
-            "status": self.status.value,
-        }
+def convertVehicleStatus(status: VehicleStatus) -> str:
+    if status == VehicleStatus.RELEASE:
+        return "release"
+    elif status == VehicleStatus.IDLE:
+        return "idle"
+    elif status == VehicleStatus.BOARDING:
+        return "boarding"
+    elif status == VehicleStatus.ENROUTE:
+        return "enroute"
+    elif status == VehicleStatus.ALIGHTING:
+        return "alighting"
+    elif status == VehicleStatus.COMPLETE:
+        return "complete"
+    else:
+        raise ValueError(f"Unknown VehicleStatus {status}")
 
 
 class VisualizedPassenger(Serializable):
@@ -76,10 +90,41 @@ class VisualizedPassenger(Serializable):
 
     def serialize(self) -> dict:
         return {
-            "passenger_id": self.passenger_id,
+            "id": self.passenger_id,
             "name": self.name,
-            "status": self.status.value,
+            "status": convertPassengerStatus(self.status),
         }
+
+
+class VisualizedVehicle(Serializable):
+    vehicle_id: str
+    mode: str
+    status: VehicleStatus
+    latitude: float | None
+    longitude: float | None
+
+    def __init__(self, vehicle: Vehicle) -> None:
+        self.vehicle_id = vehicle.id
+        self.mode = vehicle.mode
+        self.status = vehicle.status
+
+        if vehicle.position is not None:
+            self.latitude = vehicle.position.lat
+            self.longitude = vehicle.position.lon
+        else:
+            self.latitude = None
+            self.longitude = None
+
+    def serialize(self) -> dict:
+        serialized = {
+            "id": self.vehicle_id,
+            "mode": self.mode,
+            "status": convertVehicleStatus(self.status),
+        }
+        if self.latitude is not None and self.longitude is not None:
+            serialized["latitude"] = self.latitude
+            serialized["longitude"] = self.longitude
+        return serialized
 
 
 class VisualizedEnvironment:
@@ -87,47 +132,79 @@ class VisualizedEnvironment:
     vehicles: list[VisualizedVehicle]
 
     def __init__(self) -> None:
-        self.passengers = []
-        self.vehicles = []
+        self.passengers = {}
+        self.vehicles = {}
 
     def add_passenger(self, passenger: VisualizedPassenger) -> None:
-        self.passengers.append(passenger)
+        self.passengers[passenger.passenger_id] = passenger
 
     def get_passenger(self, passenger_id: str) -> VisualizedPassenger:
-        for passenger in self.passengers:
-            if passenger.passenger_id == passenger_id:
-                return passenger
+        if passenger_id in self.passengers:
+            return self.passengers[passenger_id]
         raise ValueError(f"Passenger {passenger_id} not found")
 
     def add_vehicle(self, vehicle: VisualizedVehicle) -> None:
-        self.vehicles.append(vehicle)
+        self.vehicles[vehicle.vehicle_id] = vehicle
 
     def get_vehicle(self, vehicle_id: str) -> VisualizedVehicle:
-        for vehicle in self.vehicles:
-            if vehicle.vehicle_id == vehicle_id:
-                return vehicle
+        if vehicle_id in self.vehicles:
+            return self.vehicles[vehicle_id]
         raise ValueError(f"Vehicle {vehicle_id} not found")
 
 
 class UpdateType(Enum):
-    CREATE_PASSENGER = "CreatePassenger"
-    CREATE_VEHICLE = "CreateVehicle"
-    UPDATE_PASSENGER_STATUS = "UpdatePassengerStatus"
-    UPDATE_VEHICLE_STATUS = "UpdateVehicleStatus"
+    CREATE_PASSENGER = "createPassenger"
+    CREATE_VEHICLE = "createVehicle"
+    UPDATE_PASSENGER_STATUS = "updatePassengerStatus"
+    UPDATE_VEHICLE_STATUS = "updateVehicleStatus"
+    UPDATE_VEHICLE_POSITION = "updateVehiclePosition"
 
 
-class StatusUpdate(Serializable):
-    entity_id: str
-    status: str
+class PassengerStatusUpdate(Serializable):
+    passenger_id: str
+    status: PassengerStatus
 
-    def __init__(self, entity_id: str, status: str) -> None:
-        self.entity_id = entity_id
-        self.status = str(status)
+    def __init__(self, passenger: Trip) -> None:
+        self.passenger_id = passenger.id
+        self.status = passenger.status
 
     def serialize(self) -> dict:
         return {
-            "entity_id": self.entity_id,
-            "status": self.status,
+            "id": self.passenger_id,
+            "status": convertPassengerStatus(self.status),
+        }
+
+
+class VehicleStatusUpdate(Serializable):
+    vehicle_id: str
+    status: VehicleStatus
+
+    def __init__(self, vehicle: Vehicle) -> None:
+        self.vehicle_id = vehicle.id
+        self.status = vehicle.status
+
+    def serialize(self) -> dict:
+        return {
+            "id": self.vehicle_id,
+            "status": convertVehicleStatus(self.status),
+        }
+
+
+class VehiclePositionUpdate(Serializable):
+    vehicle_id: str
+    latitude: float
+    longitude: float
+
+    def __init__(self, vehicle: Vehicle) -> None:
+        self.vehicle_id = vehicle.id
+        self.latitude = vehicle.position.lat
+        self.longitude = vehicle.position.lon
+
+    def serialize(self) -> dict:
+        return {
+            "id": self.vehicle_id,
+            "latitude": self.latitude,
+            "longitude": self.longitude,
         }
 
 
@@ -177,11 +254,30 @@ class SimulationEventManager:
         elif update.type == UpdateType.CREATE_VEHICLE:
             self.environment.add_vehicle(update.data)
         elif update.type == UpdateType.UPDATE_PASSENGER_STATUS:
-            passenger = self.environment.get_passenger(update.data.entity_id)
+            passenger = self.environment.get_passenger(update.data.passenger_id)
             passenger.status = update.data.status
         elif update.type == UpdateType.UPDATE_VEHICLE_STATUS:
-            vehicle = self.environment.get_vehicle(update.data.entity_id)
+            vehicle = self.environment.get_vehicle(update.data.vehicle_id)
             vehicle.status = update.data.status
+        elif update.type == UpdateType.UPDATE_VEHICLE_POSITION:
+            vehicle = self.environment.get_vehicle(update.data.vehicle_id)
+            vehicle.latitude = update.data.latitude
+            vehicle.longitude = update.data.longitude
+
+    def save_update(self, update: Update) -> None:
+        import os
+
+        current_directory = os.path.dirname(os.path.abspath(__file__))
+        log_directory_name = "saved_simulations"
+        log_directory_path = f"{current_directory}/{log_directory_name}"
+        file_name = f"{self.simulation_id}.txt"
+        file_path = f"{log_directory_path}/{file_name}"
+
+        if not os.path.exists(log_directory_path):
+            os.makedirs(log_directory_path)
+
+        with open(file_path, "a") as file:
+            file.write(str(update.serialize()) + "\n")
 
     def add_update(self, update: Update) -> None:
         update.order = self.update_counter
@@ -197,21 +293,23 @@ class SimulationEventManager:
                 ),
             )
 
+        self.save_update(update)
+
     def process_event(self, event: Event, environment: Environment) -> str:
         # Optimize
         if isinstance(event, Optimize):
             # Do nothing ?
-            return "TODO Optimize"
+            return f"{event.time} TODO Optimize"
 
         # EnvironmentUpdate
         elif isinstance(event, EnvironmentUpdate):
             # Do nothing ?
-            return "TODO EnvironmentUpdate"
+            return f"{event.time} TODO EnvironmentUpdate"
 
         # EnvironmentIdle
         elif isinstance(event, EnvironmentIdle):
             # Do nothing ?
-            return "TODO EnvironmentIdle"
+            return f"{event.time} TODO EnvironmentIdle"
 
         # PassengerRelease
         elif isinstance(event, PassengerRelease):
@@ -223,132 +321,121 @@ class SimulationEventManager:
                     event.time,
                 )
             )
-            return "TODO PassengerRelease"
+            return f"{event.time} TODO PassengerRelease"
 
         # PassengerAssignment
         elif isinstance(event, PassengerAssignment):
             self.add_update(
                 Update(
                     UpdateType.UPDATE_PASSENGER_STATUS,
-                    StatusUpdate(
-                        event.__PassengerAssignment__trip.id,
-                        event.__PassengerAssignment__trip.status,
+                    PassengerStatusUpdate(
+                        event.state_machine.owner,
                     ),
                     event.time,
                 )
             )
-            return "TODO PassengerAssignment"
+            return f"{event.time} TODO PassengerAssignment"
 
         # PassengerReady
         elif isinstance(event, PassengerReady):
             self.add_update(
                 Update(
                     UpdateType.UPDATE_PASSENGER_STATUS,
-                    StatusUpdate(
-                        event.__PassengerReady__trip.id,
-                        event.__PassengerReady__trip.status,
+                    PassengerStatusUpdate(
+                        event.state_machine.owner,
                     ),
                     event.time,
                 )
             )
-            return "TODO PassengerReady"
+            return f"{event.time} TODO PassengerReady"
 
         # PassengerToBoard
         elif isinstance(event, PassengerToBoard):
             self.add_update(
                 Update(
                     UpdateType.UPDATE_PASSENGER_STATUS,
-                    StatusUpdate(
-                        event.__PassengerToBoard__trip.id,
-                        event.__PassengerToBoard__trip.status,
+                    PassengerStatusUpdate(
+                        event.state_machine.owner,
                     ),
                     event.time,
                 )
             )
-            return "TODO PassengerToBoard"
+            return f"{event.time} TODO PassengerToBoard"
 
         # PassengerAlighting
         elif isinstance(event, PassengerAlighting):
             self.add_update(
                 Update(
                     UpdateType.UPDATE_PASSENGER_STATUS,
-                    StatusUpdate(
-                        event.__PassengerAlighting__trip.id,
-                        event.__PassengerAlighting__trip.status,
+                    PassengerStatusUpdate(
+                        event.state_machine.owner,
                     ),
                     event.time,
                 )
             )
-            return "TODO PassengerAlighting"
+            return f"{event.time} TODO PassengerAlighting"
 
         # VehicleWaiting
         elif isinstance(event, VehicleWaiting):
             self.add_update(
                 Update(
                     UpdateType.UPDATE_VEHICLE_STATUS,
-                    StatusUpdate(
-                        event.state_machine.owner.id,
-                        event.state_machine.owner.status,
-                    ),
+                    VehicleStatusUpdate(event.state_machine.owner),
                     event.time,
                 )
             )
-            return "TODO VehicleWaiting"
+            return f"{event.time} TODO VehicleWaiting"
 
         # VehicleBoarding
         elif isinstance(event, VehicleBoarding):
             self.add_update(
                 Update(
                     UpdateType.UPDATE_VEHICLE_STATUS,
-                    StatusUpdate(
-                        event.__VehicleBoarding__vehicle.id,
-                        event.__VehicleBoarding__vehicle.status,
+                    VehicleStatusUpdate(
+                        event.state_machine.owner,
                     ),
                     event.time,
                 )
             )
-            return "TODO VehicleBoarding"
+            return f"{event.time} TODO VehicleBoarding"
 
         elif isinstance(event, VehicleDeparture):
             self.add_update(
                 Update(
                     UpdateType.UPDATE_VEHICLE_STATUS,
-                    StatusUpdate(
-                        event.__VehicleDeparture__vehicle.id,
-                        event.__VehicleDeparture__vehicle.status,
+                    VehicleStatusUpdate(
+                        event.state_machine.owner,
                     ),
                     event.time,
                 )
             )
-            return "TODO VehicleDeparture"
+            return f"{event.time} TODO VehicleDeparture"
 
         # VehicleArrival
         elif isinstance(event, VehicleArrival):
             self.add_update(
                 Update(
                     UpdateType.UPDATE_VEHICLE_STATUS,
-                    StatusUpdate(
-                        event.__VehicleArrival__vehicle.id,
-                        event.__VehicleArrival__vehicle.status,
+                    VehicleStatusUpdate(
+                        event.state_machine.owner,
                     ),
                     event.time,
                 )
             )
-            return "TODO VehicleArrival"
+            return f"{event.time} TODO VehicleArrival"
 
         # VehicleComplete
         elif isinstance(event, VehicleComplete):
             self.add_update(
                 Update(
                     UpdateType.UPDATE_VEHICLE_STATUS,
-                    StatusUpdate(
-                        event.__VehicleComplete__vehicle.id,
-                        event.__VehicleComplete__vehicle.status,
+                    VehicleStatusUpdate(
+                        event.state_machine.owner,
                     ),
                     event.time,
                 )
             )
-            return "TODO VehicleComplete"
+            return f"{event.time} TODO VehicleComplete"
 
         # VehicleReady
         elif isinstance(event, VehicleReady):
@@ -360,43 +447,53 @@ class SimulationEventManager:
                     event.time,
                 )
             )
-            return "TODO VehicleReady"
+            return f"{event.time} TODO VehicleReady"
 
         # VehicleNotification
         elif isinstance(event, VehicleNotification):
-            return "TODO VehicleNotification"
+            return f"{event.time} TODO VehicleNotification"
 
         # VehicleBoarded
         elif isinstance(event, VehicleBoarded):
-            return "TODO VehicleBoarded"
+            return f"{event.time} TODO VehicleBoarded"
 
         # VehicleAlighted
         elif isinstance(event, VehicleAlighted):
-            return "TODO VehicleAlighted"
+            return f"{event.time} TODO VehicleAlighted"
 
         # VehicleUpdatePositionEvent
         elif isinstance(event, VehicleUpdatePositionEvent):
-            return "TODO VehicleUpdatePositionEvent"
+            if event.vehicle.position is not None:
+                self.add_update(
+                    Update(
+                        UpdateType.UPDATE_VEHICLE_POSITION,
+                        VehiclePositionUpdate(
+                            event.vehicle,
+                        ),
+                        event.time,
+                    )
+                )
+            return f"{event.time} TODO VehicleUpdatePositionEvent"
 
         # RecurrentTimeSyncEvent
         elif isinstance(event, RecurrentTimeSyncEvent):
             # Do nothing ?
-            return "TODO RecurrentTimeSyncEvent"
+            return f"{event.time} TODO RecurrentTimeSyncEvent"
 
         # Hold
         elif isinstance(event, Hold):
             # Do nothing ?
-            return "TODO Hold"
+            return f"{event.time} TODO Hold"
 
         # PauseEvent
         elif isinstance(event, PauseEvent):
             # Do nothing ?
-            return "TODO PauseEvent"
+            return f"{event.time} TODO PauseEvent"
 
         # ResumeEvent
         elif isinstance(event, ResumeEvent):
             # Do nothing ?
-            return "TODO ResumeEvent"
+            return f"{event.time} TODO ResumeEvent"
 
         else:
             raise NotImplementedError(f"Event {event} not implemented")

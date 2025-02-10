@@ -78,3 +78,104 @@ export interface SimulationConfiguration {
    */
   positionTimeStep: number | null;
 }
+
+export type PassengerStatus =
+  | 'release'
+  | 'assigned'
+  | 'ready'
+  | 'onboard'
+  | 'complete';
+
+export const PASSENGER_STATUSES: PassengerStatus[] = [
+  'release',
+  'assigned',
+  'ready',
+  'onboard',
+  'complete',
+];
+
+export interface Passenger {
+  id: string;
+  name: string;
+  status: PassengerStatus;
+}
+export interface PassengerStatusUpdate {
+  id: string;
+  status: PassengerStatus;
+}
+
+export type VehicleStatus =
+  | 'release'
+  | 'idle'
+  | 'boarding'
+  | 'enroute'
+  | 'alighting'
+  | 'complete';
+
+export const VEHICLE_STATUSES: VehicleStatus[] = [
+  'release',
+  'idle',
+  'boarding',
+  'enroute',
+  'alighting',
+  'complete',
+];
+
+export interface Vehicle {
+  id: string;
+  mode: string;
+  status: VehicleStatus;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+export interface VehicleStatusUpdate {
+  id: string;
+  status: VehicleStatus;
+}
+
+export interface VehiclePositionUpdate {
+  id: string;
+  latitude: number;
+  longitude: number;
+}
+
+export type SimulationUpdateType =
+  | 'createPassenger'
+  | 'updatePassengerStatus'
+  | 'createVehicle'
+  | 'updateVehicleStatus'
+  | 'updateVehiclePosition';
+
+export const SIMULATION_UPDATE_TYPES: SimulationUpdateType[] = [
+  'createPassenger',
+  'updatePassengerStatus',
+  'createVehicle',
+  'updateVehicleStatus',
+  'updateVehiclePosition',
+];
+
+export interface SimulationUpdateTypeMap {
+  createPassenger: Passenger;
+  updatePassengerStatus: PassengerStatusUpdate;
+  createVehicle: Vehicle;
+  updateVehicleStatus: VehicleStatusUpdate;
+  updateVehiclePosition: VehiclePositionUpdate;
+}
+
+export interface SimulationUpdate<T extends keyof SimulationUpdateTypeMap> {
+  type: SimulationUpdateType;
+  timestamp: number;
+  order: number;
+  data: SimulationUpdateTypeMap[T];
+}
+
+export type AnySimulationUpdate = SimulationUpdate<
+  keyof SimulationUpdateTypeMap
+>;
+
+// TODO temporary
+export interface SimulationEnvironment {
+  passengers: Record<string, Passenger>;
+  vehicles: Record<string, Vehicle>;
+}
