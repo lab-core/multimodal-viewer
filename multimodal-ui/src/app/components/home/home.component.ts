@@ -78,7 +78,7 @@ export class HomeComponent {
         });
 
         this.communicationService.emit(
-          'startSimulation',
+          'start-simulation',
           result.general.name,
           result.general.data,
           uniqueId,

@@ -19,7 +19,7 @@ def run_simulation(simulation_id: str, data: str) -> None:
 
     sio.connect(f"http://{HOST}:{PORT}", auth={"type": "simulation"})
 
-    sio.emit("simulationStart", simulation_id)
+    sio.emit("simulation-start", simulation_id)
 
     class CustomVisualizer(Visualizer):
 
@@ -57,24 +57,24 @@ def run_simulation(simulation_id: str, data: str) -> None:
     simulation_thread.start()
 
     # In simulation event
-    @sio.on("pauseSimulation")
+    @sio.on("pause-simulation")
     def pauseSimulator():
-        sio.emit("simulationPause", simulation_id)
+        sio.emit("simulation-pause", simulation_id)
         simulator.pause()
 
-    @sio.on("resumeSimulation")
+    @sio.on("resume-simulation")
     def resumeSimulator():
-        sio.emit("simulationResume", simulation_id)
+        sio.emit("simulation-resume", simulation_id)
         simulator.resume()
 
-    @sio.on("stopSimulation")
+    @sio.on("stop-simulation")
     def stopSimulator():
         # TODO Ask
         simulator.resume()
         simulator.stop()
-        sio.emit("simulationEnd", simulation_id)
+        sio.emit("simulation-end", simulation_id)
 
-    @sio.on("canDisconnect")
+    @sio.on("can-disconnect")
     def canDisconnect():
         sio.disconnect()
 

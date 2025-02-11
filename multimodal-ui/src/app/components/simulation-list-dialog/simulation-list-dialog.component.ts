@@ -93,6 +93,6 @@ export class SimulationListDialogComponent {
       return;
     }
 
-    this.communicationService.emit('stopSimulation', simulation.id);
+    this.communicationService.emit('stop-simulation', simulation.id);
   }
 }

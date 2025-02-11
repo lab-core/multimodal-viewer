@@ -142,7 +142,7 @@ class SimulationManager:
 
         simulation = self.simulations[simulation_id]
 
-        emit("stopSimulation", to=simulation.socket_id)
+        emit("stop-simulation", to=simulation.socket_id)
 
     def on_simulation_end(self, simulation_id):
         if simulation_id not in self.simulations:
@@ -157,7 +157,7 @@ class SimulationManager:
 
         simulation.status = SimulationStatus.COMPLETED
 
-        emit("canDisconnect", to=simulation.socket_id)
+        emit("can-disconnect", to=simulation.socket_id)
 
         self.emit_simulations()
 
@@ -172,7 +172,7 @@ class SimulationManager:
 
         simulation = self.simulations[simulation_id]
 
-        emit("pauseSimulation", to=simulation.socket_id)
+        emit("pause-simulation", to=simulation.socket_id)
 
     def on_simulation_pause(self, simulation_id):
         if simulation_id not in self.simulations:
@@ -200,7 +200,7 @@ class SimulationManager:
 
         simulation = self.simulations[simulation_id]
 
-        emit("resumeSimulation", to=simulation.socket_id)
+        emit("resume-simulation", to=simulation.socket_id)
 
     def on_simulation_resume(self, simulation_id):
         if simulation_id not in self.simulations:
