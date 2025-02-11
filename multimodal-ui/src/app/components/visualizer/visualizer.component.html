@@ -16,7 +16,8 @@
     <!-- TODO Fill panel -->
     <mat-card class="flex-column information-panel enable-pointer-events">
       <mat-card-content class="flex-1">
-        <mat-card-title>{{ simulationName }} Information</mat-card-title>
+        <mat-card-title>Simulation: {{ simulationName }}</mat-card-title>
+        <mat-card-subtitle>Source: {{ simulationData }}</mat-card-subtitle>
       </mat-card-content>
       <mat-card-actions align="end">
         <button mat-button (click)="hideInformationPanel()">Hide</button>

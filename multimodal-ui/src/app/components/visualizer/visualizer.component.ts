@@ -34,7 +34,6 @@ export class VisualizerComponent {
   readonly simulationSignal: Signal<Simulation | null>;
 
   private matDialogRef: MatDialogRef<InformationDialogComponent> | null = null;
-  simulationName: string = 'Simulation';
 
   constructor(
     private readonly simulationService: SimulationService,
@@ -42,7 +41,6 @@ export class VisualizerComponent {
     private readonly router: Router,
     private readonly communicationService: CommunicationService,
     private readonly dialogService: DialogService,
-    private route: ActivatedRoute
   ) {
     this.simulationSignal = this.simulationService.activeSimulationSignal;
     effect(() => {
@@ -86,18 +84,18 @@ export class VisualizerComponent {
           });
       }
     });
-
-    this.route.url.subscribe(urlSegments => {
-      if (urlSegments.length > 0) {
-        const fullName = decodeURIComponent(urlSegments[urlSegments.length - 1].path);
-        const match = fullName.match(/^\d{8}-\d+-([\w\d]+)$/); // Extracts the part after the timestamp
-        this.simulationName = match ? match[1] : fullName; // Default to fullName if regex fails
-      }
-    });
   }
 
   get shouldShowInformationPanelSignal(): Signal<boolean> {
     return this.userInterfaceService.shouldShowInformationPanelSignal;
+  }
+
+  get simulationName(): string{
+    return this.simulationService.activeSimulationSignal()?.name || 'Untitled Simulation';
+  }
+
+  get simulationData(): string{
+    return this.simulationService.activeSimulationSignal()?.data || 'Untitled Data Folder';
   }
 
   hideInformationPanel() {
