@@ -84,35 +84,24 @@ def run_server():
 
     @socketio.on("importFolder")
     def on_import_folder(data):
-        try:
-            folder_name = data["folderName"]
-            files = data["files"]
+        log("importing folder", folder_name)
+        folder_name = data.get("folderName")
+        files = data.get("files", [])
 
-            destination_path = os.path.join(data_dir, folder_name)
+        if not folder_name or not files:
+            return
+        # Define the destination folder
+        current_dir = os.path.dirname(os.path.realpath(__file__))
+        target_dir = os.path.join(current_dir, "..", "data", folder_name)
 
-            if os.path.exists(destination_path):
-                emit("importFolderResponse", {"success": False, "error": "Folder already exists in data directory"})
-                return
+        os.makedirs(target_dir, exist_ok=True)
 
-            os.makedirs(destination_path)  # Create the folder
-
-            for file in files:
-                file_path = os.path.join(data_dir, file["name"])
-                os.makedirs(os.path.dirname(file_path), exist_ok=True)
-
-                # Decode and save the file
-                file_content = file["content"].split(",", 1)[1]  # Remove the "data:<type>;base64," prefix
-                with open(file_path, "wb") as f:
-                    f.write(base64.b64decode(file_content))
-
-            log(f"Folder {folder_name} imported successfully", "client")
-
-            # Emit updated available data list
-            emit("availableData", os.listdir(data_dir), to=CLIENT_ROOM)
-            emit("importFolderResponse", {"success": True})
-
-        except Exception as e:
-            emit("importFolderResponse", {"success": False, "error": str(e)})
+        for file in files:
+            file_path = os.path.join(target_dir, file["name"])
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(file["content"])
+        
 
     # MARK: Script events
     @socketio.on("terminate")

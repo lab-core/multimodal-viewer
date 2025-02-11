@@ -201,39 +201,26 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
   importNewFolder() {
     const input = document.createElement('input');
     input.type = 'file';
-    input.webkitdirectory = true; // Allows selecting folders
-    input.multiple = true;
-  
-    input.addEventListener('change', (event: Event) => {
+    input.webkitdirectory = true; // Allows selecting a folder
+    input.multiple = true; // Allows multiple files selection
+    input.addEventListener('change', async (event: Event) => {
       const files = (event.target as HTMLInputElement).files;
-      if (files && files.length > 0) {
-        const folderName = files[0].webkitRelativePath.split('/')[0]; // Get the folder name
-        const fileList = [];
+      if (!files) return;
   
-        for (const file of files) {
-          fileList.push(this.readFileAsBase64(file)); // Read each file
-        }
+      const folderName = files[0].webkitRelativePath.split('/')[0]; // Get the root folder name
+      const fileData: { name: string; content: string }[] = [];
   
-        Promise.all(fileList).then((encodedFiles) => {
-          this.dataService.importFolder(folderName, encodedFiles);
-        });
+      for (const file of Array.from(files)) {
+        const content = await file.text(); // Read file content as text (or use FileReader for binary)
+        fileData.push({ name: file.webkitRelativePath, content });
       }
+  
+      // Emit event to server
+      this.dataService.importFolder(folderName, fileData);
     });
   
     input.click();
   }
-  
-  // Helper function to read file as Base64
-  readFileAsBase64(file: File): Promise<{ name: string; content: string }> {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        resolve({ name: file.webkitRelativePath, content: reader.result as string });
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-  
   
 }
 

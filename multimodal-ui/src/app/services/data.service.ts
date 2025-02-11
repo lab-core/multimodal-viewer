@@ -147,18 +147,7 @@ export class DataService {
   }
 
   importFolder(folderName: string, files: { name: string; content: string }[]) {
-    this.communicationService.emit(
-      'importFolder',
-      { folderName, files },
-      (response: { success: boolean; error?: string }) => {
-        if (response.success) {
-          console.log(`Folder ${folderName} imported successfully.`);
-          this.refreshAvailableSimulationData();
-        } else {
-          console.error(`Failed to import folder: ${response.error}`);
-        }
-      }
-    );
+    this.communicationService.emit('importFolder', { folderName, files });
   }
   
   
