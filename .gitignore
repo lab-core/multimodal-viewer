@@ -4,5 +4,8 @@ venv
 # Python cache
 __pycache__/
 
-# Savec logs
+# Saved logs
 multimodal-server/saved_logs/
+
+# Saved simulations
+multimodal-server/saved_simulations/

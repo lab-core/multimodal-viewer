@@ -5,7 +5,7 @@ import * as PIXI from 'pixi.js';
 import { Entity } from '../interfaces/entity.model';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class AnimationService {
   private ticker: PIXI.Ticker = new PIXI.Ticker();
@@ -15,14 +15,12 @@ export class AnimationService {
 
   private pointToReach: L.Point = new L.Point(45.523066, -73.652687);
 
-  private addEntity(type ="sample-marker") {
+  private addEntity(type = 'sample-marker') {
     const sprite = PIXI.Sprite.from(`images/${type}.png`);
-
 
     sprite.anchor.set(0.5, 1);
     sprite.scale.set(1 / this.utils.getScale());
     this.container.addChild(sprite);
-
 
     const entity: Entity = {
       sprite,
@@ -30,8 +28,8 @@ export class AnimationService {
       endPos: this.pointToReach,
       speed: Math.random() * 2 + 1,
       currentTime: 0,
-      timeToReach: 5
-    }
+      timeToReach: 5,
+    };
 
     this.entities.push(entity);
   }
@@ -44,10 +42,12 @@ export class AnimationService {
       entity.endPos = this.pointToReach;
 
       const distanceVec = entity.endPos.subtract(entity.startPos);
-      const distance = Math.sqrt(distanceVec.x * distanceVec.x + distanceVec.y * distanceVec.y);
-      entity.timeToReach = distance * 0.5 / entity.speed;
+      const distance = Math.sqrt(
+        distanceVec.x * distanceVec.x + distanceVec.y * distanceVec.y,
+      );
+      entity.timeToReach = (distance * 0.5) / entity.speed;
       entity.currentTime = 0;
-    })
+    });
   }
 
   // Called once when Pixi layer is added.
@@ -65,8 +65,11 @@ export class AnimationService {
     this.entities.forEach((entity) => {
       entity.currentTime += this.ticker.deltaTime / this.ticker.FPS;
       const progress = entity.currentTime / entity.timeToReach;
+      entity.sprite.scale.set(1 / this.utils.getScale());
       if (progress >= 1) return;
-      const newPosition = entity.endPos.multiplyBy(progress).add(entity.startPos.multiplyBy(1 - progress));
+      const newPosition = entity.endPos
+        .multiplyBy(progress)
+        .add(entity.startPos.multiplyBy(1 - progress));
       entity.sprite.x = newPosition.x;
       entity.sprite.y = newPosition.y;
     });
@@ -77,20 +80,25 @@ export class AnimationService {
     this.addEntity();
   }
 
-
   addPixiOverlay(map: L.Map) {
-    map.on('click', (event) => {this.onClick(event)});
+    map.on('click', (event) => {
+      this.onClick(event);
+    });
 
     const pixiLayer = (() => {
-      return L.pixiOverlay((utils, event) => {
-        this.utils = utils;
-        if (event.type === 'add') this.onAdd(utils);
-        if (event.type === 'moveend') this.onMoveEnd(event);
-        if (event.type === 'redraw') this.onRedraw(event);
-        this.utils.getRenderer().render(this.container);
-      }, this.container, {
-        doubleBuffering: true
-      });
+      return L.pixiOverlay(
+        (utils, event) => {
+          this.utils = utils;
+          if (event.type === 'add') this.onAdd(utils);
+          if (event.type === 'moveend') this.onMoveEnd(event);
+          if (event.type === 'redraw') this.onRedraw(event);
+          this.utils.getRenderer().render(this.container);
+        },
+        this.container,
+        {
+          doubleBuffering: true,
+        },
+      );
     })();
 
     pixiLayer.addTo(map);

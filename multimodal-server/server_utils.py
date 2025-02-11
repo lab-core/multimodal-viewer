@@ -18,6 +18,11 @@ def getSessionId():
 def log(message, auth_type, level=logging.INFO):
     if auth_type == "server":
         logging.log(level, f"[{auth_type}] {message}")
+        try:
+            emit("log", f"{level} [{auth_type}] {message}", to=CLIENT_ROOM)
+        except Exception as e:
+            # This is to handle the case where the socket server is not running
+            pass
     else:
         logging.log(level, f"[{auth_type}] {getSessionId()} {message}")
         emit("log", f"{level} [{auth_type}] {getSessionId()} {message}", to=CLIENT_ROOM)

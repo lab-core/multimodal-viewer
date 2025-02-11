@@ -3,29 +3,29 @@ import threading
 from typing import Optional
 
 from log_manager import register_log
+from multimodalsim.config.simulation_config import SimulationConfig
+from multimodalsim.observer.data_collector import DataCollector
 from multimodalsim.observer.environment_observer import EnvironmentObserver
 from multimodalsim.observer.visualizer import Visualizer
 from multimodalsim.simulator.environment import Environment
 from multimodalsim.simulator.event import Event
 from multimodalsim.simulator.simulator import Simulator
+from server_utils import HOST, PORT
+from simulation_event_manager import SimulationEventManager
 from socketio import Client
-
-HOST = "127.0.0.1"
-PORT = 5000
 
 
 def run_simulation(simulation_id: str, data: str) -> None:
     sio = Client()
 
-    sio.connect(f"http://{HOST}:{PORT}", auth={"type": "simulation"})
+    simulation_event_manager = SimulationEventManager(simulation_id, sio)
 
-    sio.emit("simulationStart", simulation_id)
+    sio.connect(f"http://{HOST}:{PORT}", auth={"type": "simulation"})
 
     class CustomVisualizer(Visualizer):
 
-        def __init__(self, sio: Client) -> None:
+        def __init__(self) -> None:
             super().__init__()
-            self.sio = sio
 
         def visualize_environment(
             self,
@@ -34,27 +34,57 @@ def run_simulation(simulation_id: str, data: str) -> None:
             event_index: Optional[int] = None,
             event_priority: Optional[int] = None,
         ) -> None:
-            if current_event is not None:
-                message = f"Visualizing environment at time {env.current_time} with event {current_event.name}"
-            else:
-                message = f"Visualizing environment at time {env.current_time}"
+            pass
 
+    class CustomDataCollector(DataCollector):
+
+        def __init__(self) -> None:
+            super().__init__()
+            self.sio = sio
+            self.simulation_event_manager = simulation_event_manager
+
+        def collect(
+            self,
+            env: Environment,
+            current_event: Optional[Event] = None,
+            event_index: Optional[int] = None,
+            event_priority: Optional[int] = None,
+        ) -> None:
+
+            if current_event is None:
+                # End of simulation
+                message = "Simulation ended"
+                if not sio.connected:
+                    sio.emit("simulationEnd", simulation_id)
+            else:
+                message = self.simulation_event_manager.process_event(current_event)
+
+            message = "ERROR: No message" if message is None else message
             register_log(simulation_id, message)
-            self.sio.emit("log", (simulation_id, message))
+            if sio.connected:
+                self.sio.emit("log", (simulation_id, message))
 
     class CustomObserver(EnvironmentObserver):
 
-        def __init__(self, sio) -> None:
-            super().__init__(visualizers=CustomVisualizer(sio))
+        def __init__(self) -> None:
+            super().__init__(
+                visualizers=CustomVisualizer(), data_collectors=CustomDataCollector()
+            )
 
-    environment_observer = CustomObserver(sio)
+    environment_observer = CustomObserver()
 
     current_directory = os.path.dirname(os.path.abspath(__file__))
-    simulation_directory = f"{current_directory}/../data/{data}/"
+    simulation_data_directory = f"{current_directory}/../data/{data}/"
 
-    simulator = Simulator(simulation_directory, environment_observer.visualizers)
+    simulator = Simulator(
+        simulation_data_directory,
+        visualizers=environment_observer.visualizers,
+        data_collectors=environment_observer.data_collectors,
+    )
     simulation_thread = threading.Thread(target=simulator.simulate)
     simulation_thread.start()
+
+    sio.emit("simulationStart", simulation_id)
 
     # In simulation event
     @sio.on("pauseSimulation")
@@ -69,14 +99,12 @@ def run_simulation(simulation_id: str, data: str) -> None:
 
     @sio.on("stopSimulation")
     def stopSimulator():
-        # TODO Ask
-        simulator.resume()
         simulator.stop()
-        sio.emit("simulationEnd", simulation_id)
 
     @sio.on("canDisconnect")
     def canDisconnect():
         sio.disconnect()
 
     simulation_thread.join()
+    sio.emit("simulationEnd", simulation_id)
     sio.wait()
