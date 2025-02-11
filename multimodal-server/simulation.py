@@ -57,9 +57,7 @@ def run_simulation(simulation_id: str, data: str) -> None:
                 if not sio.connected:
                     sio.emit("simulationEnd", simulation_id)
             else:
-                message = self.simulation_event_manager.process_event(
-                    current_event, env
-                )
+                message = self.simulation_event_manager.process_event(current_event)
 
             message = "ERROR: No message" if message is None else message
             register_log(simulation_id, message)

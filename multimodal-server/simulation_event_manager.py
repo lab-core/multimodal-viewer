@@ -1,3 +1,4 @@
+import os
 from enum import Enum
 
 from multimodalsim.simulator.environment import Environment
@@ -122,7 +123,7 @@ class VisualizedVehicle(Serializable):
         return serialized
 
 
-class VisualizedEnvironment:
+class VisualizedEnvironment(Serializable):
     passengers: list[VisualizedPassenger]
     vehicles: list[VisualizedVehicle]
 
@@ -145,6 +146,14 @@ class VisualizedEnvironment:
         if vehicle_id in self.vehicles:
             return self.vehicles[vehicle_id]
         raise ValueError(f"Vehicle {vehicle_id} not found")
+
+    def serialize(self) -> dict:
+        return {
+            "passengers": [
+                passenger.serialize() for passenger in self.passengers.values()
+            ],
+            "vehicles": [vehicle.serialize() for vehicle in self.vehicles.values()],
+        }
 
 
 class UpdateType(Enum):
@@ -260,8 +269,6 @@ class SimulationEventManager:
             vehicle.longitude = update.data.longitude
 
     def save_update(self, update: Update) -> None:
-        import os
-
         current_directory = os.path.dirname(os.path.abspath(__file__))
         log_directory_name = "saved_simulations"
         log_directory_path = f"{current_directory}/{log_directory_name}"
@@ -273,6 +280,10 @@ class SimulationEventManager:
 
         with open(file_path, "a") as file:
             file.write(str(update.serialize()) + "\n")
+            # Save global state every 499 updates
+            # The state will be on lines 500, 1000, 1500, etc.
+            if self.update_counter % 499 == 0:
+                file.write(str(self.environment.serialize()) + "\n")
 
     def add_update(self, update: Update) -> None:
         update.order = self.update_counter
@@ -290,7 +301,7 @@ class SimulationEventManager:
 
         self.save_update(update)
 
-    def process_event(self, event: Event, environment: Environment) -> str:
+    def process_event(self, event: Event) -> str:
         # Optimize
         if isinstance(event, Optimize):
             # Do nothing ?
