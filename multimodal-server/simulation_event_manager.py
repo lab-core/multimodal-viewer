@@ -1,12 +1,7 @@
 from enum import Enum
 
 from multimodalsim.simulator.environment import Environment
-from multimodalsim.simulator.event import (
-    Event,
-    PauseEvent,
-    RecurrentTimeSyncEvent,
-    ResumeEvent,
-)
+from multimodalsim.simulator.event import Event, RecurrentTimeSyncEvent
 from multimodalsim.simulator.optimization_event import (
     EnvironmentIdle,
     EnvironmentUpdate,
@@ -463,7 +458,14 @@ class SimulationEventManager:
 
         # VehicleUpdatePositionEvent
         elif isinstance(event, VehicleUpdatePositionEvent):
-            if event.vehicle.position is not None:
+            updated_vehicle = event.vehicle
+            current_visualized_vehicle = self.environment.get_vehicle(
+                updated_vehicle.id
+            )
+            if event.vehicle.position is not None and (
+                current_visualized_vehicle.latitude != event.vehicle.position.lat
+                or current_visualized_vehicle.longitude != event.vehicle.position.lon
+            ):
                 self.add_update(
                     Update(
                         UpdateType.UPDATE_VEHICLE_POSITION,
@@ -484,16 +486,6 @@ class SimulationEventManager:
         elif isinstance(event, Hold):
             # Do nothing ?
             return f"{event.time} TODO Hold"
-
-        # PauseEvent
-        elif isinstance(event, PauseEvent):
-            # Do nothing ?
-            return f"{event.time} TODO PauseEvent"
-
-        # ResumeEvent
-        elif isinstance(event, ResumeEvent):
-            # Do nothing ?
-            return f"{event.time} TODO ResumeEvent"
 
         else:
             raise NotImplementedError(f"Event {event} not implemented")

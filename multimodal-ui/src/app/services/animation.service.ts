@@ -50,35 +50,6 @@ export class AnimationService {
     });
   }
 
-  // TODO Temporary
-  private vehicles: Record<
-    string,
-    {
-      latitude: number;
-      longitude: number;
-      sprite: PIXI.Sprite;
-    }
-  > = {};
-
-  setVehiclePosition(id: string, latitude: number, longitude: number) {
-    if (!this.vehicles[id]) {
-      const sprite = PIXI.Sprite.from('images/sample-car.png');
-      sprite.anchor.set(0.5, 0.5);
-      this.container.addChild(sprite);
-
-      this.vehicles[id] = {
-        latitude,
-        longitude,
-        sprite,
-      };
-    }
-
-    const vehicle = this.vehicles[id];
-
-    vehicle.latitude = latitude;
-    vehicle.longitude = longitude;
-  }
-
   // Called once when Pixi layer is added.
   private onAdd(utils: L.PixiOverlayUtils) {
     console.log('PixiJS layer added.');
@@ -94,6 +65,7 @@ export class AnimationService {
     this.entities.forEach((entity) => {
       entity.currentTime += this.ticker.deltaTime / this.ticker.FPS;
       const progress = entity.currentTime / entity.timeToReach;
+      entity.sprite.scale.set(1 / this.utils.getScale());
       if (progress >= 1) return;
       const newPosition = entity.endPos
         .multiplyBy(progress)
@@ -101,21 +73,11 @@ export class AnimationService {
       entity.sprite.x = newPosition.x;
       entity.sprite.y = newPosition.y;
     });
-
-    for (const vehicle of Object.values(this.vehicles)) {
-      const point = this.utils.latLngToLayerPoint(
-        new L.LatLng(vehicle.latitude, vehicle.longitude),
-      );
-      vehicle.sprite.scale.set(0.05 / this.utils.getScale());
-      vehicle.sprite.x = point.x;
-      vehicle.sprite.y = point.y;
-    }
   }
 
   private onClick(event: L.LeafletMouseEvent) {
     this.changeEntitiesDestination(event.latlng);
-    // this.addEntity();
-    console.log(event.latlng);
+    this.addEntity();
   }
 
   addPixiOverlay(map: L.Map) {

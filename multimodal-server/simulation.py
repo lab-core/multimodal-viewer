@@ -76,15 +76,12 @@ def run_simulation(simulation_id: str, data: str) -> None:
     environment_observer = CustomObserver()
 
     current_directory = os.path.dirname(os.path.abspath(__file__))
-    simulation_directory = f"{current_directory}/../data/{data}/"
+    simulation_data_directory = f"{current_directory}/../data/{data}/"
 
-    simulation_configuration_file = f"{current_directory}/simulation.ini"
-    simulation_configuration = SimulationConfig(simulation_configuration_file)
     simulator = Simulator(
-        simulation_directory,
+        simulation_data_directory,
         visualizers=environment_observer.visualizers,
         data_collectors=environment_observer.data_collectors,
-        simulation_configuration=simulation_configuration,
     )
     simulation_thread = threading.Thread(target=simulator.simulate)
     simulation_thread.start()
@@ -104,16 +101,14 @@ def run_simulation(simulation_id: str, data: str) -> None:
 
     @sio.on("stopSimulation")
     def stopSimulator():
-        # TODO Ask
-        simulator.resume()
         simulator.stop()
-        sio.emit("simulationEnd", simulation_id)
 
     @sio.on("canDisconnect")
     def canDisconnect():
         sio.disconnect()
 
     simulation_thread.join()
+    sio.emit("simulationEnd", simulation_id)
     sio.wait()
 
 

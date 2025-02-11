@@ -48,9 +48,10 @@ export class DataService {
       );
     });
 
-    this.communicationService.on('log', (data) => {
-      console.debug(data);
-    });
+    // TODO Uncomment for debugging
+    // this.communicationService.on('log', (data) => {
+    //   console.debug(data);
+    // });
   }
 
   private query() {
@@ -64,7 +65,8 @@ export class DataService {
   private extractSimulations(data: Simulation[]): Simulation[] {
     return data
       .map((rawSimulation) => {
-        console.debug('Extracting simulation: ', rawSimulation);
+        // TODO Uncomment for debugging
+        // console.debug('Extracting simulation: ', rawSimulation);
 
         if (!rawSimulation) {
           console.error('Invalid simulation data: ', rawSimulation);

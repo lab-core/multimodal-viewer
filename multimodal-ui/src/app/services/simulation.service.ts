@@ -164,20 +164,6 @@ export class SimulationService {
         this.activeSimulationId = null;
       }
     });
-
-    effect(() => {
-      const validatedActiveSimulationUpdates =
-        this.validatedActiveSimulationUpdatesSignal();
-      const activeSimulationUpdates = this.activeSimulationUpdatesSignal();
-
-      console.debug('Active simulation updates: ', activeSimulationUpdates);
-      console.debug(
-        'Validated active simulation updates: ',
-        validatedActiveSimulationUpdates,
-      );
-
-      console.log(`${activeSimulationUpdates.length} updates received`);
-    });
   }
 
   setActiveSimulationId(simulationId: string) {
@@ -212,7 +198,8 @@ export class SimulationService {
   private extractSimulationUpdate(
     simulationUpdate: AnySimulationUpdate,
   ): AnySimulationUpdate | null {
-    console.debug('Extracting simulation update: ', simulationUpdate);
+    // TODO Uncomment for debugging
+    // console.debug('Extracting simulation update: ', simulationUpdate);
 
     const type = simulationUpdate.type;
 
@@ -296,7 +283,8 @@ export class SimulationService {
   }
 
   private extractPassenger(data: Passenger): Passenger | null {
-    console.debug('Extracting passenger: ', data);
+    // TODO Uncomment for debugging
+    // console.debug('Extracting passenger: ', data);
 
     const id = data.id;
     if (!id) {
@@ -326,7 +314,8 @@ export class SimulationService {
   private extractPassengerStatusUpdate(
     data: PassengerStatusUpdate,
   ): PassengerStatusUpdate | null {
-    console.debug('Extracting passenger status update: ', data);
+    // TODO Uncomment for debugging
+    // console.debug('Extracting passenger status update: ', data);
 
     const id = data.id;
     if (!id) {
@@ -348,7 +337,8 @@ export class SimulationService {
   }
 
   private extractVehicle(data: Vehicle): Vehicle | null {
-    console.debug('Extracting vehicle: ', data);
+    // TODO Uncomment for debugging
+    // console.debug('Extracting vehicle: ', data);
 
     const id = data.id;
     if (!id) {
@@ -382,7 +372,8 @@ export class SimulationService {
   private extractVehicleStatusUpdate(
     data: VehicleStatusUpdate,
   ): VehicleStatusUpdate | null {
-    console.debug('Extracting vehicle status update: ', data);
+    // TODO Uncomment for debugging
+    // console.debug('Extracting vehicle status update: ', data);
 
     const id = data.id;
     if (!id) {
@@ -406,7 +397,8 @@ export class SimulationService {
   private extractVehiclePositionUpdate(
     data: VehiclePositionUpdate,
   ): VehiclePositionUpdate | null {
-    console.debug('Extracting vehicle position update: ', data);
+    // TODO Uncomment for debugging
+    // console.debug('Extracting vehicle position update: ', data);
 
     const id = data.id;
     if (!id) {

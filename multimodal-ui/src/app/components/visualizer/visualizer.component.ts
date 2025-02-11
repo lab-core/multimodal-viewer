@@ -86,51 +86,6 @@ export class VisualizerComponent {
           });
       }
     });
-
-    effect(() => {
-      const simulationEnvironment =
-        this.simulationService.simulationEnvironmentSignal();
-
-      console.log(
-        'Number of passengers: ',
-        Object.values(simulationEnvironment.passengers).length,
-      );
-      console.log(
-        'Number of vehicles: ',
-        Object.values(simulationEnvironment.vehicles).length,
-      );
-      console.log(
-        'Number of vehicles with position: ',
-        Object.values(simulationEnvironment.vehicles).filter(
-          (vehicle) => vehicle.latitude && vehicle.longitude,
-        ).length,
-      );
-
-      const specificVehicle = Object.values(
-        simulationEnvironment.vehicles,
-      ).find((vehicle) => vehicle.id === '2794576');
-      if (specificVehicle) {
-        console.warn(
-          'Specific vehicle: ',
-          specificVehicle.status,
-          specificVehicle.longitude,
-          specificVehicle.latitude,
-          specificVehicle,
-        );
-      }
-
-      for (const vehicle of Object.values(simulationEnvironment.vehicles)) {
-        if (!vehicle.latitude || !vehicle.longitude) {
-          continue;
-        }
-
-        this.animationService.setVehiclePosition(
-          vehicle.id,
-          vehicle.latitude,
-          vehicle.longitude,
-        );
-      }
-    });
   }
 
   get shouldShowInformationPanelSignal(): Signal<boolean> {
