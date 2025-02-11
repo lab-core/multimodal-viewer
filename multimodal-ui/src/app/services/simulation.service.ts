@@ -33,101 +33,42 @@ export class SimulationService {
     AnySimulationUpdate[]
   > = signal([]);
 
-  private readonly validatedActiveSimulationUpdatesSignal: Signal<
-    AnySimulationUpdate[]
-  > = computed(() => {
-    // TODO Better validation : keep track of the last validated order
-
-    const activeSimulationUpdates = this.activeSimulationUpdatesSignal();
-
-    const sortedActiveSimulationUpdates = activeSimulationUpdates.sort(
-      (a, b) => a.order - b.order,
-    );
-
-    // Validate the order of the simulation updates.
-    const validatedActiveSimulationUpdates: AnySimulationUpdate[] = [];
-    let expectedOrder = 0;
-    for (const update of sortedActiveSimulationUpdates) {
-      if (update.order === expectedOrder) {
-        validatedActiveSimulationUpdates.push(update);
-        expectedOrder++;
-      } else {
-        break;
-      }
-    }
-
-    return validatedActiveSimulationUpdates;
-  });
+  private previousSimulationEnvironment: SimulationEnvironment | null = null;
 
   readonly simulationEnvironmentSignal: Signal<SimulationEnvironment> =
     computed(() => {
-      const validatedActiveSimulationUpdates =
-        this.validatedActiveSimulationUpdatesSignal();
+      const updates = this.activeSimulationUpdatesSignal().sort(
+        (a, b) => a.order - b.order,
+      );
 
-      const simulationEnvironment: SimulationEnvironment = {
+      const simulationEnvironment: SimulationEnvironment = this
+        .previousSimulationEnvironment ?? {
+        lastUpdateOrder: -1,
         passengers: {},
         vehicles: {},
       };
 
-      for (const update of validatedActiveSimulationUpdates) {
-        switch (update.type) {
-          case 'createPassenger':
-            {
-              const passenger = update.data as Passenger;
-              simulationEnvironment.passengers[passenger.id] = passenger;
-            }
-            break;
-          case 'updatePassengerStatus':
-            {
-              const passengerStatusUpdate =
-                update.data as PassengerStatusUpdate;
-              const passenger =
-                simulationEnvironment.passengers[passengerStatusUpdate.id];
-              if (!passenger) {
-                console.error(
-                  'Passenger not found: ',
-                  passengerStatusUpdate.id,
-                );
-                break;
-              }
-              passenger.status = passengerStatusUpdate.status;
-            }
-            break;
-          case 'createVehicle':
-            {
-              const vehicle = update.data as Vehicle;
-              simulationEnvironment.vehicles[vehicle.id] = vehicle;
-            }
-            break;
+      for (
+        let i = simulationEnvironment.lastUpdateOrder + 1;
+        i < updates.length;
+        i++
+      ) {
+        const update = updates[i];
 
-          case 'updateVehicleStatus':
-            {
-              const vehicleStatusUpdate = update.data as VehicleStatusUpdate;
-              const vehicle =
-                simulationEnvironment.vehicles[vehicleStatusUpdate.id];
-              if (!vehicle) {
-                console.error('Vehicle not found: ', vehicleStatusUpdate.id);
-                break;
-              }
-              vehicle.status = vehicleStatusUpdate.status;
-            }
-            break;
-          case 'updateVehiclePosition':
-            {
-              const vehiclePositionUpdate =
-                update.data as VehiclePositionUpdate;
-              const vehicle =
-                simulationEnvironment.vehicles[vehiclePositionUpdate.id];
-              if (!vehicle) {
-                console.error('Vehicle not found: ', vehiclePositionUpdate.id);
-                break;
-              }
-              vehicle.latitude = vehiclePositionUpdate.latitude;
-              vehicle.longitude = vehiclePositionUpdate.longitude;
-            }
-            break;
+        if (i !== update.order) {
+          // TODO Get missing updates from the server
+          console.error('Update order mismatch: ', i, update);
+          break;
         }
+
+        this.applyUpdate(update, simulationEnvironment);
+        simulationEnvironment.lastUpdateOrder = i;
+        console.debug('Applied update: ', update);
       }
+
+      this.previousSimulationEnvironment = simulationEnvironment;
+
+      console.debug('Simulation environment: ', simulationEnvironment);
 
       return simulationEnvironment;
     });
@@ -144,6 +85,7 @@ export class SimulationService {
         this.communicationService.on(
           'simulationUpdate' + activeSimulationId,
           (update) => {
+            console.debug('Received simulation update: ', update);
             const simulationUpdate = this.extractSimulationUpdate(
               update as AnySimulationUpdate,
             );
@@ -163,6 +105,11 @@ export class SimulationService {
         );
         this.activeSimulationId = null;
       }
+    });
+
+    // TODO Remove
+    effect(() => {
+      this.simulationEnvironmentSignal();
     });
   }
 
@@ -357,6 +304,7 @@ export class SimulationService {
       console.error('Vehicle status not found: ', status);
       return null;
     }
+
     if (!VEHICLE_STATUSES.includes(status)) {
       console.error('Vehicle status not recognized: ', status);
       return null;
@@ -366,7 +314,49 @@ export class SimulationService {
 
     const longitude = data.longitude ?? null;
 
-    return { id, mode, status, latitude, longitude };
+    const polylines = data.polylines ?? null;
+    if (polylines) {
+      for (const [_stopId, polyline] of Object.entries(polylines)) {
+        if (!polyline.polyline) {
+          console.error('Polyline points not found: ', polyline);
+          return null;
+        }
+        if (!Array.isArray(polyline.polyline)) {
+          console.error('Polyline points not an array: ', polyline);
+          return null;
+        }
+
+        if (!polyline.coefficients) {
+          console.error('Polyline coefficients not found: ', polyline);
+          return null;
+        }
+        if (!Array.isArray(polyline.coefficients)) {
+          console.error('Polyline coefficients not an array: ', polyline);
+          return null;
+        }
+
+        if (
+          polyline.coefficients.length > 0 &&
+          polyline.coefficients.length !== polyline.polyline.length - 1
+        ) {
+          console.error('Polyline coefficients length mismatch: ', polyline);
+          return null;
+        }
+
+        for (const point of polyline.polyline) {
+          if (point.latitude === undefined) {
+            console.error('Polyline point latitude not found: ', point);
+            return null;
+          }
+          if (point.longitude === undefined) {
+            console.error('Polyline point longitude not found: ', point);
+            return null;
+          }
+        }
+      }
+    }
+
+    return { id, mode, status, latitude, longitude, polylines };
   }
 
   private extractVehicleStatusUpdate(
@@ -419,5 +409,63 @@ export class SimulationService {
     }
 
     return { id, latitude, longitude };
+  }
+
+  private applyUpdate(
+    update: AnySimulationUpdate,
+    simulationEnvironment: SimulationEnvironment,
+  ) {
+    switch (update.type) {
+      case 'createPassenger':
+        {
+          const passenger = update.data as Passenger;
+          simulationEnvironment.passengers[passenger.id] = passenger;
+        }
+        break;
+      case 'updatePassengerStatus':
+        {
+          const passengerStatusUpdate = update.data as PassengerStatusUpdate;
+          const passenger =
+            simulationEnvironment.passengers[passengerStatusUpdate.id];
+          if (!passenger) {
+            console.error('Passenger not found: ', passengerStatusUpdate.id);
+            break;
+          }
+          passenger.status = passengerStatusUpdate.status;
+        }
+        break;
+      case 'createVehicle':
+        {
+          const vehicle = update.data as Vehicle;
+          simulationEnvironment.vehicles[vehicle.id] = vehicle;
+        }
+        break;
+
+      case 'updateVehicleStatus':
+        {
+          const vehicleStatusUpdate = update.data as VehicleStatusUpdate;
+          const vehicle =
+            simulationEnvironment.vehicles[vehicleStatusUpdate.id];
+          if (!vehicle) {
+            console.error('Vehicle not found: ', vehicleStatusUpdate.id);
+            break;
+          }
+          vehicle.status = vehicleStatusUpdate.status;
+        }
+        break;
+      case 'updateVehiclePosition':
+        {
+          const vehiclePositionUpdate = update.data as VehiclePositionUpdate;
+          const vehicle =
+            simulationEnvironment.vehicles[vehiclePositionUpdate.id];
+          if (!vehicle) {
+            console.error('Vehicle not found: ', vehiclePositionUpdate.id);
+            break;
+          }
+          vehicle.latitude = vehiclePositionUpdate.latitude;
+          vehicle.longitude = vehiclePositionUpdate.longitude;
+        }
+        break;
+    }
   }
 }

@@ -1,6 +1,7 @@
 import os
 from enum import Enum
 
+import polyline
 from multimodalsim.simulator.environment import Environment
 from multimodalsim.simulator.event import Event, RecurrentTimeSyncEvent
 from multimodalsim.simulator.optimization_event import (
@@ -98,6 +99,7 @@ class VisualizedVehicle(Serializable):
     status: VehicleStatus
     latitude: float | None
     longitude: float | None
+    polylines: dict[str, tuple[str, list[float]]] | None
 
     def __init__(self, vehicle: Vehicle) -> None:
         self.vehicle_id = vehicle.id
@@ -111,6 +113,21 @@ class VisualizedVehicle(Serializable):
             self.latitude = None
             self.longitude = None
 
+        self.polylines = None
+        if vehicle.polylines is not None:
+            self.polylines = {}
+            for stop_id, encoded_polyline in vehicle.polylines.items():
+                encoded_polyline_string = encoded_polyline[0]
+                polyline_coefficients = encoded_polyline[1]
+                decoded_polyline_string = polyline.decode(encoded_polyline_string)
+                self.polylines[stop_id] = {
+                    "polyline": [
+                        {"latitude": point[0], "longitude": point[1]}
+                        for point in decoded_polyline_string
+                    ],
+                    "coefficients": polyline_coefficients,
+                }
+
     def serialize(self) -> dict:
         serialized = {
             "id": self.vehicle_id,
@@ -120,6 +137,9 @@ class VisualizedVehicle(Serializable):
         if self.latitude is not None and self.longitude is not None:
             serialized["latitude"] = self.latitude
             serialized["longitude"] = self.longitude
+
+        if self.polylines is not None:
+            serialized["polylines"] = self.polylines
         return serialized
 
 

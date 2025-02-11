@@ -121,12 +121,18 @@ export const VEHICLE_STATUSES: VehicleStatus[] = [
   'complete',
 ];
 
+export interface Polyline {
+  polyline: { latitude: number; longitude: number }[];
+  coefficients: number[];
+}
+
 export interface Vehicle {
   id: string;
   mode: string;
   status: VehicleStatus;
   latitude: number | null;
   longitude: number | null;
+  polylines: Record<string, Polyline> | null;
 }
 
 export interface VehicleStatusUpdate {
@@ -176,6 +182,7 @@ export type AnySimulationUpdate = SimulationUpdate<
 
 // TODO temporary
 export interface SimulationEnvironment {
+  lastUpdateOrder: number;
   passengers: Record<string, Passenger>;
   vehicles: Record<string, Vehicle>;
 }
