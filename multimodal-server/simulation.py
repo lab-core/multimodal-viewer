@@ -108,10 +108,3 @@ def run_simulation(simulation_id: str, data: str) -> None:
     simulation_thread.join()
     sio.emit("simulationEnd", simulation_id)
     sio.wait()
-
-
-if __name__ == "__main__":
-    # configuration = SimulationConfig("simulation.ini")
-    current_directory = os.path.dirname(os.path.abspath(__file__))
-    simulation_configuration_file = f"{current_directory}/simulation.ini"
-    configuration = SimulationConfig(simulation_configuration_file)

@@ -8,7 +8,6 @@ import { MatInputModule } from '@angular/material/input';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { Simulation } from '../../interfaces/simulation.model';
-import { AnimationService } from '../../services/animation.service';
 import { CommunicationService } from '../../services/communication.service';
 import { DialogService } from '../../services/dialog.service';
 import { SimulationService } from '../../services/simulation.service';
@@ -40,7 +39,6 @@ export class VisualizerComponent {
     private readonly router: Router,
     private readonly communicationService: CommunicationService,
     private readonly dialogService: DialogService,
-    private readonly animationService: AnimationService,
   ) {
     this.simulationSignal = this.simulationService.activeSimulationSignal;
 
