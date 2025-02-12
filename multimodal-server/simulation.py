@@ -57,7 +57,7 @@ def run_simulation(simulation_id: str, data: str) -> None:
                 # End of simulation
                 message = "Simulation ended"
                 if not sio.connected:
-                    sio.emit("simulationEnd", simulation_id)
+                    sio.emit("simulation-end", simulation_id)
             else:
                 message = self.simulation_event_manager.process_event(current_event)
 
@@ -86,7 +86,7 @@ def run_simulation(simulation_id: str, data: str) -> None:
     simulation_thread = threading.Thread(target=simulator.simulate)
     simulation_thread.start()
 
-    sio.emit("simulationStart", simulation_id)
+    sio.emit("simulation-start", simulation_id)
 
     # In simulation event
     @sio.on("pause-simulation")
@@ -109,5 +109,5 @@ def run_simulation(simulation_id: str, data: str) -> None:
         sio.disconnect()
 
     simulation_thread.join()
-    sio.emit("simulationEnd", simulation_id)
+    sio.emit("simulation-end", simulation_id)
     sio.wait()

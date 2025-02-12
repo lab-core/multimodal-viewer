@@ -83,7 +83,7 @@ def run_server():
 
         # TODO Solution to remove sleep
         # - Add a flag to the simulation manager to stop the server
-        # - On simulationEnd, check if all simulations with processes are stopped
+        # - On simulation-end, check if all simulations with processes are stopped
         # - If so, stop the server
         time.sleep(1)
 
@@ -114,10 +114,10 @@ def run_server():
     def on_simulation_log_event(simulation_id, message):
         log(f"simulation  {simulation_id}: {message}", "simulation", logging.DEBUG)
 
-    @socketio.on("simulationUpdate")
+    @socketio.on("simulation-update")
     def on_simulation_log_event(simulation_id, update):
         log(f"simulation  {simulation_id}: {update}", "simulation", logging.DEBUG)
-        emit("simulationUpdate" + simulation_id, update, to=CLIENT_ROOM)
+        emit("simulation-update" + simulation_id, update, to=CLIENT_ROOM)
 
     logging.basicConfig(level=logging.DEBUG)
 

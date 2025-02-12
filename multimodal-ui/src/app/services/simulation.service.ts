@@ -83,7 +83,7 @@ export class SimulationService {
       const activeSimulationId = this._activeSimulationIdSignal();
       if (activeSimulationId) {
         this.communicationService.on(
-          'simulationUpdate' + activeSimulationId,
+          'simulation-update' + activeSimulationId,
           (update) => {
             console.debug('Received simulation update: ', update);
             const simulationUpdate = this.extractSimulationUpdate(
@@ -101,7 +101,7 @@ export class SimulationService {
         this.activeSimulationId = activeSimulationId;
       } else if (this.activeSimulationId) {
         this.communicationService.removeAllListeners(
-          'simulationUpdate' + this.activeSimulationId,
+          'simulation-update' + this.activeSimulationId,
         );
         this.activeSimulationId = null;
       }

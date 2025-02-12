@@ -312,7 +312,7 @@ class SimulationEventManager:
         self.updates.append(update)
         if self.sio.connected:
             self.sio.emit(
-                "simulationUpdate",
+                "simulation-update",
                 (
                     self.simulation_id,
                     update.serialize(),
