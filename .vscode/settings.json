@@ -1,4 +1,13 @@
 {
   "python.defaultInterpreterPath": "\\venv\\Scripts\\python.exe",
-  "cSpell.words": ["bluehalo", "multimodalsim", "pixi", "Pixi", "socketio"]
+  "cSpell.words": [
+    "bluehalo",
+    "enroute",
+    "multimodalsim",
+    "pixi",
+    "Pixi",
+    "polyline",
+    "polylines",
+    "socketio"
+  ]
 }

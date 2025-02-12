@@ -17,7 +17,7 @@
 
   @if (runningSimulations.length > 0) {
     <section class="flex-column gap-0-5-rem">
-      @for (simulation of runningSimulationsSignal(); track simulation.name) {
+      @for (simulation of runningSimulationsSignal(); track simulation.id) {
         <div
           class="list-item flex-row align-main-start align-cross-center gap-1-rem"
         >
@@ -73,7 +73,7 @@
 
   @if (completedSimulations.length > 0) {
     <section class="flex-column gap-0-5-rem">
-      @for (simulation of completedSimulationsSignal(); track simulation.name) {
+      @for (simulation of completedSimulationsSignal(); track simulation.id) {
         <div
           class="list-item flex-row align-main-start align-cross-center gap-1-rem"
         >

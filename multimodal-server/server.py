@@ -78,9 +78,13 @@ def run_server():
 
         for simulation_id, simulation_handler in simulation_manager.simulations.items():
             if simulation_handler.process is not None:
-                simulation_handler.process.terminate()
+                simulation_manager.stop_simulation(simulation_id)
                 simulation_handler.process.join()
 
+        # TODO Solution to remove sleep
+        # - Add a flag to the simulation manager to stop the server
+        # - On simulationEnd, check if all simulations with processes are stopped
+        # - If so, stop the server
         time.sleep(1)
 
         socketio.stop()
@@ -108,10 +112,16 @@ def run_server():
 
     @socketio.on("log")
     def on_simulation_log_event(simulation_id, message):
-        log(f"simulation  {simulation_id}: {message}", "simulation")
-        logging.basicConfig(level=logging.INFO)
+        log(f"simulation  {simulation_id}: {message}", "simulation", logging.DEBUG)
 
-        log(f"Starting server at {HOST}:{PORT}", "server")
+    @socketio.on("simulationUpdate")
+    def on_simulation_log_event(simulation_id, update):
+        log(f"simulation  {simulation_id}: {update}", "simulation", logging.DEBUG)
+        emit("simulationUpdate" + simulation_id, update, to=CLIENT_ROOM)
+
+    logging.basicConfig(level=logging.DEBUG)
+
+    log(f"Starting server at {HOST}:{PORT}", "server")
 
     # MARK: Run server
     socketio.run(app, host=HOST, port=PORT)

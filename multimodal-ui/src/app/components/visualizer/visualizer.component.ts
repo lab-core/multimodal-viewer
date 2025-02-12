@@ -41,6 +41,8 @@ export class VisualizerComponent {
     private readonly dialogService: DialogService,
   ) {
     this.simulationSignal = this.simulationService.activeSimulationSignal;
+
+    // Check if the simulation is available
     effect(() => {
       const isConnected = this.communicationService.isConnectedSignal();
 
