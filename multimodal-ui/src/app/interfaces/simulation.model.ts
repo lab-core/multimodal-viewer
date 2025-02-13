@@ -1,10 +1,20 @@
-export type SimulationStatus = 'paused' | 'running' | 'completed' | 'stopped';
+export type SimulationStatus =
+  | 'starting'
+  | 'paused'
+  | 'running'
+  | 'stopping'
+  | 'completed'
+  | 'interrupted'
+  | 'corrupted';
 
 export const SIMULATION_STATUSES: SimulationStatus[] = [
+  'starting',
   'paused',
   'running',
+  'stopping',
   'completed',
-  'stopped',
+  'interrupted',
+  'corrupted',
 ];
 
 export interface Simulation {

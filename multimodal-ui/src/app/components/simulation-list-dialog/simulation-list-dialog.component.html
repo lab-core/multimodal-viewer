@@ -28,7 +28,7 @@
               class="light"
               [class.text-success]="simulation.status === 'running'"
               [class.text-warning]="simulation.status === 'paused'"
-              [class.text-error]="simulation.status === 'stopped'"
+              [class.text-error]="simulation.status === 'interrupted'"
             >
               {{ simulation.status }}
             </div>

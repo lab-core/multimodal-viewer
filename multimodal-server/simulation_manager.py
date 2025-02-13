@@ -10,12 +10,13 @@ from simulation import run_simulation
 
 
 class SimulationStatus(Enum):
+    STARTING = "starting"
     PAUSED = "paused"
     RUNNING = "running"
+    STOPPING = "stopping"
     COMPLETED = "completed"
-
-    """ The simulation has been abnormally stopped """
-    STOPPED = "stopped"
+    INTERRUPTED = "interrupted"
+    CORRUPTED = "corrupted"
 
 
 class MinimalistSimulationConfiguration:
@@ -244,7 +245,7 @@ class SimulationManager:
             return
 
         # If the simulation is not completed, it has been disconnected abnormally
-        simulation.status = SimulationStatus.STOPPED
+        simulation.status = SimulationStatus.INTERRUPTED
 
     def emit_simulations(self):
         emit(
