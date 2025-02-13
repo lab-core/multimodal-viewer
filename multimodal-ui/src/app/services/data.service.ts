@@ -42,7 +42,7 @@ export class DataService {
       );
     });
 
-    this.communicationService.on('availableData', (availableData) => {
+    this.communicationService.on('available-data', (availableData) => {
       this._availableSimulationDataSignal.set(
         (availableData as string[]).sort(),
       );
@@ -55,8 +55,8 @@ export class DataService {
   }
 
   private query() {
-    this.communicationService.emit('getSimulations');
-    this.communicationService.emit('getAvailableData');
+    this.communicationService.emit('get-simulations');
+    this.communicationService.emit('get-available-data');
   }
 
   /**

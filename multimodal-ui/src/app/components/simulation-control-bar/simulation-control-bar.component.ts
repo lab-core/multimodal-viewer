@@ -53,9 +53,9 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
 
   togglePause(wasPaused: boolean, id: string): void {
     if (wasPaused) {
-      this.communicationService.emit('resumeSimulation', id);
+      this.communicationService.emit('resume-simulation', id);
     } else {
-      this.communicationService.emit('pauseSimulation', id);
+      this.communicationService.emit('pause-simulation', id);
     }
   }
 
@@ -111,7 +111,7 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.communicationService.emit('stopSimulation', simulation.id);
+    this.communicationService.emit('stop-simulation', simulation.id);
   }
 
   async leaveVisualization() {

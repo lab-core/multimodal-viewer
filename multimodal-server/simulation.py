@@ -22,6 +22,8 @@ def run_simulation(simulation_id: str, data: str) -> None:
 
     sio.connect(f"http://{HOST}:{PORT}", auth={"type": "simulation"})
 
+    sio.emit("simulation-start", simulation_id)
+
     class CustomVisualizer(Visualizer):
 
         def __init__(self) -> None:
@@ -55,7 +57,7 @@ def run_simulation(simulation_id: str, data: str) -> None:
                 # End of simulation
                 message = "Simulation ended"
                 if not sio.connected:
-                    sio.emit("simulationEnd", simulation_id)
+                    sio.emit("simulation-end", simulation_id)
             else:
                 message = self.simulation_event_manager.process_event(current_event)
 
@@ -84,27 +86,28 @@ def run_simulation(simulation_id: str, data: str) -> None:
     simulation_thread = threading.Thread(target=simulator.simulate)
     simulation_thread.start()
 
-    sio.emit("simulationStart", simulation_id)
+    sio.emit("simulation-start", simulation_id)
 
     # In simulation event
-    @sio.on("pauseSimulation")
+    @sio.on("pause-simulation")
     def pauseSimulator():
-        sio.emit("simulationPause", simulation_id)
+        sio.emit("simulation-pause", simulation_id)
         simulator.pause()
 
-    @sio.on("resumeSimulation")
+    @sio.on("resume-simulation")
     def resumeSimulator():
-        sio.emit("simulationResume", simulation_id)
+        sio.emit("simulation-resume", simulation_id)
         simulator.resume()
 
-    @sio.on("stopSimulation")
+    @sio.on("stop-simulation")
     def stopSimulator():
         simulator.stop()
+        sio.emit("simulation-end", simulation_id)
 
-    @sio.on("canDisconnect")
+    @sio.on("can-disconnect")
     def canDisconnect():
         sio.disconnect()
 
     simulation_thread.join()
-    sio.emit("simulationEnd", simulation_id)
+    sio.emit("simulation-end", simulation_id)
     sio.wait()

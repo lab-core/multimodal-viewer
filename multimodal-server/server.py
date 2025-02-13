@@ -7,7 +7,6 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 from server_utils import CLIENT_ROOM, HOST, PORT, getSessionId, log
 from simulation_manager import SimulationManager
 
-
 def run_server():
     app = Flask(__name__)
 
@@ -37,7 +36,7 @@ def run_server():
             simulation_manager.on_simulation_disconnect(session_id)
 
     # MARK: Client events
-    @socketio.on("startSimulation")
+    @socketio.on("start-simulation")
     def on_client_start_simulation(name, data, response_event):
         log(
             f"starting simulation {name} with data {data} and response event {response_event}",
@@ -45,32 +44,32 @@ def run_server():
         )
         simulation_manager.start_simulation(name, data, response_event)
 
-    @socketio.on("stopSimulation")
+    @socketio.on("stop-simulation")
     def on_client_stop_simulation(simulation_id):
         log(f"stopping simulation {simulation_id}", "client")
         simulation_manager.stop_simulation(simulation_id)
 
-    @socketio.on("pauseSimulation")
+    @socketio.on("pause-simulation")
     def on_client_pause_simulation(simulation_id):
         log(f"pausing simulation {simulation_id}", "client")
         simulation_manager.pause_simulation(simulation_id)
 
-    @socketio.on("resumeSimulation")
+    @socketio.on("resume-simulation")
     def on_client_resume_simulation(simulation_id):
         log(f"resuming simulation {simulation_id}", "client")
         simulation_manager.resume_simulation(simulation_id)
 
-    @socketio.on("getSimulations")
+    @socketio.on("get-simulations")
     def on_client_get_simulations():
         log("getting simulations", "client")
         simulation_manager.emit_simulations()
 
-    @socketio.on("getAvailableData")
+    @socketio.on("get-available-data")
     def on_client_get_data():
         log("getting available data", "client")
         current_dir = os.path.dirname(os.path.realpath(__file__))
         data_dir = os.path.join(current_dir, "..", "data")
-        emit("availableData", os.listdir(data_dir), to=CLIENT_ROOM)
+        emit("available-data", os.listdir(data_dir), to=CLIENT_ROOM)
 
     # MARK: Script events
     @socketio.on("terminate")
@@ -84,29 +83,29 @@ def run_server():
 
         # TODO Solution to remove sleep
         # - Add a flag to the simulation manager to stop the server
-        # - On simulationEnd, check if all simulations with processes are stopped
+        # - On simulation-end, check if all simulations with processes are stopped
         # - If so, stop the server
         time.sleep(1)
 
         socketio.stop()
 
     # MARK: Simulation events
-    @socketio.on("simulationStart")
+    @socketio.on("simulation-start")
     def on_simulation_start(simulation_id):
         log(f"simulation {simulation_id} started", "simulation")
         simulation_manager.on_simulation_start(simulation_id, getSessionId())
 
-    @socketio.on("simulationEnd")
+    @socketio.on("simulation-end")
     def on_simulation_end(simulation_id):
         log(f"simulation {simulation_id} ended", "simulation")
         simulation_manager.on_simulation_end(simulation_id)
 
-    @socketio.on("simulationPause")
+    @socketio.on("simulation-pause")
     def on_simulation_pause(simulation_id):
         log(f"simulation {simulation_id} paused", "simulation")
         simulation_manager.on_simulation_pause(simulation_id)
 
-    @socketio.on("simulationResume")
+    @socketio.on("simulation-resume")
     def on_simulation_resume(simulation_id):
         log(f"simulation {simulation_id} resumed", "simulation")
         simulation_manager.on_simulation_resume(simulation_id)
@@ -115,10 +114,10 @@ def run_server():
     def on_simulation_log_event(simulation_id, message):
         log(f"simulation  {simulation_id}: {message}", "simulation", logging.DEBUG)
 
-    @socketio.on("simulationUpdate")
+    @socketio.on("simulation-update")
     def on_simulation_log_event(simulation_id, update):
         log(f"simulation  {simulation_id}: {update}", "simulation", logging.DEBUG)
-        emit("simulationUpdate" + simulation_id, update, to=CLIENT_ROOM)
+        emit("simulation-update" + simulation_id, update, to=CLIENT_ROOM)
 
     logging.basicConfig(level=logging.DEBUG)
 
@@ -126,7 +125,6 @@ def run_server():
 
     # MARK: Run server
     socketio.run(app, host=HOST, port=PORT)
-
 
 if __name__ == "__main__":
     run_server()
