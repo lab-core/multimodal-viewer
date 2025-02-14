@@ -1,8 +1,15 @@
-import { Injectable, Signal, signal, WritableSignal } from '@angular/core';
+import {
+  computed,
+  Injectable,
+  Signal,
+  signal,
+  WritableSignal,
+} from '@angular/core';
 import {
   Simulation,
   SIMULATION_STATUSES,
   SimulationStatus,
+  STATUSES_ORDER,
 } from '../interfaces/simulation.model';
 import { CommunicationService } from './communication.service';
 
@@ -28,7 +35,9 @@ export class DataService {
   }
 
   get simulationsSignal(): Signal<Simulation[]> {
-    return this._simulationsSignal;
+    return computed(() =>
+      this._simulationsSignal().sort(this.sortSimulations.bind(this)),
+    );
   }
 
   get availableSimulationDataSignal(): Signal<string[]> {
@@ -151,6 +160,23 @@ export class DataService {
   importFolder(folderName: string, files: { name: string; content: string }[]) {
     this.communicationService.emit('importFolder', { folderName, files });
   }
-  
-  
+
+  private sortSimulations(a: Simulation, b: Simulation): number {
+    // First compare the orders
+    const aOrder = STATUSES_ORDER[a.status];
+    const bOrder = STATUSES_ORDER[b.status];
+
+    if (aOrder < bOrder) {
+      return -1;
+    }
+    if (aOrder > bOrder) {
+      return 1;
+    }
+
+    // If the orders are the same, compare the start times
+    if (a.startTime < b.startTime) {
+      return 1;
+    }
+    return -1;
+  }
 }

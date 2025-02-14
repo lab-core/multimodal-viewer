@@ -4,7 +4,7 @@ export type SimulationStatus =
   | 'running'
   | 'stopping'
   | 'completed'
-  | 'interrupted'
+  | 'lost'
   | 'corrupted';
 
 export const SIMULATION_STATUSES: SimulationStatus[] = [
@@ -13,9 +13,27 @@ export const SIMULATION_STATUSES: SimulationStatus[] = [
   'running',
   'stopping',
   'completed',
-  'interrupted',
+  'lost',
   'corrupted',
 ];
+
+export const RUNNING_SIMULATION_STATUSES: SimulationStatus[] = [
+  'starting',
+  'running',
+  'paused',
+  'stopping',
+  'lost',
+];
+
+export const STATUSES_ORDER: Record<SimulationStatus, number> = {
+  starting: 0,
+  running: 1,
+  paused: 1,
+  stopping: 2,
+  lost: 3,
+  completed: 4,
+  corrupted: 4,
+};
 
 export interface Simulation {
   /**

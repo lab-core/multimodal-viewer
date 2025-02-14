@@ -15,7 +15,7 @@ class SimulationStatus(Enum):
     RUNNING = "running"
     STOPPING = "stopping"
     COMPLETED = "completed"
-    INTERRUPTED = "interrupted"
+    LOST = "lost"
     CORRUPTED = "corrupted"
 
 
@@ -245,7 +245,7 @@ class SimulationManager:
             return
 
         # If the simulation is not completed, it has been disconnected abnormally
-        simulation.status = SimulationStatus.INTERRUPTED
+        simulation.status = SimulationStatus.LOST
 
     def emit_simulations(self):
         emit(
