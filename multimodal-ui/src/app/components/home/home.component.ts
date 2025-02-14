@@ -48,7 +48,9 @@ export class HomeComponent {
             message:
               'A connection to the server is needed to create a simulation.',
             type: 'error',
-            closeButtonOverride: null,
+            confirmButtonOverride: null,
+            cancelButtonOverride: null,
+            canCancel: false,
           })
           .afterClosed(),
       );
@@ -62,7 +64,7 @@ export class HomeComponent {
     const uniqueId = Math.random().toString(36).substring(7) + Date.now();
 
     // Start the simulation and navigate to the visualization page
-    // if the simulation starts in less than 30 seconds.
+    // if the simulation starts in less than 5 seconds.
     // Otherwise, show an error message.
     try {
       await new Promise<void>((resolve, reject) => {
@@ -98,7 +100,9 @@ export class HomeComponent {
             message:
               'The simulation took too long to start. Please verify the status of the server.',
             type: 'error',
-            closeButtonOverride: null,
+            confirmButtonOverride: null,
+            cancelButtonOverride: null,
+            canCancel: false,
           })
           .afterClosed(),
       );

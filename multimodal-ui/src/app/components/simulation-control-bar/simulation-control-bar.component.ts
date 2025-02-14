@@ -99,10 +99,14 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
   async stopSimulation(simulation: Simulation) {
     const result = await firstValueFrom(
       this.dialogService
-        .openConfirmationDialog({
+        .openInformationDialog({
           title: 'Stopping Simulation',
           message:
             'Are you sure you want to stop the simulation? This action cannot be undone.',
+          type: null,
+          confirmButtonOverride: null,
+          cancelButtonOverride: null,
+          canCancel: true,
         })
         .afterClosed(),
     );
@@ -115,18 +119,6 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
   }
 
   async leaveVisualization() {
-    await firstValueFrom(
-      this.dialogService
-        .openInformationDialog({
-          title: 'Leaving Visualization',
-          message:
-            'You are about to leave the visualization, but the simulation will continue running in the background. You can return to the visualization at any time.',
-          type: 'warning',
-          closeButtonOverride: 'Continue',
-        })
-        .afterClosed(),
-    );
-
     await this.router.navigate(['home']);
   }
 }

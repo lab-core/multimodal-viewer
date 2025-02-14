@@ -115,10 +115,14 @@ export class SimulationListDialogComponent {
   async stopSimulation(simulation: Simulation): Promise<void> {
     const result = await firstValueFrom(
       this.dialogService
-        .openConfirmationDialog({
+        .openInformationDialog({
           title: 'Stopping Simulation',
           message:
             'Are you sure you want to stop the simulation? This action cannot be undone.',
+          type: null,
+          confirmButtonOverride: null,
+          cancelButtonOverride: null,
+          canCancel: true,
         })
         .afterClosed(),
     );
@@ -127,7 +131,7 @@ export class SimulationListDialogComponent {
       return;
     }
 
-    this.simulationService.stopSimulaiton(simulation.id);
+    this.simulationService.stopSimulation(simulation.id);
   }
 
   visualizeSimulation(simulation: Simulation): void {

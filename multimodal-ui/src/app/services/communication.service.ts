@@ -49,7 +49,9 @@ export class CommunicationService {
               message:
                 'The connection to the server has been lost. Please verify that the server is running and try again. The application will attempt to reconnect automatically.',
               type: 'error',
-              closeButtonOverride: 'Continue Anyway',
+              confirmButtonOverride: 'Continue Anyway',
+              cancelButtonOverride: null,
+              canCancel: false,
             },
           );
         }

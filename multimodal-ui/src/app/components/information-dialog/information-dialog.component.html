@@ -12,6 +12,9 @@
       @case ("info") {
         <mat-icon> info </mat-icon>
       }
+      @default {
+        <!-- Do nothing -->
+      }
     }
     <p>
       {{ data.message }}
@@ -20,7 +23,12 @@
 </mat-dialog-content>
 
 <mat-dialog-actions>
-  <button mat-button mat-dialog-close>
-    {{ data.closeButtonOverride ?? "Close" }}
+  @if (data.canCancel) {
+    <button mat-button [mat-dialog-close]="false">
+      {{ data.cancelButtonOverride ?? "Close" }}
+    </button>
+  }
+  <button mat-button [mat-dialog-close]="true">
+    {{ data.confirmButtonOverride ?? (data.canCancel ? "Confirm" : "Close") }}
   </button>
 </mat-dialog-actions>

@@ -1,4 +1,4 @@
-import { Component, effect, Signal } from '@angular/core';
+import { Component, computed, effect, Signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialogRef } from '@angular/material/dialog';
@@ -7,15 +7,21 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
-import { Simulation } from '../../interfaces/simulation.model';
+import {
+  Simulation,
+  SimulationStatus,
+} from '../../interfaces/simulation.model';
 import { CommunicationService } from '../../services/communication.service';
 import { DialogService } from '../../services/dialog.service';
+import { LoadingService } from '../../services/loading.service';
 import { SimulationService } from '../../services/simulation.service';
 import { UserInterfaceService } from '../../services/user-interface.service';
 import { InformationDialogComponent } from '../information-dialog/information-dialog.component';
 import { SimulationControlBarComponent } from '../simulation-control-bar/simulation-control-bar.component';
 import { ActivatedRoute } from '@angular/router';
 
+
+export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 
 @Component({
   selector: 'app-visualizer',
@@ -35,55 +41,130 @@ export class VisualizerComponent {
 
   private matDialogRef: MatDialogRef<InformationDialogComponent> | null = null;
 
+  private readonly visualizerStatusSignal: Signal<VisualizerStatus> = computed(
+    () => {
+      const isConnected = this.communicationService.isConnectedSignal();
+
+      if (!isConnected) {
+        return 'disconnected';
+      }
+
+      const simulation = this.simulationSignal();
+
+      if (simulation) {
+        return simulation.status;
+      }
+      return 'not-found';
+    },
+  );
+
   constructor(
     private readonly simulationService: SimulationService,
     private readonly userInterfaceService: UserInterfaceService,
     private readonly router: Router,
     private readonly communicationService: CommunicationService,
     private readonly dialogService: DialogService,
+    private readonly loadingService: LoadingService,
   ) {
     this.simulationSignal = this.simulationService.activeSimulationSignal;
 
     // Check if the simulation is available
     effect(() => {
-      const isConnected = this.communicationService.isConnectedSignal();
+      const status = this.visualizerStatusSignal();
 
-      if (!isConnected) {
-        if (this.matDialogRef) {
-          this.matDialogRef.close();
-          this.matDialogRef = null;
-        }
-        return;
+      if (this.matDialogRef) {
+        this.matDialogRef.close();
+        this.matDialogRef = null;
       }
+      this.loadingService.stop();
 
-      const simulation = this.simulationSignal();
+      switch (status) {
+        case 'disconnected':
+        case 'running':
+        case 'paused':
+          return;
 
-      if (simulation) {
-        if (this.matDialogRef) {
-          this.matDialogRef.close();
-          this.matDialogRef = null;
-        }
-        return;
-      }
-
-      if (!this.matDialogRef) {
-        this.matDialogRef = this.dialogService.openInformationDialog({
-          title: 'Simulation not found',
-          message:
-            'The simulation you are trying to visualize is not available for now. Either the simulation is currently being loaded or it does not exist. Please verify the URL.',
-          type: 'warning',
-          closeButtonOverride: 'Back to home',
-        });
-
-        void firstValueFrom(this.matDialogRef.afterClosed())
-          .then(async () => {
-            if (this.matDialogRef) {
-              await this.router.navigate(['home']);
-            }
-          })
-          .catch((error) => {
-            console.error(error);
+        case 'not-found':
+          this.matDialogRef = this.dialogService.openInformationDialog({
+            title: 'Simulation not found',
+            message:
+              'The simulation you are trying to visualize is not available for now. Please verify the URL.',
+            type: 'error',
+            confirmButtonOverride: 'Back to home',
+            cancelButtonOverride: null,
+            canCancel: false,
           });
+          void firstValueFrom(this.matDialogRef.afterClosed())
+            .then(async () => {
+              if (this.matDialogRef) {
+                await this.router.navigate(['home']);
+              }
+            })
+            .catch(console.error);
+          return;
+
+        case 'completed':
+          this.matDialogRef = this.dialogService.openInformationDialog({
+            title: 'Simulation completed',
+            message:
+              'The simulation has been completed. You can continue the visualization or go back to the home page.',
+            type: 'info',
+            confirmButtonOverride: 'Back to home',
+            cancelButtonOverride: 'Stay here',
+            canCancel: true,
+          });
+          void firstValueFrom(this.matDialogRef.afterClosed())
+            .then(async (response) => {
+              if (this.matDialogRef && response) {
+                await this.router.navigate(['home']);
+              }
+            })
+            .catch(console.error);
+          return;
+
+        case 'starting':
+          this.loadingService.start('Starting simulation...');
+          return;
+
+        case 'stopping':
+          this.loadingService.start('Stopping simulation...');
+          return;
+
+        case 'lost':
+          this.matDialogRef = this.dialogService.openInformationDialog({
+            title: 'Simulation lost',
+            message:
+              'The simulation you are trying to visualize has been disconnected from the server. You can continue the visualization or go back to the home page.',
+            type: 'error',
+            confirmButtonOverride: 'Back to home',
+            cancelButtonOverride: 'Stay here',
+            canCancel: true,
+          });
+          void firstValueFrom(this.matDialogRef.afterClosed())
+            .then(async (response) => {
+              if (this.matDialogRef && response) {
+                await this.router.navigate(['home']);
+              }
+            })
+            .catch(console.error);
+          return;
+
+        case 'corrupted':
+          this.matDialogRef = this.dialogService.openInformationDialog({
+            title: 'Simulation corrupted',
+            message: 'The file containing the simulation data is corrupted. ',
+            type: 'error',
+            confirmButtonOverride: 'Back to home',
+            cancelButtonOverride: null,
+            canCancel: false,
+          });
+          void firstValueFrom(this.matDialogRef.afterClosed())
+            .then(async () => {
+              if (this.matDialogRef) {
+                await this.router.navigate(['home']);
+              }
+            })
+            .catch(console.error);
       }
     });
   }
