@@ -21,9 +21,9 @@ import {
   RUNNING_SIMULATION_STATUSES,
   Simulation,
 } from '../../interfaces/simulation.model';
-import { CommunicationService } from '../../services/communication.service';
 import { DataService } from '../../services/data.service';
 import { DialogService } from '../../services/dialog.service';
+import { SimulationService } from '../../services/simulation.service';
 
 export type SimulationListDialogData = null;
 
@@ -57,7 +57,7 @@ export type SimulationListGroup = 'running' | 'completed';
 export class SimulationListDialogComponent {
   constructor(
     private readonly dataService: DataService,
-    private readonly communicationService: CommunicationService,
+    private readonly simulationService: SimulationService,
     private readonly dialogService: DialogService,
     private readonly matDialogRef: MatDialogRef<SimulationListDialogComponent>,
   ) {}
@@ -127,7 +127,7 @@ export class SimulationListDialogComponent {
       return;
     }
 
-    this.communicationService.emit('stop-simulation', simulation.id);
+    this.simulationService.stopSimulaiton(simulation.id);
   }
 
   visualizeSimulation(simulation: Simulation): void {
