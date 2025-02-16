@@ -365,6 +365,8 @@ class SimulationManager:
                         simulation_information.simulation_end_time
                     )
 
+                simulation.indexes = indexes
+
                 self.simulations[simulation_id] = simulation
 
             except:
