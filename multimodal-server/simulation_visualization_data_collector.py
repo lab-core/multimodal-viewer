@@ -65,7 +65,6 @@ class SimulationVisualizationDataCollector(DataCollector):
         self.simulation_information = SimulationInformation(
             simulation_id, data, None, None
         )
-        self.edit_first_line()
 
     # MARK: +- Collect
     def collect(
@@ -84,7 +83,7 @@ class SimulationVisualizationDataCollector(DataCollector):
         if self.sio.connected:
             self.sio.emit("log", (self.simulation_id, message))
 
-    def edit_first_line(self) -> None:
+    def add_first_line(self) -> None:
         file_path = get_simulation_save_file_path(self.simulation_id)
 
         with open(file_path, "r") as file:
@@ -142,7 +141,7 @@ class SimulationVisualizationDataCollector(DataCollector):
         if self.update_counter == 1:
             # Add the simulation start time to the simulation information
             self.simulation_information.simulation_start_time = update.timestamp
-            self.edit_first_line()
+            self.add_first_line()
 
         if self.sio.connected:
             self.sio.emit(
@@ -359,9 +358,16 @@ class SimulationVisualizationDataCollector(DataCollector):
 
 # MARK: Visualizer
 class SimulationVisualizationVisualizer(Visualizer):
-    def __init__(self, data_collector: SimulationVisualizationDataCollector) -> None:
+    def __init__(
+        self,
+        simulation_id: str,
+        data_collector: SimulationVisualizationDataCollector,
+        sio: Client,
+    ) -> None:
         super().__init__()
+        self.simulation_id = simulation_id
         self.data_collector = data_collector
+        self.sio = sio
 
     def visualize_environment(
         self,
@@ -371,10 +377,12 @@ class SimulationVisualizationVisualizer(Visualizer):
         event_priority: Optional[int] = None,
     ) -> None:
         if current_event is None:
-            self.data_collector.simulation_information.simulation_end_time = (
-                self.data_collector.environment.timestamp
-            )
-            self.data_collector.edit_first_line()
+            # Notify the server that the simulation has ended
+            if self.sio.connected:
+                self.sio.emit(
+                    "simulation-end",
+                    (self.simulation_id, self.data_collector.environment.timestamp),
+                )
 
 
 # MARK: Environment Observer
@@ -383,6 +391,8 @@ class SimulationVisualizationEnvironmentObserver(EnvironmentObserver):
     def __init__(self, simulation_id: str, data: str, sio: Client) -> None:
         data_collector = SimulationVisualizationDataCollector(simulation_id, data, sio)
         super().__init__(
-            visualizers=SimulationVisualizationVisualizer(data_collector),
+            visualizers=SimulationVisualizationVisualizer(
+                simulation_id, data_collector, sio
+            ),
             data_collectors=data_collector,
         )

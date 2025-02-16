@@ -74,9 +74,5 @@ def run_simulation(simulation_id: str, data: str) -> None:
     # Wait for the simulation to end
     simulation_thread.join()
 
-    # Notify the server that the simulation has ended
-    if sio.connected:
-        sio.emit("simulation-end", simulation_id)
-
     # Wait for the socket to disconnect
     sio.wait()

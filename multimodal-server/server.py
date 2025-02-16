@@ -128,9 +128,9 @@ def run_server():
         simulation_manager.on_simulation_start(simulation_id, get_session_id())
 
     @socketio.on("simulation-end")
-    def on_simulation_end(simulation_id):
+    def on_simulation_end(simulation_id, simulation_end_time):
         log(f"simulation {simulation_id} ended", "simulation")
-        simulation_manager.on_simulation_end(simulation_id)
+        simulation_manager.on_simulation_end(simulation_id, simulation_end_time)
 
     @socketio.on("simulation-pause")
     def on_simulation_pause(simulation_id):

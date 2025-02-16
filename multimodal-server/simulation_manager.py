@@ -12,6 +12,7 @@ from simulation_visualization_data_model import (
     SimulationInformation,
     extract_indexes,
     get_simulation_save_directory_path,
+    get_simulation_save_file_path,
     read_line_at_index,
 )
 
@@ -71,6 +72,9 @@ class SimulationHandler:
         self.status = status
 
         self.socket_id = None
+
+        self.simulation_start_time = None
+        self.simulation_end_time = None
 
 
 class SimulationManager:
@@ -145,7 +149,7 @@ class SimulationManager:
 
         emit("stop-simulation", to=simulation.socket_id)
 
-    def on_simulation_end(self, simulation_id):
+    def on_simulation_end(self, simulation_id: str, simulation_end_time: float):
         if simulation_id not in self.simulations:
             log(
                 f"{__file__} {inspect.currentframe().f_lineno}: Simulation {simulation_id} not found",
@@ -156,11 +160,23 @@ class SimulationManager:
 
         simulation = self.simulations[simulation_id]
 
-        simulation.status = SimulationStatus.COMPLETED
+        # Update the simulation end time in the save file
+        indexes = extract_indexes(simulation_id)
+        first_line = read_line_at_index(simulation_id, indexes[0])
+        simulation_information = SimulationInformation.deserialize(first_line)
+        simulation_information.simulation_end_time = simulation_end_time
+
+        with open(
+            get_simulation_save_file_path(simulation_id), "r+", encoding="utf-8"
+        ) as file:
+            file.seek(indexes[0])
+            file.write(simulation_information.serialize())
+
+        # Reload the simulation
+        self.query_simulation(simulation_id)
 
         emit("can-disconnect", to=simulation.socket_id)
 
-        self.query_simulations()
         self.emit_simulations()
 
     def pause_simulation(self, simulation_id):
@@ -320,55 +336,79 @@ class SimulationManager:
         ]
 
         for simulation_id in simulation_ids:
-            indexes = extract_indexes(simulation_id)
-            if len(indexes) == 0:
-                continue
-
-            first_line = read_line_at_index(simulation_id, indexes[0])
-
-            simulation_information = None
+            # Non valid save files might throw an exception
             try:
-                # Non valid save files might throw an exception
-                simulation_information = SimulationInformation.deserialize(first_line)
-
-                version = simulation_information.version
-                major_version, minor_version = version.split(".")
-
-                save_major_version, save_minor_version = SAVE_VERSION.split(".")
-
-                status = SimulationStatus.OUTDATED
-                if major_version == save_major_version:
-                    if minor_version <= save_minor_version:
-                        status = SimulationStatus.COMPLETED
-                    elif minor_version > save_minor_version:
-                        status = SimulationStatus.FUTURE
-                elif major_version < save_major_version:
-                    status = SimulationStatus.OUTDATED
-                else:
-                    status = SimulationStatus.FUTURE
-
-                simulation = SimulationHandler(
-                    simulation_id,
-                    simulation_information.name,
-                    simulation_information.start_time,
-                    simulation_information.data,
-                    status,
-                )
-
-                if simulation_information.simulation_start_time is not None:
-                    simulation.simulation_start_time = (
-                        simulation_information.simulation_start_time
-                    )
-
-                if simulation_information.simulation_end_time is not None:
-                    simulation.simulation_end_time = (
-                        simulation_information.simulation_end_time
-                    )
-
-                simulation.indexes = indexes
-
-                self.simulations[simulation_id] = simulation
-
+                self.query_simulation(simulation_id)
             except:
-                print(f"Simulation {simulation_id} is corrupted")
+                log(
+                    f"Simulation {simulation_id} is corrupted",
+                    "server",
+                    should_emit=False,
+                )
                 continue
+
+    def query_simulation(self, simulation_id) -> None:
+        indexes = extract_indexes(simulation_id)
+        if len(indexes) == 0:
+            return
+
+        first_line = read_line_at_index(simulation_id, indexes[0])
+
+        simulation_information = SimulationInformation.deserialize(first_line)
+
+        version = simulation_information.version
+        major_version, minor_version = version.split(".")
+
+        save_major_version, save_minor_version = SAVE_VERSION.split(".")
+
+        status = SimulationStatus.OUTDATED
+        if major_version == save_major_version:
+            if minor_version <= save_minor_version:
+                status = SimulationStatus.COMPLETED
+            elif minor_version > save_minor_version:
+                status = SimulationStatus.FUTURE
+        elif major_version < save_major_version:
+            status = SimulationStatus.OUTDATED
+        else:
+            status = SimulationStatus.FUTURE
+
+        if status == SimulationStatus.OUTDATED:
+            log(
+                f"Simulation {simulation_id} version is outdated",
+                "server",
+                should_emit=False,
+            )
+        if status == SimulationStatus.FUTURE:
+            log(
+                f"Simulation {simulation_id} version is future",
+                "server",
+                should_emit=False,
+            )
+
+        simulation = SimulationHandler(
+            simulation_id,
+            simulation_information.name,
+            simulation_information.start_time,
+            simulation_information.data,
+            status,
+        )
+
+        if simulation_information.simulation_start_time is not None:
+            simulation.simulation_start_time = (
+                simulation_information.simulation_start_time
+            )
+
+        if simulation_information.simulation_end_time is not None:
+            simulation.simulation_end_time = simulation_information.simulation_end_time
+        else:
+            # The simulation is not completed
+            log(
+                f"Simulation {simulation_id} is not completed",
+                "server",
+                should_emit=False,
+            )
+            return
+
+        simulation.indexes = indexes
+
+        self.simulations[simulation_id] = simulation
