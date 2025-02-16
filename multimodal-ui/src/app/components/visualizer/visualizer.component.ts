@@ -18,8 +18,6 @@ import { SimulationService } from '../../services/simulation.service';
 import { UserInterfaceService } from '../../services/user-interface.service';
 import { InformationDialogComponent } from '../information-dialog/information-dialog.component';
 import { SimulationControlBarComponent } from '../simulation-control-bar/simulation-control-bar.component';
-import { ActivatedRoute } from '@angular/router';
-
 
 export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 
@@ -37,6 +35,7 @@ export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
   styleUrl: './visualizer.component.css',
 })
 export class VisualizerComponent {
+  // MARK: Properties
   readonly simulationSignal: Signal<Simulation | null>;
 
   private matDialogRef: MatDialogRef<InformationDialogComponent> | null = null;
@@ -58,6 +57,7 @@ export class VisualizerComponent {
     },
   );
 
+  // MARK: Constructor
   constructor(
     private readonly simulationService: SimulationService,
     private readonly userInterfaceService: UserInterfaceService,
@@ -68,7 +68,7 @@ export class VisualizerComponent {
   ) {
     this.simulationSignal = this.simulationService.activeSimulationSignal;
 
-    // Check if the simulation is available
+    // MARK: Effects
     effect(() => {
       const status = this.visualizerStatusSignal();
 
@@ -207,16 +207,23 @@ export class VisualizerComponent {
     });
   }
 
+  // MARK: Getters
   get shouldShowInformationPanelSignal(): Signal<boolean> {
     return this.userInterfaceService.shouldShowInformationPanelSignal;
   }
 
-  get simulationName(): string{
-    return this.simulationService.activeSimulationSignal()?.name || 'Untitled Simulation';
+  get simulationName(): string {
+    return (
+      this.simulationService.activeSimulationSignal()?.name ||
+      'Untitled Simulation'
+    );
   }
 
-  get simulationData(): string{
-    return this.simulationService.activeSimulationSignal()?.data || 'Untitled Data Folder';
+  get simulationData(): string {
+    return (
+      this.simulationService.activeSimulationSignal()?.data ||
+      'Untitled Data Folder'
+    );
   }
 
   hideInformationPanel() {
@@ -227,7 +234,37 @@ export class VisualizerComponent {
     this.userInterfaceService.showInformationPanel();
   }
 
-  async navigateHome() {
+  pauseSimulation(id: string) {
+    this.simulationService.pauseSimulation(id);
+  }
+
+  resumeSimulation(id: string) {
+    this.simulationService.resumeSimulation(id);
+  }
+
+  async stopSimulation(id: string) {
+    const result = await firstValueFrom(
+      this.dialogService
+        .openInformationDialog({
+          title: 'Stopping Simulation',
+          message:
+            'Are you sure you want to stop the simulation? This action cannot be undone.',
+          type: 'warning',
+          confirmButtonOverride: null,
+          cancelButtonOverride: null,
+          canCancel: true,
+        })
+        .afterClosed(),
+    );
+
+    if (!result) {
+      return;
+    }
+
+    this.simulationService.stopSimulation(id);
+  }
+
+  async leaveVisualization() {
     await this.router.navigate(['home']);
   }
 }

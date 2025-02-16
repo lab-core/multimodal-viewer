@@ -38,5 +38,10 @@
   <app-simulation-control-bar
     class="enable-pointer-events"
     [simulation]="simulation"
+    (pauseSimulation)="pauseSimulation($event)"
+    (resumeSimulation)="resumeSimulation($event)"
+    (stopSimulation)="stopSimulation($event)"
+    (leaveVisualization)="leaveVisualization()"
+  ></app-simulation-control-bar>
   />
 }

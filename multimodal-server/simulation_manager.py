@@ -54,7 +54,6 @@ class SimulationHandler:
     process: multiprocessing.Process | None
     status: SimulationStatus
     socket_id: str | None
-    indexes: list[int] = []
 
     simulation_start_time: float | None
     simulation_end_time: float | None
@@ -442,8 +441,6 @@ class SimulationManager:
             else:
                 raise Exception("Simulation is corrupted")
 
-            simulation.indexes = indexes
-
             self.simulations[simulation_id] = simulation
 
         except:
@@ -462,3 +459,74 @@ class SimulationManager:
             )
 
             self.simulations[simulation_id] = simulation
+
+
+if __name__ == "__main__":
+    import time
+
+    # Measure the time taken to build the indexes
+    simulation_id = "20250216-132207970-test19"
+
+    start = time.time()
+    indexes = extract_indexes(simulation_id)
+    end = time.time()
+
+    print(f"Found {len(indexes)} indexes in {end - start} seconds")
+
+    # Measure the time taken to read all lines separately (~ 10s)
+    # start = time.time()
+    # for index in indexes:
+    #     read_line_at_index(simulation_id, index)
+    # end = time.time()
+
+    # print(f"Read all lines in {end - start} seconds")
+
+    # Measure the time taken to read all lines at once
+    start = time.time()
+    read_lines_from_index(simulation_id, indexes[0], len(indexes))
+    end = time.time()
+
+    print(f"Read all lines at once in {end - start} seconds")
+
+    # Measure the time taken to read 1 state
+    start = time.time()
+    first_state = read_line_at_index(simulation_id, indexes[STATE_SAVE_STEP + 1])
+    end = time.time()
+
+    print(f"Read 1 state in {end - start} seconds")
+
+    # Measure the time taken to deserialize 1 state
+    start = time.time()
+    VisualizedEnvironment.deserialize(first_state)
+    end = time.time()
+
+    print(f"Deserialize 1 state in {end - start} seconds")
+
+    # Measure the time taken to deserialize all updates for a state
+    updates = read_lines_from_index(
+        simulation_id, indexes[STATE_SAVE_STEP + 2], STATE_SAVE_STEP
+    )
+
+    start = time.time()
+    for update in updates:
+        Update.deserialize(update)
+    end = time.time()
+
+    print(f"Deserialize {STATE_SAVE_STEP} updates in {end - start} seconds")
+
+    # Mesure the time taken to read deserialize 50 states
+    number_of_states = 50
+    start = time.time()
+    all_lines = read_lines_from_index(
+        simulation_id,
+        indexes[1],
+        number_of_states * (STATE_SAVE_STEP + 1) + STATE_SAVE_STEP,
+    )
+    for i, line in enumerate(all_lines):
+        if (i + 1) % (STATE_SAVE_STEP + 1) == 0:
+            VisualizedEnvironment.deserialize(line)
+        else:
+            Update.deserialize(line)
+    end = time.time()
+
+    print(f"Deserialize {number_of_states} states in {end - start} seconds")
