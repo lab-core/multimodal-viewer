@@ -101,6 +101,8 @@ export class SimulationListDialogComponent {
 
       case 'starting':
       case 'stopping':
+      case 'outdated':
+      case 'future':
         return 'gray';
 
       case 'completed':
@@ -119,7 +121,7 @@ export class SimulationListDialogComponent {
           title: 'Stopping Simulation',
           message:
             'Are you sure you want to stop the simulation? This action cannot be undone.',
-          type: null,
+          type: 'warning',
           confirmButtonOverride: null,
           cancelButtonOverride: null,
           canCancel: true,

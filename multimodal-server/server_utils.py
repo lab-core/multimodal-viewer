@@ -11,6 +11,15 @@ CLIENT_ROOM = "client"
 SIMULATION_ROOM = "simulation"
 SCRIPT_ROOM = "script"
 
+# Save the state of the simulation every 500 events
+STATE_SAVE_STEP = 500
+
+# If the version is identical, the save file can be loaded
+# If the version is higher, the simulation will be marked as future version
+# If the major version is lower, the simulation will be marked as outdated
+# If the minor version is lower, the simulation can loaded safely
+SAVE_VERSION = "1.0"
+
 
 class SimulationStatus(Enum):
     STARTING = "starting"
@@ -20,20 +29,24 @@ class SimulationStatus(Enum):
     COMPLETED = "completed"
     LOST = "lost"
     CORRUPTED = "corrupted"
+    OUTDATED = "outdated"
+    FUTURE = "future"
 
 
-def getSessionId():
+def get_session_id():
     return request.sid
 
 
-def log(message, auth_type, level=logging.INFO):
+def log(message: str, auth_type: str, level=logging.INFO, should_emit=True) -> None:
     if auth_type == "server":
         logging.log(level, f"[{auth_type}] {message}")
-        try:
+        if should_emit:
             emit("log", f"{level} [{auth_type}] {message}", to=CLIENT_ROOM)
-        except Exception as e:
-            # This is to handle the case where the socket server is not running
-            pass
     else:
-        logging.log(level, f"[{auth_type}] {getSessionId()} {message}")
-        emit("log", f"{level} [{auth_type}] {getSessionId()} {message}", to=CLIENT_ROOM)
+        logging.log(level, f"[{auth_type}] {get_session_id()} {message}")
+        if should_emit:
+            emit(
+                "log",
+                f"{level} [{auth_type}] {get_session_id()} {message}",
+                to=CLIENT_ROOM,
+            )

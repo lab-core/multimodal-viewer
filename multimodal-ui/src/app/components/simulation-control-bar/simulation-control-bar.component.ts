@@ -51,14 +51,6 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
     private readonly router: Router,
   ) {}
 
-  togglePause(wasPaused: boolean, id: string): void {
-    if (wasPaused) {
-      this.simulationService.resumeSimulation(id);
-    } else {
-      this.simulationService.pauseSimulation(id);
-    }
-  }
-
   ngOnInit(): void {
     this.interval = setInterval(() => {
       if (!this.isPausedSignal()) {
@@ -72,6 +64,14 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     if (this.interval) {
       clearInterval(this.interval);
+    }
+  }
+
+  togglePause(wasPaused: boolean, id: string): void {
+    if (wasPaused) {
+      this.simulationService.resumeSimulation(id);
+    } else {
+      this.simulationService.pauseSimulation(id);
     }
   }
 
@@ -103,7 +103,7 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
           title: 'Stopping Simulation',
           message:
             'Are you sure you want to stop the simulation? This action cannot be undone.',
-          type: null,
+          type: 'warning',
           confirmButtonOverride: null,
           cancelButtonOverride: null,
           canCancel: true,

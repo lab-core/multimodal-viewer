@@ -5,7 +5,9 @@ export type SimulationStatus =
   | 'stopping'
   | 'completed'
   | 'lost'
-  | 'corrupted';
+  | 'corrupted'
+  | 'outdated'
+  | 'future';
 
 export const SIMULATION_STATUSES: SimulationStatus[] = [
   'starting',
@@ -15,6 +17,8 @@ export const SIMULATION_STATUSES: SimulationStatus[] = [
   'completed',
   'lost',
   'corrupted',
+  'outdated',
+  'future',
 ];
 
 export const RUNNING_SIMULATION_STATUSES: SimulationStatus[] = [
@@ -32,7 +36,9 @@ export const STATUSES_ORDER: Record<SimulationStatus, number> = {
   stopping: 2,
   lost: 3,
   completed: 4,
-  corrupted: 4,
+  corrupted: 5,
+  outdated: 5,
+  future: 5,
 };
 
 export interface Simulation {
@@ -69,7 +75,12 @@ export interface Simulation {
   /**
    * The time in the simulation at which the simulation starts
    */
-  // simulationStartTime: number;
+  simulationStartTime: number | null;
+
+  /**
+   * The time in the simulation at which the simulation ends
+   */
+  simulationEndTime: number | null;
 
   /**
    * The time in the simulation at which the simulation ends
@@ -124,7 +135,7 @@ export const PASSENGER_STATUSES: PassengerStatus[] = [
 
 export interface Passenger {
   id: string;
-  name: string;
+  name: string | null;
   status: PassengerStatus;
 }
 export interface PassengerStatusUpdate {
@@ -156,7 +167,7 @@ export interface Polyline {
 
 export interface Vehicle {
   id: string;
-  mode: string;
+  mode: string | null;
   status: VehicleStatus;
   latitude: number | null;
   longitude: number | null;

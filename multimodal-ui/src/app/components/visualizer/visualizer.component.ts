@@ -152,7 +152,45 @@ export class VisualizerComponent {
         case 'corrupted':
           this.matDialogRef = this.dialogService.openInformationDialog({
             title: 'Simulation corrupted',
-            message: 'The file containing the simulation data is corrupted. ',
+            message: 'The file containing the simulation data is corrupted.',
+            type: 'error',
+            confirmButtonOverride: 'Back to home',
+            cancelButtonOverride: null,
+            canCancel: false,
+          });
+          void firstValueFrom(this.matDialogRef.afterClosed())
+            .then(async () => {
+              if (this.matDialogRef) {
+                await this.router.navigate(['home']);
+              }
+            })
+            .catch(console.error);
+          return;
+
+        case 'outdated':
+          this.matDialogRef = this.dialogService.openInformationDialog({
+            title: 'Unsupported simulation version',
+            message:
+              'The version of the file containing the simulation data is too old for this version of the application.',
+            type: 'error',
+            confirmButtonOverride: 'Back to home',
+            cancelButtonOverride: null,
+            canCancel: false,
+          });
+          void firstValueFrom(this.matDialogRef.afterClosed())
+            .then(async () => {
+              if (this.matDialogRef) {
+                await this.router.navigate(['home']);
+              }
+            })
+            .catch(console.error);
+          return;
+
+        case 'future':
+          this.matDialogRef = this.dialogService.openInformationDialog({
+            title: 'Unsupported simulation version',
+            message:
+              'The version of the file containing the simulation data is too recent for this version of the application.',
             type: 'error',
             confirmButtonOverride: 'Back to home',
             cancelButtonOverride: null,

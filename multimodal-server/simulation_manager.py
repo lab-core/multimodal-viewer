@@ -2,11 +2,18 @@ import datetime
 import inspect
 import logging
 import multiprocessing
+import os
 from enum import Enum
 
 from flask_socketio import emit
-from server_utils import CLIENT_ROOM, SimulationStatus, log
+from server_utils import CLIENT_ROOM, SAVE_VERSION, SimulationStatus, log
 from simulation import run_simulation
+from simulation_visualization_data_model import (
+    SimulationInformation,
+    extract_indexes,
+    get_simulation_save_directory_path,
+    read_line_at_index,
+)
 
 
 class MinimalistSimulationConfiguration:
@@ -36,6 +43,10 @@ class SimulationHandler:
     process: multiprocessing.Process | None
     status: SimulationStatus
     socket_id: str | None
+    indexes: list[int] = []
+
+    simulation_start_time: float | None
+    simulation_end_time: float | None
 
     # TODO
     # simulation_start_time: float | None
@@ -67,6 +78,7 @@ class SimulationManager:
 
     def __init__(self):
         self.simulations = {}
+        self.query_simulations()
 
     def start_simulation(
         self, name: str, data: str, response_event: str
@@ -148,6 +160,7 @@ class SimulationManager:
 
         emit("can-disconnect", to=simulation.socket_id)
 
+        self.query_simulations()
         self.emit_simulations()
 
     def pause_simulation(self, simulation_id):
@@ -267,19 +280,93 @@ class SimulationManager:
         self.emit_simulations()
 
     def emit_simulations(self):
+        serialized_simulations = []
+
+        for simulation_id, simulation in self.simulations.items():
+            serialized_simulation = {
+                "id": simulation_id,
+                "name": simulation.name,
+                "status": simulation.status.value,
+                "startTime": simulation.start_time,
+                "data": simulation.data,
+            }
+
+            if simulation.simulation_start_time is not None:
+                serialized_simulation["simulationStartTime"] = (
+                    simulation.simulation_start_time
+                )
+
+            if simulation.simulation_end_time is not None:
+                serialized_simulation["simulationEndTime"] = (
+                    simulation.simulation_end_time
+                )
+
+            serialized_simulations.append(serialized_simulation)
+
         emit(
             "simulations",
-            [
-                {
-                    "id": simulation.simulation_id,
-                    "name": simulation.name,
-                    "status": simulation.status.value,
-                    "startTime": simulation.start_time,
-                    "data": simulation.data,
-                }
-                for simulation in self.simulations.values()
-            ],
+            serialized_simulations,
             to=CLIENT_ROOM,
         )
 
         log("Emitting simulations", "server")
+
+    def query_simulations(self):
+        simulation_save_directory_path = get_simulation_save_directory_path()
+
+        simulation_ids = [
+            file_name.split(".")[0]
+            for file_name in os.listdir(simulation_save_directory_path)
+        ]
+
+        for simulation_id in simulation_ids:
+            indexes = extract_indexes(simulation_id)
+            if len(indexes) == 0:
+                continue
+
+            first_line = read_line_at_index(simulation_id, indexes[0])
+
+            simulation_information = None
+            try:
+                # Non valid save files might throw an exception
+                simulation_information = SimulationInformation.deserialize(first_line)
+
+                version = simulation_information.version
+                major_version, minor_version = version.split(".")
+
+                save_major_version, save_minor_version = SAVE_VERSION.split(".")
+
+                status = SimulationStatus.OUTDATED
+                if major_version == save_major_version:
+                    if minor_version <= save_minor_version:
+                        status = SimulationStatus.COMPLETED
+                    elif minor_version > save_minor_version:
+                        status = SimulationStatus.FUTURE
+                elif major_version < save_major_version:
+                    status = SimulationStatus.OUTDATED
+                else:
+                    status = SimulationStatus.FUTURE
+
+                simulation = SimulationHandler(
+                    simulation_id,
+                    simulation_information.name,
+                    simulation_information.start_time,
+                    simulation_information.data,
+                    status,
+                )
+
+                if simulation_information.simulation_start_time is not None:
+                    simulation.simulation_start_time = (
+                        simulation_information.simulation_start_time
+                    )
+
+                if simulation_information.simulation_end_time is not None:
+                    simulation.simulation_end_time = (
+                        simulation_information.simulation_end_time
+                    )
+
+                self.simulations[simulation_id] = simulation
+
+            except:
+                print(f"Simulation {simulation_id} is corrupted")
+                continue
