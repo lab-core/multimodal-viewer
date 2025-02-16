@@ -83,6 +83,7 @@ class SimulationVisualizationDataCollector(DataCollector):
         if self.sio.connected:
             self.sio.emit("log", (self.simulation_id, message))
 
+    # MARK: +- Add First Line
     def add_first_line(self) -> None:
         file_path = get_simulation_save_file_path(self.simulation_id)
 

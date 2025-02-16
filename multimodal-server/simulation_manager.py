@@ -170,7 +170,7 @@ class SimulationManager:
             get_simulation_save_file_path(simulation_id), "r+", encoding="utf-8"
         ) as file:
             file.seek(indexes[0])
-            file.write(simulation_information.serialize())
+            file.write(str(simulation_information.serialize()))
 
         # Reload the simulation
         self.query_simulation(simulation_id)
