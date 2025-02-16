@@ -52,14 +52,14 @@ from socketio import Client
 class SimulationVisualizationDataCollector(DataCollector):
     simulation_id: str
     update_counter: int
-    environment: VisualizedEnvironment
+    visualized_environment: VisualizedEnvironment
     sio: Client
     simulation_information: SimulationInformation
 
     def __init__(self, simulation_id: str, data: str, sio: Client) -> None:
         self.simulation_id = simulation_id
         self.update_counter = 0
-        self.environment = VisualizedEnvironment()
+        self.visualized_environment = VisualizedEnvironment()
         self.sio = sio
 
         self.simulation_information = SimulationInformation(
@@ -77,7 +77,7 @@ class SimulationVisualizationDataCollector(DataCollector):
         if current_event is None:
             return
 
-        message = self.process_event(current_event)
+        message = self.process_event(current_event, env)
         register_log(self.simulation_id, message)
 
         if self.sio.connected:
@@ -99,24 +99,6 @@ class SimulationVisualizationDataCollector(DataCollector):
         with open(file_path, "w") as file:
             file.writelines(lines)
 
-    # MARK: +- Process Update
-    def process_update(self, update: Update) -> None:
-        if update.type == UpdateType.CREATE_PASSENGER:
-            self.environment.add_passenger(update.data)
-        elif update.type == UpdateType.CREATE_VEHICLE:
-            self.environment.add_vehicle(update.data)
-        elif update.type == UpdateType.UPDATE_PASSENGER_STATUS:
-            passenger = self.environment.get_passenger(update.data.passenger_id)
-            passenger.status = update.data.status
-        elif update.type == UpdateType.UPDATE_VEHICLE_STATUS:
-            vehicle = self.environment.get_vehicle(update.data.vehicle_id)
-            vehicle.status = update.data.status
-        elif update.type == UpdateType.UPDATE_VEHICLE_POSITION:
-            vehicle = self.environment.get_vehicle(update.data.vehicle_id)
-            vehicle.latitude = update.data.latitude
-            vehicle.longitude = update.data.longitude
-        self.environment.timestamp = update.timestamp
-
     # MARK: +- Add Line To File
     def add_line_to_file(self, line: str | dict) -> None:
         file_path = get_simulation_save_file_path(self.simulation_id)
@@ -124,39 +106,74 @@ class SimulationVisualizationDataCollector(DataCollector):
         with open(file_path, "a") as file:
             file.write(line + "\n")
 
-    # MARK: +- Save Update
-    def save_update(self, update: Update) -> None:
-        self.add_line_to_file(str(update.serialize()))
-
-        # Save the state of the simulation every SAVE_STATE_STEP events
-        if self.update_counter % STATE_SAVE_STEP == 0:
-            self.add_line_to_file(str(self.environment.serialize()))
-
     # MARK: +- Add Update
-    def add_update(self, update: Update) -> None:
+    def add_update(self, update: Update, environment: Environment) -> None:
         update.order = self.update_counter
+        self.visualized_environment.order = self.update_counter
         self.update_counter += 1
 
-        self.process_update(update)
+        if update.type == UpdateType.CREATE_PASSENGER:
+            self.visualized_environment.add_passenger(update.data)
+        elif update.type == UpdateType.CREATE_VEHICLE:
+            self.visualized_environment.add_vehicle(update.data)
+        elif update.type == UpdateType.UPDATE_PASSENGER_STATUS:
+            passenger = self.visualized_environment.get_passenger(
+                update.data.passenger_id
+            )
+            passenger.status = update.data.status
+        elif update.type == UpdateType.UPDATE_VEHICLE_STATUS:
+            vehicle = self.visualized_environment.get_vehicle(update.data.vehicle_id)
+            vehicle.status = update.data.status
+        elif update.type == UpdateType.UPDATE_VEHICLE_POSITION:
+            vehicle = self.visualized_environment.get_vehicle(update.data.vehicle_id)
+            vehicle.latitude = update.data.latitude
+            vehicle.longitude = update.data.longitude
 
         if self.update_counter == 1:
             # Add the simulation start time to the simulation information
             self.simulation_information.simulation_start_time = update.timestamp
             self.add_first_line()
 
-        if self.sio.connected:
-            self.sio.emit(
-                "simulation-update",
-                (
-                    self.simulation_id,
-                    update.serialize(),
-                ),
-            )
+            # Notify the server that the simulation has started and send the simulation start time
+            if self.sio.connected:
+                self.sio.emit(
+                    "simulation-start", (self.simulation_id, update.timestamp)
+                )
 
-        self.save_update(update)
+        if self.sio.connected:
+            if self.visualized_environment.timestamp != update.timestamp:
+                self.sio.emit(
+                    "simulation-update-time",
+                    (
+                        self.simulation_id,
+                        update.timestamp,
+                    ),
+                )
+                self.visualized_environment.timestamp = update.timestamp
+
+            if (
+                environment.estimated_end_time
+                != self.visualized_environment.estimated_end_time
+            ):
+                self.sio.emit(
+                    "simulation-update-estimated-end-time",
+                    (
+                        self.simulation_id,
+                        environment.estimated_end_time,
+                    ),
+                )
+                self.visualized_environment.estimated_end_time = (
+                    environment.estimated_end_time
+                )
+
+        self.add_line_to_file(str(update.serialize()))
+
+        # Save the state of the simulation every SAVE_STATE_STEP events
+        if self.update_counter % STATE_SAVE_STEP == 0:
+            self.add_line_to_file(str(self.visualized_environment.serialize()))
 
     # MARK: +- Process Event
-    def process_event(self, event: Event) -> str:
+    def process_event(self, event: Event, environment: Environment) -> str:
         # Optimize
         if isinstance(event, Optimize):
             # Do nothing ?
@@ -180,7 +197,8 @@ class SimulationVisualizationDataCollector(DataCollector):
                     UpdateType.CREATE_PASSENGER,
                     passenger,
                     event.time,
-                )
+                ),
+                environment,
             )
             return f"{event.time} TODO PassengerRelease"
 
@@ -193,7 +211,8 @@ class SimulationVisualizationDataCollector(DataCollector):
                         event.state_machine.owner,
                     ),
                     event.time,
-                )
+                ),
+                environment,
             )
             return f"{event.time} TODO PassengerAssignment"
 
@@ -206,7 +225,8 @@ class SimulationVisualizationDataCollector(DataCollector):
                         event.state_machine.owner,
                     ),
                     event.time,
-                )
+                ),
+                environment,
             )
             return f"{event.time} TODO PassengerReady"
 
@@ -219,7 +239,8 @@ class SimulationVisualizationDataCollector(DataCollector):
                         event.state_machine.owner,
                     ),
                     event.time,
-                )
+                ),
+                environment,
             )
             return f"{event.time} TODO PassengerToBoard"
 
@@ -232,7 +253,8 @@ class SimulationVisualizationDataCollector(DataCollector):
                         event.state_machine.owner,
                     ),
                     event.time,
-                )
+                ),
+                environment,
             )
             return f"{event.time} TODO PassengerAlighting"
 
@@ -243,7 +265,8 @@ class SimulationVisualizationDataCollector(DataCollector):
                     UpdateType.UPDATE_VEHICLE_STATUS,
                     VehicleStatusUpdate.from_vehicle(event.state_machine.owner),
                     event.time,
-                )
+                ),
+                environment,
             )
             return f"{event.time} TODO VehicleWaiting"
 
@@ -256,7 +279,8 @@ class SimulationVisualizationDataCollector(DataCollector):
                         event.state_machine.owner,
                     ),
                     event.time,
-                )
+                ),
+                environment,
             )
             return f"{event.time} TODO VehicleBoarding"
 
@@ -268,7 +292,8 @@ class SimulationVisualizationDataCollector(DataCollector):
                         event.state_machine.owner,
                     ),
                     event.time,
-                )
+                ),
+                environment,
             )
             return f"{event.time} TODO VehicleDeparture"
 
@@ -281,7 +306,8 @@ class SimulationVisualizationDataCollector(DataCollector):
                         event.state_machine.owner,
                     ),
                     event.time,
-                )
+                ),
+                environment,
             )
             return f"{event.time} TODO VehicleArrival"
 
@@ -294,7 +320,8 @@ class SimulationVisualizationDataCollector(DataCollector):
                         event.state_machine.owner,
                     ),
                     event.time,
-                )
+                ),
+                environment,
             )
             return f"{event.time} TODO VehicleComplete"
 
@@ -306,7 +333,8 @@ class SimulationVisualizationDataCollector(DataCollector):
                     UpdateType.CREATE_VEHICLE,
                     vehicle,
                     event.time,
-                )
+                ),
+                environment,
             )
             return f"{event.time} TODO VehicleReady"
 
@@ -325,7 +353,7 @@ class SimulationVisualizationDataCollector(DataCollector):
         # VehicleUpdatePositionEvent
         elif isinstance(event, VehicleUpdatePositionEvent):
             updated_vehicle = event.vehicle
-            current_visualized_vehicle = self.environment.get_vehicle(
+            current_visualized_vehicle = self.visualized_environment.get_vehicle(
                 updated_vehicle.id
             )
             if event.vehicle.position is not None and (
@@ -339,7 +367,8 @@ class SimulationVisualizationDataCollector(DataCollector):
                             event.vehicle,
                         ),
                         event.time,
-                    )
+                    ),
+                    environment,
                 )
             return f"{event.time} TODO VehicleUpdatePositionEvent"
 
@@ -382,7 +411,10 @@ class SimulationVisualizationVisualizer(Visualizer):
             if self.sio.connected:
                 self.sio.emit(
                     "simulation-end",
-                    (self.simulation_id, self.data_collector.environment.timestamp),
+                    (
+                        self.simulation_id,
+                        self.data_collector.visualized_environment.timestamp,
+                    ),
                 )
 
 

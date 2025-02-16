@@ -67,8 +67,6 @@ def run_simulation(simulation_id: str, data: str) -> None:
     simulation_thread = threading.Thread(target=simulator.simulate)
     simulation_thread.start()
 
-    sio.emit("simulation-start", simulation_id)
-
     status = SimulationStatus.RUNNING
 
     # Wait for the simulation to end

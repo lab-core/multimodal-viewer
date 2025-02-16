@@ -230,11 +230,15 @@ class VisualizedEnvironment(Serializable):
     passengers: list[VisualizedPassenger]
     vehicles: list[VisualizedVehicle]
     timestamp: float
+    estimated_end_time: float
+    order: int
 
     def __init__(self) -> None:
         self.passengers = {}
         self.vehicles = {}
         self.timestamp = 0
+        self.estimated_end_time = 0
+        self.order = 0
 
     def add_passenger(self, passenger: VisualizedPassenger) -> None:
         self.passengers[passenger.passenger_id] = passenger
@@ -259,6 +263,8 @@ class VisualizedEnvironment(Serializable):
             ],
             "vehicles": [vehicle.serialize() for vehicle in self.vehicles.values()],
             "timestamp": self.timestamp,
+            "estimatedEndTime": self.estimated_end_time,
+            "order": self.order,
         }
 
     @classmethod
@@ -266,7 +272,13 @@ class VisualizedEnvironment(Serializable):
         if isinstance(data, str):
             data = json.loads(data.replace("'", '"'))
 
-        if "passengers" not in data or "vehicles" not in data:
+        if (
+            "passengers" not in data
+            or "vehicles" not in data
+            or "timestamp" not in data
+            or "estimatedEndTime" not in data
+            or "order" not in data
+        ):
             raise ValueError("Invalid data for VisualizedEnvironment")
 
         environment = VisualizedEnvironment()
@@ -279,6 +291,8 @@ class VisualizedEnvironment(Serializable):
             environment.add_vehicle(vehicle)
 
         environment.timestamp = data["timestamp"]
+        environment.estimated_end_time = data["estimatedEndTime"]
+        environment.order = data["order"]
 
         return environment
 

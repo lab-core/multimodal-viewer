@@ -36,7 +36,15 @@
             <!-- MARK: Name and status
             -->
             <div class="flex-column">
-              <div class="bold">{{ simulation.name }}</div>
+              <div class="flex-row gap-1-rem">
+                <span class="bold">{{ simulation.name }}</span>
+                @if (
+                  simulation.status === "running" ||
+                  simulation.status === "paused"
+                ) {
+                  <span> {{ simulation.completion | percent: "1.2-2" }} </span>
+                }
+              </div>
               <div
                 class="light"
                 [style.color]="

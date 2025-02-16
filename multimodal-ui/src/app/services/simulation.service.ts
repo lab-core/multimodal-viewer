@@ -11,6 +11,7 @@ import {
   Passenger,
   PASSENGER_STATUSES,
   PassengerStatusUpdate,
+  RawSimulationEnvironment,
   Simulation,
   SIMULATION_UPDATE_TYPES,
   SimulationEnvironment,
@@ -34,50 +35,50 @@ export class SimulationService {
     AnySimulationUpdate[]
   > = signal([]);
 
-  private previousSimulationEnvironment: SimulationEnvironment | null = null;
+  // private previousSimulationEnvironment: SimulationEnvironment | null = null;
 
-  private readonly _activeSimulationEnvironmentSignal: Signal<SimulationEnvironment> =
-    computed(() => {
-      const updates = this.activeSimulationUpdatesSignal().sort(
-        (a, b) => a.order - b.order,
-      );
+  // private readonly _activeSimulationEnvironmentSignal: Signal<SimulationEnvironment> =
+  //   computed(() => {
+  //     const updates = this.activeSimulationUpdatesSignal().sort(
+  //       (a, b) => a.order - b.order,
+  //     );
 
-      const simulationEnvironment: SimulationEnvironment = this
-        .previousSimulationEnvironment ?? {
-        lastUpdateOrder: -1,
-        passengers: {},
-        vehicles: {},
-      };
+  //     const simulationEnvironment: SimulationEnvironment = this
+  //       .previousSimulationEnvironment ?? {
+  //       lastUpdateOrder: -1,
+  //       passengers: {},
+  //       vehicles: {},
+  //     };
 
-      let hasAppliedUpdates = false;
+  //     let hasAppliedUpdates = false;
 
-      for (
-        let i = simulationEnvironment.lastUpdateOrder + 1;
-        i < updates.length;
-        i++
-      ) {
-        const update = updates[i];
+  //     for (
+  //       let i = simulationEnvironment.lastUpdateOrder + 1;
+  //       i < updates.length;
+  //       i++
+  //     ) {
+  //       const update = updates[i];
 
-        if (i !== update.order) {
-          // TODO Get missing updates from the server
-          console.error('Update order mismatch: ', i, update);
-          break;
-        }
+  //       if (i !== update.order) {
+  //         // TODO Get missing updates from the server
+  //         console.error('Update order mismatch: ', i, update);
+  //         break;
+  //       }
 
-        this.applyUpdate(update, simulationEnvironment);
-        hasAppliedUpdates = true;
-        simulationEnvironment.lastUpdateOrder = i;
-        console.debug('Applied update: ', update);
-      }
+  //       this.applyUpdate(update, simulationEnvironment);
+  //       hasAppliedUpdates = true;
+  //       simulationEnvironment.lastUpdateOrder = i;
+  //       console.debug('Applied update: ', update);
+  //     }
 
-      this.previousSimulationEnvironment = simulationEnvironment;
+  //     this.previousSimulationEnvironment = simulationEnvironment;
 
-      console.debug('Simulation environment: ', simulationEnvironment);
+  //     console.debug('Simulation environment: ', simulationEnvironment);
 
-      return hasAppliedUpdates
-        ? structuredClone(simulationEnvironment)
-        : simulationEnvironment;
-    });
+  //     return hasAppliedUpdates
+  //       ? structuredClone(simulationEnvironment)
+  //       : simulationEnvironment;
+  //   });
 
   private activeSimulationId: string | null = null;
 
@@ -115,9 +116,9 @@ export class SimulationService {
     });
 
     // TODO Remove
-    effect(() => {
-      this._activeSimulationEnvironmentSignal();
-    });
+    // effect(() => {
+    //   this._activeSimulationEnvironmentSignal();
+    // });
   }
 
   // MARK: Active simulation
@@ -147,9 +148,9 @@ export class SimulationService {
     });
   }
 
-  get activeSimulationEnvironmentSignal(): Signal<SimulationEnvironment> {
-    return this._activeSimulationEnvironmentSignal;
-  }
+  // get activeSimulationEnvironmentSignal(): Signal<SimulationEnvironment> {
+  //   return this._activeSimulationEnvironmentSignal;
+  // }
 
   // MARK: Communication
   pauseSimulation(simulationId: string) {
@@ -427,6 +428,47 @@ export class SimulationService {
     }
 
     return { id, latitude, longitude };
+  }
+
+  private extractSimulationEnvironment(
+    data: RawSimulationEnvironment,
+  ): SimulationEnvironment | null {
+    // TODO Uncomment for debugging
+    // console.debug('Extracting simulation environment: ', data);
+
+    const passengers: SimulationEnvironment['passengers'] = {};
+    for (const passenger of data.passengers) {
+      const extractedPassenger = this.extractPassenger(passenger);
+      if (!extractedPassenger) {
+        console.error('Invalid passenger: ', passenger);
+        return null;
+      }
+      passengers[extractedPassenger.id] = extractedPassenger;
+    }
+
+    const vehicles: SimulationEnvironment['vehicles'] = {};
+    for (const vehicle of data.vehicles) {
+      const extractedVehicle = this.extractVehicle(vehicle);
+      if (!extractedVehicle) {
+        console.error('Invalid vehicle: ', vehicle);
+        return null;
+      }
+      vehicles[extractedVehicle.id] = extractedVehicle;
+    }
+
+    const timestamp = data.timestamp;
+    if (timestamp === undefined) {
+      console.error('Simulation environment timestamp not found: ', timestamp);
+      return null;
+    }
+
+    const order = data.order;
+    if (order === undefined) {
+      console.error('Simulation environment order not found: ', order);
+      return null;
+    }
+
+    return { passengers, vehicles, timestamp, order };
   }
 
   // MARK: Build environment

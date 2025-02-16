@@ -123,9 +123,11 @@ def run_server():
 
     # MARK: Simulation events
     @socketio.on("simulation-start")
-    def on_simulation_start(simulation_id):
+    def on_simulation_start(simulation_id, simulation_start_time):
         log(f"simulation {simulation_id} started", "simulation")
-        simulation_manager.on_simulation_start(simulation_id, get_session_id())
+        simulation_manager.on_simulation_start(
+            simulation_id, get_session_id(), simulation_start_time
+        )
 
     @socketio.on("simulation-end")
     def on_simulation_end(simulation_id, simulation_end_time):
@@ -146,10 +148,25 @@ def run_server():
     def on_simulation_log_event(simulation_id, message):
         log(f"simulation  {simulation_id}: {message}", "simulation", logging.DEBUG)
 
-    @socketio.on("simulation-update")
-    def on_simulation_log_event(simulation_id, update):
-        log(f"simulation  {simulation_id}: {update}", "simulation", logging.DEBUG)
-        emit("simulation-update" + simulation_id, update, to=CLIENT_ROOM)
+    @socketio.on("simulation-update-time")
+    def on_simulation_log_event(simulation_id, timestamp):
+        log(
+            f"simulation  {simulation_id} time: {timestamp}",
+            "simulation",
+            logging.DEBUG,
+        )
+        simulation_manager.on_simulation_update_time(simulation_id, timestamp)
+
+    @socketio.on("simulation-update-estimated-end-time")
+    def on_simulation_log_event(simulation_id, estimated_end_time):
+        log(
+            f"simulation  {simulation_id} estimated end time: {estimated_end_time}",
+            "simulation",
+            logging.DEBUG,
+        )
+        simulation_manager.on_simulation_update_estimated_end_time(
+            simulation_id, estimated_end_time
+        )
 
     @socketio.on("simulation-identification")
     def on_simulation_identification(simulation_id, data, status):
