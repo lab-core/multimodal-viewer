@@ -21,6 +21,8 @@ import {
 } from '../interfaces/simulation.model';
 import { CommunicationService } from './communication.service';
 import { DataService } from './data.service';
+import { AnimationService } from './animation.service';
+import { Polyline } from 'leaflet';
 
 @Injectable({
   providedIn: 'root',
@@ -78,6 +80,7 @@ export class SimulationService {
   constructor(
     private readonly dataService: DataService,
     private readonly communicationService: CommunicationService,
+    private readonly animationService: AnimationService
   ) {
     effect(() => {
       const activeSimulationId = this._activeSimulationIdSignal();
@@ -438,6 +441,8 @@ export class SimulationService {
         {
           const vehicle = update.data as Vehicle;
           simulationEnvironment.vehicles[vehicle.id] = vehicle;
+
+          this.animationService.addVehicle(vehicle);
         }
         break;
 

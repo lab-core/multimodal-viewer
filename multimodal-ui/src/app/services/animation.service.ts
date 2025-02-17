@@ -2,53 +2,134 @@ import { Injectable } from '@angular/core';
 import * as L from 'leaflet';
 import 'leaflet-pixi-overlay';
 import * as PIXI from 'pixi.js';
-import { Entity } from '../interfaces/entity.model';
+import { Entity, VehicleEntity } from '../interfaces/entity.model';
+import { Vehicle } from '../interfaces/simulation.model';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AnimationService {
   private ticker: PIXI.Ticker = new PIXI.Ticker();
-  private entities: Entity[] = [];
+  private vehicles: VehicleEntity[] = [];
   private container = new PIXI.Container();
   private utils!: L.PixiOverlayUtils;
 
-  private pointToReach: L.Point = new L.Point(45.523066, -73.652687);
+  addVehicle(vehicle: Vehicle, type = 'sample-bus') {
+    if (vehicle.polylines == null) return;
+    if (vehicle.polylines[0].polyline.length == 0) return;
 
-  private addEntity(type = 'sample-marker') {
     const sprite = PIXI.Sprite.from(`images/${type}.png`);
-
-    sprite.anchor.set(0.5, 1);
+    sprite.anchor.set(0.5, 0.5);
     sprite.scale.set(1 / this.utils.getScale());
-    this.container.addChild(sprite);
 
-    const entity: Entity = {
+    const point = this.utils.latLngToLayerPoint([0, 0]);
+    const entity: VehicleEntity = {
+      data: vehicle,
+      polylineNo: 0,
+      lineNo: -1,
+
       sprite,
-      startPos: this.pointToReach,
-      endPos: this.pointToReach,
-      speed: Math.random() * 2 + 1,
+      requestedRotation: 0,
+      startPos: point,
+      endPos: point,
       currentTime: 0,
-      timeToReach: 5,
+      timeToReach: 0,
     };
+    this.updateVehiclePath(entity);
+    // entity.sprite.rotation = entity.requestedRotation;
 
-    this.entities.push(entity);
+    this.container.addChild(sprite);
+    this.vehicles.push(entity);
   }
 
-  private changeEntitiesDestination(latlng: L.LatLng) {
-    this.pointToReach = this.utils.latLngToLayerPoint(latlng);
-    this.entities.forEach((entity) => {
-      entity.startPos.x = entity.sprite.x;
-      entity.startPos.y = entity.sprite.y;
-      entity.endPos = this.pointToReach;
+  updateVehiclePositions() {
+    for (let index = 0; index < this.vehicles.length; ++index) {
+      const vehicle = this.vehicles[index];
+      const secElapsed = this.ticker.deltaTime / this.ticker.FPS;
+      vehicle.currentTime += secElapsed;
+      vehicle.sprite.rotation += (vehicle.requestedRotation - vehicle.sprite.rotation) * secElapsed;
+      let progress = vehicle.currentTime / vehicle.timeToReach;
 
-      const distanceVec = entity.endPos.subtract(entity.startPos);
-      const distance = Math.sqrt(
-        distanceVec.x * distanceVec.x + distanceVec.y * distanceVec.y,
-      );
-      entity.timeToReach = (distance * 0.5) / entity.speed;
-      entity.currentTime = 0;
-    });
+      if (progress >= 1)  {
+        this.updateVehiclePath(vehicle);
+        progress = 0;
+      }
+
+      // pos = end * progress + start(1 - progress)
+      const newPosition = vehicle.endPos
+        .multiplyBy(progress)
+        .add(vehicle.startPos.multiplyBy(1 - progress));
+      vehicle.sprite.x = newPosition.x;
+      vehicle.sprite.y = newPosition.y;
+    } 
   }
+
+  updateVehiclePath(vehicle: VehicleEntity) {
+    if (vehicle.data.polylines == null) return;
+
+    // Get next path to follow
+    let currentPolyline = vehicle.data.polylines[vehicle.polylineNo];
+    if (vehicle.lineNo < currentPolyline.polyline.length -2) vehicle.lineNo += 1;
+    else {
+      currentPolyline =  vehicle.data.polylines[vehicle.polylineNo + 1];
+      if (currentPolyline != null)  {
+        vehicle.polylineNo += 1;
+        vehicle.lineNo = 0;
+      }
+      else return;
+    }
+
+    const geoPosA = currentPolyline.polyline[vehicle.lineNo];
+    const geoPosB = currentPolyline.polyline[vehicle.lineNo + 1];
+    const pointA = this.utils.latLngToLayerPoint([geoPosA.latitude, geoPosA.longitude]);
+    const pointB = this.utils.latLngToLayerPoint([geoPosB.latitude, geoPosB.longitude]);
+
+    // Set orientation
+    // const direction = pointB.subtract(pointA);
+    // const angle = -Math.atan2(direction.x, direction.y) + Math.PI / 2;
+    // vehicle.requestedRotation = angle;
+
+    // Set path
+    vehicle.startPos = pointA;
+    vehicle.endPos = pointB;
+    vehicle.currentTime = 0;
+    vehicle.timeToReach = currentPolyline.coefficients[vehicle.lineNo] * 10; // 10 is arbritrary (to be replaced with real data)
+  }
+
+  // addEntity(lat: number, lng: number, type = 'sample-car') {
+  //   const sprite = PIXI.Sprite.from(`images/${type}.png`);
+
+  //   sprite.anchor.set(0.5, 1);
+  //   sprite.scale.set(1 / this.utils.getScale());
+  //   this.container.addChild(sprite);
+
+  //   const point = this.utils.latLngToLayerPoint([lat, lng]);
+  //   const entity: Entity = {
+  //     sprite,
+  //     startPos: point,
+  //     endPos: point,
+  //     currentTime: 0,
+  //     timeToReach: 5,
+  //   };
+
+  //   this.entities.push(entity);
+  // }
+
+  // private changeEntitiesDestination(latlng: L.LatLng) {
+  //   this.pointToReach = this.utils.latLngToLayerPoint(latlng);
+  //   this.entities.forEach((entity) => {
+  //     entity.startPos.x = entity.sprite.x;
+  //     entity.startPos.y = entity.sprite.y;
+  //     entity.endPos = this.pointToReach;
+
+  //     const distanceVec = entity.endPos.subtract(entity.startPos);
+  //     const distance = Math.sqrt(
+  //       distanceVec.x * distanceVec.x + distanceVec.y * distanceVec.y,
+  //     );
+  //     entity.timeToReach = (distance * 0.5) / entity.speed;
+  //     entity.currentTime = 0;
+  //   });
+  // }
 
   // Called once when Pixi layer is added.
   private onAdd(utils: L.PixiOverlayUtils) {
@@ -56,28 +137,18 @@ export class AnimationService {
   }
 
   private onMoveEnd(event: L.LeafletEvent) {
-    // this.markers.forEach((marker) => {
-    //   marker.scale.set(1 / this.utils.getScale());
-    // });
-  }
-
-  private onRedraw(event: L.LeafletEvent) {
-    this.entities.forEach((entity) => {
-      entity.currentTime += this.ticker.deltaTime / this.ticker.FPS;
-      const progress = entity.currentTime / entity.timeToReach;
+    this.vehicles.forEach((entity) => {
       entity.sprite.scale.set(1 / this.utils.getScale());
-      if (progress >= 1) return;
-      const newPosition = entity.endPos
-        .multiplyBy(progress)
-        .add(entity.startPos.multiplyBy(1 - progress));
-      entity.sprite.x = newPosition.x;
-      entity.sprite.y = newPosition.y;
     });
   }
 
+  private onRedraw(event: L.LeafletEvent) {
+    this.updateVehiclePositions();
+  }
+
   private onClick(event: L.LeafletMouseEvent) {
-    this.changeEntitiesDestination(event.latlng);
-    this.addEntity();
+    // this.changeEntitiesDestination(event.latlng);
+    // this.addEntity();
   }
 
   addPixiOverlay(map: L.Map) {
