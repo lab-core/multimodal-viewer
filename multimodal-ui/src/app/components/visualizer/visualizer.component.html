@@ -1,6 +1,8 @@
 @let simulation = simulationSignal();
+@let numberOfPassengers = numberOfPassengersSignal();
+@let numberOfVehicles = numberOfVehiclesSignal();
 
-@if (simulation) {
+@if (isInitializedSignal() && simulation !== null) {
   <!-- MARK: Search Bar
   -->
   <mat-form-field class="search-bar enable-pointer-events">
@@ -18,6 +20,10 @@
       <mat-card-content class="flex-1">
         <mat-card-title>Simulation: {{ simulationName }}</mat-card-title>
         <mat-card-subtitle>Source: {{ simulationData }}</mat-card-subtitle>
+        <span>
+          The simulation contains {{ numberOfPassengers }} passengers and
+          {{ numberOfVehicles }} vehicles.
+        </span>
       </mat-card-content>
       <mat-card-actions align="end">
         <button mat-button (click)="hideInformationPanel()">Hide</button>

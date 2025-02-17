@@ -43,6 +43,7 @@ module.exports = tseslint.config(
       ],
       "@typescript-eslint/no-floating-promises": ["error"],
       "@typescript-eslint/no-misused-promises": ["error"],
+      "@angular-eslint/no-input-rename": ["off"],
       "@angular-eslint/no-output-rename": ["off"],
     },
   },

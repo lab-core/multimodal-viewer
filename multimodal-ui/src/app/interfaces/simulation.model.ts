@@ -229,8 +229,6 @@ export type AnySimulationUpdate = SimulationUpdate<
   keyof SimulationUpdateTypeMap
 >;
 
-// TODO temporary
-
 /**
  * Snapshot of the simulation environment at a given time
  */
@@ -254,3 +252,10 @@ export interface RawSimulationEnvironment
   passengers: Passenger[];
   vehicles: Vehicle[];
 }
+
+export interface SimulationState {
+  environment: SimulationEnvironment;
+  updates: AnySimulationUpdate[];
+}
+
+export const STATE_SAVE_STEP = 500;

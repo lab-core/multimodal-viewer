@@ -1,9 +1,8 @@
+import base64
 import logging
 import os
-import time
 import shutil
-import base64
-
+import time
 
 from flask import Flask
 from flask_socketio import SocketIO, emit, join_room, leave_room
@@ -82,6 +81,18 @@ def run_server():
         data_dir = os.path.join(current_dir, "..", "data")
         emit("available-data", os.listdir(data_dir), to=CLIENT_ROOM)
 
+    @socketio.on("get-missing-simulation-states")
+    def on_client_get_missing_simulation_states(
+        simulation_id, first_state_order, last_update_order, visualization_time
+    ):
+        log(
+            f"getting missing simulation states for {simulation_id} with orders {first_state_order} and {last_update_order} at time {visualization_time}",
+            "client",
+        )
+        simulation_manager.emit_missing_simulation_states(
+            simulation_id, first_state_order, last_update_order, visualization_time
+        )
+
     @socketio.on("importFolder")
     def on_import_folder(data):
         log("importing folder", folder_name)
@@ -101,7 +112,6 @@ def run_server():
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(file["content"])
-        
 
     # MARK: Script events
     @socketio.on("terminate")

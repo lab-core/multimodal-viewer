@@ -18,7 +18,7 @@ export interface InformationDialogData {
   canCancel: boolean;
 }
 
-export type InformationDialogResult = null;
+export type InformationDialogResult = boolean | null;
 
 @Component({
   selector: 'app-information-dialog',

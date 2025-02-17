@@ -12,6 +12,7 @@ from server_utils import (
     SAVE_VERSION,
     STATE_SAVE_STEP,
     SimulationStatus,
+    get_session_id,
     log,
 )
 from simulation import run_simulation
@@ -19,11 +20,11 @@ from simulation_visualization_data_model import (
     SimulationInformation,
     Update,
     VisualizedEnvironment,
-    extract_indexes,
+    extract_byte_offsets,
     get_simulation_save_directory_path,
     get_simulation_save_file_path,
-    read_line_at_index,
-    read_lines_from_index,
+    read_line_at_byte_offset,
+    read_lines_from_byte_offset,
 )
 
 
@@ -366,6 +367,145 @@ class SimulationManager:
 
         log("Emitting simulations", "server")
 
+    def emit_missing_simulation_states(
+        self,
+        simulation_id: str,
+        first_state_order: float,
+        last_update_order: float,
+        visualization_time: float,
+    ):
+        if simulation_id not in self.simulations:
+            log(
+                f"{__file__} {inspect.currentframe().f_lineno}: Simulation {simulation_id} not found",
+                "server",
+                logging.ERROR,
+            )
+            return
+
+        simulation = self.simulations[simulation_id]
+
+        try:
+            byte_offsets = extract_byte_offsets(simulation_id)
+
+            if len(byte_offsets) <= 1:
+                return
+
+            # Retrieve line index from state order
+            #   states are saved all STATE_SAVE_STEP updates
+            #   it means that the difference between the indexes of two states is STATE_SAVE_STEP + 1
+            #   and the indexes are 501, 1002, 1503, ...
+            #   but orders of states are multiples of STATE_SAVE_STEP - 1 (499, 999, 1499, ...)
+            first_sent_line = (
+                (first_state_order + 1) // (STATE_SAVE_STEP) * (STATE_SAVE_STEP + 1)
+            )
+
+            # Retrieve line index from update order
+            #   similar to the previous one but we need to add the offset
+            last_sent_line = (last_update_order + 1) // (STATE_SAVE_STEP) * (
+                STATE_SAVE_STEP + 1
+            ) + (last_update_order + 1) % (STATE_SAVE_STEP)
+
+            # Binary search to find the first update equal or after the current time
+            first_update_line = 1
+            last_update_line = len(byte_offsets) - 1
+
+            while first_update_line < last_update_line:
+                middle_update_line = (first_update_line + last_update_line) // 2
+
+                # if the middle update is a state, go to the next one
+                if (middle_update_line) % (STATE_SAVE_STEP + 1) == 0:
+                    middle_update_line += 1
+
+                update = Update.deserialize(
+                    read_line_at_byte_offset(
+                        simulation_id, byte_offsets[middle_update_line]
+                    )
+                )
+
+                if update.timestamp >= visualization_time:
+                    last_update_line = middle_update_line
+                else:
+                    first_update_line = middle_update_line + 1
+
+            corresponding_state_line = (first_update_line // (STATE_SAVE_STEP + 1)) * (
+                STATE_SAVE_STEP + 1
+            )
+
+            first_line = max(corresponding_state_line - 5 * (STATE_SAVE_STEP + 1), 1)
+            last_line = min(
+                corresponding_state_line + 5 * (STATE_SAVE_STEP + 1) + STATE_SAVE_STEP,
+                len(byte_offsets) - 1,
+            )
+
+            number_of_missing_lines_before = first_sent_line - first_line
+            number_of_missing_lines_after = last_line - last_sent_line
+
+            missing_lines_before = []
+            if number_of_missing_lines_before > 0:
+                missing_lines_before = read_lines_from_byte_offset(
+                    simulation_id,
+                    byte_offsets[first_line],
+                    number_of_missing_lines_before,
+                )
+                missing_lines_before = [
+                    (first_line + i, line)
+                    for i, line in enumerate(missing_lines_before)
+                ]
+
+            missing_lines_after = []
+            if number_of_missing_lines_after > 0:
+                missing_lines_after = read_lines_from_byte_offset(
+                    simulation_id,
+                    byte_offsets[last_line - number_of_missing_lines_after + 1],
+                    number_of_missing_lines_after,
+                )
+                missing_lines_after = [
+                    (last_line - number_of_missing_lines_after + 1 + i, line)
+                    for i, line in enumerate(missing_lines_after)
+                ]
+
+            missing_states = []
+            missing_updates = []
+            for i, missing_line in missing_lines_before + missing_lines_after:
+                # If the line is a state
+                if i % (STATE_SAVE_STEP + 1) == 0:
+                    missing_states.append(
+                        VisualizedEnvironment.deserialize(missing_line)
+                    )
+                else:
+                    missing_updates.append(Update.deserialize(missing_line))
+
+            if (
+                len(missing_lines_before) > 0
+                and first_line < STATE_SAVE_STEP + 1
+                or last_sent_line == 0
+            ):
+                # Add empty environment to the beginning if missing
+                first_environment = VisualizedEnvironment()
+                first_environment.order = -1
+                missing_states.append(first_environment)
+
+            # Emit missing lines
+            emit(
+                "missing-simulation-states",
+                (
+                    [state.serialize() for state in missing_states],
+                    [update.serialize() for update in missing_updates],
+                ),
+                to=get_session_id(),
+            )
+
+        except:
+            log(
+                f"Error while emitting simulation states for {simulation_id}, marking simulation as corrupted",
+                "server",
+                logging.ERROR,
+            )
+
+            simulation.status = SimulationStatus.CORRUPTED
+
+            self.emit_simulations()
+
     def query_simulations(self):
         simulation_save_directory_path = get_simulation_save_directory_path()
 
@@ -381,11 +521,11 @@ class SimulationManager:
     def query_simulation(self, simulation_id) -> None:
         # Non valid save files might throw an exception
         try:
-            indexes = extract_indexes(simulation_id)
-            if len(indexes) == 0:
+            byte_offsets = extract_byte_offsets(simulation_id)
+            if len(byte_offsets) == 0:
                 return
 
-            first_line = read_line_at_index(simulation_id, indexes[0])
+            first_line = read_line_at_byte_offset(simulation_id, byte_offsets[0])
 
             simulation_information = SimulationInformation.deserialize(first_line)
 
@@ -464,33 +604,35 @@ class SimulationManager:
 if __name__ == "__main__":
     import time
 
-    # Measure the time taken to build the indexes
-    simulation_id = "20250216-132207970-test19"
+    # Measure the time taken to build the byte_offsets
+    simulation_id = "20250216-231211847-small_taxi_test"
 
     start = time.time()
-    indexes = extract_indexes(simulation_id)
+    byte_offsets = extract_byte_offsets(simulation_id)
     end = time.time()
 
-    print(f"Found {len(indexes)} indexes in {end - start} seconds")
+    print(f"Found {len(byte_offsets)} byte_offsets in {end - start} seconds")
 
     # Measure the time taken to read all lines separately (~ 10s)
     # start = time.time()
-    # for index in indexes:
-    #     read_line_at_index(simulation_id, index)
+    # for byte_offset in byte_offsets:
+    #     read_line_at_byte_offset(simulation_id, byte_offset)
     # end = time.time()
 
     # print(f"Read all lines in {end - start} seconds")
 
     # Measure the time taken to read all lines at once
     start = time.time()
-    read_lines_from_index(simulation_id, indexes[0], len(indexes))
+    read_lines_from_byte_offset(simulation_id, byte_offsets[0], len(byte_offsets))
     end = time.time()
 
     print(f"Read all lines at once in {end - start} seconds")
 
     # Measure the time taken to read 1 state
     start = time.time()
-    first_state = read_line_at_index(simulation_id, indexes[STATE_SAVE_STEP + 1])
+    first_state = read_line_at_byte_offset(
+        simulation_id, byte_offsets[STATE_SAVE_STEP + 1]
+    )
     end = time.time()
 
     print(f"Read 1 state in {end - start} seconds")
@@ -503,8 +645,8 @@ if __name__ == "__main__":
     print(f"Deserialize 1 state in {end - start} seconds")
 
     # Measure the time taken to deserialize all updates for a state
-    updates = read_lines_from_index(
-        simulation_id, indexes[STATE_SAVE_STEP + 2], STATE_SAVE_STEP
+    updates = read_lines_from_byte_offset(
+        simulation_id, byte_offsets[STATE_SAVE_STEP + 2], STATE_SAVE_STEP
     )
 
     start = time.time()
@@ -517,9 +659,9 @@ if __name__ == "__main__":
     # Mesure the time taken to read deserialize 50 states
     number_of_states = 50
     start = time.time()
-    all_lines = read_lines_from_index(
+    all_lines = read_lines_from_byte_offset(
         simulation_id,
-        indexes[1],
+        byte_offsets[1],
         number_of_states * (STATE_SAVE_STEP + 1) + STATE_SAVE_STEP,
     )
     for i, line in enumerate(all_lines):

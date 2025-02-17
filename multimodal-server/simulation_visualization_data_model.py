@@ -426,7 +426,12 @@ class Update(Serializable):
         if isinstance(data, str):
             data = json.loads(data.replace("'", '"'))
 
-        if "type" not in data or "data" not in data or "timestamp" not in data:
+        if (
+            "type" not in data
+            or "data" not in data
+            or "timestamp" not in data
+            or "order" not in data
+        ):
             raise ValueError("Invalid data for Update")
 
         update_type = UpdateType(data["type"])
@@ -444,7 +449,9 @@ class Update(Serializable):
         elif update_type == UpdateType.UPDATE_VEHICLE_POSITION:
             update_data = VehiclePositionUpdate.deserialize(update_data)
 
-        return Update(update_type, update_data, timestamp)
+        update = Update(update_type, update_data, timestamp)
+        update.order = data["order"]
+        return update
 
 
 class SimulationInformation(Serializable):
@@ -539,32 +546,34 @@ def get_simulation_save_file_path(simulation_id: str) -> str:
     return file_path
 
 
-def extract_indexes(simulation_id: str) -> list[int]:
+def extract_byte_offsets(simulation_id: str) -> list[int]:
     file_path = get_simulation_save_file_path(simulation_id)
-    indexes = []
+    byte_offsets = []
 
     with open(file_path, "rb") as file:
         offset = file.tell()
 
         line = file.readline()
         while line:
-            indexes.append(offset)
+            byte_offsets.append(offset)
             offset = file.tell()
             line = file.readline()
 
-    return indexes
+    return byte_offsets
 
 
-def read_line_at_index(simulation_id: str, index: int) -> str:
+def read_line_at_byte_offset(simulation_id: str, byte_offset: int) -> str:
     with open(get_simulation_save_file_path(simulation_id), "r") as file:
-        file.seek(index)
+        file.seek(byte_offset)
         line = file.readline()
         return line
 
 
-def read_lines_from_index(simulation_id: str, index: int, count: int) -> list[str]:
+def read_lines_from_byte_offset(
+    simulation_id: str, byte_offset: int, count: int
+) -> list[str]:
     with open(get_simulation_save_file_path(simulation_id), "r") as file:
-        file.seek(index)
+        file.seek(byte_offset)
         lines = []
         for _ in range(count):
             line = file.readline()
