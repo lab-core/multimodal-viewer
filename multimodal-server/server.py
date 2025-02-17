@@ -179,9 +179,11 @@ def run_server():
         )
 
     @socketio.on("simulation-identification")
-    def on_simulation_identification(simulation_id, data, status):
+    def on_simulation_identification(
+        simulation_id, timestamp, estimated_end_time, status
+    ):
         simulation_manager.on_simulation_identification(
-            simulation_id, data, status, get_session_id()
+            simulation_id, timestamp, estimated_end_time, status, get_session_id()
         )
 
     logging.basicConfig(level=logging.DEBUG)

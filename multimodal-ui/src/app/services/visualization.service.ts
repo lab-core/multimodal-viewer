@@ -86,32 +86,37 @@ export class VisualizationService {
   private readonly _visualizationEnvironmentSignal: Signal<SimulationEnvironment | null> =
     computed(() => {
       const visualizationTime = this.visualizationTimeSignal();
-      console.log('visualizationTime:', visualizationTime);
       const simulationStates = this.simulationService.simulationStatesSignal();
 
       if (simulationStates.length === 0 || visualizationTime === null) {
-        console.log(
+        console.error(
           'No simulation states found for visualization time:',
           visualizationTime,
         );
         return this.visualizationEnvironment;
       }
 
-      const sortedStates = simulationStates.sort(
-        (a, b) => a.environment.order - b.environment.order,
-      );
+      const sortedStates = simulationStates
+        .sort((a, b) => a.environment.order - b.environment.order)
+        .map((state) => ({
+          ...state,
+          updates: state.updates.sort((a, b) => a.order - b.order),
+        }));
+
       const startState = sortedStates.find(
-        (state) =>
+        (state, index) =>
           state.updates.length > 0 &&
           state.updates[0].timestamp <= visualizationTime &&
-          state.updates[state.updates.length - 1].timestamp >=
-            visualizationTime,
+          (state.updates[state.updates.length - 1].timestamp >=
+            visualizationTime ||
+            index === sortedStates.length - 1),
       );
 
       if (!startState) {
-        console.log(
+        console.error(
           'No start state found for visualization time:',
           visualizationTime,
+          sortedStates,
         );
         return this.visualizationEnvironment;
       }
@@ -148,8 +153,6 @@ export class VisualizationService {
       const currentVisualizationTime = this._visualizationTimeSignal();
 
       this.visualizationTime = currentVisualizationTime;
-
-      console.log('Current visualization time:', currentVisualizationTime);
     });
 
     effect(() => {
@@ -172,8 +175,6 @@ export class VisualizationService {
         simulationStates
           .sort((a, b) => b.environment.order - a.environment.order)[0]
           ?.updates.sort((a, b) => b.order - a.order)[0]?.order ?? -1;
-
-      console.log('Current states:', simulationStates);
 
       if (
         this.lastRequestFirstOrder === firstStateOrder &&

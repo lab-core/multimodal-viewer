@@ -298,32 +298,32 @@ class SimulationManager:
 
         self.emit_simulations()
 
-    def on_simulation_identification(self, simulation_id, data, status, socket_id):
+    def on_simulation_identification(
+        self,
+        simulation_id,
+        simulation_time,
+        simulation_estimated_end_time,
+        status,
+        socket_id,
+    ):
+        # For now, we only identify simulations that are lost
         if (
-            simulation_id in self.simulations
-            and self.simulations[simulation_id].status != SimulationStatus.LOST
+            simulation_id not in self.simulations
+            or self.simulations[simulation_id].status != SimulationStatus.LOST
         ):
             return
 
         log(
-            f"Identifying simulation {simulation_id} with data {data} and status {status}",
+            f"Identifying simulation {simulation_id}",
             "simulation",
         )
 
-        name = simulation_id.split("-")[2]
-        start_time = "-".join(simulation_id.split("-")[:2])
+        simulation = self.simulations[simulation_id]
 
-        simulation = SimulationHandler(
-            simulation_id,
-            name,
-            start_time,
-            data,
-            SimulationStatus[status],
-        )
-
+        simulation.status = SimulationStatus[status]
+        simulation.simulation_time = simulation_time
+        simulation.simulation_estimated_end_time = simulation_estimated_end_time
         simulation.socket_id = socket_id
-
-        self.simulations[simulation_id] = simulation
 
         self.emit_simulations()
 

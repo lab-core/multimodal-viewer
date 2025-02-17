@@ -422,10 +422,12 @@ class SimulationVisualizationVisualizer(Visualizer):
 class SimulationVisualizationEnvironmentObserver(EnvironmentObserver):
 
     def __init__(self, simulation_id: str, data: str, sio: Client) -> None:
-        data_collector = SimulationVisualizationDataCollector(simulation_id, data, sio)
+        self.data_collector = SimulationVisualizationDataCollector(
+            simulation_id, data, sio
+        )
         super().__init__(
             visualizers=SimulationVisualizationVisualizer(
-                simulation_id, data_collector, sio
+                simulation_id, self.data_collector, sio
             ),
-            data_collectors=data_collector,
+            data_collectors=self.data_collector,
         )

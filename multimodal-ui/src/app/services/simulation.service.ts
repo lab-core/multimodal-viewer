@@ -50,8 +50,6 @@ export class SimulationService {
     this.communicationService.on(
       'missing-simulation-states',
       (rawMissingStates, rawMissingUpdates) => {
-        console.log('Missing states:', rawMissingStates);
-        console.log('Missing updates:', rawMissingUpdates);
         this._simulationStatesSignal.update((states) => {
           const missingStates = (rawMissingStates as RawSimulationEnvironment[])
             .map((rawState) => this.extractSimulationEnvironment(rawState))
