@@ -14,6 +14,7 @@ import { SimulationService } from '../../services/simulation.service';
 import { UserInterfaceService } from '../../services/user-interface.service';
 import { InformationDialogComponent } from '../information-dialog/information-dialog.component';
 import { SimulationControlBarComponent } from '../simulation-control-bar/simulation-control-bar.component';
+import { AnimationService } from '../../services/animation.service';
 
 @Component({
   selector: 'app-visualizer',
@@ -30,6 +31,7 @@ import { SimulationControlBarComponent } from '../simulation-control-bar/simulat
 })
 export class VisualizerComponent {
   readonly simulationSignal: Signal<Simulation | null>;
+  readonly fpsSignal: Signal<number>;
 
   private matDialogRef: MatDialogRef<InformationDialogComponent> | null = null;
 
@@ -39,8 +41,10 @@ export class VisualizerComponent {
     private readonly router: Router,
     private readonly communicationService: CommunicationService,
     private readonly dialogService: DialogService,
+    private readonly animationService: AnimationService
   ) {
     this.simulationSignal = this.simulationService.activeSimulationSignal;
+    this.fpsSignal = this.animationService.fpsSignal;
 
     // Check if the simulation is available
     effect(() => {

@@ -10,6 +10,13 @@
     <mat-icon matSuffix>search</mat-icon>
   </mat-form-field>
 
+  <!-- MARK: FPS Display 
+   -->
+  <mat-card appearance="outlined" class="fps-display">
+    <mat-card-content>FPS: {{ fpsSignal() }}</mat-card-content>
+  </mat-card>
+  
+
   <!-- MARK: Information Panel
     -->
   @if (shouldShowInformationPanelSignal()) {
