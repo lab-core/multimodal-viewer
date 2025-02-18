@@ -182,6 +182,11 @@ def run_server():
     def on_simulation_identification(
         simulation_id, timestamp, estimated_end_time, status
     ):
+        log(
+            f"simulation  {simulation_id} identified with timestamp {timestamp}, estimated end time {estimated_end_time} and status {status}",
+            "simulation",
+            logging.DEBUG,
+        )
         simulation_manager.on_simulation_identification(
             simulation_id, timestamp, estimated_end_time, status, get_session_id()
         )
