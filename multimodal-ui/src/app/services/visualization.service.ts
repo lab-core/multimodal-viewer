@@ -105,9 +105,9 @@ export class VisualizationService {
 
       const startState = sortedStates.find(
         (state, index) =>
+          state.environment.timestamp <= visualizationTime &&
           state.updates.length > 0 &&
-          state.updates[0].timestamp <= visualizationTime &&
-          (state.updates[state.updates.length - 1].timestamp >=
+          (state.updates[state.updates.length - 1].timestamp >
             visualizationTime ||
             index === sortedStates.length - 1),
       );

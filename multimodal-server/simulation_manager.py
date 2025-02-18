@@ -4,7 +4,7 @@ import logging
 import multiprocessing
 import os
 import tempfile
-from enum import Enum
+import time
 
 from flask_socketio import emit
 from server_utils import (
@@ -385,7 +385,14 @@ class SimulationManager:
         simulation = self.simulations[simulation_id]
 
         try:
+            start = time.time()
             byte_offsets = extract_byte_offsets(simulation_id)
+            end = time.time()
+
+            log(
+                f"Extracted {len(byte_offsets)} byte offsets in {end - start} seconds",
+                "server",
+            )
 
             if len(byte_offsets) <= 1:
                 return
@@ -405,7 +412,8 @@ class SimulationManager:
                 STATE_SAVE_STEP + 1
             ) + (last_update_order + 1) % (STATE_SAVE_STEP)
 
-            # Binary search to find the first update equal or after the current time
+            # Binary search to find the first update after the current time
+            start = time.time()
             first_update_line = 1
             last_update_line = len(byte_offsets) - 1
 
@@ -422,13 +430,30 @@ class SimulationManager:
                     )
                 )
 
-                if update.timestamp >= visualization_time:
-                    last_update_line = middle_update_line
-                else:
-                    first_update_line = middle_update_line + 1
+                previous_first_update_line = first_update_line
+                previous_last_update_line = last_update_line
 
-            corresponding_state_line = (first_update_line // (STATE_SAVE_STEP + 1)) * (
+                if update.timestamp <= visualization_time:
+                    first_update_line = middle_update_line + 1
+                else:
+                    last_update_line = middle_update_line
+
+                if (
+                    previous_first_update_line == first_update_line
+                    and previous_last_update_line == last_update_line
+                ):
+                    break
+
+            # We mark the first update with a timestamp greater than the visualization time as the center
+            # If no update is found, it will be the last update
+            corresponding_state_line = (last_update_line // (STATE_SAVE_STEP + 1)) * (
                 STATE_SAVE_STEP + 1
+            )
+
+            end = time.time()
+            log(
+                f"Found corresponding state line in {end - start} seconds",
+                "server",
             )
 
             first_line = max(corresponding_state_line - 5 * (STATE_SAVE_STEP + 1), 1)
@@ -440,6 +465,7 @@ class SimulationManager:
             number_of_missing_lines_before = first_sent_line - first_line
             number_of_missing_lines_after = last_line - last_sent_line
 
+            start = time.time()
             missing_lines_before = []
             if number_of_missing_lines_before > 0:
                 missing_lines_before = read_lines_from_byte_offset(
@@ -493,6 +519,12 @@ class SimulationManager:
                     [update.serialize() for update in missing_updates],
                 ),
                 to=get_session_id(),
+            )
+
+            end = time.time()
+            log(
+                f"Emitted missing states in {end - start} seconds",
+                "server",
             )
 
         except:
