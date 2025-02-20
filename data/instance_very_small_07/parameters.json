@@ -1,0 +1,12 @@
+{
+	"type": "FIXED_LINE",
+	"freeze_interval": 5,
+	"vehicles_end_time": 100000,
+	"time_window": 180,
+	"input_files": 
+	{
+		"requests": "requests.csv",
+		"graph": "bus_network_graph.txt",
+		"gtfs": "gtfs/"
+	}
+}
