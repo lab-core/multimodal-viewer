@@ -5,7 +5,7 @@ import multiprocessing
 from enum import Enum
 
 from flask_socketio import emit
-from server_utils import CLIENT_ROOM, SimulationStatus, convert_string_to_enum, log
+from server_utils import CLIENT_ROOM, SimulationStatus, log
 from simulation import run_simulation
 
 
@@ -257,7 +257,7 @@ class SimulationManager:
             name,
             start_time,
             data,
-            convert_string_to_enum(status, SimulationStatus),
+            SimulationStatus[status],
         )
 
         simulation.socket_id = socket_id

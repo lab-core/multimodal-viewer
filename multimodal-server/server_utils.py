@@ -22,13 +22,6 @@ class SimulationStatus(Enum):
     CORRUPTED = "corrupted"
 
 
-def convert_string_to_enum(value, enum: Enum):
-    for enum_value in enum:
-        if value == enum_value.value:
-            return enum_value
-    return None
-
-
 def getSessionId():
     return request.sid
 
