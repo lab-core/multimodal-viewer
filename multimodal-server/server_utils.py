@@ -1,4 +1,5 @@
 import logging
+from enum import Enum
 
 from flask import request
 from flask_socketio import emit
@@ -9,6 +10,16 @@ PORT = 5000
 CLIENT_ROOM = "client"
 SIMULATION_ROOM = "simulation"
 SCRIPT_ROOM = "script"
+
+
+class SimulationStatus(Enum):
+    STARTING = "starting"
+    PAUSED = "paused"
+    RUNNING = "running"
+    STOPPING = "stopping"
+    COMPLETED = "completed"
+    LOST = "lost"
+    CORRUPTED = "corrupted"
 
 
 def getSessionId():

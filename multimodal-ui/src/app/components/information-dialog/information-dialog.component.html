@@ -4,13 +4,16 @@
   <div class="flex-row align-main-start align-cross-center gap-1-rem">
     @switch (data.type) {
       @case ("error") {
-        <mat-icon class="text-error"> error </mat-icon>
+        <mat-icon class="text-red"> error </mat-icon>
       }
       @case ("warning") {
-        <mat-icon class="text-warning"> warning </mat-icon>
+        <mat-icon class="text-yellow"> warning </mat-icon>
       }
       @case ("info") {
         <mat-icon> info </mat-icon>
+      }
+      @default {
+        <!-- Do nothing -->
       }
     }
     <p>
@@ -20,7 +23,12 @@
 </mat-dialog-content>
 
 <mat-dialog-actions>
-  <button mat-button mat-dialog-close>
-    {{ data.closeButtonOverride ?? "Close" }}
+  @if (data.canCancel) {
+    <button mat-button [mat-dialog-close]="false">
+      {{ data.cancelButtonOverride ?? "Close" }}
+    </button>
+  }
+  <button mat-button [mat-dialog-close]="true">
+    {{ data.confirmButtonOverride ?? (data.canCancel ? "Confirm" : "Close") }}
   </button>
 </mat-dialog-actions>

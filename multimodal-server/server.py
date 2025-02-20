@@ -10,6 +10,7 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 from server_utils import CLIENT_ROOM, HOST, PORT, getSessionId, log
 from simulation_manager import SimulationManager
 
+
 def run_server():
     app = Flask(__name__)
 
@@ -150,12 +151,19 @@ def run_server():
         log(f"simulation  {simulation_id}: {update}", "simulation", logging.DEBUG)
         emit("simulation-update" + simulation_id, update, to=CLIENT_ROOM)
 
+    @socketio.on("simulation-identification")
+    def on_simulation_identification(simulation_id, data, status):
+        simulation_manager.on_simulation_identification(
+            simulation_id, data, status, getSessionId()
+        )
+
     logging.basicConfig(level=logging.DEBUG)
 
     log(f"Starting server at {HOST}:{PORT}", "server")
 
     # MARK: Run server
     socketio.run(app, host=HOST, port=PORT)
+
 
 if __name__ == "__main__":
     run_server()

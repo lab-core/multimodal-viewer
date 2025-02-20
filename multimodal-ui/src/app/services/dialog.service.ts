@@ -1,11 +1,6 @@
 import { Injectable } from '@angular/core';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import {
-  ConfirmationDialogComponent,
-  ConfirmationDialogData,
-  ConfirmationDialogResult,
-} from '../components/confirmation-dialog/confirmation-dialog.component';
-import {
   InformationDialogComponent,
   InformationDialogData,
   InformationDialogResult,
@@ -61,23 +56,6 @@ export class DialogService {
       maxWidth: '80vw',
       maxHeight: '80vh',
       minWidth: '30vw',
-    });
-  }
-
-  openConfirmationDialog(
-    data: ConfirmationDialogData,
-  ): MatDialogRef<ConfirmationDialogComponent, ConfirmationDialogResult> {
-    return this.matDialog.open<
-      ConfirmationDialogComponent,
-      ConfirmationDialogData,
-      ConfirmationDialogResult
-    >(ConfirmationDialogComponent, {
-      data,
-      disableClose: true,
-      autoFocus: false,
-      maxWidth: '80vw',
-      maxHeight: '80vh',
-      width: '500px',
     });
   }
 

@@ -24,9 +24,9 @@
 }
 
 .light {
-  font-weight: lighter;
+  font-weight: 300;
 }
 
 .bold {
-  font-weight: bold;
+  font-weight: 500;
 }

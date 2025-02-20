@@ -10,7 +10,7 @@ from multimodalsim.observer.visualizer import Visualizer
 from multimodalsim.simulator.environment import Environment
 from multimodalsim.simulator.event import Event
 from multimodalsim.simulator.simulator import Simulator
-from server_utils import HOST, PORT
+from server_utils import HOST, PORT, SimulationStatus
 from simulation_event_manager import SimulationEventManager
 from socketio import Client
 
@@ -22,7 +22,7 @@ def run_simulation(simulation_id: str, data: str) -> None:
 
     sio.connect(f"http://{HOST}:{PORT}", auth={"type": "simulation"})
 
-    sio.emit("simulation-start", simulation_id)
+    status = SimulationStatus.STARTING
 
     class CustomVisualizer(Visualizer):
 
@@ -88,26 +88,39 @@ def run_simulation(simulation_id: str, data: str) -> None:
 
     sio.emit("simulation-start", simulation_id)
 
+    status = SimulationStatus.RUNNING
+
     # In simulation event
     @sio.on("pause-simulation")
     def pauseSimulator():
-        sio.emit("simulation-pause", simulation_id)
         simulator.pause()
+        sio.emit("simulation-pause", simulation_id)
+        status = SimulationStatus.PAUSED
 
     @sio.on("resume-simulation")
     def resumeSimulator():
-        sio.emit("simulation-resume", simulation_id)
         simulator.resume()
+        sio.emit("simulation-resume", simulation_id)
+        status = SimulationStatus.RUNNING
 
     @sio.on("stop-simulation")
     def stopSimulator():
         simulator.stop()
-        sio.emit("simulation-end", simulation_id)
+        status = SimulationStatus.STOPPING
 
     @sio.on("can-disconnect")
     def canDisconnect():
         sio.disconnect()
 
+    @sio.on("connect")
+    def on_connect():
+        # Emit simulation identification
+        sio.emit(
+            "simulation-identification",
+            (simulation_id, data, status.value),
+        )
+
     simulation_thread.join()
-    sio.emit("simulation-end", simulation_id)
+    if sio.connected:
+        sio.emit("simulation-end", simulation_id)
     sio.wait()

@@ -26,6 +26,7 @@ import { DataService } from './data.service';
   providedIn: 'root',
 })
 export class SimulationService {
+  // MARK: Properties
   private readonly _activeSimulationIdSignal: WritableSignal<string | null> =
     signal(null);
 
@@ -75,6 +76,7 @@ export class SimulationService {
 
   private activeSimulationId: string | null = null;
 
+  // MARK: Constructor
   constructor(
     private readonly dataService: DataService,
     private readonly communicationService: CommunicationService,
@@ -113,6 +115,7 @@ export class SimulationService {
     });
   }
 
+  // MARK: Active simulation
   setActiveSimulationId(simulationId: string) {
     this._activeSimulationIdSignal.set(simulationId);
   }
@@ -139,6 +142,20 @@ export class SimulationService {
     });
   }
 
+  // MARK: Communication
+  pauseSimulation(simulationId: string) {
+    this.communicationService.emit('pause-simulation', simulationId);
+  }
+
+  resumeSimulation(simulationId: string) {
+    this.communicationService.emit('resume-simulation', simulationId);
+  }
+
+  stopSimulation(simulationId: string) {
+    this.communicationService.emit('stop-simulation', simulationId);
+  }
+
+  // MARK: Data extraction
   /**
    * Validate and extract simulation update from the raw data.
    */
@@ -411,6 +428,7 @@ export class SimulationService {
     return { id, latitude, longitude };
   }
 
+  // MARK: Build environment
   private applyUpdate(
     update: AnySimulationUpdate,
     simulationEnvironment: SimulationEnvironment,

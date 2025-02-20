@@ -40,7 +40,7 @@ class Serializable:
         raise NotImplementedError()
 
 
-def convertPassengerStatus(status: PassengerStatus) -> str:
+def convert_passenger_status(status: PassengerStatus) -> str:
     if status == PassengerStatus.RELEASE:
         return "release"
     elif status == PassengerStatus.ASSIGNED:
@@ -55,7 +55,7 @@ def convertPassengerStatus(status: PassengerStatus) -> str:
         raise ValueError(f"Unknown PassengerStatus {status}")
 
 
-def convertVehicleStatus(status: VehicleStatus) -> str:
+def convert_vehicle_status(status: VehicleStatus) -> str:
     if status == VehicleStatus.RELEASE:
         return "release"
     elif status == VehicleStatus.IDLE:
@@ -89,7 +89,7 @@ class VisualizedPassenger(Serializable):
         return {
             "id": self.passenger_id,
             "name": self.name,
-            "status": convertPassengerStatus(self.status),
+            "status": convert_passenger_status(self.status),
         }
 
 
@@ -132,7 +132,7 @@ class VisualizedVehicle(Serializable):
         serialized = {
             "id": self.vehicle_id,
             "mode": self.mode,
-            "status": convertVehicleStatus(self.status),
+            "status": convert_vehicle_status(self.status),
         }
         if self.latitude is not None and self.longitude is not None:
             serialized["latitude"] = self.latitude
@@ -195,7 +195,7 @@ class PassengerStatusUpdate(Serializable):
     def serialize(self) -> dict:
         return {
             "id": self.passenger_id,
-            "status": convertPassengerStatus(self.status),
+            "status": convert_passenger_status(self.status),
         }
 
 
@@ -210,7 +210,7 @@ class VehicleStatusUpdate(Serializable):
     def serialize(self) -> dict:
         return {
             "id": self.vehicle_id,
-            "status": convertVehicleStatus(self.status),
+            "status": convert_vehicle_status(self.status),
         }
 
 

@@ -5,17 +5,8 @@ import multiprocessing
 from enum import Enum
 
 from flask_socketio import emit
-from server_utils import CLIENT_ROOM, log
+from server_utils import CLIENT_ROOM, SimulationStatus, log
 from simulation import run_simulation
-
-
-class SimulationStatus(Enum):
-    PAUSED = "paused"
-    RUNNING = "running"
-    COMPLETED = "completed"
-
-    """ The simulation has been abnormally stopped """
-    STOPPED = "stopped"
 
 
 class MinimalistSimulationConfiguration:
@@ -45,7 +36,6 @@ class SimulationHandler:
     process: multiprocessing.Process | None
     status: SimulationStatus
     socket_id: str | None
-    response_event: str | None
 
     # TODO
     # simulation_start_time: float | None
@@ -70,7 +60,6 @@ class SimulationHandler:
         self.status = status
 
         self.socket_id = None
-        self.response_event = None
 
 
 class SimulationManager:
@@ -99,15 +88,18 @@ class SimulationManager:
             name,
             start_time,
             data,
-            SimulationStatus.RUNNING,
+            SimulationStatus.STARTING,
             simulation_process,
         )
-
-        simulation_handler.response_event = response_event
 
         self.simulations[simulation_id] = simulation_handler
 
         simulation_process.start()
+
+        self.emit_simulations()
+
+        log(f'Emitting response event "{response_event}"', "server")
+        emit(response_event, simulation_id, to=CLIENT_ROOM)
 
         return simulation_handler
 
@@ -123,13 +115,9 @@ class SimulationManager:
         simulation = self.simulations[simulation_id]
 
         simulation.socket_id = socket_id
+        simulation.status = SimulationStatus.RUNNING
 
         self.emit_simulations()
-
-        if simulation.response_event is not None:
-            log(f'Emitting response event "{simulation.response_event}"', "server")
-            emit(simulation.response_event, simulation_id, to=CLIENT_ROOM)
-            simulation.response_event = None
 
     def stop_simulation(self, simulation_id):
         if simulation_id not in self.simulations:
@@ -141,6 +129,7 @@ class SimulationManager:
             return
 
         simulation = self.simulations[simulation_id]
+        simulation.status = SimulationStatus.STOPPING
 
         emit("stop-simulation", to=simulation.socket_id)
 
@@ -244,7 +233,38 @@ class SimulationManager:
             return
 
         # If the simulation is not completed, it has been disconnected abnormally
-        simulation.status = SimulationStatus.STOPPED
+        simulation.status = SimulationStatus.LOST
+
+        self.emit_simulations()
+
+    def on_simulation_identification(self, simulation_id, data, status, socket_id):
+        if (
+            simulation_id in self.simulations
+            and self.simulations[simulation_id].status != SimulationStatus.LOST
+        ):
+            return
+
+        log(
+            f"Identifying simulation {simulation_id} with data {data} and status {status}",
+            "simulation",
+        )
+
+        name = simulation_id.split("-")[2]
+        start_time = "-".join(simulation_id.split("-")[:2])
+
+        simulation = SimulationHandler(
+            simulation_id,
+            name,
+            start_time,
+            data,
+            SimulationStatus[status],
+        )
+
+        simulation.socket_id = socket_id
+
+        self.simulations[simulation_id] = simulation
+
+        self.emit_simulations()
 
     def emit_simulations(self):
         emit(

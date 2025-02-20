@@ -2,24 +2,24 @@
 
 @switch (communicationStatus) {
   @case ("connecting") {
-    <mat-chip [style.background-color]="'var(--disabled-background-color)'">
-      <div class="flex-row align-center gap-0-5-rem text-disabled">
+    <mat-chip [style.background-color]="'var(--gray-background-color)'">
+      <div class="flex-row align-center gap-0-5-rem text-gray">
         <mat-icon class="spin">autorenew</mat-icon>
         Connecting...
       </div>
     </mat-chip>
   }
   @case ("connected") {
-    <mat-chip [style.background-color]="'var(--success-background-color)'">
-      <div class="flex-row align-center gap-0-5-rem text-success">
+    <mat-chip [style.background-color]="'var(--green-background-color)'">
+      <div class="flex-row align-center gap-0-5-rem text-green">
         <mat-icon>wifi</mat-icon>
         Connected
       </div>
     </mat-chip>
   }
   @case ("disconnected") {
-    <mat-chip [style.background-color]="'var(--error-background-color)'">
-      <div class="flex-row align-center gap-0-5-rem text-error">
+    <mat-chip [style.background-color]="'var(--red-background-color)'">
+      <div class="flex-row align-center gap-0-5-rem text-red">
         <mat-icon>wifi_off</mat-icon>
         Disconnected
       </div>

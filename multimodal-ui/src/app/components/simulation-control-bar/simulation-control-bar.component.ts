@@ -17,8 +17,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { Simulation } from '../../interfaces/simulation.model';
-import { CommunicationService } from '../../services/communication.service';
 import { DialogService } from '../../services/dialog.service';
+import { SimulationService } from '../../services/simulation.service';
 
 @Component({
   selector: 'app-simulation-control-bar',
@@ -47,15 +47,15 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
 
   constructor(
     private readonly dialogService: DialogService,
-    private readonly communicationService: CommunicationService,
+    private readonly simulationService: SimulationService,
     private readonly router: Router,
   ) {}
 
   togglePause(wasPaused: boolean, id: string): void {
     if (wasPaused) {
-      this.communicationService.emit('resume-simulation', id);
+      this.simulationService.resumeSimulation(id);
     } else {
-      this.communicationService.emit('pause-simulation', id);
+      this.simulationService.pauseSimulation(id);
     }
   }
 
@@ -99,10 +99,14 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
   async stopSimulation(simulation: Simulation) {
     const result = await firstValueFrom(
       this.dialogService
-        .openConfirmationDialog({
+        .openInformationDialog({
           title: 'Stopping Simulation',
           message:
             'Are you sure you want to stop the simulation? This action cannot be undone.',
+          type: null,
+          confirmButtonOverride: null,
+          cancelButtonOverride: null,
+          canCancel: true,
         })
         .afterClosed(),
     );
@@ -111,22 +115,10 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.communicationService.emit('stop-simulation', simulation.id);
+    this.simulationService.stopSimulation(simulation.id);
   }
 
   async leaveVisualization() {
-    await firstValueFrom(
-      this.dialogService
-        .openInformationDialog({
-          title: 'Leaving Visualization',
-          message:
-            'You are about to leave the visualization, but the simulation will continue running in the background. You can return to the visualization at any time.',
-          type: 'warning',
-          closeButtonOverride: 'Continue',
-        })
-        .afterClosed(),
-    );
-
     await this.router.navigate(['home']);
   }
 }
