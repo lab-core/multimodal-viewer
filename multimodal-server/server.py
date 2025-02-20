@@ -1,9 +1,8 @@
+import base64
 import logging
 import os
-import time
 import shutil
-import base64
-
+import time
 
 from flask import Flask
 from flask_socketio import SocketIO, emit, join_room, leave_room
@@ -82,6 +81,18 @@ def run_server():
         data_dir = os.path.join(current_dir, "..", "data")
         emit("available-data", os.listdir(data_dir), to=CLIENT_ROOM)
 
+    @socketio.on("get-missing-simulation-states")
+    def on_client_get_missing_simulation_states(
+        simulation_id, first_state_order, last_update_order, visualization_time
+    ):
+        log(
+            f"getting missing simulation states for {simulation_id} with orders {first_state_order} and {last_update_order} at time {visualization_time}",
+            "client",
+        )
+        simulation_manager.emit_missing_simulation_states(
+            simulation_id, first_state_order, last_update_order, visualization_time
+        )
+
     @socketio.on("importFolder")
     def on_import_folder(data):
         log("importing folder", folder_name)
@@ -101,7 +112,6 @@ def run_server():
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(file["content"])
-        
 
     # MARK: Script events
     @socketio.on("terminate")
@@ -123,9 +133,11 @@ def run_server():
 
     # MARK: Simulation events
     @socketio.on("simulation-start")
-    def on_simulation_start(simulation_id):
+    def on_simulation_start(simulation_id, simulation_start_time):
         log(f"simulation {simulation_id} started", "simulation")
-        simulation_manager.on_simulation_start(simulation_id, get_session_id())
+        simulation_manager.on_simulation_start(
+            simulation_id, get_session_id(), simulation_start_time
+        )
 
     @socketio.on("simulation-end")
     def on_simulation_end(simulation_id, simulation_end_time):
@@ -146,15 +158,37 @@ def run_server():
     def on_simulation_log_event(simulation_id, message):
         log(f"simulation  {simulation_id}: {message}", "simulation", logging.DEBUG)
 
-    @socketio.on("simulation-update")
-    def on_simulation_log_event(simulation_id, update):
-        log(f"simulation  {simulation_id}: {update}", "simulation", logging.DEBUG)
-        emit("simulation-update" + simulation_id, update, to=CLIENT_ROOM)
+    @socketio.on("simulation-update-time")
+    def on_simulation_log_event(simulation_id, timestamp):
+        log(
+            f"simulation  {simulation_id} time: {timestamp}",
+            "simulation",
+            logging.DEBUG,
+        )
+        simulation_manager.on_simulation_update_time(simulation_id, timestamp)
+
+    @socketio.on("simulation-update-estimated-end-time")
+    def on_simulation_log_event(simulation_id, estimated_end_time):
+        log(
+            f"simulation  {simulation_id} estimated end time: {estimated_end_time}",
+            "simulation",
+            logging.DEBUG,
+        )
+        simulation_manager.on_simulation_update_estimated_end_time(
+            simulation_id, estimated_end_time
+        )
 
     @socketio.on("simulation-identification")
-    def on_simulation_identification(simulation_id, data, status):
+    def on_simulation_identification(
+        simulation_id, timestamp, estimated_end_time, status
+    ):
+        log(
+            f"simulation  {simulation_id} identified with timestamp {timestamp}, estimated end time {estimated_end_time} and status {status}",
+            "simulation",
+            logging.DEBUG,
+        )
         simulation_manager.on_simulation_identification(
-            simulation_id, data, status, get_session_id()
+            simulation_id, timestamp, estimated_end_time, status, get_session_id()
         )
 
     logging.basicConfig(level=logging.DEBUG)

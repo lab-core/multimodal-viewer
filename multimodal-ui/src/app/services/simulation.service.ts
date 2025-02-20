@@ -1,6 +1,5 @@
 import {
   computed,
-  effect,
   Injectable,
   signal,
   Signal,
@@ -11,9 +10,12 @@ import {
   Passenger,
   PASSENGER_STATUSES,
   PassengerStatusUpdate,
+  RawSimulationEnvironment,
   Simulation,
   SIMULATION_UPDATE_TYPES,
   SimulationEnvironment,
+  SimulationState,
+  STATE_SAVE_STEP,
   Vehicle,
   VEHICLE_STATUSES,
   VehiclePositionUpdate,
@@ -30,104 +32,44 @@ export class SimulationService {
   private readonly _activeSimulationIdSignal: WritableSignal<string | null> =
     signal(null);
 
-  private readonly activeSimulationUpdatesSignal: WritableSignal<
-    AnySimulationUpdate[]
-  > = signal([]);
-
-  private previousSimulationEnvironment: SimulationEnvironment | null = null;
-
-  private readonly _activeSimulationEnvironmentSignal: Signal<SimulationEnvironment> =
-    computed(() => {
-      const updates = this.activeSimulationUpdatesSignal().sort(
-        (a, b) => a.order - b.order,
-      );
-
-      const simulationEnvironment: SimulationEnvironment = this
-        .previousSimulationEnvironment ?? {
-        lastUpdateOrder: -1,
-        passengers: {},
-        vehicles: {},
-      };
-
-      let hasAppliedUpdates = false;
-
-      for (
-        let i = simulationEnvironment.lastUpdateOrder + 1;
-        i < updates.length;
-        i++
-      ) {
-        const update = updates[i];
-
-        if (i !== update.order) {
-          // TODO Get missing updates from the server
-          console.error('Update order mismatch: ', i, update);
-          break;
-        }
-
-        this.applyUpdate(update, simulationEnvironment);
-        hasAppliedUpdates = true;
-        simulationEnvironment.lastUpdateOrder = i;
-        console.debug('Applied update: ', update);
-      }
-
-      this.previousSimulationEnvironment = simulationEnvironment;
-
-      console.debug('Simulation environment: ', simulationEnvironment);
-
-      return hasAppliedUpdates
-        ? structuredClone(simulationEnvironment)
-        : simulationEnvironment;
-    });
-
-  private activeSimulationId: string | null = null;
+  private readonly _simulationStatesSignal: WritableSignal<SimulationState[]> =
+    signal([]);
 
   // MARK: Constructor
   constructor(
     private readonly dataService: DataService,
     private readonly communicationService: CommunicationService,
-  ) {
-    effect(() => {
-      const activeSimulationId = this._activeSimulationIdSignal();
-      if (activeSimulationId) {
-        this.communicationService.on(
-          'simulation-update' + activeSimulationId,
-          (update) => {
-            console.debug('Received simulation update: ', update);
-            const simulationUpdate = this.extractSimulationUpdate(
-              update as AnySimulationUpdate,
-            );
-            if (simulationUpdate) {
-              this.activeSimulationUpdatesSignal.update((updates) => [
-                ...updates,
-                simulationUpdate,
-              ]);
-            }
-          },
-        );
-
-        this.activeSimulationId = activeSimulationId;
-      } else if (this.activeSimulationId) {
-        this.communicationService.removeAllListeners(
-          'simulation-update' + this.activeSimulationId,
-        );
-        this.activeSimulationId = null;
-      }
-    });
-
-    // TODO Remove
-    effect(() => {
-      this._activeSimulationEnvironmentSignal();
-    });
-  }
+  ) {}
 
   // MARK: Active simulation
   setActiveSimulationId(simulationId: string) {
+    this.unsetActiveSimulationId();
+
     this._activeSimulationIdSignal.set(simulationId);
+
+    this.communicationService.on(
+      'missing-simulation-states',
+      (rawMissingStates, rawMissingUpdates) => {
+        this._simulationStatesSignal.update((states) => {
+          const missingStates = (rawMissingStates as RawSimulationEnvironment[])
+            .map((rawState) => this.extractSimulationEnvironment(rawState))
+            .filter((state) => state !== null);
+          const missingUpdates = (rawMissingUpdates as AnySimulationUpdate[])
+            .map((rawUpdate) => this.extractSimulationUpdate(rawUpdate))
+            .filter((update) => update !== null);
+
+          return this.mergeStates(states, missingStates, missingUpdates);
+        });
+      },
+    );
   }
 
   unsetActiveSimulationId() {
     this._activeSimulationIdSignal.set(null);
-    this.activeSimulationUpdatesSignal.set([]);
+
+    this._simulationStatesSignal.set([]);
+
+    this.communicationService.removeAllListeners('missing-simulation-states');
   }
 
   get activeSimulationSignal(): Signal<Simulation | null> {
@@ -147,9 +89,9 @@ export class SimulationService {
     });
   }
 
-  get activeSimulationEnvironmentSignal(): Signal<SimulationEnvironment> {
-    return this._activeSimulationEnvironmentSignal;
-  }
+  // get activeSimulationEnvironmentSignal(): Signal<SimulationEnvironment> {
+  //   return this._activeSimulationEnvironmentSignal;
+  // }
 
   // MARK: Communication
   pauseSimulation(simulationId: string) {
@@ -429,11 +371,62 @@ export class SimulationService {
     return { id, latitude, longitude };
   }
 
+  private extractSimulationEnvironment(
+    data: RawSimulationEnvironment,
+  ): SimulationEnvironment | null {
+    // TODO Uncomment for debugging
+    // console.debug('Extracting simulation environment: ', data);
+
+    const passengers: SimulationEnvironment['passengers'] = {};
+    for (const passenger of data.passengers) {
+      const extractedPassenger = this.extractPassenger(passenger);
+      if (!extractedPassenger) {
+        console.error('Invalid passenger: ', passenger);
+        return null;
+      }
+      passengers[extractedPassenger.id] = extractedPassenger;
+    }
+
+    const vehicles: SimulationEnvironment['vehicles'] = {};
+    for (const vehicle of data.vehicles) {
+      const extractedVehicle = this.extractVehicle(vehicle);
+      if (!extractedVehicle) {
+        console.error('Invalid vehicle: ', vehicle);
+        return null;
+      }
+      vehicles[extractedVehicle.id] = extractedVehicle;
+    }
+
+    const timestamp = data.timestamp;
+    if (timestamp === undefined) {
+      console.error('Simulation environment timestamp not found: ', timestamp);
+      return null;
+    }
+
+    const order = data.order;
+    if (order === undefined) {
+      console.error('Simulation environment order not found: ', order);
+      return null;
+    }
+
+    return { passengers, vehicles, timestamp, order };
+  }
+
   // MARK: Build environment
-  private applyUpdate(
+  get simulationStatesSignal(): Signal<SimulationState[]> {
+    return this._simulationStatesSignal;
+  }
+
+  /**
+   * Apply an update to the simulation environment in place.
+   */
+  applyUpdate(
     update: AnySimulationUpdate,
     simulationEnvironment: SimulationEnvironment,
   ) {
+    simulationEnvironment.order = update.order;
+    simulationEnvironment.timestamp = update.timestamp;
+
     switch (update.type) {
       case 'createPassenger':
         {
@@ -486,5 +479,86 @@ export class SimulationService {
         }
         break;
     }
+  }
+
+  private mergeStates(
+    states: SimulationState[],
+    missingStates: SimulationEnvironment[],
+    missingUpdates: AnySimulationUpdate[],
+  ): SimulationState[] {
+    if (missingStates.length === 0 && missingUpdates.length === 0) {
+      return states;
+    }
+
+    // Deep copy of the states
+    const newStates = structuredClone(states);
+
+    // Add missing states
+    for (const missingState of missingStates) {
+      const existingState = newStates.find(
+        (state) => state.environment.order === missingState.order,
+      );
+
+      if (existingState) {
+        continue;
+      }
+
+      const state: SimulationState = {
+        environment: missingState,
+        updates: [],
+      };
+
+      newStates.push(state);
+    }
+
+    // Sort states by order
+    const sortedStates = newStates.sort(
+      (a, b) => a.environment.order - b.environment.order,
+    );
+
+    // Add missing updates to the states
+    const sortedMissingUpdates = missingUpdates.sort(
+      (a, b) => a.order - b.order,
+    );
+
+    let stateIndex = 0;
+    for (const missingUpdate of sortedMissingUpdates) {
+      const update = missingUpdate;
+
+      while (
+        stateIndex < sortedStates.length &&
+        sortedStates[stateIndex].environment.order + STATE_SAVE_STEP <
+          update.order
+      ) {
+        stateIndex++;
+      }
+
+      if (stateIndex >= sortedStates.length) {
+        break;
+      }
+
+      const existingUpdate = sortedStates[stateIndex].updates.find(
+        (existingUpdate) => existingUpdate.order === update.order,
+      );
+      if (existingUpdate) {
+        continue;
+      }
+
+      sortedStates[stateIndex].updates.push(update);
+    }
+
+    // Keep only 11 states
+    if (sortedStates.length <= 11) {
+      return sortedStates;
+    }
+
+    if (sortedStates[0].environment.order === missingStates[0].order) {
+      return sortedStates.slice(0, 11);
+    }
+
+    // Reverse sort and slice
+    return sortedStates
+      .sort((a, b) => b.environment.order - a.environment.order)
+      .slice(0, 11);
   }
 }

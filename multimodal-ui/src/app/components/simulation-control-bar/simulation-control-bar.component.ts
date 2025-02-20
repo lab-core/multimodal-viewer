@@ -3,22 +3,16 @@ import {
   computed,
   input,
   InputSignal,
-  OnDestroy,
-  OnInit,
+  output,
   Signal,
-  signal,
-  WritableSignal,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSliderModule } from '@angular/material/slider';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Router } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
 import { Simulation } from '../../interfaces/simulation.model';
-import { DialogService } from '../../services/dialog.service';
-import { SimulationService } from '../../services/simulation.service';
+import { VisualizationService } from '../../services/visualization.service';
 
 @Component({
   selector: 'app-simulation-control-bar',
@@ -32,93 +26,90 @@ import { SimulationService } from '../../services/simulation.service';
   templateUrl: './simulation-control-bar.component.html',
   styleUrl: './simulation-control-bar.component.css',
 })
-export class SimulationControlBarComponent implements OnInit, OnDestroy {
-  readonly currentTimeSignal: WritableSignal<Date> = signal<Date>(new Date());
-
-  private interval: number | null = null;
-
-  readonly simulationInputSignal: InputSignal<Simulation> =
-    // eslint-disable-next-line @angular-eslint/no-input-rename
-    input.required<Simulation>({ alias: 'simulation' });
-
-  readonly isPausedSignal: Signal<boolean> = computed(
+export class SimulationControlBarComponent {
+  // MARK: Properties
+  readonly isSimulationPausedSignal: Signal<boolean> = computed(
     () => this.simulationInputSignal().status === 'paused',
   );
 
-  constructor(
-    private readonly dialogService: DialogService,
-    private readonly simulationService: SimulationService,
-    private readonly router: Router,
-  ) {}
+  // MARK: Inputs
+  readonly simulationInputSignal: InputSignal<Simulation> =
+    input.required<Simulation>({ alias: 'simulation' });
 
-  ngOnInit(): void {
-    this.interval = setInterval(() => {
-      if (!this.isPausedSignal()) {
-        this.currentTimeSignal.update(
-          (previousTime) => new Date(previousTime.getTime() + 1000),
-        );
-      }
-    }, 1000) as unknown as number;
+  // MARK: Outputs
+  readonly pauseSimulationOutput = output<string>({ alias: 'pauseSimulation' });
+
+  readonly resumeSimulationOutput = output<string>({
+    alias: 'resumeSimulation',
+  });
+
+  readonly stopSimulationOutput = output<string>({ alias: 'stopSimulation' });
+
+  readonly leaveVisualizationOutput = output<void>({
+    alias: 'leaveVisualization',
+  });
+
+  // MARK: Constructor
+  constructor(private readonly visualizationService: VisualizationService) {}
+
+  // MARK: Getters
+  get isInitializedSignal(): Signal<boolean> {
+    return this.visualizationService.isInitializedSignal;
   }
 
-  ngOnDestroy(): void {
-    if (this.interval) {
-      clearInterval(this.interval);
-    }
+  get simulationStartTimeSignal(): Signal<number | null> {
+    return this.visualizationService.simulationStartTimeSignal;
   }
 
-  togglePause(wasPaused: boolean, id: string): void {
+  get simulationEndTimeSignal(): Signal<number | null> {
+    return this.visualizationService.simulationEndTimeSignal;
+  }
+
+  get visualizationMaxTimeSignal(): Signal<number | null> {
+    return this.visualizationService.visualizationMaxTimeSignal;
+  }
+
+  get isVisualizationPausedSignal(): Signal<boolean> {
+    return this.visualizationService.isVisualizationPausedSignal;
+  }
+
+  get visualizationTimeSignal(): Signal<number | null> {
+    return this.visualizationService.visualizationTimeSignal;
+  }
+
+  // MARK: Handlers
+  toggleVisualizationPause(wasPaused: boolean): void {
     if (wasPaused) {
-      this.simulationService.resumeSimulation(id);
+      this.visualizationService.resumeVisualization();
     } else {
-      this.simulationService.pauseSimulation(id);
+      this.visualizationService.pauseVisualization();
     }
   }
 
-  sliderLabelFormatter(value: number): string {
-    return `${value}%`;
-  }
-
-  async editSimulationConfiguration() {
-    const result = await firstValueFrom(
-      this.dialogService
-        .openSimulationConfigurationDialog({
-          mode: 'edit',
-          currentConfiguration: null,
-        })
-        .afterClosed(),
-    );
-
-    if (result) {
-      return;
+  toggleSimulationPause(wasPaused: boolean, id: string): void {
+    if (wasPaused) {
+      this.resumeSimulationOutput.emit(id);
+    } else {
+      this.pauseSimulationOutput.emit(id);
     }
-
-    // TODO Update simulation configuration
   }
 
-  async stopSimulation(simulation: Simulation) {
-    const result = await firstValueFrom(
-      this.dialogService
-        .openInformationDialog({
-          title: 'Stopping Simulation',
-          message:
-            'Are you sure you want to stop the simulation? This action cannot be undone.',
-          type: 'warning',
-          confirmButtonOverride: null,
-          cancelButtonOverride: null,
-          canCancel: true,
-        })
-        .afterClosed(),
-    );
-
-    if (!result) {
-      return;
-    }
-
-    this.simulationService.stopSimulation(simulation.id);
+  stopSimulation(id: string) {
+    this.stopSimulationOutput.emit(id);
   }
 
-  async leaveVisualization() {
-    await this.router.navigate(['home']);
+  leaveVisualization(): void {
+    this.leaveVisualizationOutput.emit();
+  }
+
+  onSliderChange(value: number) {
+    this.visualizationService.setVisualizationTime(value);
+  }
+
+  // MARK: Other
+  sliderLabelFormatter(min: number, max: number): (value: number) => string {
+    return (value: number) => {
+      return Math.floor((100 * (value - min)) / (max - min)) + '%';
+    };
   }
 }

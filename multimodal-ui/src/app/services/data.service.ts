@@ -88,6 +88,31 @@ export class DataService {
           return null;
         }
 
+        const status: SimulationStatus = rawSimulation['status'];
+        if (!status) {
+          console.error('Simulation status not found: ', status);
+          return null;
+        }
+        if (!SIMULATION_STATUSES.includes(status)) {
+          console.error('Simulation status not recognized: ', status);
+          return null;
+        }
+
+        if (status === 'corrupted') {
+          return {
+            id,
+            name: id.split('-')[2] ?? 'unknown',
+            data: 'unknown',
+            status,
+            startTime: new Date(),
+            simulationStartTime: null,
+            simulationEndTime: null,
+            simulationTime: null,
+            simulationEstimatedEndTime: null,
+            completion: 1,
+          };
+        }
+
         const name: string = rawSimulation['name'];
         if (!name) {
           console.error('Simulation name not found: ', name);
@@ -97,16 +122,6 @@ export class DataService {
         const data: string = rawSimulation['data'];
         if (!data) {
           console.error('Simulation data not found: ', data);
-          return null;
-        }
-
-        const status: SimulationStatus = rawSimulation['status'];
-        if (!status) {
-          console.error('Simulation status not found: ', status);
-          return null;
-        }
-        if (!SIMULATION_STATUSES.includes(status)) {
-          console.error('Simulation status not recognized: ', status);
           return null;
         }
 
@@ -148,6 +163,22 @@ export class DataService {
         const simulationEndTime: number | null =
           rawSimulation['simulationEndTime'] ?? null;
 
+        const simulationTime = rawSimulation['simulationTime'] ?? null;
+
+        const simulationEstimatedEndTime =
+          rawSimulation['simulationEstimatedEndTime'] ?? null;
+
+        let completion = 1;
+        if (
+          simulationStartTime !== null &&
+          simulationTime !== null &&
+          simulationEstimatedEndTime !== null
+        ) {
+          completion =
+            (simulationTime - simulationStartTime) /
+            (simulationEstimatedEndTime - simulationStartTime);
+        }
+
         return {
           id,
           name,
@@ -156,6 +187,9 @@ export class DataService {
           startTime,
           simulationStartTime,
           simulationEndTime,
+          simulationTime,
+          simulationEstimatedEndTime,
+          completion,
         };
       })
       .filter((simulation) => !!simulation);

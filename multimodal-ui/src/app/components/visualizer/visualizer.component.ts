@@ -1,4 +1,4 @@
-import { Component, computed, effect, Signal } from '@angular/core';
+import { Component, computed, effect, OnDestroy, Signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialogRef } from '@angular/material/dialog';
@@ -9,6 +9,7 @@ import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import {
   Simulation,
+  SimulationEnvironment,
   SimulationStatus,
 } from '../../interfaces/simulation.model';
 import { CommunicationService } from '../../services/communication.service';
@@ -16,10 +17,9 @@ import { DialogService } from '../../services/dialog.service';
 import { LoadingService } from '../../services/loading.service';
 import { SimulationService } from '../../services/simulation.service';
 import { UserInterfaceService } from '../../services/user-interface.service';
+import { VisualizationService } from '../../services/visualization.service';
 import { InformationDialogComponent } from '../information-dialog/information-dialog.component';
 import { SimulationControlBarComponent } from '../simulation-control-bar/simulation-control-bar.component';
-import { ActivatedRoute } from '@angular/router';
-
 
 export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 
@@ -33,10 +33,12 @@ export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
     MatIconModule,
     MatInputModule,
   ],
+  providers: [VisualizationService],
   templateUrl: './visualizer.component.html',
   styleUrl: './visualizer.component.css',
 })
-export class VisualizerComponent {
+export class VisualizerComponent implements OnDestroy {
+  // MARK: Properties
   readonly simulationSignal: Signal<Simulation | null>;
 
   private matDialogRef: MatDialogRef<InformationDialogComponent> | null = null;
@@ -58,6 +60,7 @@ export class VisualizerComponent {
     },
   );
 
+  // MARK: Constructor
   constructor(
     private readonly simulationService: SimulationService,
     private readonly userInterfaceService: UserInterfaceService,
@@ -65,16 +68,18 @@ export class VisualizerComponent {
     private readonly communicationService: CommunicationService,
     private readonly dialogService: DialogService,
     private readonly loadingService: LoadingService,
+    private readonly visualizationService: VisualizationService,
   ) {
     this.simulationSignal = this.simulationService.activeSimulationSignal;
 
-    // Check if the simulation is available
+    // MARK: Effects
     effect(() => {
       const status = this.visualizerStatusSignal();
 
       if (this.matDialogRef) {
-        this.matDialogRef.close();
+        const matDialogRef = this.matDialogRef;
         this.matDialogRef = null;
+        matDialogRef.close(null);
       }
       this.loadingService.stop();
 
@@ -95,8 +100,8 @@ export class VisualizerComponent {
             canCancel: false,
           });
           void firstValueFrom(this.matDialogRef.afterClosed())
-            .then(async () => {
-              if (this.matDialogRef) {
+            .then(async (response) => {
+              if (response !== null) {
                 await this.router.navigate(['home']);
               }
             })
@@ -115,7 +120,7 @@ export class VisualizerComponent {
           });
           void firstValueFrom(this.matDialogRef.afterClosed())
             .then(async (response) => {
-              if (this.matDialogRef && response) {
+              if (response) {
                 await this.router.navigate(['home']);
               }
             })
@@ -142,7 +147,7 @@ export class VisualizerComponent {
           });
           void firstValueFrom(this.matDialogRef.afterClosed())
             .then(async (response) => {
-              if (this.matDialogRef && response) {
+              if (response) {
                 await this.router.navigate(['home']);
               }
             })
@@ -159,8 +164,8 @@ export class VisualizerComponent {
             canCancel: false,
           });
           void firstValueFrom(this.matDialogRef.afterClosed())
-            .then(async () => {
-              if (this.matDialogRef) {
+            .then(async (response) => {
+              if (response !== null) {
                 await this.router.navigate(['home']);
               }
             })
@@ -178,8 +183,8 @@ export class VisualizerComponent {
             canCancel: false,
           });
           void firstValueFrom(this.matDialogRef.afterClosed())
-            .then(async () => {
-              if (this.matDialogRef) {
+            .then(async (response) => {
+              if (response !== null) {
                 await this.router.navigate(['home']);
               }
             })
@@ -197,28 +202,91 @@ export class VisualizerComponent {
             canCancel: false,
           });
           void firstValueFrom(this.matDialogRef.afterClosed())
-            .then(async () => {
-              if (this.matDialogRef) {
+            .then(async (response) => {
+              if (response !== null) {
                 await this.router.navigate(['home']);
               }
             })
             .catch(console.error);
       }
     });
+
+    effect(() => {
+      const status = this.visualizerStatusSignal();
+
+      const simulation = this.simulationSignal();
+      if (!simulation) {
+        return;
+      }
+
+      switch (status) {
+        case 'running':
+        case 'paused':
+        case 'completed':
+        case 'starting':
+        case 'stopping':
+        case 'lost':
+          this.visualizationService.init(simulation);
+          return;
+
+        case 'disconnected':
+        case 'not-found':
+        case 'corrupted':
+        case 'outdated':
+        case 'future':
+      }
+
+      this.visualizationService.destroy();
+    });
   }
 
+  // MARK: Lifecycle
+  ngOnDestroy() {
+    this.visualizationService.destroy();
+  }
+
+  // MARK: Getters
   get shouldShowInformationPanelSignal(): Signal<boolean> {
     return this.userInterfaceService.shouldShowInformationPanelSignal;
   }
 
-  get simulationName(): string{
-    return this.simulationService.activeSimulationSignal()?.name || 'Untitled Simulation';
+  get isInitializedSignal(): Signal<boolean> {
+    return this.visualizationService.isInitializedSignal;
   }
 
-  get simulationData(): string{
-    return this.simulationService.activeSimulationSignal()?.data || 'Untitled Data Folder';
+  get visualizationEnvironmentSignal(): Signal<SimulationEnvironment | null> {
+    return this.visualizationService.visualizationEnvironmentSignal;
   }
 
+  get numberOfPassengersSignal(): Signal<number> {
+    return computed(() => {
+      const environment = this.visualizationEnvironmentSignal();
+      return environment ? Object.keys(environment.passengers).length : 0;
+    });
+  }
+
+  get numberOfVehiclesSignal(): Signal<number> {
+    return computed(() => {
+      const environment = this.visualizationEnvironmentSignal();
+      return environment ? Object.keys(environment.vehicles).length : 0;
+    });
+  }
+
+  get simulationName(): string {
+    return (
+      this.simulationService.activeSimulationSignal()?.name ||
+      'Untitled Simulation'
+    );
+  }
+
+  get simulationData(): string {
+    return (
+      this.simulationService.activeSimulationSignal()?.data ||
+      'Untitled Data Folder'
+    );
+  }
+
+  // MARK: Handlers
   hideInformationPanel() {
     this.userInterfaceService.hideInformationPanel();
   }
@@ -227,7 +295,37 @@ export class VisualizerComponent {
     this.userInterfaceService.showInformationPanel();
   }
 
-  async navigateHome() {
+  pauseSimulation(id: string) {
+    this.simulationService.pauseSimulation(id);
+  }
+
+  resumeSimulation(id: string) {
+    this.simulationService.resumeSimulation(id);
+  }
+
+  async stopSimulation(id: string) {
+    const result = await firstValueFrom(
+      this.dialogService
+        .openInformationDialog({
+          title: 'Stopping Simulation',
+          message:
+            'Are you sure you want to stop the simulation? This action cannot be undone.',
+          type: 'warning',
+          confirmButtonOverride: null,
+          cancelButtonOverride: null,
+          canCancel: true,
+        })
+        .afterClosed(),
+    );
+
+    if (!result) {
+      return;
+    }
+
+    this.simulationService.stopSimulation(id);
+  }
+
+  async leaveVisualization() {
     await this.router.navigate(['home']);
   }
 }

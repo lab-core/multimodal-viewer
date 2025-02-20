@@ -1,4 +1,4 @@
-import { TitleCasePipe } from '@angular/common';
+import { PercentPipe, TitleCasePipe } from '@angular/common';
 import { Component, computed, Signal } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -50,6 +50,7 @@ export type SimulationListGroup = 'running' | 'completed';
     MatTooltipModule,
     MatDividerModule,
     TitleCasePipe,
+    PercentPipe,
   ],
   templateUrl: './simulation-list-dialog.component.html',
   styleUrl: './simulation-list-dialog.component.css',

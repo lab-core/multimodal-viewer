@@ -1,14 +1,7 @@
 import os
 import threading
-from typing import Optional
 
-from log_manager import register_log
-from multimodalsim.config.simulation_config import SimulationConfig
-from multimodalsim.observer.data_collector import DataCollector
 from multimodalsim.observer.environment_observer import EnvironmentObserver
-from multimodalsim.observer.visualizer import Visualizer
-from multimodalsim.simulator.environment import Environment
-from multimodalsim.simulator.event import Event
 from multimodalsim.simulator.simulator import Simulator
 from server_utils import HOST, PORT, SimulationStatus
 from simulation_visualization_data_collector import (
@@ -22,11 +15,15 @@ def run_simulation(simulation_id: str, data: str) -> None:
 
     status = SimulationStatus.STARTING
 
+    environment_observer = SimulationVisualizationEnvironmentObserver(
+        simulation_id, data, sio
+    )
+
     @sio.on("pause-simulation")
     def pauseSimulator():
         simulator.pause()
-        sio.emit("simulation-pause", simulation_id)
         status = SimulationStatus.PAUSED
+        sio.emit("simulation-pause", simulation_id)
 
     @sio.on("resume-simulation")
     def resumeSimulator():
@@ -47,14 +44,15 @@ def run_simulation(simulation_id: str, data: str) -> None:
     def on_connect():
         sio.emit(
             "simulation-identification",
-            (simulation_id, data, status.value),
+            (
+                simulation_id,
+                environment_observer.data_collector.visualized_environment.timestamp,
+                environment_observer.data_collector.visualized_environment.estimated_end_time,
+                status.value,
+            ),
         )
 
     sio.connect(f"http://{HOST}:{PORT}", auth={"type": "simulation"})
-
-    environment_observer = SimulationVisualizationEnvironmentObserver(
-        simulation_id, data, sio
-    )
 
     current_directory = os.path.dirname(os.path.abspath(__file__))
     simulation_data_directory = f"{current_directory}/../data/{data}/"
@@ -66,8 +64,6 @@ def run_simulation(simulation_id: str, data: str) -> None:
     )
     simulation_thread = threading.Thread(target=simulator.simulate)
     simulation_thread.start()
-
-    sio.emit("simulation-start", simulation_id)
 
     status = SimulationStatus.RUNNING
 

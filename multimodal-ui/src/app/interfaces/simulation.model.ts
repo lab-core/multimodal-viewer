@@ -83,9 +83,19 @@ export interface Simulation {
   simulationEndTime: number | null;
 
   /**
-   * The time in the simulation at which the simulation ends
+   * The current time in the simulation
    */
-  // expectedSimulationEndTime: number;
+  simulationTime: number | null;
+
+  /**
+   * The estimated time at which the simulation will end
+   */
+  simulationEstimatedEndTime: number | null;
+
+  /**
+   * The current completion of the simulation
+   */
+  completion: number;
 
   /**
    * Current configuration of the simulation
@@ -219,9 +229,33 @@ export type AnySimulationUpdate = SimulationUpdate<
   keyof SimulationUpdateTypeMap
 >;
 
-// TODO temporary
+/**
+ * Snapshot of the simulation environment at a given time
+ */
 export interface SimulationEnvironment {
-  lastUpdateOrder: number;
   passengers: Record<string, Passenger>;
   vehicles: Record<string, Vehicle>;
+
+  /**
+   * The timestamp of the last update before the snapshot
+   */
+  timestamp: number;
+
+  /**
+   * The order of the last update before the snapshot
+   */
+  order: number;
 }
+
+export interface RawSimulationEnvironment
+  extends Pick<SimulationEnvironment, 'timestamp' | 'order'> {
+  passengers: Passenger[];
+  vehicles: Vehicle[];
+}
+
+export interface SimulationState {
+  environment: SimulationEnvironment;
+  updates: AnySimulationUpdate[];
+}
+
+export const STATE_SAVE_STEP = 500;
