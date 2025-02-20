@@ -143,4 +143,14 @@ export class DataService {
       })
       .filter((simulation) => !!simulation);
   }
+
+  refreshAvailableSimulationData() {
+    this.communicationService.emit('getAvailableData');
+  }
+
+  importFolder(folderName: string, files: { name: string; content: string }[]) {
+    this.communicationService.emit('importFolder', { folderName, files });
+  }
+  
+  
 }

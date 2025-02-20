@@ -14,6 +14,8 @@ import { SimulationService } from '../../services/simulation.service';
 import { UserInterfaceService } from '../../services/user-interface.service';
 import { InformationDialogComponent } from '../information-dialog/information-dialog.component';
 import { SimulationControlBarComponent } from '../simulation-control-bar/simulation-control-bar.component';
+import { ActivatedRoute } from '@angular/router';
+
 
 @Component({
   selector: 'app-visualizer',
@@ -88,6 +90,14 @@ export class VisualizerComponent {
 
   get shouldShowInformationPanelSignal(): Signal<boolean> {
     return this.userInterfaceService.shouldShowInformationPanelSignal;
+  }
+
+  get simulationName(): string{
+    return this.simulationService.activeSimulationSignal()?.name || 'Untitled Simulation';
+  }
+
+  get simulationData(): string{
+    return this.simulationService.activeSimulationSignal()?.data || 'Untitled Data Folder';
   }
 
   hideInformationPanel() {

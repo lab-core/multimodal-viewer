@@ -193,4 +193,36 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     this.timeStepFormControl.enable();
     this.positionTimeStepFormControl.enable();
   }
+
+  refreshAvailableData() {
+    this.dataService.refreshAvailableSimulationData();
+  }
+  
+  importNewFolder() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.webkitdirectory = true; // Allows selecting a folder
+    input.multiple = true; // Allows multiple files selection
+    input.addEventListener('change', async (event: Event) => {
+      const files = (event.target as HTMLInputElement).files;
+      if (!files) return;
+  
+      const folderName = files[0].webkitRelativePath.split('/')[0]; // Get the root folder name
+      const fileData: { name: string; content: string }[] = [];
+  
+      for (const file of Array.from(files)) {
+        const content = await file.text(); // Read file content as text (or use FileReader for binary)
+        fileData.push({ name: file.webkitRelativePath, content });
+      }
+  
+      // Emit event to server
+      this.dataService.importFolder(folderName, fileData);
+    });
+  
+    input.click();
+  }
+  
 }
+
+
+
