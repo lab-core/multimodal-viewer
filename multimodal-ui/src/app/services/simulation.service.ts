@@ -36,7 +36,7 @@ export class SimulationService {
 
   private previousSimulationEnvironment: SimulationEnvironment | null = null;
 
-  readonly simulationEnvironmentSignal: Signal<SimulationEnvironment> =
+  private readonly _activeSimulationEnvironmentSignal: Signal<SimulationEnvironment> =
     computed(() => {
       const updates = this.activeSimulationUpdatesSignal().sort(
         (a, b) => a.order - b.order,
@@ -48,6 +48,8 @@ export class SimulationService {
         passengers: {},
         vehicles: {},
       };
+
+      let hasAppliedUpdates = false;
 
       for (
         let i = simulationEnvironment.lastUpdateOrder + 1;
@@ -63,6 +65,7 @@ export class SimulationService {
         }
 
         this.applyUpdate(update, simulationEnvironment);
+        hasAppliedUpdates = true;
         simulationEnvironment.lastUpdateOrder = i;
         console.debug('Applied update: ', update);
       }
@@ -71,7 +74,9 @@ export class SimulationService {
 
       console.debug('Simulation environment: ', simulationEnvironment);
 
-      return simulationEnvironment;
+      return hasAppliedUpdates
+        ? structuredClone(simulationEnvironment)
+        : simulationEnvironment;
     });
 
   private activeSimulationId: string | null = null;
@@ -111,7 +116,7 @@ export class SimulationService {
 
     // TODO Remove
     effect(() => {
-      this.simulationEnvironmentSignal();
+      this._activeSimulationEnvironmentSignal();
     });
   }
 
@@ -140,6 +145,10 @@ export class SimulationService {
 
       return currentSimulation ?? null;
     });
+  }
+
+  get activeSimulationEnvironmentSignal(): Signal<SimulationEnvironment> {
+    return this._activeSimulationEnvironmentSignal;
   }
 
   // MARK: Communication
@@ -256,11 +265,7 @@ export class SimulationService {
       return null;
     }
 
-    const name = data.name;
-    if (!name) {
-      console.error('Passenger name not found: ', name);
-      return null;
-    }
+    const name = data.name ?? null;
 
     const status = data.status;
     if (!status) {
@@ -310,11 +315,7 @@ export class SimulationService {
       return null;
     }
 
-    const mode = data.mode;
-    if (!mode) {
-      console.error('Vehicle mode not found: ', mode);
-      return null;
-    }
+    const mode = data.mode ?? null;
 
     const status = data.status;
     if (!status) {

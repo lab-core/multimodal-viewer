@@ -142,12 +142,20 @@ export class DataService {
           milliseconds,
         );
 
+        const simulationStartTime: number | null =
+          rawSimulation['simulationStartTime'] ?? null;
+
+        const simulationEndTime: number | null =
+          rawSimulation['simulationEndTime'] ?? null;
+
         return {
           id,
           name,
           data,
           status,
           startTime,
+          simulationStartTime,
+          simulationEndTime,
         };
       })
       .filter((simulation) => !!simulation);

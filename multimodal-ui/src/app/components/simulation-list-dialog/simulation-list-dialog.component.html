@@ -103,7 +103,9 @@
               }
 
               @let isVisualizeButtonDisabled =
-                simulation.status === "corrupted";
+                simulation.status === "corrupted" ||
+                simulation.status === "outdated" ||
+                simulation.status === "future";
               <button
                 mat-icon-button
                 [disabled]="isVisualizeButtonDisabled"

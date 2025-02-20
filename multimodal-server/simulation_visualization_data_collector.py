@@ -1,7 +1,10 @@
 import os
-from enum import Enum
+from typing import Optional
 
-import polyline
+from log_manager import register_log
+from multimodalsim.observer.data_collector import DataCollector
+from multimodalsim.observer.environment_observer import EnvironmentObserver
+from multimodalsim.observer.visualizer import Visualizer
 from multimodalsim.simulator.environment import Environment
 from multimodalsim.simulator.event import Event, RecurrentTimeSyncEvent
 from multimodalsim.simulator.optimization_event import (
@@ -17,8 +20,6 @@ from multimodalsim.simulator.passenger_event import (
     PassengerRelease,
     PassengerToBoard,
 )
-from multimodalsim.simulator.request import Trip
-from multimodalsim.simulator.vehicle import Vehicle
 from multimodalsim.simulator.vehicle_event import (
     VehicleAlighted,
     VehicleArrival,
@@ -31,247 +32,74 @@ from multimodalsim.simulator.vehicle_event import (
     VehicleUpdatePositionEvent,
     VehicleWaiting,
 )
-from multimodalsim.state_machine.status import PassengerStatus, VehicleStatus
+from server_utils import STATE_SAVE_STEP
+from simulation_visualization_data_model import (
+    PassengerStatusUpdate,
+    SimulationInformation,
+    Update,
+    UpdateType,
+    VehiclePositionUpdate,
+    VehicleStatusUpdate,
+    VisualizedEnvironment,
+    VisualizedPassenger,
+    VisualizedVehicle,
+    get_simulation_save_file_path,
+)
 from socketio import Client
 
 
-class Serializable:
-    def serialize(self) -> dict:
-        raise NotImplementedError()
-
-
-def convert_passenger_status(status: PassengerStatus) -> str:
-    if status == PassengerStatus.RELEASE:
-        return "release"
-    elif status == PassengerStatus.ASSIGNED:
-        return "assigned"
-    elif status == PassengerStatus.READY:
-        return "ready"
-    elif status == PassengerStatus.ONBOARD:
-        return "onboard"
-    elif status == PassengerStatus.COMPLETE:
-        return "complete"
-    else:
-        raise ValueError(f"Unknown PassengerStatus {status}")
-
-
-def convert_vehicle_status(status: VehicleStatus) -> str:
-    if status == VehicleStatus.RELEASE:
-        return "release"
-    elif status == VehicleStatus.IDLE:
-        return "idle"
-    elif status == VehicleStatus.BOARDING:
-        return "boarding"
-    elif status == VehicleStatus.ENROUTE:
-        return "enroute"
-    elif status == VehicleStatus.ALIGHTING:
-        return "alighting"
-    elif status == VehicleStatus.COMPLETE:
-        return "complete"
-    else:
-        raise ValueError(f"Unknown VehicleStatus {status}")
-
-
-class VisualizedPassenger(Serializable):
-    passenger_id: str
-    name: str | None
-    status: PassengerStatus
-
-    def __init__(
-        self,
-        trip: Trip,
-    ) -> None:
-        self.passenger_id = str(trip.id)
-        self.name = trip.name
-        self.status = trip.status
-
-    def serialize(self) -> dict:
-        return {
-            "id": self.passenger_id,
-            "name": self.name,
-            "status": convert_passenger_status(self.status),
-        }
-
-
-class VisualizedVehicle(Serializable):
-    vehicle_id: str
-    mode: str
-    status: VehicleStatus
-    latitude: float | None
-    longitude: float | None
-    polylines: dict[str, tuple[str, list[float]]] | None
-
-    def __init__(self, vehicle: Vehicle) -> None:
-        self.vehicle_id = vehicle.id
-        self.mode = vehicle.mode
-        self.status = vehicle.status
-
-        if vehicle.position is not None:
-            self.latitude = vehicle.position.lat
-            self.longitude = vehicle.position.lon
-        else:
-            self.latitude = None
-            self.longitude = None
-
-        self.polylines = None
-        if vehicle.polylines is not None:
-            self.polylines = {}
-            for stop_id, encoded_polyline in vehicle.polylines.items():
-                encoded_polyline_string = encoded_polyline[0]
-                polyline_coefficients = encoded_polyline[1]
-                decoded_polyline_string = polyline.decode(encoded_polyline_string)
-                self.polylines[stop_id] = {
-                    "polyline": [
-                        {"latitude": point[0], "longitude": point[1]}
-                        for point in decoded_polyline_string
-                    ],
-                    "coefficients": polyline_coefficients,
-                }
-
-    def serialize(self) -> dict:
-        serialized = {
-            "id": self.vehicle_id,
-            "mode": self.mode,
-            "status": convert_vehicle_status(self.status),
-        }
-        if self.latitude is not None and self.longitude is not None:
-            serialized["latitude"] = self.latitude
-            serialized["longitude"] = self.longitude
-
-        if self.polylines is not None:
-            serialized["polylines"] = self.polylines
-        return serialized
-
-
-class VisualizedEnvironment(Serializable):
-    passengers: list[VisualizedPassenger]
-    vehicles: list[VisualizedVehicle]
-
-    def __init__(self) -> None:
-        self.passengers = {}
-        self.vehicles = {}
-
-    def add_passenger(self, passenger: VisualizedPassenger) -> None:
-        self.passengers[passenger.passenger_id] = passenger
-
-    def get_passenger(self, passenger_id: str) -> VisualizedPassenger:
-        if passenger_id in self.passengers:
-            return self.passengers[passenger_id]
-        raise ValueError(f"Passenger {passenger_id} not found")
-
-    def add_vehicle(self, vehicle: VisualizedVehicle) -> None:
-        self.vehicles[vehicle.vehicle_id] = vehicle
-
-    def get_vehicle(self, vehicle_id: str) -> VisualizedVehicle:
-        if vehicle_id in self.vehicles:
-            return self.vehicles[vehicle_id]
-        raise ValueError(f"Vehicle {vehicle_id} not found")
-
-    def serialize(self) -> dict:
-        return {
-            "passengers": [
-                passenger.serialize() for passenger in self.passengers.values()
-            ],
-            "vehicles": [vehicle.serialize() for vehicle in self.vehicles.values()],
-        }
-
-
-class UpdateType(Enum):
-    CREATE_PASSENGER = "createPassenger"
-    CREATE_VEHICLE = "createVehicle"
-    UPDATE_PASSENGER_STATUS = "updatePassengerStatus"
-    UPDATE_VEHICLE_STATUS = "updateVehicleStatus"
-    UPDATE_VEHICLE_POSITION = "updateVehiclePosition"
-
-
-class PassengerStatusUpdate(Serializable):
-    passenger_id: str
-    status: PassengerStatus
-
-    def __init__(self, passenger: Trip) -> None:
-        self.passenger_id = passenger.id
-        self.status = passenger.status
-
-    def serialize(self) -> dict:
-        return {
-            "id": self.passenger_id,
-            "status": convert_passenger_status(self.status),
-        }
-
-
-class VehicleStatusUpdate(Serializable):
-    vehicle_id: str
-    status: VehicleStatus
-
-    def __init__(self, vehicle: Vehicle) -> None:
-        self.vehicle_id = vehicle.id
-        self.status = vehicle.status
-
-    def serialize(self) -> dict:
-        return {
-            "id": self.vehicle_id,
-            "status": convert_vehicle_status(self.status),
-        }
-
-
-class VehiclePositionUpdate(Serializable):
-    vehicle_id: str
-    latitude: float
-    longitude: float
-
-    def __init__(self, vehicle: Vehicle) -> None:
-        self.vehicle_id = vehicle.id
-        self.latitude = vehicle.position.lat
-        self.longitude = vehicle.position.lon
-
-    def serialize(self) -> dict:
-        return {
-            "id": self.vehicle_id,
-            "latitude": self.latitude,
-            "longitude": self.longitude,
-        }
-
-
-class Update(Serializable):
-    type: UpdateType
-    data: Serializable
-    timestamp: float
-    order: int
-
-    def __init__(
-        self,
-        type: UpdateType,
-        data: Serializable,
-        timestamp: float,
-    ) -> None:
-        self.type = type
-        self.data = data
-        self.timestamp = timestamp
-        self.order = 0
-
-    def serialize(self) -> dict:
-        return {
-            "type": self.type.value,
-            "data": self.data.serialize(),
-            "timestamp": self.timestamp,
-            "order": self.order,
-        }
-
-
-class SimulationEventManager:
+# MARK: Data Collector
+class SimulationVisualizationDataCollector(DataCollector):
     simulation_id: str
     update_counter: int
-    updates: list[Update]
     environment: VisualizedEnvironment
     sio: Client
+    simulation_information: SimulationInformation
 
-    def __init__(self, simulation_id: str, sio: Client) -> None:
+    def __init__(self, simulation_id: str, data: str, sio: Client) -> None:
         self.simulation_id = simulation_id
         self.update_counter = 0
-        self.updates = []
         self.environment = VisualizedEnvironment()
         self.sio = sio
 
+        self.simulation_information = SimulationInformation(
+            simulation_id, data, None, None
+        )
+
+    # MARK: +- Collect
+    def collect(
+        self,
+        env: Environment,
+        current_event: Optional[Event] = None,
+        event_index: Optional[int] = None,
+        event_priority: Optional[int] = None,
+    ) -> None:
+        if current_event is None:
+            return
+
+        message = self.process_event(current_event)
+        register_log(self.simulation_id, message)
+
+        if self.sio.connected:
+            self.sio.emit("log", (self.simulation_id, message))
+
+    # MARK: +- Add First Line
+    def add_first_line(self) -> None:
+        file_path = get_simulation_save_file_path(self.simulation_id)
+
+        with open(file_path, "r") as file:
+            lines = file.readlines()
+
+        first_line = str(self.simulation_information.serialize()) + "\n"
+        if len(lines) > 0:
+            lines[0] = first_line
+        else:
+            lines.append(first_line)
+
+        with open(file_path, "w") as file:
+            file.writelines(lines)
+
+    # MARK: +- Process Update
     def process_update(self, update: Update) -> None:
         if update.type == UpdateType.CREATE_PASSENGER:
             self.environment.add_passenger(update.data)
@@ -287,29 +115,35 @@ class SimulationEventManager:
             vehicle = self.environment.get_vehicle(update.data.vehicle_id)
             vehicle.latitude = update.data.latitude
             vehicle.longitude = update.data.longitude
+        self.environment.timestamp = update.timestamp
 
-    def save_update(self, update: Update) -> None:
-        current_directory = os.path.dirname(os.path.abspath(__file__))
-        log_directory_name = "saved_simulations"
-        log_directory_path = f"{current_directory}/{log_directory_name}"
-        file_name = f"{self.simulation_id}.txt"
-        file_path = f"{log_directory_path}/{file_name}"
-
-        if not os.path.exists(log_directory_path):
-            os.makedirs(log_directory_path)
+    # MARK: +- Add Line To File
+    def add_line_to_file(self, line: str | dict) -> None:
+        file_path = get_simulation_save_file_path(self.simulation_id)
 
         with open(file_path, "a") as file:
-            file.write(str(update.serialize()) + "\n")
-            # Save global state every 499 updates
-            # The state will be on lines 500, 1000, 1500, etc.
-            if self.update_counter % 499 == 0:
-                file.write(str(self.environment.serialize()) + "\n")
+            file.write(line + "\n")
 
+    # MARK: +- Save Update
+    def save_update(self, update: Update) -> None:
+        self.add_line_to_file(str(update.serialize()))
+
+        # Save the state of the simulation every SAVE_STATE_STEP events
+        if self.update_counter % STATE_SAVE_STEP == 0:
+            self.add_line_to_file(str(self.environment.serialize()))
+
+    # MARK: +- Add Update
     def add_update(self, update: Update) -> None:
         update.order = self.update_counter
         self.update_counter += 1
+
         self.process_update(update)
-        self.updates.append(update)
+
+        if self.update_counter == 1:
+            # Add the simulation start time to the simulation information
+            self.simulation_information.simulation_start_time = update.timestamp
+            self.add_first_line()
+
         if self.sio.connected:
             self.sio.emit(
                 "simulation-update",
@@ -321,6 +155,7 @@ class SimulationEventManager:
 
         self.save_update(update)
 
+    # MARK: +- Process Event
     def process_event(self, event: Event) -> str:
         # Optimize
         if isinstance(event, Optimize):
@@ -339,7 +174,7 @@ class SimulationEventManager:
 
         # PassengerRelease
         elif isinstance(event, PassengerRelease):
-            passenger = VisualizedPassenger(event.trip)
+            passenger = VisualizedPassenger.from_trip(event.trip)
             self.add_update(
                 Update(
                     UpdateType.CREATE_PASSENGER,
@@ -354,7 +189,7 @@ class SimulationEventManager:
             self.add_update(
                 Update(
                     UpdateType.UPDATE_PASSENGER_STATUS,
-                    PassengerStatusUpdate(
+                    PassengerStatusUpdate.from_trip(
                         event.state_machine.owner,
                     ),
                     event.time,
@@ -367,7 +202,7 @@ class SimulationEventManager:
             self.add_update(
                 Update(
                     UpdateType.UPDATE_PASSENGER_STATUS,
-                    PassengerStatusUpdate(
+                    PassengerStatusUpdate.from_trip(
                         event.state_machine.owner,
                     ),
                     event.time,
@@ -380,7 +215,7 @@ class SimulationEventManager:
             self.add_update(
                 Update(
                     UpdateType.UPDATE_PASSENGER_STATUS,
-                    PassengerStatusUpdate(
+                    PassengerStatusUpdate.from_trip(
                         event.state_machine.owner,
                     ),
                     event.time,
@@ -393,7 +228,7 @@ class SimulationEventManager:
             self.add_update(
                 Update(
                     UpdateType.UPDATE_PASSENGER_STATUS,
-                    PassengerStatusUpdate(
+                    PassengerStatusUpdate.from_trip(
                         event.state_machine.owner,
                     ),
                     event.time,
@@ -406,7 +241,7 @@ class SimulationEventManager:
             self.add_update(
                 Update(
                     UpdateType.UPDATE_VEHICLE_STATUS,
-                    VehicleStatusUpdate(event.state_machine.owner),
+                    VehicleStatusUpdate.from_vehicle(event.state_machine.owner),
                     event.time,
                 )
             )
@@ -417,7 +252,7 @@ class SimulationEventManager:
             self.add_update(
                 Update(
                     UpdateType.UPDATE_VEHICLE_STATUS,
-                    VehicleStatusUpdate(
+                    VehicleStatusUpdate.from_vehicle(
                         event.state_machine.owner,
                     ),
                     event.time,
@@ -429,7 +264,7 @@ class SimulationEventManager:
             self.add_update(
                 Update(
                     UpdateType.UPDATE_VEHICLE_STATUS,
-                    VehicleStatusUpdate(
+                    VehicleStatusUpdate.from_vehicle(
                         event.state_machine.owner,
                     ),
                     event.time,
@@ -442,7 +277,7 @@ class SimulationEventManager:
             self.add_update(
                 Update(
                     UpdateType.UPDATE_VEHICLE_STATUS,
-                    VehicleStatusUpdate(
+                    VehicleStatusUpdate.from_vehicle(
                         event.state_machine.owner,
                     ),
                     event.time,
@@ -455,7 +290,7 @@ class SimulationEventManager:
             self.add_update(
                 Update(
                     UpdateType.UPDATE_VEHICLE_STATUS,
-                    VehicleStatusUpdate(
+                    VehicleStatusUpdate.from_vehicle(
                         event.state_machine.owner,
                     ),
                     event.time,
@@ -465,7 +300,7 @@ class SimulationEventManager:
 
         # VehicleReady
         elif isinstance(event, VehicleReady):
-            vehicle = VisualizedVehicle(event.vehicle)
+            vehicle = VisualizedVehicle.from_vehicle(event.vehicle)
             self.add_update(
                 Update(
                     UpdateType.CREATE_VEHICLE,
@@ -520,3 +355,45 @@ class SimulationEventManager:
 
         else:
             raise NotImplementedError(f"Event {event} not implemented")
+
+
+# MARK: Visualizer
+class SimulationVisualizationVisualizer(Visualizer):
+    def __init__(
+        self,
+        simulation_id: str,
+        data_collector: SimulationVisualizationDataCollector,
+        sio: Client,
+    ) -> None:
+        super().__init__()
+        self.simulation_id = simulation_id
+        self.data_collector = data_collector
+        self.sio = sio
+
+    def visualize_environment(
+        self,
+        env: Environment,
+        current_event: Optional[Event] = None,
+        event_index: Optional[int] = None,
+        event_priority: Optional[int] = None,
+    ) -> None:
+        if current_event is None:
+            # Notify the server that the simulation has ended
+            if self.sio.connected:
+                self.sio.emit(
+                    "simulation-end",
+                    (self.simulation_id, self.data_collector.environment.timestamp),
+                )
+
+
+# MARK: Environment Observer
+class SimulationVisualizationEnvironmentObserver(EnvironmentObserver):
+
+    def __init__(self, simulation_id: str, data: str, sio: Client) -> None:
+        data_collector = SimulationVisualizationDataCollector(simulation_id, data, sio)
+        super().__init__(
+            visualizers=SimulationVisualizationVisualizer(
+                simulation_id, data_collector, sio
+            ),
+            data_collectors=data_collector,
+        )

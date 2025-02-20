@@ -7,7 +7,7 @@ import base64
 
 from flask import Flask
 from flask_socketio import SocketIO, emit, join_room, leave_room
-from server_utils import CLIENT_ROOM, HOST, PORT, getSessionId, log
+from server_utils import CLIENT_ROOM, HOST, PORT, get_session_id, log
 from simulation_manager import SimulationManager
 
 
@@ -33,12 +33,12 @@ def run_server():
     def on_connect(auth):
         auth_type = auth["type"]
         log("connected", auth_type)
-        sockets_types_by_session_id[getSessionId()] = auth_type
+        sockets_types_by_session_id[get_session_id()] = auth_type
         join_room(auth_type)
 
     @socketio.on("disconnect")
     def on_disconnect(reason):
-        session_id = getSessionId()
+        session_id = get_session_id()
         auth_type = sockets_types_by_session_id.pop(session_id)
         log(f"disconnected: {reason}", auth_type)
         leave_room(auth_type)
@@ -125,12 +125,12 @@ def run_server():
     @socketio.on("simulation-start")
     def on_simulation_start(simulation_id):
         log(f"simulation {simulation_id} started", "simulation")
-        simulation_manager.on_simulation_start(simulation_id, getSessionId())
+        simulation_manager.on_simulation_start(simulation_id, get_session_id())
 
     @socketio.on("simulation-end")
-    def on_simulation_end(simulation_id):
+    def on_simulation_end(simulation_id, simulation_end_time):
         log(f"simulation {simulation_id} ended", "simulation")
-        simulation_manager.on_simulation_end(simulation_id)
+        simulation_manager.on_simulation_end(simulation_id, simulation_end_time)
 
     @socketio.on("simulation-pause")
     def on_simulation_pause(simulation_id):
@@ -154,12 +154,12 @@ def run_server():
     @socketio.on("simulation-identification")
     def on_simulation_identification(simulation_id, data, status):
         simulation_manager.on_simulation_identification(
-            simulation_id, data, status, getSessionId()
+            simulation_id, data, status, get_session_id()
         )
 
     logging.basicConfig(level=logging.DEBUG)
 
-    log(f"Starting server at {HOST}:{PORT}", "server")
+    log(f"Starting server at {HOST}:{PORT}", "server", should_emit=False)
 
     # MARK: Run server
     socketio.run(app, host=HOST, port=PORT)
