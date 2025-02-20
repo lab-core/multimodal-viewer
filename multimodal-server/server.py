@@ -93,7 +93,7 @@ def run_server():
             simulation_id, first_state_order, last_update_order, visualization_time
         )
 
-    @socketio.on("importFolder")
+    @socketio.on("import-folder")
     def on_import_folder(data):
         log("importing folder", folder_name)
         folder_name = data.get("folderName")

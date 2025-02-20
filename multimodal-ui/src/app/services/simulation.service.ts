@@ -89,10 +89,6 @@ export class SimulationService {
     });
   }
 
-  // get activeSimulationEnvironmentSignal(): Signal<SimulationEnvironment> {
-  //   return this._activeSimulationEnvironmentSignal;
-  // }
-
   // MARK: Communication
   pauseSimulation(simulationId: string) {
     this.communicationService.emit('pause-simulation', simulationId);
