@@ -15,6 +15,7 @@ import { UserInterfaceService } from '../../services/user-interface.service';
 import { InformationDialogComponent } from '../information-dialog/information-dialog.component';
 import { SimulationControlBarComponent } from '../simulation-control-bar/simulation-control-bar.component';
 import { AnimationService } from '../../services/animation.service';
+import { MatChipsModule } from '@angular/material/chips';
 
 @Component({
   selector: 'app-visualizer',
@@ -25,6 +26,7 @@ import { AnimationService } from '../../services/animation.service';
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    MatChipsModule,
   ],
   templateUrl: './visualizer.component.html',
   styleUrl: './visualizer.component.css',

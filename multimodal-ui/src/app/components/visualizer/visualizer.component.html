@@ -12,9 +12,11 @@
 
   <!-- MARK: FPS Display 
    -->
-  <mat-card appearance="outlined" class="fps-display">
-    <mat-card-content>FPS: {{ fpsSignal() }}</mat-card-content>
-  </mat-card>
+  <mat-chip class="fps-display" [style.background-color]="'var(--disabled-background-color)'">
+    <div class="flex-row align-center gap-0-5-rem text-disabled" style="text-align: center;">
+      FPS: {{ fpsSignal() }}
+    </div>
+  </mat-chip>
   
 
   <!-- MARK: Information Panel

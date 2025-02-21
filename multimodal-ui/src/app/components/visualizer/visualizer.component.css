@@ -1,4 +1,5 @@
 @import "../../../styles/flex.styles.css";
+@import "../../../styles/color.styles.css";
 
 :host,
 .no-simulation {
@@ -56,9 +57,8 @@
 
 .fps-display {
   position: absolute;
-  bottom: 1.5rem;
+  bottom: 1.8rem; /* The attribution text is just below */
   left: 1rem;
-  min-width: 6rem;
 }
 
 .information-panel {

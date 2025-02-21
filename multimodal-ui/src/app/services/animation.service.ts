@@ -47,7 +47,7 @@ export class AnimationService {
   updateVehiclePositions() {
     for (let index = 0; index < this.vehicles.length; ++index) {
       const vehicle = this.vehicles[index];
-      const secElapsed = this.ticker.deltaTime / this.ticker.FPS;
+      const secElapsed = this.ticker.deltaMS / 1000;
       vehicle.currentTime += secElapsed;
       vehicle.sprite.rotation += (vehicle.requestedRotation - vehicle.sprite.rotation) * secElapsed;
       let progress = vehicle.currentTime / vehicle.timeToReach;
@@ -110,8 +110,7 @@ export class AnimationService {
   }
 
   private onRedraw(event: L.LeafletEvent) {
-    console.log(this.ticker.deltaTime);
-    const fps = Math.floor(1000 / this.ticker.deltaMS);
+    const fps = Math.round(1000 / this.ticker.deltaMS);
     this.fpsSignal.set(fps);
     this.updateVehiclePositions();
   }
