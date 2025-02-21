@@ -3,6 +3,7 @@ import os
 from enum import Enum
 
 import polyline
+from filelock import FileLock
 from multimodalsim.simulator.request import Trip
 from multimodalsim.simulator.vehicle import Vehicle
 from multimodalsim.state_machine.status import PassengerStatus, VehicleStatus
@@ -581,3 +582,126 @@ def read_lines_from_byte_offset(
                 break
             lines.append(line)
         return lines
+
+
+# MARK: SVDM
+class SimulationVisualizationDataManager:
+    """
+    This class manage reads and writes of simulation data for visualization.
+    """
+
+    # MARK: +- File paths
+    @staticmethod
+    def get_saved_simulations_directory_path() -> str:
+        current_directory = os.path.dirname(os.path.abspath(__file__))
+        directory_name = "saved_simulations"
+        directory_path = f"{current_directory}/{directory_name}"
+
+        if not os.path.exists(directory_path):
+            os.makedirs(directory_path)
+
+        return directory_path
+
+    @staticmethod
+    def get_all_saved_simulation_ids() -> list[str]:
+        directory_path = (
+            SimulationVisualizationDataManager.get_saved_simulations_directory_path()
+        )
+        return [
+            simulation_id
+            for simulation_id in os.listdir(directory_path)
+            # TODO #43 Remove condition
+            if not simulation_id.endswith(".txt")
+        ]
+
+    @staticmethod
+    def get_saved_simulation_directory_path(simulation_id: str) -> str:
+        directory_path = (
+            SimulationVisualizationDataManager.get_saved_simulations_directory_path()
+        )
+        simulation_directory_path = f"{directory_path}/{simulation_id}"
+
+        if not os.path.exists(simulation_directory_path):
+            os.makedirs(simulation_directory_path)
+
+        return simulation_directory_path
+
+    @staticmethod
+    def get_saved_simulation_information_file_path(simulation_id: str) -> str:
+        simulation_directory_path = (
+            SimulationVisualizationDataManager.get_saved_simulation_directory_path(
+                simulation_id
+            )
+        )
+        file_name = "simulation_information.json"
+        file_path = f"{simulation_directory_path}/{file_name}"
+
+        if not os.path.exists(file_path):
+            with open(file_path, "w") as file:
+                file.write("")
+
+        return file_path
+
+    @staticmethod
+    def get_saved_simulation_polylines_file_path(simulation_id: str) -> str:
+        simulation_directory_path = (
+            SimulationVisualizationDataManager.get_saved_simulation_directory_path(
+                simulation_id
+            )
+        )
+        file_name = "polylines.json"
+        file_path = f"{simulation_directory_path}/{file_name}"
+
+        if not os.path.exists(file_path):
+            with open(file_path, "w") as file:
+                file.write("")
+
+        return file_path
+
+    @staticmethod
+    def get_saved_simulation_states_folder_path(simulation_id: str) -> str:
+        simulation_directory_path = (
+            SimulationVisualizationDataManager.get_saved_simulation_directory_path(
+                simulation_id
+            )
+        )
+        folder_name = "states"
+        folder_path = f"{simulation_directory_path}/{folder_name}"
+
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
+
+        return folder_path
+
+    @staticmethod
+    def get_saved_simulation_state_file_path() -> None:
+        # TODO #43
+        raise NotImplementedError()
+
+    # MARK: +- Simulation Information
+    @staticmethod
+    def set_simulation_information(
+        simulation_id: str, simulation_information: SimulationInformation
+    ) -> None:
+        file_path = SimulationVisualizationDataManager.get_saved_simulation_information_file_path(
+            simulation_id
+        )
+
+        lock = FileLock(f"{file_path}.lock")
+
+        with lock:
+            with open(file_path, "w") as file:
+                file.write(json.dumps(simulation_information.serialize()))
+
+    @staticmethod
+    def get_simulation_information(simulation_id: str) -> SimulationInformation:
+        file_path = SimulationVisualizationDataManager.get_saved_simulation_information_file_path(
+            simulation_id
+        )
+
+        lock = FileLock(f"{file_path}.lock")
+
+        with lock:
+            with open(file_path, "r") as file:
+                data = file.read()
+                return SimulationInformation.deserialize(data)

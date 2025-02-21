@@ -17,12 +17,11 @@ from server_utils import (
 )
 from simulation import run_simulation
 from simulation_visualization_data_model import (
-    SimulationInformation,
+    SimulationVisualizationDataManager,
     Update,
     VisualizedEnvironment,
     extract_byte_offsets,
     get_simulation_save_directory_path,
-    get_simulation_save_file_path,
     read_line_at_byte_offset,
     read_lines_from_byte_offset,
 )
@@ -91,7 +90,6 @@ class SimulationManager:
 
     def __init__(self):
         self.simulations = {}
-        self.query_simulations()
 
     def start_simulation(
         self, name: str, data: str, response_event: str
@@ -159,7 +157,7 @@ class SimulationManager:
 
         emit("stop-simulation", to=simulation.socket_id)
 
-    def on_simulation_end(self, simulation_id: str, simulation_end_time: float):
+    def on_simulation_end(self, simulation_id: str):
         if simulation_id not in self.simulations:
             log(
                 f"{__file__} {inspect.currentframe().f_lineno}: Simulation {simulation_id} not found",
@@ -170,22 +168,7 @@ class SimulationManager:
 
         simulation = self.simulations[simulation_id]
 
-        # Update the simulation end time in the save file
-        with open(
-            get_simulation_save_file_path(simulation_id), "r+", encoding="utf-8"
-        ) as file, tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
-            first_line = file.readline()
-
-            simulation_information = SimulationInformation.deserialize(first_line)
-            simulation_information.simulation_end_time = simulation_end_time
-
-            temp_file.write(str(simulation_information.serialize()) + "\n")
-            temp_file.write(file.read())
-
-        os.replace(temp_file.name, get_simulation_save_file_path(simulation_id))
-
-        # Reload the simulation
-        self.query_simulation(simulation_id)
+        simulation.status = SimulationStatus.COMPLETED
 
         emit("can-disconnect", to=simulation.socket_id)
 
@@ -328,6 +311,8 @@ class SimulationManager:
         self.emit_simulations()
 
     def emit_simulations(self):
+        self.query_simulations()
+
         serialized_simulations = []
 
         for simulation_id, simulation in self.simulations.items():
@@ -539,28 +524,34 @@ class SimulationManager:
             self.emit_simulations()
 
     def query_simulations(self):
-        simulation_save_directory_path = get_simulation_save_directory_path()
-
-        simulation_ids = [
-            file_name.split(".")[0]
-            for file_name in os.listdir(simulation_save_directory_path)
-        ]
-
-        for simulation_id in simulation_ids:
+        for (
+            simulation_id
+        ) in SimulationVisualizationDataManager.get_all_saved_simulation_ids():
             # Non valid save files might throw an exception
             self.query_simulation(simulation_id)
 
     def query_simulation(self, simulation_id) -> None:
-        # Non valid save files might throw an exception
+        if simulation_id in self.simulations and self.simulations[
+            simulation_id
+        ].status in [
+            SimulationStatus.RUNNING,
+            SimulationStatus.PAUSED,
+            SimulationStatus.STOPPING,
+            SimulationStatus.STARTING,
+            SimulationStatus.LOST,
+        ]:
+            return
+
+        # Non valid save files throw an exception
         try:
-            byte_offsets = extract_byte_offsets(simulation_id)
-            if len(byte_offsets) == 0:
-                return
+            # Get the simulation information from the save file
+            simulation_information = (
+                SimulationVisualizationDataManager.get_simulation_information(
+                    simulation_id
+                )
+            )
 
-            first_line = read_line_at_byte_offset(simulation_id, byte_offsets[0])
-
-            simulation_information = SimulationInformation.deserialize(first_line)
-
+            # Verify the version of the save file
             version = simulation_information.version
             major_version, minor_version = version.split(".")
 
@@ -581,13 +572,13 @@ class SimulationManager:
                 log(
                     f"Simulation {simulation_id} version is outdated",
                     "server",
-                    should_emit=False,
+                    logging.DEBUG,
                 )
             if status == SimulationStatus.FUTURE:
                 log(
                     f"Simulation {simulation_id} version is future",
                     "server",
-                    should_emit=False,
+                    logging.DEBUG,
                 )
 
             simulation = SimulationHandler(
@@ -598,29 +589,19 @@ class SimulationManager:
                 status,
             )
 
-            if simulation_information.simulation_start_time is not None:
-                simulation.simulation_start_time = (
-                    simulation_information.simulation_start_time
-                )
+            simulation_information.simulation_start_time = (
+                simulation_information.simulation_start_time
+            )
+            simulation.simulation_end_time = simulation_information.simulation_end_time
 
-            if simulation_information.simulation_end_time is not None:
-                simulation.simulation_end_time = (
-                    simulation_information.simulation_end_time
-                )
-            elif simulation_id in self.simulations:
-                # The simulation is currently running
-                return
-            else:
+            if simulation_information.simulation_end_time is None:
+                # The simulation is not running but the end time is not set
                 raise Exception("Simulation is corrupted")
 
             self.simulations[simulation_id] = simulation
 
         except:
-            log(
-                f"Simulation {simulation_id} is corrupted",
-                "server",
-                should_emit=False,
-            )
+            log(f"Simulation {simulation_id} is corrupted", "server", logging.DEBUG)
 
             simulation = SimulationHandler(
                 simulation_id,

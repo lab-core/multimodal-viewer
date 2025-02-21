@@ -36,6 +36,7 @@ from server_utils import STATE_SAVE_STEP
 from simulation_visualization_data_model import (
     PassengerStatusUpdate,
     SimulationInformation,
+    SimulationVisualizationDataManager,
     Update,
     UpdateType,
     VehiclePositionUpdate,
@@ -83,22 +84,6 @@ class SimulationVisualizationDataCollector(DataCollector):
         if self.sio.connected:
             self.sio.emit("log", (self.simulation_id, message))
 
-    # MARK: +- Add First Line
-    def add_first_line(self) -> None:
-        file_path = get_simulation_save_file_path(self.simulation_id)
-
-        with open(file_path, "r") as file:
-            lines = file.readlines()
-
-        first_line = str(self.simulation_information.serialize()) + "\n"
-        if len(lines) > 0:
-            lines[0] = first_line
-        else:
-            lines.append(first_line)
-
-        with open(file_path, "w") as file:
-            file.writelines(lines)
-
     # MARK: +- Add Line To File
     def add_line_to_file(self, line: str | dict) -> None:
         file_path = get_simulation_save_file_path(self.simulation_id)
@@ -132,7 +117,10 @@ class SimulationVisualizationDataCollector(DataCollector):
         if self.update_counter == 1:
             # Add the simulation start time to the simulation information
             self.simulation_information.simulation_start_time = update.timestamp
-            self.add_first_line()
+
+            SimulationVisualizationDataManager.set_simulation_information(
+                self.simulation_id, self.simulation_information
+            )
 
             # Notify the server that the simulation has started and send the simulation start time
             if self.sio.connected:
@@ -407,15 +395,17 @@ class SimulationVisualizationVisualizer(Visualizer):
         event_priority: Optional[int] = None,
     ) -> None:
         if current_event is None:
+            self.data_collector.simulation_information.simulation_end_time = (
+                self.data_collector.visualized_environment.timestamp
+            )
+
+            SimulationVisualizationDataManager.set_simulation_information(
+                self.simulation_id, self.data_collector.simulation_information
+            )
+
             # Notify the server that the simulation has ended
             if self.sio.connected:
-                self.sio.emit(
-                    "simulation-end",
-                    (
-                        self.simulation_id,
-                        self.data_collector.visualized_environment.timestamp,
-                    ),
-                )
+                self.sio.emit("simulation-end", self.simulation_id)
 
 
 # MARK: Environment Observer

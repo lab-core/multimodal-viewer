@@ -56,41 +56,37 @@ export type SimulationListGroup = 'running' | 'completed';
   styleUrl: './simulation-list-dialog.component.css',
 })
 export class SimulationListDialogComponent {
+  readonly groupedSimulationsSignal: Signal<
+    {
+      group: SimulationListGroup;
+      simulations: Simulation[];
+    }[]
+  > = computed(() => {
+    const simulations = this.simulationsSignal();
+    const runningSimulations = simulations.filter((simulation) =>
+      RUNNING_SIMULATION_STATUSES.includes(simulation.status),
+    );
+    const completedSimulations = simulations.filter(
+      (simulation) => !RUNNING_SIMULATION_STATUSES.includes(simulation.status),
+    );
+
+    return [
+      {
+        group: 'running',
+        simulations: runningSimulations,
+      },
+      {
+        group: 'completed',
+        simulations: completedSimulations,
+      },
+    ];
+  });
   constructor(
     private readonly dataService: DataService,
     private readonly simulationService: SimulationService,
     private readonly dialogService: DialogService,
     private readonly matDialogRef: MatDialogRef<SimulationListDialogComponent>,
   ) {}
-
-  get groupedSimulationsSignal(): Signal<
-    {
-      group: SimulationListGroup;
-      simulations: Simulation[];
-    }[]
-  > {
-    return computed(() => {
-      const simulations = this.simulationsSignal();
-      const runningSimulations = simulations.filter((simulation) =>
-        RUNNING_SIMULATION_STATUSES.includes(simulation.status),
-      );
-      const completedSimulations = simulations.filter(
-        (simulation) =>
-          !RUNNING_SIMULATION_STATUSES.includes(simulation.status),
-      );
-
-      return [
-        {
-          group: 'running',
-          simulations: runningSimulations,
-        },
-        {
-          group: 'completed',
-          simulations: completedSimulations,
-        },
-      ];
-    });
-  }
 
   getColorFromStatus(status: Simulation['status']): string {
     switch (status) {
