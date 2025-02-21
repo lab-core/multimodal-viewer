@@ -253,8 +253,11 @@ export interface RawSimulationEnvironment
   vehicles: Vehicle[];
 }
 
-export interface SimulationState {
-  environment: SimulationEnvironment;
+export interface RawSimulationState extends RawSimulationEnvironment {
+  updates: AnySimulationUpdate[];
+}
+
+export interface SimulationState extends SimulationEnvironment {
   updates: AnySimulationUpdate[];
 }
 

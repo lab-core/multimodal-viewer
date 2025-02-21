@@ -11,11 +11,11 @@ import {
   PASSENGER_STATUSES,
   PassengerStatusUpdate,
   RawSimulationEnvironment,
+  RawSimulationState,
   Simulation,
   SIMULATION_UPDATE_TYPES,
   SimulationEnvironment,
   SimulationState,
-  STATE_SAVE_STEP,
   Vehicle,
   VEHICLE_STATUSES,
   VehiclePositionUpdate,
@@ -49,16 +49,20 @@ export class SimulationService {
 
     this.communicationService.on(
       'missing-simulation-states',
-      (rawMissingStates, rawMissingUpdates) => {
+      (rawMissingStates, stateOrdersToKeep) => {
         this._simulationStatesSignal.update((states) => {
-          const missingStates = (rawMissingStates as RawSimulationEnvironment[])
-            .map((rawState) => this.extractSimulationEnvironment(rawState))
+          const missingStates = (rawMissingStates as RawSimulationState[])
+            .map((rawState) => this.extractSimulationState(rawState))
             .filter((state) => state !== null);
-          const missingUpdates = (rawMissingUpdates as AnySimulationUpdate[])
-            .map((rawUpdate) => this.extractSimulationUpdate(rawUpdate))
-            .filter((update) => update !== null);
 
-          return this.mergeStates(states, missingStates, missingUpdates);
+          console.log('Missing states: ', missingStates);
+          console.log('State orders to keep: ', stateOrdersToKeep);
+
+          return this.mergeStates(
+            states,
+            missingStates,
+            stateOrdersToKeep as number[],
+          );
         });
       },
     );
@@ -408,6 +412,40 @@ export class SimulationService {
     return { passengers, vehicles, timestamp, order };
   }
 
+  private extractSimulationState(
+    rawSimulationState: RawSimulationState,
+  ): SimulationState | null {
+    // TODO Uncomment for debugging
+    // console.debug('Extracting simulation state: ', rawSimulationState);
+
+    const environment = this.extractSimulationEnvironment(rawSimulationState);
+    if (!environment) {
+      console.error('Invalid simulation environment: ', rawSimulationState);
+      return null;
+    }
+
+    const rawUpdates = rawSimulationState.updates;
+    if (!Array.isArray(rawUpdates)) {
+      console.error('Simulation state updates not found: ', rawUpdates);
+      return null;
+    }
+
+    const updates: AnySimulationUpdate[] = [];
+
+    for (const rawUpdate of rawUpdates) {
+      const update = this.extractSimulationUpdate(rawUpdate);
+
+      if (update) {
+        updates.push(update);
+      } else {
+        console.error('Invalid simulation update: ', rawUpdate);
+        return null;
+      }
+    }
+
+    return { ...environment, updates };
+  }
+
   // MARK: Build environment
   get simulationStatesSignal(): Signal<SimulationState[]> {
     return this._simulationStatesSignal;
@@ -416,7 +454,26 @@ export class SimulationService {
   /**
    * Apply an update to the simulation environment in place.
    */
-  applyUpdate(
+  buildEnvironment(
+    state: SimulationState,
+    visualizationTime: number,
+  ): SimulationState {
+    const simulationEnvironment = structuredClone(state);
+
+    const sortedUpdates = state.updates.sort((a, b) => a.order - b.order);
+
+    for (const update of sortedUpdates) {
+      if (update.timestamp > visualizationTime) {
+        break;
+      }
+
+      this.applyUpdate(update, simulationEnvironment);
+    }
+
+    return simulationEnvironment;
+  }
+
+  private applyUpdate(
     update: AnySimulationUpdate,
     simulationEnvironment: SimulationEnvironment,
   ) {
@@ -479,82 +536,23 @@ export class SimulationService {
 
   private mergeStates(
     states: SimulationState[],
-    missingStates: SimulationEnvironment[],
-    missingUpdates: AnySimulationUpdate[],
+    missingStates: SimulationState[],
+    stateOrdersToKeep: number[],
   ): SimulationState[] {
-    if (missingStates.length === 0 && missingUpdates.length === 0) {
+    if (missingStates.length === 0) {
       return states;
     }
 
     // Deep copy of the states
-    const newStates = structuredClone(states);
+    const newStates = structuredClone(missingStates);
 
-    // Add missing states
-    for (const missingState of missingStates) {
-      const existingState = newStates.find(
-        (state) => state.environment.order === missingState.order,
-      );
-
-      if (existingState) {
-        continue;
+    // Add states to keep
+    for (const state of states) {
+      if (stateOrdersToKeep.includes(state.order)) {
+        newStates.push(state);
       }
-
-      const state: SimulationState = {
-        environment: missingState,
-        updates: [],
-      };
-
-      newStates.push(state);
     }
 
-    // Sort states by order
-    const sortedStates = newStates.sort(
-      (a, b) => a.environment.order - b.environment.order,
-    );
-
-    // Add missing updates to the states
-    const sortedMissingUpdates = missingUpdates.sort(
-      (a, b) => a.order - b.order,
-    );
-
-    let stateIndex = 0;
-    for (const missingUpdate of sortedMissingUpdates) {
-      const update = missingUpdate;
-
-      while (
-        stateIndex < sortedStates.length &&
-        sortedStates[stateIndex].environment.order + STATE_SAVE_STEP <
-          update.order
-      ) {
-        stateIndex++;
-      }
-
-      if (stateIndex >= sortedStates.length) {
-        break;
-      }
-
-      const existingUpdate = sortedStates[stateIndex].updates.find(
-        (existingUpdate) => existingUpdate.order === update.order,
-      );
-      if (existingUpdate) {
-        continue;
-      }
-
-      sortedStates[stateIndex].updates.push(update);
-    }
-
-    // Keep only 11 states
-    if (sortedStates.length <= 11) {
-      return sortedStates;
-    }
-
-    if (sortedStates[0].environment.order === missingStates[0].order) {
-      return sortedStates.slice(0, 11);
-    }
-
-    // Reverse sort and slice
-    return sortedStates
-      .sort((a, b) => b.environment.order - a.environment.order)
-      .slice(0, 11);
+    return newStates;
   }
 }

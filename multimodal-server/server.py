@@ -83,14 +83,14 @@ def run_server():
 
     @socketio.on("get-missing-simulation-states")
     def on_client_get_missing_simulation_states(
-        simulation_id, first_state_order, last_update_order, visualization_time
+        simulation_id, first_state_order, last_state_order, visualization_time
     ):
         log(
-            f"getting missing simulation states for {simulation_id} with orders {first_state_order} and {last_update_order} at time {visualization_time}",
+            f"getting missing simulation states for {simulation_id} with orders {first_state_order} and {last_state_order} at time {visualization_time}",
             "client",
         )
         simulation_manager.emit_missing_simulation_states(
-            simulation_id, first_state_order, last_update_order, visualization_time
+            simulation_id, first_state_order, last_state_order, visualization_time
         )
 
     # TODO Implement or remove
