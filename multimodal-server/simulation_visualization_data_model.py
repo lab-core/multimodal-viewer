@@ -590,12 +590,17 @@ class SimulationVisualizationDataManager:
     This class manage reads and writes of simulation data for visualization.
     """
 
+    __CORRUPTED_FILE_NAME = ".corrupted"
+    __SAVED_SIMULATIONS_DIRECTORY_NAME = "saved_simulations"
+    __SIMULATION_INFORMATION_FILE_NAME = "simulation_information.json"
+    __POLYLINES_FILE_NAME = "polylines.json"
+    __STATES_DIRECTORY_NAME = "states"
+
     # MARK: +- File paths
     @staticmethod
     def get_saved_simulations_directory_path() -> str:
         current_directory = os.path.dirname(os.path.abspath(__file__))
-        directory_name = "saved_simulations"
-        directory_path = f"{current_directory}/{directory_name}"
+        directory_path = f"{current_directory}/{SimulationVisualizationDataManager.__SAVED_SIMULATIONS_DIRECTORY_NAME}"
 
         if not os.path.exists(directory_path):
             os.makedirs(directory_path)
@@ -633,8 +638,7 @@ class SimulationVisualizationDataManager:
                 simulation_id
             )
         )
-        file_name = "simulation_information.json"
-        file_path = f"{simulation_directory_path}/{file_name}"
+        file_path = f"{simulation_directory_path}/{SimulationVisualizationDataManager.__SIMULATION_INFORMATION_FILE_NAME}"
 
         if not os.path.exists(file_path):
             with open(file_path, "w") as file:
@@ -649,8 +653,7 @@ class SimulationVisualizationDataManager:
                 simulation_id
             )
         )
-        file_name = "polylines.json"
-        file_path = f"{simulation_directory_path}/{file_name}"
+        file_path = f"{simulation_directory_path}/{SimulationVisualizationDataManager.__POLYLINES_FILE_NAME}"
 
         if not os.path.exists(file_path):
             with open(file_path, "w") as file:
@@ -665,8 +668,7 @@ class SimulationVisualizationDataManager:
                 simulation_id
             )
         )
-        folder_name = "states"
-        folder_path = f"{simulation_directory_path}/{folder_name}"
+        folder_path = f"{simulation_directory_path}/{SimulationVisualizationDataManager.__STATES_DIRECTORY_NAME}"
 
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
@@ -677,6 +679,32 @@ class SimulationVisualizationDataManager:
     def get_saved_simulation_state_file_path() -> None:
         # TODO #43
         raise NotImplementedError()
+
+    # MARK: +- Corrupted
+    @staticmethod
+    def is_simulation_corrupted(simulation_id: str) -> bool:
+        simulation_directory_path = (
+            SimulationVisualizationDataManager.get_saved_simulation_directory_path(
+                simulation_id
+            )
+        )
+
+        return os.path.exists(
+            f"{simulation_directory_path}/{SimulationVisualizationDataManager.__CORRUPTED_FILE_NAME}"
+        )
+
+    @staticmethod
+    def mark_simulation_as_corrupted(simulation_id: str) -> None:
+        simulation_directory_path = (
+            SimulationVisualizationDataManager.get_saved_simulation_directory_path(
+                simulation_id
+            )
+        )
+
+        file_path = f"{simulation_directory_path}/{SimulationVisualizationDataManager.__CORRUPTED_FILE_NAME}"
+
+        with open(file_path, "w") as file:
+            file.write("")
 
     # MARK: +- Simulation Information
     @staticmethod

@@ -524,9 +524,11 @@ class SimulationManager:
             self.emit_simulations()
 
     def query_simulations(self):
-        for (
-            simulation_id
-        ) in SimulationVisualizationDataManager.get_all_saved_simulation_ids():
+        all_simulation_ids = (
+            SimulationVisualizationDataManager.get_all_saved_simulation_ids()
+        )
+
+        for simulation_id in all_simulation_ids:
             # Non valid save files might throw an exception
             self.query_simulation(simulation_id)
 
@@ -542,65 +544,75 @@ class SimulationManager:
         ]:
             return
 
-        # Non valid save files throw an exception
-        try:
-            # Get the simulation information from the save file
-            simulation_information = (
-                SimulationVisualizationDataManager.get_simulation_information(
-                    simulation_id
+        is_corrupted = SimulationVisualizationDataManager.is_simulation_corrupted(
+            simulation_id
+        )
+
+        if not is_corrupted:
+            # Non valid save files throw an exception
+            try:
+                # Get the simulation information from the save file
+                simulation_information = (
+                    SimulationVisualizationDataManager.get_simulation_information(
+                        simulation_id
+                    )
                 )
-            )
 
-            # Verify the version of the save file
-            version = simulation_information.version
-            major_version, minor_version = version.split(".")
+                # Verify the version of the save file
+                version = simulation_information.version
+                major_version, minor_version = version.split(".")
 
-            save_major_version, save_minor_version = SAVE_VERSION.split(".")
+                save_major_version, save_minor_version = SAVE_VERSION.split(".")
 
-            status = SimulationStatus.OUTDATED
-            if major_version == save_major_version:
-                if minor_version <= save_minor_version:
-                    status = SimulationStatus.COMPLETED
-                elif minor_version > save_minor_version:
-                    status = SimulationStatus.FUTURE
-            elif major_version < save_major_version:
                 status = SimulationStatus.OUTDATED
-            else:
-                status = SimulationStatus.FUTURE
+                if major_version == save_major_version:
+                    if minor_version <= save_minor_version:
+                        status = SimulationStatus.COMPLETED
+                    elif minor_version > save_minor_version:
+                        status = SimulationStatus.FUTURE
+                elif major_version < save_major_version:
+                    status = SimulationStatus.OUTDATED
+                else:
+                    status = SimulationStatus.FUTURE
 
-            if status == SimulationStatus.OUTDATED:
-                log(
-                    f"Simulation {simulation_id} version is outdated",
-                    "server",
-                    logging.DEBUG,
+                if status == SimulationStatus.OUTDATED:
+                    log(
+                        f"Simulation {simulation_id} version is outdated",
+                        "server",
+                        logging.DEBUG,
+                    )
+                if status == SimulationStatus.FUTURE:
+                    log(
+                        f"Simulation {simulation_id} version is future",
+                        "server",
+                        logging.DEBUG,
+                    )
+
+                simulation = SimulationHandler(
+                    simulation_id,
+                    simulation_information.name,
+                    simulation_information.start_time,
+                    simulation_information.data,
+                    status,
                 )
-            if status == SimulationStatus.FUTURE:
-                log(
-                    f"Simulation {simulation_id} version is future",
-                    "server",
-                    logging.DEBUG,
+
+                simulation_information.simulation_start_time = (
+                    simulation_information.simulation_start_time
+                )
+                simulation.simulation_end_time = (
+                    simulation_information.simulation_end_time
                 )
 
-            simulation = SimulationHandler(
-                simulation_id,
-                simulation_information.name,
-                simulation_information.start_time,
-                simulation_information.data,
-                status,
-            )
+                if simulation_information.simulation_end_time is None:
+                    # The simulation is not running but the end time is not set
+                    raise Exception("Simulation is corrupted")
 
-            simulation_information.simulation_start_time = (
-                simulation_information.simulation_start_time
-            )
-            simulation.simulation_end_time = simulation_information.simulation_end_time
+                self.simulations[simulation_id] = simulation
 
-            if simulation_information.simulation_end_time is None:
-                # The simulation is not running but the end time is not set
-                raise Exception("Simulation is corrupted")
+            except:
+                is_corrupted = True
 
-            self.simulations[simulation_id] = simulation
-
-        except:
+        if is_corrupted:
             log(f"Simulation {simulation_id} is corrupted", "server", logging.DEBUG)
 
             simulation = SimulationHandler(
@@ -612,6 +624,10 @@ class SimulationManager:
             )
 
             self.simulations[simulation_id] = simulation
+
+            SimulationVisualizationDataManager.mark_simulation_as_corrupted(
+                simulation_id
+            )
 
 
 if __name__ == "__main__":
