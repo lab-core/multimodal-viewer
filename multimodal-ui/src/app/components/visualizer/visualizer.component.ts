@@ -258,17 +258,57 @@ export class VisualizerComponent implements OnDestroy {
     return this.visualizationService.visualizationEnvironmentSignal;
   }
 
-  get numberOfPassengersSignal(): Signal<number> {
+  get numberOfPassengersByStatusSignal(): Signal<
+    {
+      status: string;
+      count: number;
+    }[]
+  > {
     return computed(() => {
       const environment = this.visualizationEnvironmentSignal();
-      return environment ? Object.keys(environment.passengers).length : 0;
+      if (!environment) {
+        return [];
+      }
+
+      const passengers = environment.passengers;
+      const counts: Record<string, number> = {};
+
+      for (const passenger of Object.values(passengers)) {
+        const status = passenger.status;
+        counts[status] = (counts[status] ?? 0) + 1;
+      }
+
+      return Object.entries(counts).map(([status, count]) => ({
+        status,
+        count,
+      }));
     });
   }
 
-  get numberOfVehiclesSignal(): Signal<number> {
+  get numberOfVehiclesByStatusSignal(): Signal<
+    {
+      status: string;
+      count: number;
+    }[]
+  > {
     return computed(() => {
       const environment = this.visualizationEnvironmentSignal();
-      return environment ? Object.keys(environment.vehicles).length : 0;
+      if (!environment) {
+        return [];
+      }
+
+      const vehicles = environment.vehicles;
+      const counts: Record<string, number> = {};
+
+      for (const vehicle of Object.values(vehicles)) {
+        const status = vehicle.status;
+        counts[status] = (counts[status] ?? 0) + 1;
+      }
+
+      return Object.entries(counts).map(([status, count]) => ({
+        status,
+        count,
+      }));
     });
   }
 

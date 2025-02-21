@@ -17,14 +17,9 @@ from server_utils import (
 )
 from simulation import run_simulation
 from simulation_visualization_data_model import (
-    SimulationInformation,
+    SimulationVisualizationDataManager,
     Update,
     VisualizedEnvironment,
-    extract_byte_offsets,
-    get_simulation_save_directory_path,
-    get_simulation_save_file_path,
-    read_line_at_byte_offset,
-    read_lines_from_byte_offset,
 )
 
 
@@ -91,7 +86,6 @@ class SimulationManager:
 
     def __init__(self):
         self.simulations = {}
-        self.query_simulations()
 
     def start_simulation(
         self, name: str, data: str, response_event: str
@@ -159,7 +153,7 @@ class SimulationManager:
 
         emit("stop-simulation", to=simulation.socket_id)
 
-    def on_simulation_end(self, simulation_id: str, simulation_end_time: float):
+    def on_simulation_end(self, simulation_id: str):
         if simulation_id not in self.simulations:
             log(
                 f"{__file__} {inspect.currentframe().f_lineno}: Simulation {simulation_id} not found",
@@ -170,22 +164,7 @@ class SimulationManager:
 
         simulation = self.simulations[simulation_id]
 
-        # Update the simulation end time in the save file
-        with open(
-            get_simulation_save_file_path(simulation_id), "r+", encoding="utf-8"
-        ) as file, tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
-            first_line = file.readline()
-
-            simulation_information = SimulationInformation.deserialize(first_line)
-            simulation_information.simulation_end_time = simulation_end_time
-
-            temp_file.write(str(simulation_information.serialize()) + "\n")
-            temp_file.write(file.read())
-
-        os.replace(temp_file.name, get_simulation_save_file_path(simulation_id))
-
-        # Reload the simulation
-        self.query_simulation(simulation_id)
+        simulation.status = SimulationStatus.COMPLETED
 
         emit("can-disconnect", to=simulation.socket_id)
 
@@ -328,6 +307,8 @@ class SimulationManager:
         self.emit_simulations()
 
     def emit_simulations(self):
+        self.query_simulations()
+
         serialized_simulations = []
 
         for simulation_id, simulation in self.simulations.items():
@@ -371,9 +352,9 @@ class SimulationManager:
         self,
         simulation_id: str,
         first_state_order: float,
-        last_update_order: float,
+        last_state_order: float,
         visualization_time: float,
-    ):
+    ) -> None:
         if simulation_id not in self.simulations:
             log(
                 f"{__file__} {inspect.currentframe().f_lineno}: Simulation {simulation_id} not found",
@@ -385,149 +366,27 @@ class SimulationManager:
         simulation = self.simulations[simulation_id]
 
         try:
-            start = time.time()
-            byte_offsets = extract_byte_offsets(simulation_id)
-            end = time.time()
-
-            log(
-                f"Extracted {len(byte_offsets)} byte offsets in {end - start} seconds",
-                "server",
-            )
-
-            if len(byte_offsets) <= 1:
-                return
-
-            # Retrieve line index from state order
-            #   states are saved all STATE_SAVE_STEP updates
-            #   it means that the difference between the indexes of two states is STATE_SAVE_STEP + 1
-            #   and the indexes are 501, 1002, 1503, ...
-            #   but orders of states are multiples of STATE_SAVE_STEP - 1 (499, 999, 1499, ...)
-            first_sent_line = (
-                (first_state_order + 1) // (STATE_SAVE_STEP) * (STATE_SAVE_STEP + 1)
-            )
-
-            # Retrieve line index from update order
-            #   similar to the previous one but we need to add the offset
-            last_sent_line = (last_update_order + 1) // (STATE_SAVE_STEP) * (
-                STATE_SAVE_STEP + 1
-            ) + (last_update_order + 1) % (STATE_SAVE_STEP)
-
-            # Binary search to find the first update after the current time
-            start = time.time()
-            first_update_line = 1
-            last_update_line = len(byte_offsets) - 1
-
-            while first_update_line < last_update_line:
-                middle_update_line = (first_update_line + last_update_line) // 2
-
-                # if the middle update is a state, go to the next one
-                if (middle_update_line) % (STATE_SAVE_STEP + 1) == 0:
-                    middle_update_line += 1
-
-                update = Update.deserialize(
-                    read_line_at_byte_offset(
-                        simulation_id, byte_offsets[middle_update_line]
-                    )
-                )
-
-                previous_first_update_line = first_update_line
-                previous_last_update_line = last_update_line
-
-                if update.timestamp <= visualization_time:
-                    first_update_line = middle_update_line + 1
-                else:
-                    last_update_line = middle_update_line
-
-                if (
-                    previous_first_update_line == first_update_line
-                    and previous_last_update_line == last_update_line
-                ):
-                    break
-
-            # We mark the first update with a timestamp greater than the visualization time as the center
-            # If no update is found, it will be the last update
-            corresponding_state_line = (last_update_line // (STATE_SAVE_STEP + 1)) * (
-                STATE_SAVE_STEP + 1
-            )
-
-            end = time.time()
-            log(
-                f"Found corresponding state line in {end - start} seconds",
-                "server",
-            )
-
-            first_line = max(corresponding_state_line - 5 * (STATE_SAVE_STEP + 1), 1)
-            last_line = min(
-                corresponding_state_line + 5 * (STATE_SAVE_STEP + 1) + STATE_SAVE_STEP,
-                len(byte_offsets) - 1,
-            )
-
-            number_of_missing_lines_before = first_sent_line - first_line
-            number_of_missing_lines_after = last_line - last_sent_line
-
-            start = time.time()
-            missing_lines_before = []
-            if number_of_missing_lines_before > 0:
-                missing_lines_before = read_lines_from_byte_offset(
+            (missing_states, state_orders_to_keep) = (
+                SimulationVisualizationDataManager.get_missing_states(
                     simulation_id,
-                    byte_offsets[first_line],
-                    number_of_missing_lines_before,
+                    first_state_order,
+                    last_state_order,
+                    visualization_time,
                 )
-                missing_lines_before = [
-                    (first_line + i, line)
-                    for i, line in enumerate(missing_lines_before)
-                ]
+            )
 
-            missing_lines_after = []
-            if number_of_missing_lines_after > 0:
-                missing_lines_after = read_lines_from_byte_offset(
-                    simulation_id,
-                    byte_offsets[last_line - number_of_missing_lines_after + 1],
-                    number_of_missing_lines_after,
-                )
-                missing_lines_after = [
-                    (last_line - number_of_missing_lines_after + 1 + i, line)
-                    for i, line in enumerate(missing_lines_after)
-                ]
-
-            missing_states = []
-            missing_updates = []
-            for i, missing_line in missing_lines_before + missing_lines_after:
-                # If the line is a state
-                if i % (STATE_SAVE_STEP + 1) == 0:
-                    missing_states.append(
-                        VisualizedEnvironment.deserialize(missing_line)
-                    )
-                else:
-                    missing_updates.append(Update.deserialize(missing_line))
-
-            if (
-                len(missing_lines_before) > 0
-                and first_line < STATE_SAVE_STEP + 1
-                or last_sent_line == 0
-            ):
-                # Add empty environment to the beginning if missing
-                first_environment = VisualizedEnvironment()
-                first_environment.order = -1
-                missing_states.append(first_environment)
-
-            # Emit missing lines
             emit(
                 "missing-simulation-states",
-                (
-                    [state.serialize() for state in missing_states],
-                    [update.serialize() for update in missing_updates],
-                ),
+                ([state.serialize() for state in missing_states], state_orders_to_keep),
                 to=get_session_id(),
             )
 
-            end = time.time()
+        except Exception as e:
             log(
-                f"Emitted missing states in {end - start} seconds",
+                f"Error while emitting missing simulation states for {simulation_id}: {e}",
                 "server",
+                logging.ERROR,
             )
-
-        except:
             log(
                 f"Error while emitting simulation states for {simulation_id}, marking simulation as corrupted",
                 "server",
@@ -536,91 +395,103 @@ class SimulationManager:
 
             simulation.status = SimulationStatus.CORRUPTED
 
+            SimulationVisualizationDataManager.mark_simulation_as_corrupted(
+                simulation_id
+            )
+
             self.emit_simulations()
 
     def query_simulations(self):
-        simulation_save_directory_path = get_simulation_save_directory_path()
+        all_simulation_ids = (
+            SimulationVisualizationDataManager.get_all_saved_simulation_ids()
+        )
 
-        simulation_ids = [
-            file_name.split(".")[0]
-            for file_name in os.listdir(simulation_save_directory_path)
-        ]
-
-        for simulation_id in simulation_ids:
+        for simulation_id in all_simulation_ids:
             # Non valid save files might throw an exception
             self.query_simulation(simulation_id)
 
     def query_simulation(self, simulation_id) -> None:
-        # Non valid save files might throw an exception
-        try:
-            byte_offsets = extract_byte_offsets(simulation_id)
-            if len(byte_offsets) == 0:
-                return
+        if simulation_id in self.simulations and self.simulations[
+            simulation_id
+        ].status in [
+            SimulationStatus.RUNNING,
+            SimulationStatus.PAUSED,
+            SimulationStatus.STOPPING,
+            SimulationStatus.STARTING,
+            SimulationStatus.LOST,
+        ]:
+            return
 
-            first_line = read_line_at_byte_offset(simulation_id, byte_offsets[0])
+        is_corrupted = SimulationVisualizationDataManager.is_simulation_corrupted(
+            simulation_id
+        )
 
-            simulation_information = SimulationInformation.deserialize(first_line)
+        if not is_corrupted:
+            # Non valid save files throw an exception
+            try:
+                # Get the simulation information from the save file
+                simulation_information = (
+                    SimulationVisualizationDataManager.get_simulation_information(
+                        simulation_id
+                    )
+                )
 
-            version = simulation_information.version
-            major_version, minor_version = version.split(".")
+                # Verify the version of the save file
+                version = simulation_information.version
+                major_version, minor_version = version.split(".")
 
-            save_major_version, save_minor_version = SAVE_VERSION.split(".")
+                save_major_version, save_minor_version = SAVE_VERSION.split(".")
 
-            status = SimulationStatus.OUTDATED
-            if major_version == save_major_version:
-                if minor_version <= save_minor_version:
-                    status = SimulationStatus.COMPLETED
-                elif minor_version > save_minor_version:
-                    status = SimulationStatus.FUTURE
-            elif major_version < save_major_version:
                 status = SimulationStatus.OUTDATED
-            else:
-                status = SimulationStatus.FUTURE
+                if major_version == save_major_version:
+                    if minor_version <= save_minor_version:
+                        status = SimulationStatus.COMPLETED
+                    elif minor_version > save_minor_version:
+                        status = SimulationStatus.FUTURE
+                elif major_version < save_major_version:
+                    status = SimulationStatus.OUTDATED
+                else:
+                    status = SimulationStatus.FUTURE
 
-            if status == SimulationStatus.OUTDATED:
-                log(
-                    f"Simulation {simulation_id} version is outdated",
-                    "server",
-                    should_emit=False,
+                if status == SimulationStatus.OUTDATED:
+                    log(
+                        f"Simulation {simulation_id} version is outdated",
+                        "server",
+                        logging.DEBUG,
+                    )
+                if status == SimulationStatus.FUTURE:
+                    log(
+                        f"Simulation {simulation_id} version is future",
+                        "server",
+                        logging.DEBUG,
+                    )
+
+                simulation = SimulationHandler(
+                    simulation_id,
+                    simulation_information.name,
+                    simulation_information.start_time,
+                    simulation_information.data,
+                    status,
                 )
-            if status == SimulationStatus.FUTURE:
-                log(
-                    f"Simulation {simulation_id} version is future",
-                    "server",
-                    should_emit=False,
-                )
 
-            simulation = SimulationHandler(
-                simulation_id,
-                simulation_information.name,
-                simulation_information.start_time,
-                simulation_information.data,
-                status,
-            )
-
-            if simulation_information.simulation_start_time is not None:
                 simulation.simulation_start_time = (
                     simulation_information.simulation_start_time
                 )
-
-            if simulation_information.simulation_end_time is not None:
                 simulation.simulation_end_time = (
                     simulation_information.simulation_end_time
                 )
-            elif simulation_id in self.simulations:
-                # The simulation is currently running
-                return
-            else:
-                raise Exception("Simulation is corrupted")
 
-            self.simulations[simulation_id] = simulation
+                if simulation_information.simulation_end_time is None:
+                    # The simulation is not running but the end time is not set
+                    raise Exception("Simulation is corrupted")
 
-        except:
-            log(
-                f"Simulation {simulation_id} is corrupted",
-                "server",
-                should_emit=False,
-            )
+                self.simulations[simulation_id] = simulation
+
+            except:
+                is_corrupted = True
+
+        if is_corrupted:
+            log(f"Simulation {simulation_id} is corrupted", "server", logging.DEBUG)
 
             simulation = SimulationHandler(
                 simulation_id,
@@ -632,75 +503,6 @@ class SimulationManager:
 
             self.simulations[simulation_id] = simulation
 
-
-if __name__ == "__main__":
-    import time
-
-    # Measure the time taken to build the byte_offsets
-    simulation_id = "20250216-231211847-small_taxi_test"
-
-    start = time.time()
-    byte_offsets = extract_byte_offsets(simulation_id)
-    end = time.time()
-
-    print(f"Found {len(byte_offsets)} byte_offsets in {end - start} seconds")
-
-    # Measure the time taken to read all lines separately (~ 10s)
-    # start = time.time()
-    # for byte_offset in byte_offsets:
-    #     read_line_at_byte_offset(simulation_id, byte_offset)
-    # end = time.time()
-
-    # print(f"Read all lines in {end - start} seconds")
-
-    # Measure the time taken to read all lines at once
-    start = time.time()
-    read_lines_from_byte_offset(simulation_id, byte_offsets[0], len(byte_offsets))
-    end = time.time()
-
-    print(f"Read all lines at once in {end - start} seconds")
-
-    # Measure the time taken to read 1 state
-    start = time.time()
-    first_state = read_line_at_byte_offset(
-        simulation_id, byte_offsets[STATE_SAVE_STEP + 1]
-    )
-    end = time.time()
-
-    print(f"Read 1 state in {end - start} seconds")
-
-    # Measure the time taken to deserialize 1 state
-    start = time.time()
-    VisualizedEnvironment.deserialize(first_state)
-    end = time.time()
-
-    print(f"Deserialize 1 state in {end - start} seconds")
-
-    # Measure the time taken to deserialize all updates for a state
-    updates = read_lines_from_byte_offset(
-        simulation_id, byte_offsets[STATE_SAVE_STEP + 2], STATE_SAVE_STEP
-    )
-
-    start = time.time()
-    for update in updates:
-        Update.deserialize(update)
-    end = time.time()
-
-    print(f"Deserialize {STATE_SAVE_STEP} updates in {end - start} seconds")
-
-    # Mesure the time taken to read deserialize 50 states
-    number_of_states = 50
-    start = time.time()
-    all_lines = read_lines_from_byte_offset(
-        simulation_id,
-        byte_offsets[1],
-        number_of_states * (STATE_SAVE_STEP + 1) + STATE_SAVE_STEP,
-    )
-    for i, line in enumerate(all_lines):
-        if (i + 1) % (STATE_SAVE_STEP + 1) == 0:
-            VisualizedEnvironment.deserialize(line)
-        else:
-            Update.deserialize(line)
-    end = time.time()
-
-    print(f"Deserialize {number_of_states} states in {end - start} seconds")
+            SimulationVisualizationDataManager.mark_simulation_as_corrupted(
+                simulation_id
+            )

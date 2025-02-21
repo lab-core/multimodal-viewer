@@ -3,6 +3,7 @@ import os
 from enum import Enum
 
 import polyline
+from filelock import FileLock
 from multimodalsim.simulator.request import Trip
 from multimodalsim.simulator.vehicle import Vehicle
 from multimodalsim.state_machine.status import PassengerStatus, VehicleStatus
@@ -77,8 +78,8 @@ class Serializable:
     def serialize(self) -> dict:
         raise NotImplementedError()
 
-    @classmethod
-    def deserialize(cls, data: str) -> "Serializable":
+    @staticmethod
+    def deserialize(data: str) -> "Serializable":
         """
         Deserialize a dictionary into an instance of the class.
 
@@ -117,8 +118,8 @@ class VisualizedPassenger(Serializable):
 
         return serialized
 
-    @classmethod
-    def deserialize(cls, data: str) -> "VisualizedPassenger":
+    @staticmethod
+    def deserialize(data: str) -> "VisualizedPassenger":
         if isinstance(data, str):
             data = json.loads(data.replace("'", '"'))
 
@@ -197,8 +198,8 @@ class VisualizedVehicle(Serializable):
             serialized["polylines"] = self.polylines
         return serialized
 
-    @classmethod
-    def deserialize(cls, data: str | dict) -> "VisualizedVehicle":
+    @staticmethod
+    def deserialize(data: str | dict) -> "VisualizedVehicle":
         if isinstance(data, str):
             data = json.loads(data.replace("'", '"'))
 
@@ -267,8 +268,8 @@ class VisualizedEnvironment(Serializable):
             "order": self.order,
         }
 
-    @classmethod
-    def deserialize(cls, data: str) -> "VisualizedEnvironment":
+    @staticmethod
+    def deserialize(data: str) -> "VisualizedEnvironment":
         if isinstance(data, str):
             data = json.loads(data.replace("'", '"'))
 
@@ -322,8 +323,8 @@ class PassengerStatusUpdate(Serializable):
             "status": convert_passenger_status_to_string(self.status),
         }
 
-    @classmethod
-    def deserialize(cls, data: str) -> "PassengerStatusUpdate":
+    @staticmethod
+    def deserialize(data: str) -> "PassengerStatusUpdate":
         if isinstance(data, str):
             data = json.loads(data.replace("'", '"'))
 
@@ -352,8 +353,8 @@ class VehicleStatusUpdate(Serializable):
             "status": convert_vehicle_status_to_string(self.status),
         }
 
-    @classmethod
-    def deserialize(cls, data: str) -> "VehicleStatusUpdate":
+    @staticmethod
+    def deserialize(data: str) -> "VehicleStatusUpdate":
         if isinstance(data, str):
             data = json.loads(data.replace("'", '"'))
 
@@ -382,8 +383,8 @@ class VehiclePositionUpdate(Serializable):
             "longitude": self.longitude,
         }
 
-    @classmethod
-    def deserialize(cls, data: str) -> "VehiclePositionUpdate":
+    @staticmethod
+    def deserialize(data: str) -> "VehiclePositionUpdate":
         if isinstance(data, str):
             data = json.loads(data.replace("'", '"'))
 
@@ -421,8 +422,8 @@ class Update(Serializable):
             "order": self.order,
         }
 
-    @classmethod
-    def deserialize(cls, data: str) -> "Update":
+    @staticmethod
+    def deserialize(data: str) -> "Update":
         if isinstance(data, str):
             data = json.loads(data.replace("'", '"'))
 
@@ -452,6 +453,52 @@ class Update(Serializable):
         update = Update(update_type, update_data, timestamp)
         update.order = data["order"]
         return update
+
+
+class VisualizedState(VisualizedEnvironment):
+    updates: list[Update]
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.updates = []
+
+    @classmethod
+    def from_environment(cls, environment: VisualizedEnvironment) -> "VisualizedState":
+        state = cls()
+        state.passengers = environment.passengers
+        state.vehicles = environment.vehicles
+        state.timestamp = environment.timestamp
+        state.estimated_end_time = environment.estimated_end_time
+        state.order = environment.order
+        return state
+
+    def serialize(self) -> dict:
+        serialized = super().serialize()
+        serialized["updates"] = [update.serialize() for update in self.updates]
+        return serialized
+
+    @staticmethod
+    def deserialize(data: str) -> "VisualizedState":
+        if isinstance(data, str):
+            data = json.loads(data.replace("'", '"'))
+
+        if "updates" not in data:
+            raise ValueError("Invalid data for VisualizedState")
+
+        environment = VisualizedEnvironment.deserialize(data)
+
+        state = VisualizedState()
+        state.passengers = environment.passengers
+        state.vehicles = environment.vehicles
+        state.timestamp = environment.timestamp
+        state.estimated_end_time = environment.estimated_end_time
+        state.order = environment.order
+
+        for update_data in data["updates"]:
+            update = Update.deserialize(update_data)
+            state.updates.append(update)
+
+        return state
 
 
 class SimulationInformation(Serializable):
@@ -498,8 +545,8 @@ class SimulationInformation(Serializable):
             serialized["simulationEndTime"] = self.simulation_end_time
         return serialized
 
-    @classmethod
-    def deserialize(cls, data: str) -> "SimulationInformation":
+    @staticmethod
+    def deserialize(data: str) -> "SimulationInformation":
         if isinstance(data, str):
             data = json.loads(data.replace("'", '"'))
 
@@ -522,62 +569,309 @@ class SimulationInformation(Serializable):
         )
 
 
-def get_simulation_save_directory_path() -> str:
-    current_directory = os.path.dirname(os.path.abspath(__file__))
-    directory_name = "saved_simulations"
-    directory_path = f"{current_directory}/{directory_name}"
+# MARK: SVDM
+class SimulationVisualizationDataManager:
+    """
+    This class manage reads and writes of simulation data for visualization.
+    """
 
-    if not os.path.exists(directory_path):
-        os.makedirs(directory_path)
+    __CORRUPTED_FILE_NAME = ".corrupted"
+    __SAVED_SIMULATIONS_DIRECTORY_NAME = "saved_simulations"
+    __SIMULATION_INFORMATION_FILE_NAME = "simulation_information.json"
+    __POLYLINES_FILE_NAME = "polylines.json"
+    __STATES_DIRECTORY_NAME = "states"
 
-    return directory_path
+    __STATES_ORDER_MINIMUM_LENGTH = 8
+    __STATES_TIMESTAMP_MINIMUM_LENGTH = 8
 
+    __MINIMUM_STATES_BEFORE = 5
+    __MINIMUM_STATES_AFTER = 5
 
-def get_simulation_save_file_path(simulation_id: str) -> str:
-    directory_path = get_simulation_save_directory_path()
+    # MARK: +- Format
+    @staticmethod
+    def __format_json_readable(data: dict, file: str) -> str:
+        return json.dump(data, file, indent=2, separators=(",", ": "), sort_keys=True)
 
-    file_name = f"{simulation_id}.txt"
-    file_path = f"{directory_path}/{file_name}"
+    @staticmethod
+    def __format_json_one_line(data: dict, file: str) -> str:
+        # Add new line before if not empty
+        if file.tell() != 0:
+            file.write("\n")
+        return json.dump(data, file, separators=(",", ":"))
 
-    if not os.path.exists(file_path):
+    # MARK: +- File paths
+    @staticmethod
+    def get_saved_simulations_directory_path() -> str:
+        current_directory = os.path.dirname(os.path.abspath(__file__))
+        directory_path = f"{current_directory}/{SimulationVisualizationDataManager.__SAVED_SIMULATIONS_DIRECTORY_NAME}"
+
+        if not os.path.exists(directory_path):
+            os.makedirs(directory_path)
+
+        return directory_path
+
+    @staticmethod
+    def get_all_saved_simulation_ids() -> list[str]:
+        directory_path = (
+            SimulationVisualizationDataManager.get_saved_simulations_directory_path()
+        )
+        return [
+            simulation_id
+            for simulation_id in os.listdir(directory_path)
+            # TODO #43 Remove condition
+            if not simulation_id.endswith(".txt")
+        ]
+
+    @staticmethod
+    def get_saved_simulation_directory_path(simulation_id: str) -> str:
+        directory_path = (
+            SimulationVisualizationDataManager.get_saved_simulations_directory_path()
+        )
+        simulation_directory_path = f"{directory_path}/{simulation_id}"
+
+        if not os.path.exists(simulation_directory_path):
+            os.makedirs(simulation_directory_path)
+
+        return simulation_directory_path
+
+    @staticmethod
+    def get_saved_simulation_polylines_file_path(simulation_id: str) -> str:
+        simulation_directory_path = (
+            SimulationVisualizationDataManager.get_saved_simulation_directory_path(
+                simulation_id
+            )
+        )
+        file_path = f"{simulation_directory_path}/{SimulationVisualizationDataManager.__POLYLINES_FILE_NAME}"
+
+        if not os.path.exists(file_path):
+            with open(file_path, "w") as file:
+                file.write("")
+
+        return file_path
+
+    # MARK: +- Corrupted
+    @staticmethod
+    def is_simulation_corrupted(simulation_id: str) -> bool:
+        simulation_directory_path = (
+            SimulationVisualizationDataManager.get_saved_simulation_directory_path(
+                simulation_id
+            )
+        )
+
+        return os.path.exists(
+            f"{simulation_directory_path}/{SimulationVisualizationDataManager.__CORRUPTED_FILE_NAME}"
+        )
+
+    @staticmethod
+    def mark_simulation_as_corrupted(simulation_id: str) -> None:
+        simulation_directory_path = (
+            SimulationVisualizationDataManager.get_saved_simulation_directory_path(
+                simulation_id
+            )
+        )
+
+        file_path = f"{simulation_directory_path}/{SimulationVisualizationDataManager.__CORRUPTED_FILE_NAME}"
+
         with open(file_path, "w") as file:
             file.write("")
 
-    return file_path
+    # MARK: +- Simulation Information
+    @staticmethod
+    def get_saved_simulation_information_file_path(simulation_id: str) -> str:
+        simulation_directory_path = (
+            SimulationVisualizationDataManager.get_saved_simulation_directory_path(
+                simulation_id
+            )
+        )
+        file_path = f"{simulation_directory_path}/{SimulationVisualizationDataManager.__SIMULATION_INFORMATION_FILE_NAME}"
 
+        if not os.path.exists(file_path):
+            with open(file_path, "w") as file:
+                file.write("")
 
-def extract_byte_offsets(simulation_id: str) -> list[int]:
-    file_path = get_simulation_save_file_path(simulation_id)
-    byte_offsets = []
+        return file_path
 
-    with open(file_path, "rb") as file:
-        offset = file.tell()
+    @staticmethod
+    def set_simulation_information(
+        simulation_id: str, simulation_information: SimulationInformation
+    ) -> None:
+        file_path = SimulationVisualizationDataManager.get_saved_simulation_information_file_path(
+            simulation_id
+        )
 
-        line = file.readline()
-        while line:
-            byte_offsets.append(offset)
-            offset = file.tell()
-            line = file.readline()
+        lock = FileLock(f"{file_path}.lock")
 
-    return byte_offsets
+        with lock:
+            with open(file_path, "w") as file:
+                SimulationVisualizationDataManager.__format_json_readable(
+                    simulation_information.serialize(), file
+                )
 
+    @staticmethod
+    def get_simulation_information(simulation_id: str) -> SimulationInformation:
+        file_path = SimulationVisualizationDataManager.get_saved_simulation_information_file_path(
+            simulation_id
+        )
 
-def read_line_at_byte_offset(simulation_id: str, byte_offset: int) -> str:
-    with open(get_simulation_save_file_path(simulation_id), "r") as file:
-        file.seek(byte_offset)
-        line = file.readline()
-        return line
+        lock = FileLock(f"{file_path}.lock")
 
+        with lock:
+            with open(file_path, "r") as file:
+                data = file.read()
+                return SimulationInformation.deserialize(data)
 
-def read_lines_from_byte_offset(
-    simulation_id: str, byte_offset: int, count: int
-) -> list[str]:
-    with open(get_simulation_save_file_path(simulation_id), "r") as file:
-        file.seek(byte_offset)
-        lines = []
-        for _ in range(count):
-            line = file.readline()
-            if not line:
+    # MARK: +- States and updates
+    @staticmethod
+    def get_saved_simulation_states_folder_path(simulation_id: str) -> str:
+        simulation_directory_path = (
+            SimulationVisualizationDataManager.get_saved_simulation_directory_path(
+                simulation_id
+            )
+        )
+        folder_path = f"{simulation_directory_path}/{SimulationVisualizationDataManager.__STATES_DIRECTORY_NAME}"
+
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
+
+        return folder_path
+
+    @staticmethod
+    def get_saved_simulation_state_file_path(
+        simulation_id: str, order: int, timestamp: float
+    ) -> str:
+        folder_path = (
+            SimulationVisualizationDataManager.get_saved_simulation_states_folder_path(
+                simulation_id
+            )
+        )
+
+        padded_order = str(order).zfill(
+            SimulationVisualizationDataManager.__STATES_ORDER_MINIMUM_LENGTH
+        )
+        padded_timestamp = str(int(timestamp)).zfill(
+            SimulationVisualizationDataManager.__STATES_TIMESTAMP_MINIMUM_LENGTH
+        )
+
+        # States and updates are stored in a .jsonl file to speed up reads and writes
+        # Each line is a state (the first line) or an update (the following lines)
+        file_path = f"{folder_path}/{padded_order}-{padded_timestamp}.jsonl"
+
+        if not os.path.exists(file_path):
+            with open(file_path, "w") as file:
+                file.write("")
+
+        return file_path
+
+    @staticmethod
+    def get_sorted_states(simulation_id: str) -> list[tuple[int, float]]:
+        folder_path = (
+            SimulationVisualizationDataManager.get_saved_simulation_states_folder_path(
+                simulation_id
+            )
+        )
+
+        all_states_files = os.listdir(folder_path)
+
+        states = []
+        for state_file in all_states_files:
+            order, timestamp = state_file.split("-")
+            states.append((int(order), float(timestamp.split(".")[0])))
+
+        return sorted(states, key=lambda x: (x[1], x[0]))
+
+    @staticmethod
+    def save_state(simulation_id: str, state: VisualizedEnvironment) -> str:
+        file_path = (
+            SimulationVisualizationDataManager.get_saved_simulation_state_file_path(
+                simulation_id, state.order, state.timestamp
+            )
+        )
+
+        lock = FileLock(f"{file_path}.lock")
+
+        with lock:
+            with open(file_path, "w") as file:
+                SimulationVisualizationDataManager.__format_json_one_line(
+                    state.serialize(), file
+                )
+
+        return file_path
+
+    @staticmethod
+    def save_update(file_path: str, update: Update) -> None:
+        lock = FileLock(f"{file_path}.lock")
+        with lock:
+            with open(file_path, "a") as file:
+                SimulationVisualizationDataManager.__format_json_one_line(
+                    update.serialize(), file
+                )
+
+    @staticmethod
+    def get_missing_states(
+        simulation_id: str, first_order: int, last_order: int, visualization_time: float
+    ) -> tuple[list[VisualizedState], list[int]]:
+        sorted_states = SimulationVisualizationDataManager.get_sorted_states(
+            simulation_id
+        )
+
+        first_state_with_equal_timestamp_index = None
+        first_state_with_greater_timestamp_index = None
+
+        for index, (order, state_timestamp) in enumerate(sorted_states):
+            if state_timestamp == visualization_time:
+                first_state_with_equal_timestamp_index = index
+            elif state_timestamp > visualization_time:
+                first_state_with_greater_timestamp_index = index
                 break
-            lines.append(line)
-        return lines
+
+        if first_state_with_greater_timestamp_index is None:
+            first_state_with_greater_timestamp_index = len(sorted_states)
+
+        if first_state_with_equal_timestamp_index is None:
+            first_state_index = first_state_with_greater_timestamp_index - 1
+        else:
+            first_state_index = first_state_with_equal_timestamp_index - 1
+
+        last_state_index = first_state_with_greater_timestamp_index - 1
+
+        first_state_index = max(
+            0,
+            first_state_index
+            - SimulationVisualizationDataManager.__MINIMUM_STATES_BEFORE,
+        )
+        last_state_index = min(
+            len(sorted_states) - 1,
+            last_state_index
+            + SimulationVisualizationDataManager.__MINIMUM_STATES_AFTER,
+        )
+
+        missing_states = []
+        state_orders_to_keep = []
+        for index in range(first_state_index, last_state_index + 1):
+            order, state_timestamp = sorted_states[index]
+            if first_order <= order <= last_order:
+                state_orders_to_keep.append(order)
+                continue
+
+            state_file_path = (
+                SimulationVisualizationDataManager.get_saved_simulation_state_file_path(
+                    simulation_id, order, state_timestamp
+                )
+            )
+
+            lock = FileLock(f"{state_file_path}.lock")
+
+            with lock:
+                with open(state_file_path, "r") as file:
+                    environment_data = file.readline()
+                    environment = VisualizedEnvironment.deserialize(environment_data)
+                    state = VisualizedState.from_environment(environment)
+
+                    updates_data = file.readlines()
+                    for update_data in updates_data:
+                        update = Update.deserialize(update_data)
+                        state.updates.append(update)
+
+                    missing_states.append(state)
+
+        return missing_states, state_orders_to_keep

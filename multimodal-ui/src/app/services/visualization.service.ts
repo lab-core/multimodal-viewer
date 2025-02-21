@@ -97,46 +97,41 @@ export class VisualizationService {
       }
 
       const sortedStates = simulationStates
-        .sort((a, b) => a.environment.order - b.environment.order)
+        .sort((a, b) => a.order - b.order)
         .map((state) => ({
           ...state,
           updates: state.updates.sort((a, b) => a.order - b.order),
         }));
 
-      const startState = sortedStates.find(
-        (state, index) =>
-          state.environment.timestamp <= visualizationTime &&
-          state.updates.length > 0 &&
-          (state.updates[state.updates.length - 1].timestamp >
-            visualizationTime ||
-            index === sortedStates.length - 1),
+      const firstStateWithGreaterTimestampIndex = sortedStates.findIndex(
+        (state) => state.timestamp > visualizationTime,
       );
 
-      if (!startState) {
+      const stateIndex =
+        firstStateWithGreaterTimestampIndex === -1
+          ? sortedStates.length - 1
+          : Math.max(0, firstStateWithGreaterTimestampIndex - 1);
+
+      const state = sortedStates[stateIndex];
+
+      if (!state) {
         console.error(
           'No start state found for visualization time:',
           visualizationTime,
           sortedStates,
         );
+
         return this.visualizationEnvironment;
       }
 
-      const simulationEnvironment = structuredClone(startState.environment);
-      const sortedUpdates = startState.updates.sort(
-        (a, b) => a.order - b.order,
+      const environment = this.simulationService.buildEnvironment(
+        state,
+        visualizationTime,
       );
 
-      for (const update of sortedUpdates) {
-        if (update.timestamp > visualizationTime) {
-          break;
-        }
+      this.visualizationEnvironment = structuredClone(environment);
 
-        this.simulationService.applyUpdate(update, simulationEnvironment);
-      }
-
-      this.visualizationEnvironment = structuredClone(simulationEnvironment);
-
-      return simulationEnvironment;
+      return environment;
     });
 
   // MARK: Constructor
@@ -167,13 +162,11 @@ export class VisualizationService {
       }
 
       const firstStateOrder =
-        simulationStates.sort(
-          (a, b) => a.environment.order - b.environment.order,
-        )[0]?.environment.order ?? -1;
+        simulationStates.sort((a, b) => a.order - b.order)[0]?.order ?? -1;
 
       const lastUpdateOrder =
         simulationStates
-          .sort((a, b) => b.environment.order - a.environment.order)[0]
+          .sort((a, b) => b.order - a.order)[0]
           ?.updates.sort((a, b) => b.order - a.order)[0]?.order ?? -1;
 
       if (

@@ -17,6 +17,7 @@ import { CommunicationService } from './communication.service';
   providedIn: 'root',
 })
 export class DataService {
+  // MARK: Properties
   private readonly _simulationsSignal: WritableSignal<Simulation[]> = signal(
     [],
   );
@@ -24,6 +25,7 @@ export class DataService {
   private readonly _availableSimulationDataSignal: WritableSignal<string[]> =
     signal([]);
 
+  // MARK: Constructor
   constructor(private readonly communicationService: CommunicationService) {
     this.listen();
 
@@ -34,6 +36,7 @@ export class DataService {
     });
   }
 
+  // MARK: Getters
   get simulationsSignal(): Signal<Simulation[]> {
     return computed(() =>
       this._simulationsSignal().sort(this.sortSimulations.bind(this)),
@@ -42,6 +45,11 @@ export class DataService {
 
   get availableSimulationDataSignal(): Signal<string[]> {
     return this._availableSimulationDataSignal;
+  }
+
+  // MARK: Communication
+  queryAvailableData() {
+    this.communicationService.emit('get-available-data');
   }
 
   private listen() {
@@ -64,10 +72,15 @@ export class DataService {
   }
 
   private query() {
-    this.communicationService.emit('get-simulations');
-    this.communicationService.emit('get-available-data');
+    this.querySimulations();
+    this.queryAvailableData();
   }
 
+  private querySimulations() {
+    this.communicationService.emit('get-simulations');
+  }
+
+  // MARK: Extraction
   /**
    * Validate and extract simulation from the raw data.
    */
@@ -193,14 +206,6 @@ export class DataService {
         };
       })
       .filter((simulation) => !!simulation);
-  }
-
-  refreshAvailableSimulationData() {
-    this.communicationService.emit('getAvailableData');
-  }
-
-  importFolder(folderName: string, files: { name: string; content: string }[]) {
-    this.communicationService.emit('importFolder', { folderName, files });
   }
 
   private sortSimulations(a: Simulation, b: Simulation): number {

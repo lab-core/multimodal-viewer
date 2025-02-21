@@ -83,35 +83,36 @@ def run_server():
 
     @socketio.on("get-missing-simulation-states")
     def on_client_get_missing_simulation_states(
-        simulation_id, first_state_order, last_update_order, visualization_time
+        simulation_id, first_state_order, last_state_order, visualization_time
     ):
         log(
-            f"getting missing simulation states for {simulation_id} with orders {first_state_order} and {last_update_order} at time {visualization_time}",
+            f"getting missing simulation states for {simulation_id} with orders {first_state_order} and {last_state_order} at time {visualization_time}",
             "client",
         )
         simulation_manager.emit_missing_simulation_states(
-            simulation_id, first_state_order, last_update_order, visualization_time
+            simulation_id, first_state_order, last_state_order, visualization_time
         )
 
-    @socketio.on("importFolder")
-    def on_import_folder(data):
-        log("importing folder", folder_name)
-        folder_name = data.get("folderName")
-        files = data.get("files", [])
+    # TODO Implement or remove
+    # @socketio.on("import-folder")
+    # def on_import_folder(data):
+    #     log("importing folder", folder_name)
+    #     folder_name = data.get("folderName")
+    #     files = data.get("files", [])
 
-        if not folder_name or not files:
-            return
-        # Define the destination folder
-        current_dir = os.path.dirname(os.path.realpath(__file__))
-        target_dir = os.path.join(current_dir, "..", "data", folder_name)
+    #     if not folder_name or not files:
+    #         return
+    #     # Define the destination folder
+    #     current_dir = os.path.dirname(os.path.realpath(__file__))
+    #     target_dir = os.path.join(current_dir, "..", "data", folder_name)
 
-        os.makedirs(target_dir, exist_ok=True)
+    #     os.makedirs(target_dir, exist_ok=True)
 
-        for file in files:
-            file_path = os.path.join(target_dir, file["name"])
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(file["content"])
+    #     for file in files:
+    #         file_path = os.path.join(target_dir, file["name"])
+    #         os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    #         with open(file_path, "w", encoding="utf-8") as f:
+    #             f.write(file["content"])
 
     # MARK: Script events
     @socketio.on("terminate")
@@ -140,9 +141,9 @@ def run_server():
         )
 
     @socketio.on("simulation-end")
-    def on_simulation_end(simulation_id, simulation_end_time):
+    def on_simulation_end(simulation_id):
         log(f"simulation {simulation_id} ended", "simulation")
-        simulation_manager.on_simulation_end(simulation_id, simulation_end_time)
+        simulation_manager.on_simulation_end(simulation_id)
 
     @socketio.on("simulation-pause")
     def on_simulation_pause(simulation_id):

@@ -36,6 +36,7 @@ from server_utils import STATE_SAVE_STEP
 from simulation_visualization_data_model import (
     PassengerStatusUpdate,
     SimulationInformation,
+    SimulationVisualizationDataManager,
     Update,
     UpdateType,
     VehiclePositionUpdate,
@@ -43,7 +44,6 @@ from simulation_visualization_data_model import (
     VisualizedEnvironment,
     VisualizedPassenger,
     VisualizedVehicle,
-    get_simulation_save_file_path,
 )
 from socketio import Client
 
@@ -55,6 +55,7 @@ class SimulationVisualizationDataCollector(DataCollector):
     visualized_environment: VisualizedEnvironment
     sio: Client
     simulation_information: SimulationInformation
+    current_save_file_path: str
 
     def __init__(self, simulation_id: str, data: str, sio: Client) -> None:
         self.simulation_id = simulation_id
@@ -65,6 +66,8 @@ class SimulationVisualizationDataCollector(DataCollector):
         self.simulation_information = SimulationInformation(
             simulation_id, data, None, None
         )
+
+        self.current_save_file_path = None
 
     # MARK: +- Collect
     def collect(
@@ -83,34 +86,16 @@ class SimulationVisualizationDataCollector(DataCollector):
         if self.sio.connected:
             self.sio.emit("log", (self.simulation_id, message))
 
-    # MARK: +- Add First Line
-    def add_first_line(self) -> None:
-        file_path = get_simulation_save_file_path(self.simulation_id)
-
-        with open(file_path, "r") as file:
-            lines = file.readlines()
-
-        first_line = str(self.simulation_information.serialize()) + "\n"
-        if len(lines) > 0:
-            lines[0] = first_line
-        else:
-            lines.append(first_line)
-
-        with open(file_path, "w") as file:
-            file.writelines(lines)
-
-    # MARK: +- Add Line To File
-    def add_line_to_file(self, line: str | dict) -> None:
-        file_path = get_simulation_save_file_path(self.simulation_id)
-
-        with open(file_path, "a") as file:
-            file.write(line + "\n")
-
     # MARK: +- Add Update
     def add_update(self, update: Update, environment: Environment) -> None:
         update.order = self.update_counter
         self.visualized_environment.order = self.update_counter
-        self.update_counter += 1
+
+        # Save the state of the simulation every SAVE_STATE_STEP events before applying the update
+        if self.update_counter % STATE_SAVE_STEP == 0:
+            self.current_save_file_path = SimulationVisualizationDataManager.save_state(
+                self.simulation_id, self.visualized_environment
+            )
 
         if update.type == UpdateType.CREATE_PASSENGER:
             self.visualized_environment.add_passenger(update.data)
@@ -129,10 +114,14 @@ class SimulationVisualizationDataCollector(DataCollector):
             vehicle.latitude = update.data.latitude
             vehicle.longitude = update.data.longitude
 
-        if self.update_counter == 1:
+        if self.update_counter == 0:
             # Add the simulation start time to the simulation information
             self.simulation_information.simulation_start_time = update.timestamp
-            self.add_first_line()
+
+            #           # Save the simulation information
+            SimulationVisualizationDataManager.set_simulation_information(
+                self.simulation_id, self.simulation_information
+            )
 
             # Notify the server that the simulation has started and send the simulation start time
             if self.sio.connected:
@@ -142,6 +131,7 @@ class SimulationVisualizationDataCollector(DataCollector):
 
         if self.sio.connected:
             if self.visualized_environment.timestamp != update.timestamp:
+                # Notify the server that the simulation time has been updated
                 self.sio.emit(
                     "simulation-update-time",
                     (
@@ -155,6 +145,7 @@ class SimulationVisualizationDataCollector(DataCollector):
                 environment.estimated_end_time
                 != self.visualized_environment.estimated_end_time
             ):
+                # Notify the server that the simulation estimated end time has been updated
                 self.sio.emit(
                     "simulation-update-estimated-end-time",
                     (
@@ -166,11 +157,11 @@ class SimulationVisualizationDataCollector(DataCollector):
                     environment.estimated_end_time
                 )
 
-        self.add_line_to_file(str(update.serialize()))
+        SimulationVisualizationDataManager.save_update(
+            self.current_save_file_path, update
+        )
 
-        # Save the state of the simulation every SAVE_STATE_STEP events
-        if self.update_counter % STATE_SAVE_STEP == 0:
-            self.add_line_to_file(str(self.visualized_environment.serialize()))
+        self.update_counter += 1
 
     # MARK: +- Process Event
     def process_event(self, event: Event, environment: Environment) -> str:
@@ -407,15 +398,17 @@ class SimulationVisualizationVisualizer(Visualizer):
         event_priority: Optional[int] = None,
     ) -> None:
         if current_event is None:
+            self.data_collector.simulation_information.simulation_end_time = (
+                self.data_collector.visualized_environment.timestamp
+            )
+
+            SimulationVisualizationDataManager.set_simulation_information(
+                self.simulation_id, self.data_collector.simulation_information
+            )
+
             # Notify the server that the simulation has ended
             if self.sio.connected:
-                self.sio.emit(
-                    "simulation-end",
-                    (
-                        self.simulation_id,
-                        self.data_collector.visualized_environment.timestamp,
-                    ),
-                )
+                self.sio.emit("simulation-end", self.simulation_id)
 
 
 # MARK: Environment Observer

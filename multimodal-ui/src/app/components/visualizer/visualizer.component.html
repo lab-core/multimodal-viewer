@@ -1,6 +1,6 @@
 @let simulation = simulationSignal();
-@let numberOfPassengers = numberOfPassengersSignal();
-@let numberOfVehicles = numberOfVehiclesSignal();
+@let numberOfPassengersByStatus = numberOfPassengersByStatusSignal();
+@let numberOfVehiclesByStatus = numberOfVehiclesByStatusSignal();
 
 @if (isInitializedSignal() && simulation !== null) {
   <!-- MARK: Search Bar
@@ -20,10 +20,27 @@
       <mat-card-content class="flex-1">
         <mat-card-title>Simulation: {{ simulationName }}</mat-card-title>
         <mat-card-subtitle>Source: {{ simulationData }}</mat-card-subtitle>
-        <span>
-          The simulation contains {{ numberOfPassengers }} passengers and
-          {{ numberOfVehicles }} vehicles.
-        </span>
+        <mat-card-subtitle>Passengers:</mat-card-subtitle>
+        @for (
+          statusAndCount of numberOfPassengersByStatus;
+          track statusAndCount.status
+        ) {
+          <mat-card-subtitle
+            >{{ statusAndCount.status }}:
+            {{ statusAndCount.count }}</mat-card-subtitle
+          >
+        }
+
+        <mat-card-subtitle>Vehicles:</mat-card-subtitle>
+        @for (
+          statusAndCount of numberOfVehiclesByStatus;
+          track statusAndCount.status
+        ) {
+          <mat-card-subtitle
+            >{{ statusAndCount.status }}:
+            {{ statusAndCount.count }}</mat-card-subtitle
+          >
+        }
       </mat-card-content>
       <mat-card-actions align="end">
         <button mat-button (click)="hideInformationPanel()">Hide</button>
