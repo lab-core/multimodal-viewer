@@ -2,7 +2,6 @@ import json
 import os
 from enum import Enum
 
-import polyline
 from filelock import FileLock
 from multimodalsim.simulator.request import Trip
 from multimodalsim.simulator.vehicle import Vehicle
@@ -136,8 +135,6 @@ class VisualizedVehicle(Serializable):
     vehicle_id: str
     mode: str | None
     status: VehicleStatus
-    latitude: float | None
-    longitude: float | None
     polylines: dict[str, tuple[str, list[float]]] | None
 
     def __init__(
@@ -145,40 +142,20 @@ class VisualizedVehicle(Serializable):
         vehicle_id: str,
         mode: str | None,
         status: VehicleStatus,
-        latitude: float | None,
-        longitude: float | None,
         polylines: dict[str, tuple[str, list[float]]] | None,
     ) -> None:
         self.vehicle_id = vehicle_id
         self.mode = mode
         self.status = status
-        self.latitude = latitude
-        self.longitude = longitude
         self.polylines = polylines
 
     @classmethod
     def from_vehicle(cls, vehicle: Vehicle) -> "VisualizedVehicle":
-        polylines = None
-        if vehicle.polylines is not None:
-            polylines = {}
-            for stop_id, encoded_polyline in vehicle.polylines.items():
-                encoded_polyline_string = encoded_polyline[0]
-                polyline_coefficients = encoded_polyline[1]
-                decoded_polyline_string = polyline.decode(encoded_polyline_string)
-                polylines[stop_id] = {
-                    "polyline": [
-                        {"latitude": point[0], "longitude": point[1]}
-                        for point in decoded_polyline_string
-                    ],
-                    "coefficients": polyline_coefficients,
-                }
         return cls(
             vehicle.id,
             vehicle.mode,
             vehicle.status,
-            vehicle.position.lat if vehicle.position is not None else None,
-            vehicle.position.lon if vehicle.position is not None else None,
-            polylines,
+            vehicle.polylines,
         )
 
     def serialize(self) -> dict:
@@ -190,12 +167,6 @@ class VisualizedVehicle(Serializable):
         if self.mode is not None:
             serialized["mode"] = self.mode
 
-        if self.latitude is not None and self.longitude is not None:
-            serialized["latitude"] = self.latitude
-            serialized["longitude"] = self.longitude
-
-        if self.polylines is not None:
-            serialized["polylines"] = self.polylines
         return serialized
 
     @staticmethod
@@ -209,27 +180,13 @@ class VisualizedVehicle(Serializable):
         vehicle_id = str(data["id"])
         mode = data.get("mode", None)
         status = convert_string_to_vehicle_status(data["status"])
-        latitude = data.get("latitude", None)
-        if latitude is not None:
-            latitude = float(latitude)
-        longitude = data.get("longitude", None)
-        if longitude is not None:
-            longitude = float(longitude)
 
-        polylines = data.get("polylines", None)
-        if polylines is not None:
-            polylines = {
-                stop_id: (polyline_type, polyline_data)
-                for stop_id, (polyline_type, polyline_data) in polylines.items()
-            }
-
-        vehicle = VisualizedVehicle(vehicle_id, mode, status, latitude, longitude, None)
-        return vehicle
+        return VisualizedVehicle(vehicle_id, mode, status, None)
 
 
 class VisualizedEnvironment(Serializable):
-    passengers: list[VisualizedPassenger]
-    vehicles: list[VisualizedVehicle]
+    passengers: dict[str, VisualizedPassenger]
+    vehicles: dict[str, VisualizedVehicle]
     timestamp: float
     estimated_end_time: float
     order: int
@@ -615,12 +572,7 @@ class SimulationVisualizationDataManager:
         directory_path = (
             SimulationVisualizationDataManager.get_saved_simulations_directory_path()
         )
-        return [
-            simulation_id
-            for simulation_id in os.listdir(directory_path)
-            # TODO #43 Remove condition
-            if not simulation_id.endswith(".txt")
-        ]
+        return [simulation_id for simulation_id in os.listdir(directory_path)]
 
     @staticmethod
     def get_saved_simulation_directory_path(simulation_id: str) -> str:
@@ -633,21 +585,6 @@ class SimulationVisualizationDataManager:
             os.makedirs(simulation_directory_path)
 
         return simulation_directory_path
-
-    @staticmethod
-    def get_saved_simulation_polylines_file_path(simulation_id: str) -> str:
-        simulation_directory_path = (
-            SimulationVisualizationDataManager.get_saved_simulation_directory_path(
-                simulation_id
-            )
-        )
-        file_path = f"{simulation_directory_path}/{SimulationVisualizationDataManager.__POLYLINES_FILE_NAME}"
-
-        if not os.path.exists(file_path):
-            with open(file_path, "w") as file:
-                file.write("")
-
-        return file_path
 
     # MARK: +- Corrupted
     @staticmethod
@@ -780,10 +717,10 @@ class SimulationVisualizationDataManager:
         return sorted(states, key=lambda x: (x[1], x[0]))
 
     @staticmethod
-    def save_state(simulation_id: str, state: VisualizedEnvironment) -> str:
+    def save_state(simulation_id: str, environment: VisualizedEnvironment) -> str:
         file_path = (
             SimulationVisualizationDataManager.get_saved_simulation_state_file_path(
-                simulation_id, state.order, state.timestamp
+                simulation_id, environment.order, environment.timestamp
             )
         )
 
@@ -792,7 +729,7 @@ class SimulationVisualizationDataManager:
         with lock:
             with open(file_path, "w") as file:
                 SimulationVisualizationDataManager.__format_json_one_line(
-                    state.serialize(), file
+                    environment.serialize(), file
                 )
 
         return file_path
@@ -875,3 +812,57 @@ class SimulationVisualizationDataManager:
                     missing_states.append(state)
 
         return missing_states, state_orders_to_keep
+
+    # MARK: +- Polylines
+    @staticmethod
+    def get_saved_simulation_polylines_file_path(simulation_id: str) -> str:
+        simulation_directory_path = (
+            SimulationVisualizationDataManager.get_saved_simulation_directory_path(
+                simulation_id
+            )
+        )
+        file_path = f"{simulation_directory_path}/{SimulationVisualizationDataManager.__POLYLINES_FILE_NAME}"
+
+        if not os.path.exists(file_path):
+            with open(file_path, "w") as file:
+                file.write("")
+
+        return file_path
+
+    @staticmethod
+    def set_polylines(simulation_id: str, environment: VisualizedEnvironment) -> None:
+        file_path = (
+            SimulationVisualizationDataManager.get_saved_simulation_polylines_file_path(
+                simulation_id
+            )
+        )
+
+        lock = FileLock(f"{file_path}.lock")
+
+        polylines_by_vehicle_id = {
+            vehicle_id: vehicle.polylines
+            for vehicle_id, vehicle in environment.vehicles.items()
+        }
+
+        with lock:
+            with open(file_path, "w") as file:
+                SimulationVisualizationDataManager.__format_json_readable(
+                    polylines_by_vehicle_id, file
+                )
+
+    @staticmethod
+    def get_polylines(
+        simulation_id: str,
+    ) -> dict[str, dict[str, tuple[str, list[float]]]]:
+        file_path = (
+            SimulationVisualizationDataManager.get_saved_simulation_polylines_file_path(
+                simulation_id
+            )
+        )
+
+        lock = FileLock(f"{file_path}.lock")
+
+        with lock:
+            with open(file_path, "r") as file:
+                data = file.read()
+                return json.loads(data)

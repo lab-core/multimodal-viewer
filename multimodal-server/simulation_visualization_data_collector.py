@@ -20,6 +20,7 @@ from multimodalsim.simulator.passenger_event import (
     PassengerRelease,
     PassengerToBoard,
 )
+from multimodalsim.simulator.vehicle import Vehicle
 from multimodalsim.simulator.vehicle_event import (
     VehicleAlighted,
     VehicleArrival,
@@ -101,6 +102,11 @@ class SimulationVisualizationDataCollector(DataCollector):
             self.visualized_environment.add_passenger(update.data)
         elif update.type == UpdateType.CREATE_VEHICLE:
             self.visualized_environment.add_vehicle(update.data)
+            data: VisualizedVehicle = update.data
+            if data.polylines is not None:
+                SimulationVisualizationDataManager.set_polylines(
+                    self.simulation_id, self.visualized_environment
+                )
         elif update.type == UpdateType.UPDATE_PASSENGER_STATUS:
             passenger = self.visualized_environment.get_passenger(
                 update.data.passenger_id
@@ -331,6 +337,13 @@ class SimulationVisualizationDataCollector(DataCollector):
 
         # VehicleNotification
         elif isinstance(event, VehicleNotification):
+            vehicle: Vehicle = event._VehicleNotification__vehicle
+            existing_vehicle = self.visualized_environment.get_vehicle(vehicle.id)
+            if vehicle.polylines != existing_vehicle.polylines:
+                existing_vehicle.polylines = vehicle.polylines
+                SimulationVisualizationDataManager.set_polylines(
+                    self.simulation_id, self.visualized_environment
+                )
             return f"{event.time} TODO VehicleNotification"
 
         # VehicleBoarded

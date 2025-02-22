@@ -16,11 +16,7 @@ from server_utils import (
     log,
 )
 from simulation import run_simulation
-from simulation_visualization_data_model import (
-    SimulationVisualizationDataManager,
-    Update,
-    VisualizedEnvironment,
-)
+from simulation_visualization_data_model import SimulationVisualizationDataManager
 
 
 class MinimalistSimulationConfiguration:
@@ -375,6 +371,8 @@ class SimulationManager:
                 )
             )
 
+            self.emit_simulation_polylines(simulation_id)
+
             emit(
                 "missing-simulation-states",
                 ([state.serialize() for state in missing_states], state_orders_to_keep),
@@ -388,7 +386,7 @@ class SimulationManager:
                 logging.ERROR,
             )
             log(
-                f"Error while emitting simulation states for {simulation_id}, marking simulation as corrupted",
+                f"Marking simulation {simulation_id} as corrupted",
                 "server",
                 logging.ERROR,
             )
@@ -400,6 +398,19 @@ class SimulationManager:
             )
 
             self.emit_simulations()
+
+    def emit_simulation_polylines(self, simulation_id):
+        if simulation_id not in self.simulations:
+            log(
+                f"{__file__} {inspect.currentframe().f_lineno}: Simulation {simulation_id} not found",
+                "server",
+                logging.ERROR,
+            )
+            return
+
+        polylines = SimulationVisualizationDataManager.get_polylines(simulation_id)
+
+        emit(f"polylines-{simulation_id}", polylines, to=CLIENT_ROOM)
 
     def query_simulations(self):
         all_simulation_ids = (

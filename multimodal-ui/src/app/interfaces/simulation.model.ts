@@ -170,10 +170,14 @@ export const VEHICLE_STATUSES: VehicleStatus[] = [
   'complete',
 ];
 
+export type RawPolylines = Record<string, [string, number[]]>;
+
 export interface Polyline {
   polyline: { latitude: number; longitude: number }[];
   coefficients: number[];
 }
+
+export type Polylines = Record<string, Polyline>;
 
 export interface Vehicle {
   id: string;
@@ -181,7 +185,7 @@ export interface Vehicle {
   status: VehicleStatus;
   latitude: number | null;
   longitude: number | null;
-  polylines: Record<string, Polyline> | null;
+  polylines: Polylines | null;
 }
 
 export interface VehicleStatusUpdate {

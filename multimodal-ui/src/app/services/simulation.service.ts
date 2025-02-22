@@ -10,6 +10,8 @@ import {
   Passenger,
   PASSENGER_STATUSES,
   PassengerStatusUpdate,
+  Polylines,
+  RawPolylines,
   RawSimulationEnvironment,
   RawSimulationState,
   Simulation,
@@ -24,6 +26,8 @@ import {
 import { CommunicationService } from './communication.service';
 import { DataService } from './data.service';
 
+import { decode } from 'polyline';
+
 @Injectable({
   providedIn: 'root',
 })
@@ -34,6 +38,10 @@ export class SimulationService {
 
   private readonly _simulationStatesSignal: WritableSignal<SimulationState[]> =
     signal([]);
+
+  private readonly _simulationPolylinesSignal: WritableSignal<
+    Record<string, Polylines>
+  > = signal({});
 
   // MARK: Constructor
   constructor(
@@ -55,9 +63,6 @@ export class SimulationService {
             .map((rawState) => this.extractSimulationState(rawState))
             .filter((state) => state !== null);
 
-          console.log('Missing states: ', missingStates);
-          console.log('State orders to keep: ', stateOrdersToKeep);
-
           return this.mergeStates(
             states,
             missingStates,
@@ -66,12 +71,25 @@ export class SimulationService {
         });
       },
     );
+
+    this.communicationService.on(
+      `polylines-${simulationId}`,
+      (polylinesByVehicleId) => {
+        this._simulationPolylinesSignal.set(
+          this.extractPolylines(
+            polylinesByVehicleId as unknown as Record<string, RawPolylines>,
+          ) ?? {},
+        );
+      },
+    );
   }
 
   unsetActiveSimulationId() {
     this._activeSimulationIdSignal.set(null);
 
     this._simulationStatesSignal.set([]);
+
+    this._simulationPolylinesSignal.set({});
 
     this.communicationService.removeAllListeners('missing-simulation-states');
   }
@@ -274,49 +292,7 @@ export class SimulationService {
 
     const longitude = data.longitude ?? null;
 
-    const polylines = data.polylines ?? null;
-    if (polylines) {
-      for (const [_stopId, polyline] of Object.entries(polylines)) {
-        if (!polyline.polyline) {
-          console.error('Polyline points not found: ', polyline);
-          return null;
-        }
-        if (!Array.isArray(polyline.polyline)) {
-          console.error('Polyline points not an array: ', polyline);
-          return null;
-        }
-
-        if (!polyline.coefficients) {
-          console.error('Polyline coefficients not found: ', polyline);
-          return null;
-        }
-        if (!Array.isArray(polyline.coefficients)) {
-          console.error('Polyline coefficients not an array: ', polyline);
-          return null;
-        }
-
-        if (
-          polyline.coefficients.length > 0 &&
-          polyline.coefficients.length !== polyline.polyline.length - 1
-        ) {
-          console.error('Polyline coefficients length mismatch: ', polyline);
-          return null;
-        }
-
-        for (const point of polyline.polyline) {
-          if (point.latitude === undefined) {
-            console.error('Polyline point latitude not found: ', point);
-            return null;
-          }
-          if (point.longitude === undefined) {
-            console.error('Polyline point longitude not found: ', point);
-            return null;
-          }
-        }
-      }
-    }
-
-    return { id, mode, status, latitude, longitude, polylines };
+    return { id, mode, status, latitude, longitude, polylines: null };
   }
 
   private extractVehicleStatusUpdate(
@@ -446,9 +422,112 @@ export class SimulationService {
     return { ...environment, updates };
   }
 
+  private extractPolylines(
+    rawPolylinesByVehicleId: Record<string, RawPolylines>,
+  ): Record<string, Polylines> | null {
+    if (!rawPolylinesByVehicleId) {
+      console.error('Polylines not found: ', rawPolylinesByVehicleId);
+      return null;
+    }
+
+    if (Object.keys(rawPolylinesByVehicleId).length === 0) {
+      return {};
+    }
+
+    const polylinesByVehicleId: Record<string, Polylines> = {};
+
+    for (const [vehicleId, rawPolylines] of Object.entries(
+      rawPolylinesByVehicleId,
+    )) {
+      const polylines: Polylines = {};
+
+      if (!rawPolylines) {
+        console.error('Polylines not found: ', rawPolylines);
+        return null;
+      }
+
+      if (Object.keys(rawPolylines).length === 0) {
+        polylinesByVehicleId[vehicleId] = polylines;
+        continue;
+      }
+
+      for (const [stopId, rawPolyline] of Object.entries(rawPolylines)) {
+        if (!rawPolyline) {
+          console.error('Polyline not found: ', rawPolyline);
+          return null;
+        }
+
+        if (!Array.isArray(rawPolyline) || rawPolyline.length !== 2) {
+          console.error('Invalid polyline: ', rawPolyline);
+          return null;
+        }
+
+        const [encodedPolyline, coefficients] = rawPolyline;
+
+        const decodedPolyline = decode(encodedPolyline).map((point) => ({
+          latitude: point[0],
+          longitude: point[1],
+        }));
+
+        if (
+          decodedPolyline.length > 1 &&
+          coefficients.length !== decodedPolyline.length - 1
+        ) {
+          if (coefficients.length === 1 && coefficients[0] === 1) {
+            // The simulation was unable to calculate the coefficients, but
+            // we can still make the vehicle move at a constant speed.
+            const distances = [];
+
+            for (let index = 0; index < decodedPolyline.length - 1; index++) {
+              const point1 = decodedPolyline[index];
+              const point2 = decodedPolyline[index + 1];
+
+              const distance = Math.sqrt(
+                (point2.latitude - point1.latitude) ** 2 +
+                  (point2.longitude - point1.longitude) ** 2,
+              );
+
+              distances.push(distance);
+            }
+
+            const totalDistance = distances.reduce((a, b) => a + b, 0);
+
+            if (totalDistance === 0) {
+              console.error('Total distance is zero: ', decodedPolyline);
+              return null;
+            }
+
+            coefficients.splice(
+              0,
+              coefficients.length,
+              ...distances.map((distance) => distance / totalDistance),
+            );
+          } else {
+            console.error(
+              'Polyline coefficients length mismatch: ',
+              decodedPolyline,
+              coefficients,
+            );
+            return null;
+          }
+        }
+
+        polylines[stopId] = { polyline: decodedPolyline, coefficients };
+      }
+
+      polylinesByVehicleId[vehicleId] = polylines;
+    }
+
+    return polylinesByVehicleId;
+  }
+
   // MARK: Build environment
   get simulationStatesSignal(): Signal<SimulationState[]> {
     return this._simulationStatesSignal;
+  }
+
+  get simulationPolylinesSignal(): Signal<Record<string, Polylines>> {
+    return this._simulationPolylinesSignal;
   }
 
   /**
@@ -456,6 +535,7 @@ export class SimulationService {
    */
   buildEnvironment(
     state: SimulationState,
+    polylinesByVehicleId: Record<string, Polylines>,
     visualizationTime: number,
   ): SimulationState {
     const simulationEnvironment = structuredClone(state);
@@ -468,6 +548,18 @@ export class SimulationService {
       }
 
       this.applyUpdate(update, simulationEnvironment);
+    }
+
+    for (const [vehicleId, vehicle] of Object.entries(
+      simulationEnvironment.vehicles,
+    )) {
+      const polylines = polylinesByVehicleId[vehicleId];
+      if (!polylines) {
+        console.error('Polyline not found for vehicle: ', vehicleId);
+        continue;
+      }
+
+      vehicle.polylines = polylines;
     }
 
     return simulationEnvironment;

@@ -12,6 +12,7 @@ import {
   Simulation,
   SimulationEnvironment,
 } from '../interfaces/simulation.model';
+import { AnimationService } from './animation.service';
 import { CommunicationService } from './communication.service';
 import { SimulationService } from './simulation.service';
 
@@ -124,8 +125,11 @@ export class VisualizationService {
         return this.visualizationEnvironment;
       }
 
+      const polylines = this.simulationService.simulationPolylinesSignal();
+
       const environment = this.simulationService.buildEnvironment(
         state,
+        polylines,
         visualizationTime,
       );
 
@@ -139,6 +143,7 @@ export class VisualizationService {
     private readonly injector: Injector,
     private readonly communicationService: CommunicationService,
     private readonly simulationService: SimulationService,
+    private readonly animationService: AnimationService,
   ) {
     effect(() => {
       if (!this.isInitializedSignal()) {
@@ -188,6 +193,12 @@ export class VisualizationService {
         lastUpdateOrder,
         visualizationTime,
       );
+    });
+
+    effect(() => {
+      const polylines = this.simulationService.simulationPolylinesSignal();
+
+      this.animationService.displayPolylines(polylines);
     });
   }
 
