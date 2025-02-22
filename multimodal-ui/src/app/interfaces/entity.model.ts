@@ -1,4 +1,4 @@
-import { Point } from 'leaflet';
+import { pixiOverlay, Point } from 'leaflet';
 import { Sprite } from 'pixi.js';
 import { Vehicle } from './simulation.model';
 
@@ -15,4 +15,9 @@ export interface VehicleEntity extends Entity {
   polylineNo: number;
   lineNo: number;
   data: Vehicle;
+}
+
+// Maybe will change (VehicleEntity extends Sprite?)
+export interface EntityOwner extends Sprite {
+  entity: Entity
 }

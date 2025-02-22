@@ -2,7 +2,7 @@ import { Injectable, signal, WritableSignal } from '@angular/core';
 import * as L from 'leaflet';
 import 'leaflet-pixi-overlay';
 import * as PIXI from 'pixi.js';
-import { Entity, VehicleEntity } from '../interfaces/entity.model';
+import { Entity, EntityOwner, VehicleEntity } from '../interfaces/entity.model';
 import { Vehicle } from '../interfaces/simulation.model';
 
 @Injectable({
@@ -17,14 +17,18 @@ export class AnimationService {
   private frozen: boolean = false;
   private utils!: L.PixiOverlayUtils;
 
+  private lastSelectedEntity: Entity | undefined;
+
   addVehicle(vehicle: Vehicle, type = 'sample-bus') {
     if (vehicle.polylines == null) return;
     if (vehicle.polylines[0].polyline.length == 0) return;
     this.frozen = false; // Temp
 
-    const sprite = PIXI.Sprite.from(`images/${type}.png`);
+    const sprite = PIXI.Sprite.from(`images/${type}.png`) as EntityOwner;
     sprite.anchor.set(0.5, 0.5);
     sprite.scale.set(1 / this.utils.getScale());
+    sprite.interactive = true;
+    sprite.on('pointerdown', (e) => this.onEntityPointerdown(e));
 
     const point = this.utils.latLngToLayerPoint([0, 0]);
     const entity: VehicleEntity = {
@@ -39,6 +43,8 @@ export class AnimationService {
       currentTime: 0,
       timeToReach: 0,
     };
+    sprite.entity = entity;
+    
     this.updateVehiclePath(entity);
     // entity.sprite.rotation = entity.requestedRotation;
 
@@ -138,11 +144,23 @@ export class AnimationService {
     // this.addEntity();
   }
 
+  private onEntityPointerdown(event: PIXI.FederatedPointerEvent) {
+    const sprite = event.target as EntityOwner;
+    if (!sprite) return;
+
+    const entity = sprite.entity;
+    if (!entity) return;
+
+    sprite.tint = 0xFFAAAA; // Red
+    
+    if (this.lastSelectedEntity != null) this.lastSelectedEntity.sprite.tint = 0xFFFFFF; // White
+    this.lastSelectedEntity = entity;
+  }
+
   addPixiOverlay(map: L.Map) {
     map.on('click', (event) => {
       this.onClick(event);
     });
-
     const pixiLayer = (() => {
       return L.pixiOverlay(
         (utils, event) => {
