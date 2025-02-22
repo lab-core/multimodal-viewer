@@ -19,6 +19,7 @@ import { firstValueFrom } from 'rxjs';
 import { Simulation } from '../../interfaces/simulation.model';
 import { CommunicationService } from '../../services/communication.service';
 import { DialogService } from '../../services/dialog.service';
+import { AnimationService } from '../../services/animation.service';
 
 @Component({
   selector: 'app-simulation-control-bar',
@@ -48,6 +49,7 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
   constructor(
     private readonly dialogService: DialogService,
     private readonly communicationService: CommunicationService,
+    private readonly animationService: AnimationService,
     private readonly router: Router,
   ) {}
 
@@ -111,6 +113,7 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
       return;
     }
 
+    this.animationService.freezeAnimations(); // TODO: freeze when simulation DOES end
     this.communicationService.emit('stop-simulation', simulation.id);
   }
 
@@ -127,6 +130,7 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
         .afterClosed(),
     );
 
+    this.animationService.clearAnimations();
     await this.router.navigate(['home']);
   }
 }

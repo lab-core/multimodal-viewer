@@ -14,11 +14,13 @@ export class AnimationService {
   private ticker: PIXI.Ticker = new PIXI.Ticker();
   private vehicles: VehicleEntity[] = [];
   private container = new PIXI.Container();
+  private frozen: boolean = false;
   private utils!: L.PixiOverlayUtils;
 
   addVehicle(vehicle: Vehicle, type = 'sample-bus') {
     if (vehicle.polylines == null) return;
     if (vehicle.polylines[0].polyline.length == 0) return;
+    this.frozen = false; // Temp
 
     const sprite = PIXI.Sprite.from(`images/${type}.png`);
     sprite.anchor.set(0.5, 0.5);
@@ -44,7 +46,20 @@ export class AnimationService {
     this.vehicles.push(entity);
   }
 
-  updateVehiclePositions() {
+  clearAnimations() {
+    this.container.removeChildren();
+    this.vehicles = [];
+  }
+
+  freezeAnimations() {
+    this.frozen = true;
+  }
+
+  runAnimations() {
+    this.frozen = false;
+  }
+
+  private updateVehiclePositions() {
     for (let index = 0; index < this.vehicles.length; ++index) {
       const vehicle = this.vehicles[index];
       const secElapsed = this.ticker.deltaMS / 1000;
@@ -66,7 +81,7 @@ export class AnimationService {
     } 
   }
 
-  updateVehiclePath(vehicle: VehicleEntity) {
+  private updateVehiclePath(vehicle: VehicleEntity) {
     if (vehicle.data.polylines == null) return;
 
     // Get next path to follow
@@ -112,6 +127,9 @@ export class AnimationService {
   private onRedraw(event: L.LeafletEvent) {
     const fps = Math.round(1000 / this.ticker.deltaMS);
     this.fpsSignal.set(fps);
+
+    if (this.frozen) return;
+    
     this.updateVehiclePositions();
   }
 
