@@ -260,7 +260,6 @@ class UpdateType(Enum):
     CREATE_VEHICLE = "createVehicle"
     UPDATE_PASSENGER_STATUS = "updatePassengerStatus"
     UPDATE_VEHICLE_STATUS = "updateVehicleStatus"
-    UPDATE_VEHICLE_POSITION = "updateVehiclePosition"
 
 
 class PassengerStatusUpdate(Serializable):
@@ -323,37 +322,6 @@ class VehicleStatusUpdate(Serializable):
         return VehicleStatusUpdate(vehicle_id, status)
 
 
-class VehiclePositionUpdate(Serializable):
-    vehicle_id: str
-    latitude: float
-    longitude: float
-
-    def __init__(self, vehicle: Vehicle) -> None:
-        self.vehicle_id = vehicle.id
-        self.latitude = vehicle.position.lat
-        self.longitude = vehicle.position.lon
-
-    def serialize(self) -> dict:
-        return {
-            "id": self.vehicle_id,
-            "latitude": self.latitude,
-            "longitude": self.longitude,
-        }
-
-    @staticmethod
-    def deserialize(data: str) -> "VehiclePositionUpdate":
-        if isinstance(data, str):
-            data = json.loads(data.replace("'", '"'))
-
-        if "id" not in data or "latitude" not in data or "longitude" not in data:
-            raise ValueError("Invalid data for VehiclePositionUpdate")
-
-        vehicle_id = str(data["id"])
-        latitude = float(data["latitude"])
-        longitude = float(data["longitude"])
-        return VehiclePositionUpdate(vehicle_id, latitude, longitude)
-
-
 class Update(Serializable):
     type: UpdateType
     data: Serializable
@@ -404,8 +372,6 @@ class Update(Serializable):
             update_data = PassengerStatusUpdate.deserialize(update_data)
         elif update_type == UpdateType.UPDATE_VEHICLE_STATUS:
             update_data = VehicleStatusUpdate.deserialize(update_data)
-        elif update_type == UpdateType.UPDATE_VEHICLE_POSITION:
-            update_data = VehiclePositionUpdate.deserialize(update_data)
 
         update = Update(update_type, update_data, timestamp)
         update.order = data["order"]

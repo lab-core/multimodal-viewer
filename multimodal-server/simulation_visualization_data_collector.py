@@ -40,7 +40,6 @@ from simulation_visualization_data_model import (
     SimulationVisualizationDataManager,
     Update,
     UpdateType,
-    VehiclePositionUpdate,
     VehicleStatusUpdate,
     VisualizedEnvironment,
     VisualizedPassenger,
@@ -115,10 +114,6 @@ class SimulationVisualizationDataCollector(DataCollector):
         elif update.type == UpdateType.UPDATE_VEHICLE_STATUS:
             vehicle = self.visualized_environment.get_vehicle(update.data.vehicle_id)
             vehicle.status = update.data.status
-        elif update.type == UpdateType.UPDATE_VEHICLE_POSITION:
-            vehicle = self.visualized_environment.get_vehicle(update.data.vehicle_id)
-            vehicle.latitude = update.data.latitude
-            vehicle.longitude = update.data.longitude
 
         if self.update_counter == 0:
             # Add the simulation start time to the simulation information
@@ -356,24 +351,7 @@ class SimulationVisualizationDataCollector(DataCollector):
 
         # VehicleUpdatePositionEvent
         elif isinstance(event, VehicleUpdatePositionEvent):
-            updated_vehicle = event.vehicle
-            current_visualized_vehicle = self.visualized_environment.get_vehicle(
-                updated_vehicle.id
-            )
-            if event.vehicle.position is not None and (
-                current_visualized_vehicle.latitude != event.vehicle.position.lat
-                or current_visualized_vehicle.longitude != event.vehicle.position.lon
-            ):
-                self.add_update(
-                    Update(
-                        UpdateType.UPDATE_VEHICLE_POSITION,
-                        VehiclePositionUpdate(
-                            event.vehicle,
-                        ),
-                        event.time,
-                    ),
-                    environment,
-                )
+            # Do nothing ?
             return f"{event.time} TODO VehicleUpdatePositionEvent"
 
         # RecurrentTimeSyncEvent
