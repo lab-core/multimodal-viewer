@@ -1,15 +1,17 @@
 import json
+import math
 import os
 from enum import Enum
 
-import polyline
 from filelock import FileLock
 from multimodalsim.simulator.request import Trip
-from multimodalsim.simulator.vehicle import Vehicle
+from multimodalsim.simulator.stop import Stop
+from multimodalsim.simulator.vehicle import Route, Vehicle
 from multimodalsim.state_machine.status import PassengerStatus, VehicleStatus
 from server_utils import SAVE_VERSION
 
 
+# MARK: Enums
 def convert_passenger_status_to_string(status: PassengerStatus) -> str:
     if status == PassengerStatus.RELEASE:
         return "release"
@@ -74,6 +76,7 @@ def convert_string_to_vehicle_status(status: str) -> VehicleStatus:
         raise ValueError(f"Unknown VehicleStatus {status}")
 
 
+# MARK: Serializable
 class Serializable:
     def serialize(self) -> dict:
         raise NotImplementedError()
@@ -88,6 +91,7 @@ class Serializable:
         raise NotImplementedError()
 
 
+# MARK: Passenger
 class VisualizedPassenger(Serializable):
     passenger_id: str
     name: str | None
@@ -132,70 +136,110 @@ class VisualizedPassenger(Serializable):
         return VisualizedPassenger(passenger_id, name, status)
 
 
+# MARK: Stop
+class VisualizedStop(Serializable):
+    arrival_time: float
+    departure_time: float | None
+
+    def __init__(self, arrival_time: float, departure_time: float) -> None:
+        self.arrival_time = arrival_time
+        self.departure_time = departure_time
+
+    @classmethod
+    def from_stop(cls, stop: Stop) -> "VisualizedStop":
+        return cls(
+            stop.arrival_time,
+            stop.departure_time if stop.departure_time != math.inf else None,
+        )
+
+    def serialize(self) -> dict:
+        serialized = {"arrivalTime": self.arrival_time}
+
+        if self.departure_time is not None:
+            serialized["departureTime"] = self.departure_time
+
+        return serialized
+
+    @staticmethod
+    def deserialize(data: str) -> "VisualizedStop":
+        if isinstance(data, str):
+            data = json.loads(data.replace("'", '"'))
+
+        if "arrivalTime" not in data:
+            raise ValueError("Invalid data for VisualizedStop")
+
+        arrival_time = float(data["arrivalTime"])
+        departure_time = data.get("departureTime", None)
+
+        return VisualizedStop(arrival_time, departure_time)
+
+
+# MARK: Vehicle
 class VisualizedVehicle(Serializable):
     vehicle_id: str
     mode: str | None
     status: VehicleStatus
-    latitude: float | None
-    longitude: float | None
     polylines: dict[str, tuple[str, list[float]]] | None
+    previous_stops: list[VisualizedStop]
+    current_stop: VisualizedStop | None
+    next_stops: list[VisualizedStop]
 
     def __init__(
         self,
-        vehicle_id: str,
+        vehicle_id: str | int,
         mode: str | None,
         status: VehicleStatus,
-        latitude: float | None,
-        longitude: float | None,
         polylines: dict[str, tuple[str, list[float]]] | None,
+        previous_stops: list[VisualizedStop],
+        current_stop: VisualizedStop | None,
+        next_stops: list[VisualizedStop],
     ) -> None:
-        self.vehicle_id = vehicle_id
+        self.vehicle_id = str(vehicle_id)
         self.mode = mode
         self.status = status
-        self.latitude = latitude
-        self.longitude = longitude
         self.polylines = polylines
 
+        self.previous_stops = previous_stops
+        self.current_stop = current_stop
+        self.next_stops = next_stops
+
     @classmethod
-    def from_vehicle(cls, vehicle: Vehicle) -> "VisualizedVehicle":
-        polylines = None
-        if vehicle.polylines is not None:
-            polylines = {}
-            for stop_id, encoded_polyline in vehicle.polylines.items():
-                encoded_polyline_string = encoded_polyline[0]
-                polyline_coefficients = encoded_polyline[1]
-                decoded_polyline_string = polyline.decode(encoded_polyline_string)
-                polylines[stop_id] = {
-                    "polyline": [
-                        {"latitude": point[0], "longitude": point[1]}
-                        for point in decoded_polyline_string
-                    ],
-                    "coefficients": polyline_coefficients,
-                }
+    def from_vehicle_and_route(
+        cls, vehicle: Vehicle, route: Route
+    ) -> "VisualizedVehicle":
+        previous_stops = [
+            VisualizedStop.from_stop(stop) for stop in route.previous_stops
+        ]
+        current_stop = (
+            VisualizedStop.from_stop(route.current_stop)
+            if route.current_stop is not None
+            else None
+        )
+        next_stops = [VisualizedStop.from_stop(stop) for stop in route.next_stops]
         return cls(
             vehicle.id,
             vehicle.mode,
             vehicle.status,
-            vehicle.position.lat if vehicle.position is not None else None,
-            vehicle.position.lon if vehicle.position is not None else None,
-            polylines,
+            vehicle.polylines,
+            previous_stops,
+            current_stop,
+            next_stops,
         )
 
     def serialize(self) -> dict:
         serialized = {
             "id": self.vehicle_id,
             "status": convert_vehicle_status_to_string(self.status),
+            "previousStops": [stop.serialize() for stop in self.previous_stops],
+            "nextStops": [stop.serialize() for stop in self.next_stops],
         }
 
         if self.mode is not None:
             serialized["mode"] = self.mode
 
-        if self.latitude is not None and self.longitude is not None:
-            serialized["latitude"] = self.latitude
-            serialized["longitude"] = self.longitude
+        if self.current_stop is not None:
+            serialized["currentStop"] = self.current_stop.serialize()
 
-        if self.polylines is not None:
-            serialized["polylines"] = self.polylines
         return serialized
 
     @staticmethod
@@ -203,33 +247,37 @@ class VisualizedVehicle(Serializable):
         if isinstance(data, str):
             data = json.loads(data.replace("'", '"'))
 
-        if "id" not in data or "status" not in data:
+        if (
+            "id" not in data
+            or "status" not in data
+            or "previousStops" not in data
+            or "nextStops" not in data
+        ):
             raise ValueError("Invalid data for VisualizedVehicle")
 
         vehicle_id = str(data["id"])
         mode = data.get("mode", None)
         status = convert_string_to_vehicle_status(data["status"])
-        latitude = data.get("latitude", None)
-        if latitude is not None:
-            latitude = float(latitude)
-        longitude = data.get("longitude", None)
-        if longitude is not None:
-            longitude = float(longitude)
+        previous_stops = [
+            VisualizedStop.deserialize(stop_data) for stop_data in data["previousStops"]
+        ]
+        next_stops = [
+            VisualizedStop.deserialize(stop_data) for stop_data in data["nextStops"]
+        ]
 
-        polylines = data.get("polylines", None)
-        if polylines is not None:
-            polylines = {
-                stop_id: (polyline_type, polyline_data)
-                for stop_id, (polyline_type, polyline_data) in polylines.items()
-            }
+        current_stop = data.get("currentStop", None)
+        if current_stop is not None:
+            current_stop = VisualizedStop.deserialize(current_stop)
 
-        vehicle = VisualizedVehicle(vehicle_id, mode, status, latitude, longitude, None)
-        return vehicle
+        return VisualizedVehicle(
+            vehicle_id, mode, status, None, previous_stops, current_stop, next_stops
+        )
 
 
+# MARK: Environment
 class VisualizedEnvironment(Serializable):
-    passengers: list[VisualizedPassenger]
-    vehicles: list[VisualizedVehicle]
+    passengers: dict[str, VisualizedPassenger]
+    vehicles: dict[str, VisualizedVehicle]
     timestamp: float
     estimated_end_time: float
     order: int
@@ -298,12 +346,13 @@ class VisualizedEnvironment(Serializable):
         return environment
 
 
+# MARK: Updates
 class UpdateType(Enum):
     CREATE_PASSENGER = "createPassenger"
     CREATE_VEHICLE = "createVehicle"
     UPDATE_PASSENGER_STATUS = "updatePassengerStatus"
     UPDATE_VEHICLE_STATUS = "updateVehicleStatus"
-    UPDATE_VEHICLE_POSITION = "updateVehiclePosition"
+    UPDATE_VEHICLE_STOPS = "updateVehicleStops"
 
 
 class PassengerStatusUpdate(Serializable):
@@ -366,35 +415,72 @@ class VehicleStatusUpdate(Serializable):
         return VehicleStatusUpdate(vehicle_id, status)
 
 
-class VehiclePositionUpdate(Serializable):
+class VehicleStopsUpdate(Serializable):
     vehicle_id: str
-    latitude: float
-    longitude: float
+    previous_stops: list[VisualizedStop]
+    current_stop: VisualizedStop | None
+    next_stops: list[VisualizedStop]
 
-    def __init__(self, vehicle: Vehicle) -> None:
-        self.vehicle_id = vehicle.id
-        self.latitude = vehicle.position.lat
-        self.longitude = vehicle.position.lon
+    def __init__(
+        self,
+        vehicle_id: str,
+        previous_stops: list[VisualizedStop],
+        current_stop: VisualizedStop | None,
+        next_stops: list[VisualizedStop],
+    ) -> None:
+        self.vehicle_id = vehicle_id
+        self.previous_stops = previous_stops
+        self.current_stop = current_stop
+        self.next_stops = next_stops
+
+    @classmethod
+    def from_vehicle_and_route(
+        cls, vehicle: Vehicle, route: Route
+    ) -> "VehicleStopsUpdate":
+        previous_stops = [
+            VisualizedStop.from_stop(stop) for stop in route.previous_stops
+        ]
+        current_stop = (
+            VisualizedStop.from_stop(route.current_stop)
+            if route.current_stop is not None
+            else None
+        )
+        next_stops = [VisualizedStop.from_stop(stop) for stop in route.next_stops]
+        return cls(vehicle.id, previous_stops, current_stop, next_stops)
 
     def serialize(self) -> dict:
-        return {
+        serialized = {
             "id": self.vehicle_id,
-            "latitude": self.latitude,
-            "longitude": self.longitude,
+            "previousStops": [stop.serialize() for stop in self.previous_stops],
+            "nextStops": [stop.serialize() for stop in self.next_stops],
         }
 
+        if self.current_stop is not None:
+            serialized["currentStop"] = self.current_stop.serialize()
+
+        return serialized
+
     @staticmethod
-    def deserialize(data: str) -> "VehiclePositionUpdate":
+    def deserialize(data: str) -> "VehicleStopsUpdate":
         if isinstance(data, str):
             data = json.loads(data.replace("'", '"'))
 
-        if "id" not in data or "latitude" not in data or "longitude" not in data:
-            raise ValueError("Invalid data for VehiclePositionUpdate")
+        if "id" not in data or "previousStops" not in data or "nextStops" not in data:
+            raise ValueError("Invalid data for VehicleStopsUpdate")
 
         vehicle_id = str(data["id"])
-        latitude = float(data["latitude"])
-        longitude = float(data["longitude"])
-        return VehiclePositionUpdate(vehicle_id, latitude, longitude)
+        previous_stops = [
+            VisualizedStop.deserialize(stop_data) for stop_data in data["previousStops"]
+        ]
+        next_stops = [
+            VisualizedStop.deserialize(stop_data) for stop_data in data["nextStops"]
+        ]
+
+        current_stop = data.get("currentStop", None)
+        if current_stop is not None:
+            current_stop = VisualizedStop.deserialize(current_stop)
+
+        return VehicleStopsUpdate(vehicle_id, previous_stops, current_stop, next_stops)
 
 
 class Update(Serializable):
@@ -447,14 +533,15 @@ class Update(Serializable):
             update_data = PassengerStatusUpdate.deserialize(update_data)
         elif update_type == UpdateType.UPDATE_VEHICLE_STATUS:
             update_data = VehicleStatusUpdate.deserialize(update_data)
-        elif update_type == UpdateType.UPDATE_VEHICLE_POSITION:
-            update_data = VehiclePositionUpdate.deserialize(update_data)
+        elif update_type == UpdateType.UPDATE_VEHICLE_STOPS:
+            update_data = VehicleStopsUpdate.deserialize(update_data)
 
         update = Update(update_type, update_data, timestamp)
         update.order = data["order"]
         return update
 
 
+# MARK: State
 class VisualizedState(VisualizedEnvironment):
     updates: list[Update]
 
@@ -501,6 +588,7 @@ class VisualizedState(VisualizedEnvironment):
         return state
 
 
+# MARK: Simulation Information
 class SimulationInformation(Serializable):
     version: str
     simulation_id: str
@@ -509,6 +597,7 @@ class SimulationInformation(Serializable):
     data: str
     simulation_start_time: float | None
     simulation_end_time: float | None
+    last_update_order: int | None
 
     def __init__(
         self,
@@ -516,6 +605,7 @@ class SimulationInformation(Serializable):
         data: str,
         simulation_start_time: str | None,
         simulation_end_time: str | None,
+        last_update_order: int | None,
         version: str = None,
     ) -> None:
         self.version = version
@@ -530,6 +620,7 @@ class SimulationInformation(Serializable):
 
         self.simulation_start_time = simulation_start_time
         self.simulation_end_time = simulation_end_time
+        self.last_update_order = last_update_order
 
     def serialize(self) -> dict:
         serialized = {
@@ -543,6 +634,8 @@ class SimulationInformation(Serializable):
             serialized["simulationStartTime"] = self.simulation_start_time
         if self.simulation_end_time is not None:
             serialized["simulationEndTime"] = self.simulation_end_time
+        if self.last_update_order is not None:
+            serialized["lastUpdateOrder"] = self.last_update_order
         return serialized
 
     @staticmethod
@@ -559,12 +652,14 @@ class SimulationInformation(Serializable):
 
         simulation_start_time = data.get("simulationStartTime", None)
         simulation_end_time = data.get("simulationEndTime", None)
+        last_update_order = data.get("lastUpdateOrder", None)
 
         return SimulationInformation(
             simulation_id,
             simulation_data,
             simulation_start_time,
             simulation_end_time,
+            last_update_order,
             version,
         )
 
@@ -584,8 +679,8 @@ class SimulationVisualizationDataManager:
     __STATES_ORDER_MINIMUM_LENGTH = 8
     __STATES_TIMESTAMP_MINIMUM_LENGTH = 8
 
-    __MINIMUM_STATES_BEFORE = 5
-    __MINIMUM_STATES_AFTER = 5
+    __MINIMUM_STATES_BEFORE = 1
+    __MINIMUM_STATES_AFTER = 1
 
     # MARK: +- Format
     @staticmethod
@@ -615,12 +710,7 @@ class SimulationVisualizationDataManager:
         directory_path = (
             SimulationVisualizationDataManager.get_saved_simulations_directory_path()
         )
-        return [
-            simulation_id
-            for simulation_id in os.listdir(directory_path)
-            # TODO #43 Remove condition
-            if not simulation_id.endswith(".txt")
-        ]
+        return [simulation_id for simulation_id in os.listdir(directory_path)]
 
     @staticmethod
     def get_saved_simulation_directory_path(simulation_id: str) -> str:
@@ -633,21 +723,6 @@ class SimulationVisualizationDataManager:
             os.makedirs(simulation_directory_path)
 
         return simulation_directory_path
-
-    @staticmethod
-    def get_saved_simulation_polylines_file_path(simulation_id: str) -> str:
-        simulation_directory_path = (
-            SimulationVisualizationDataManager.get_saved_simulation_directory_path(
-                simulation_id
-            )
-        )
-        file_path = f"{simulation_directory_path}/{SimulationVisualizationDataManager.__POLYLINES_FILE_NAME}"
-
-        if not os.path.exists(file_path):
-            with open(file_path, "w") as file:
-                file.write("")
-
-        return file_path
 
     # MARK: +- Corrupted
     @staticmethod
@@ -780,10 +855,10 @@ class SimulationVisualizationDataManager:
         return sorted(states, key=lambda x: (x[1], x[0]))
 
     @staticmethod
-    def save_state(simulation_id: str, state: VisualizedEnvironment) -> str:
+    def save_state(simulation_id: str, environment: VisualizedEnvironment) -> str:
         file_path = (
             SimulationVisualizationDataManager.get_saved_simulation_state_file_path(
-                simulation_id, state.order, state.timestamp
+                simulation_id, environment.order, environment.timestamp
             )
         )
 
@@ -792,7 +867,7 @@ class SimulationVisualizationDataManager:
         with lock:
             with open(file_path, "w") as file:
                 SimulationVisualizationDataManager.__format_json_one_line(
-                    state.serialize(), file
+                    environment.serialize(), file
                 )
 
         return file_path
@@ -849,7 +924,7 @@ class SimulationVisualizationDataManager:
         state_orders_to_keep = []
         for index in range(first_state_index, last_state_index + 1):
             order, state_timestamp = sorted_states[index]
-            if first_order <= order <= last_order:
+            if first_order <= order <= last_order and index != len(sorted_states) - 1:
                 state_orders_to_keep.append(order)
                 continue
 
@@ -875,3 +950,57 @@ class SimulationVisualizationDataManager:
                     missing_states.append(state)
 
         return missing_states, state_orders_to_keep
+
+    # MARK: +- Polylines
+    @staticmethod
+    def get_saved_simulation_polylines_file_path(simulation_id: str) -> str:
+        simulation_directory_path = (
+            SimulationVisualizationDataManager.get_saved_simulation_directory_path(
+                simulation_id
+            )
+        )
+        file_path = f"{simulation_directory_path}/{SimulationVisualizationDataManager.__POLYLINES_FILE_NAME}"
+
+        if not os.path.exists(file_path):
+            with open(file_path, "w") as file:
+                file.write("")
+
+        return file_path
+
+    @staticmethod
+    def set_polylines(simulation_id: str, environment: VisualizedEnvironment) -> None:
+        file_path = (
+            SimulationVisualizationDataManager.get_saved_simulation_polylines_file_path(
+                simulation_id
+            )
+        )
+
+        lock = FileLock(f"{file_path}.lock")
+
+        polylines_by_vehicle_id = {
+            vehicle_id: vehicle.polylines
+            for vehicle_id, vehicle in environment.vehicles.items()
+        }
+
+        with lock:
+            with open(file_path, "w") as file:
+                SimulationVisualizationDataManager.__format_json_readable(
+                    polylines_by_vehicle_id, file
+                )
+
+    @staticmethod
+    def get_polylines(
+        simulation_id: str,
+    ) -> dict[str, dict[str, tuple[str, list[float]]]]:
+        file_path = (
+            SimulationVisualizationDataManager.get_saved_simulation_polylines_file_path(
+                simulation_id
+            )
+        )
+
+        lock = FileLock(f"{file_path}.lock")
+
+        with lock:
+            with open(file_path, "r") as file:
+                data = file.read()
+                return json.loads(data)

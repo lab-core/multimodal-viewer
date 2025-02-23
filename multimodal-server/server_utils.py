@@ -12,7 +12,7 @@ SIMULATION_ROOM = "simulation"
 SCRIPT_ROOM = "script"
 
 # Save the state of the simulation every 500 events
-STATE_SAVE_STEP = 500
+STATE_SAVE_STEP = 100
 
 # If the version is identical, the save file can be loaded
 # If the version is higher, the simulation will be marked as future version

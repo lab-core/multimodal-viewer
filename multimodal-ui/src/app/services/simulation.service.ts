@@ -10,19 +10,24 @@ import {
   Passenger,
   PASSENGER_STATUSES,
   PassengerStatusUpdate,
+  Polylines,
+  RawPolylines,
   RawSimulationEnvironment,
   RawSimulationState,
   Simulation,
   SIMULATION_UPDATE_TYPES,
   SimulationEnvironment,
   SimulationState,
+  Stop,
   Vehicle,
   VEHICLE_STATUSES,
-  VehiclePositionUpdate,
   VehicleStatusUpdate,
+  VehicleStopsUpdate,
 } from '../interfaces/simulation.model';
 import { CommunicationService } from './communication.service';
 import { DataService } from './data.service';
+
+import { decode } from 'polyline';
 
 @Injectable({
   providedIn: 'root',
@@ -34,6 +39,10 @@ export class SimulationService {
 
   private readonly _simulationStatesSignal: WritableSignal<SimulationState[]> =
     signal([]);
+
+  private readonly _simulationPolylinesSignal: WritableSignal<
+    Record<string, Polylines>
+  > = signal({});
 
   // MARK: Constructor
   constructor(
@@ -55,9 +64,6 @@ export class SimulationService {
             .map((rawState) => this.extractSimulationState(rawState))
             .filter((state) => state !== null);
 
-          console.log('Missing states: ', missingStates);
-          console.log('State orders to keep: ', stateOrdersToKeep);
-
           return this.mergeStates(
             states,
             missingStates,
@@ -66,14 +72,35 @@ export class SimulationService {
         });
       },
     );
+
+    this.communicationService.on(
+      `polylines-${simulationId}`,
+      (polylinesByVehicleId) => {
+        this._simulationPolylinesSignal.set(
+          this.extractPolylines(
+            polylinesByVehicleId as unknown as Record<string, RawPolylines>,
+          ) ?? {},
+        );
+      },
+    );
   }
 
   unsetActiveSimulationId() {
+    const activeSimulationId = this._activeSimulationIdSignal();
+
     this._activeSimulationIdSignal.set(null);
 
     this._simulationStatesSignal.set([]);
 
+    this._simulationPolylinesSignal.set({});
+
     this.communicationService.removeAllListeners('missing-simulation-states');
+
+    if (activeSimulationId) {
+      this.communicationService.removeAllListeners(
+        `polylines-${activeSimulationId}`,
+      );
+    }
   }
 
   get activeSimulationSignal(): Signal<Simulation | null> {
@@ -181,13 +208,13 @@ export class SimulationService {
         }
         return null;
 
-      case 'updateVehiclePosition':
+      case 'updateVehicleStops':
         {
-          const vehiclePositionUpdate = this.extractVehiclePositionUpdate(
-            data as VehiclePositionUpdate,
+          const vehicleStopsUpdate = this.extractVehicleStopsUpdate(
+            data as VehicleStopsUpdate,
           );
-          if (vehiclePositionUpdate) {
-            return { type, order, timestamp, data: vehiclePositionUpdate };
+          if (vehicleStopsUpdate) {
+            return { type, order, timestamp, data: vehicleStopsUpdate };
           }
         }
         return null;
@@ -274,49 +301,50 @@ export class SimulationService {
 
     const longitude = data.longitude ?? null;
 
-    const polylines = data.polylines ?? null;
-    if (polylines) {
-      for (const [_stopId, polyline] of Object.entries(polylines)) {
-        if (!polyline.polyline) {
-          console.error('Polyline points not found: ', polyline);
-          return null;
-        }
-        if (!Array.isArray(polyline.polyline)) {
-          console.error('Polyline points not an array: ', polyline);
-          return null;
-        }
-
-        if (!polyline.coefficients) {
-          console.error('Polyline coefficients not found: ', polyline);
-          return null;
-        }
-        if (!Array.isArray(polyline.coefficients)) {
-          console.error('Polyline coefficients not an array: ', polyline);
-          return null;
-        }
-
-        if (
-          polyline.coefficients.length > 0 &&
-          polyline.coefficients.length !== polyline.polyline.length - 1
-        ) {
-          console.error('Polyline coefficients length mismatch: ', polyline);
-          return null;
-        }
-
-        for (const point of polyline.polyline) {
-          if (point.latitude === undefined) {
-            console.error('Polyline point latitude not found: ', point);
-            return null;
-          }
-          if (point.longitude === undefined) {
-            console.error('Polyline point longitude not found: ', point);
-            return null;
-          }
-        }
-      }
+    if (!Array.isArray(data.previousStops)) {
+      console.error('Vehicle previous stops not found: ', data.previousStops);
+      return null;
     }
 
-    return { id, mode, status, latitude, longitude, polylines };
+    const previousStops = data.previousStops.map((stop) =>
+      this.extractStop(stop),
+    );
+    if (!previousStops.every((stop) => stop !== null)) {
+      console.error('Vehicle previous stops invalid: ', previousStops);
+      return null;
+    }
+
+    const currentStop =
+      data.currentStop !== undefined
+        ? this.extractStop(data.currentStop!)
+        : null;
+    if (data.currentStop !== undefined && currentStop === null) {
+      console.error('Vehicle current stop invalid: ', data.currentStop);
+      return null;
+    }
+
+    if (!Array.isArray(data.nextStops)) {
+      console.error('Vehicle next stops not found: ', data.nextStops);
+      return null;
+    }
+
+    const nextStops = data.nextStops.map((stop) => this.extractStop(stop));
+    if (!nextStops.every((stop) => stop !== null)) {
+      console.error('Vehicle next stops invalid: ', nextStops);
+      return null;
+    }
+
+    return {
+      id,
+      mode,
+      status,
+      latitude,
+      longitude,
+      polylines: null,
+      previousStops,
+      currentStop,
+      nextStops,
+    };
   }
 
   private extractVehicleStatusUpdate(
@@ -344,11 +372,11 @@ export class SimulationService {
     return { id, status };
   }
 
-  private extractVehiclePositionUpdate(
-    data: VehiclePositionUpdate,
-  ): VehiclePositionUpdate | null {
+  private extractVehicleStopsUpdate(
+    data: VehicleStopsUpdate,
+  ): VehicleStopsUpdate | null {
     // TODO Uncomment for debugging
-    // console.debug('Extracting vehicle position update: ', data);
+    // console.debug('Extracting vehicle stops update: ', data);
 
     const id = data.id;
     if (!id) {
@@ -356,19 +384,55 @@ export class SimulationService {
       return null;
     }
 
-    const latitude = data.latitude;
-    if (latitude === undefined) {
-      console.error('Vehicle latitude not found: ', latitude);
+    if (!Array.isArray(data.previousStops)) {
+      console.error('Vehicle previous stops not found: ', data.previousStops);
       return null;
     }
 
-    const longitude = data.longitude;
-    if (longitude === undefined) {
-      console.error('Vehicle longitude not found: ', longitude);
+    const previousStops = data.previousStops.map((stop) =>
+      this.extractStop(stop),
+    );
+    if (!previousStops.every((stop) => stop !== null)) {
+      console.error('Vehicle previous stops invalid: ', previousStops);
       return null;
     }
 
-    return { id, latitude, longitude };
+    const currentStop =
+      data.currentStop !== undefined
+        ? this.extractStop(data.currentStop!)
+        : null;
+    if (data.currentStop !== undefined && currentStop === null) {
+      console.error('Vehicle current stop invalid: ', data.currentStop);
+      return null;
+    }
+
+    if (!Array.isArray(data.nextStops)) {
+      console.error('Vehicle next stops not found: ', data.nextStops);
+      return null;
+    }
+
+    const nextStops = data.nextStops.map((stop) => this.extractStop(stop));
+    if (!nextStops.every((stop) => stop !== null)) {
+      console.error('Vehicle next stops invalid: ', nextStops);
+      return null;
+    }
+
+    return { id, previousStops, currentStop, nextStops };
+  }
+
+  private extractStop(data: Stop): Stop | null {
+    // TODO Uncomment for debugging
+    // console.debug('Extracting stop: ', data);
+
+    const arrivalTime = data.arrivalTime;
+    if (arrivalTime === undefined) {
+      console.error('Stop arrival time not found: ', arrivalTime);
+      return null;
+    }
+
+    const departureTime = data.departureTime ?? null;
+
+    return { arrivalTime, departureTime };
   }
 
   private extractSimulationEnvironment(
@@ -446,9 +510,112 @@ export class SimulationService {
     return { ...environment, updates };
   }
 
+  private extractPolylines(
+    rawPolylinesByVehicleId: Record<string, RawPolylines>,
+  ): Record<string, Polylines> | null {
+    if (!rawPolylinesByVehicleId) {
+      console.error('Polylines not found: ', rawPolylinesByVehicleId);
+      return null;
+    }
+
+    if (Object.keys(rawPolylinesByVehicleId).length === 0) {
+      return {};
+    }
+
+    const polylinesByVehicleId: Record<string, Polylines> = {};
+
+    for (const [vehicleId, rawPolylines] of Object.entries(
+      rawPolylinesByVehicleId,
+    )) {
+      const polylines: Polylines = {};
+
+      if (!rawPolylines) {
+        console.error('Polylines not found: ', rawPolylines);
+        return null;
+      }
+
+      if (Object.keys(rawPolylines).length === 0) {
+        polylinesByVehicleId[vehicleId] = polylines;
+        continue;
+      }
+
+      for (const [stopId, rawPolyline] of Object.entries(rawPolylines)) {
+        if (!rawPolyline) {
+          console.error('Polyline not found: ', rawPolyline);
+          return null;
+        }
+
+        if (!Array.isArray(rawPolyline) || rawPolyline.length !== 2) {
+          console.error('Invalid polyline: ', rawPolyline);
+          return null;
+        }
+
+        const [encodedPolyline, coefficients] = rawPolyline;
+
+        const decodedPolyline = decode(encodedPolyline).map((point) => ({
+          latitude: point[0],
+          longitude: point[1],
+        }));
+
+        if (
+          decodedPolyline.length > 1 &&
+          coefficients.length !== decodedPolyline.length - 1
+        ) {
+          if (coefficients.length === 1 && coefficients[0] === 1) {
+            // The simulation was unable to calculate the coefficients, but
+            // we can still make the vehicle move at a constant speed.
+            const distances = [];
+
+            for (let index = 0; index < decodedPolyline.length - 1; index++) {
+              const point1 = decodedPolyline[index];
+              const point2 = decodedPolyline[index + 1];
+
+              const distance = Math.sqrt(
+                (point2.latitude - point1.latitude) ** 2 +
+                  (point2.longitude - point1.longitude) ** 2,
+              );
+
+              distances.push(distance);
+            }
+
+            const totalDistance = distances.reduce((a, b) => a + b, 0);
+
+            if (totalDistance === 0) {
+              console.error('Total distance is zero: ', decodedPolyline);
+              return null;
+            }
+
+            coefficients.splice(
+              0,
+              coefficients.length,
+              ...distances.map((distance) => distance / totalDistance),
+            );
+          } else {
+            console.error(
+              'Polyline coefficients length mismatch: ',
+              decodedPolyline,
+              coefficients,
+            );
+            return null;
+          }
+        }
+
+        polylines[stopId] = { polyline: decodedPolyline, coefficients };
+      }
+
+      polylinesByVehicleId[vehicleId] = polylines;
+    }
+
+    return polylinesByVehicleId;
+  }
+
   // MARK: Build environment
   get simulationStatesSignal(): Signal<SimulationState[]> {
     return this._simulationStatesSignal;
+  }
+
+  get simulationPolylinesSignal(): Signal<Record<string, Polylines>> {
+    return this._simulationPolylinesSignal;
   }
 
   /**
@@ -456,11 +623,14 @@ export class SimulationService {
    */
   buildEnvironment(
     state: SimulationState,
+    polylinesByVehicleId: Record<string, Polylines>,
     visualizationTime: number,
-  ): SimulationState {
+  ): SimulationEnvironment {
     const simulationEnvironment = structuredClone(state);
 
     const sortedUpdates = state.updates.sort((a, b) => a.order - b.order);
+
+    let lastUpdate: AnySimulationUpdate | null = null;
 
     for (const update of sortedUpdates) {
       if (update.timestamp > visualizationTime) {
@@ -468,6 +638,25 @@ export class SimulationService {
       }
 
       this.applyUpdate(update, simulationEnvironment);
+
+      lastUpdate = update;
+    }
+
+    for (const [vehicleId, vehicle] of Object.entries(
+      simulationEnvironment.vehicles,
+    )) {
+      const polylines = polylinesByVehicleId[vehicleId];
+      if (!polylines) {
+        console.error('Polyline not found for vehicle: ', vehicleId, polylines);
+        continue;
+      }
+
+      vehicle.polylines = polylines;
+    }
+
+    if (lastUpdate) {
+      simulationEnvironment.order = lastUpdate.order;
+      simulationEnvironment.timestamp = lastUpdate.timestamp;
     }
 
     return simulationEnvironment;
@@ -518,17 +707,19 @@ export class SimulationService {
           vehicle.status = vehicleStatusUpdate.status;
         }
         break;
-      case 'updateVehiclePosition':
+
+      case 'updateVehicleStops':
         {
-          const vehiclePositionUpdate = update.data as VehiclePositionUpdate;
-          const vehicle =
-            simulationEnvironment.vehicles[vehiclePositionUpdate.id];
+          const vehicleStopsUpdate = update.data as VehicleStopsUpdate;
+          const vehicle = simulationEnvironment.vehicles[vehicleStopsUpdate.id];
           if (!vehicle) {
-            console.error('Vehicle not found: ', vehiclePositionUpdate.id);
+            console.error('Vehicle not found: ', vehicleStopsUpdate.id);
             break;
           }
-          vehicle.latitude = vehiclePositionUpdate.latitude;
-          vehicle.longitude = vehiclePositionUpdate.longitude;
+
+          vehicle.previousStops = vehicleStopsUpdate.previousStops;
+          vehicle.currentStop = vehicleStopsUpdate.currentStop;
+          vehicle.nextStops = vehicleStopsUpdate.nextStops;
         }
         break;
     }

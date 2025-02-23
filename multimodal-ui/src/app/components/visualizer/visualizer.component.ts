@@ -312,18 +312,18 @@ export class VisualizerComponent implements OnDestroy {
     });
   }
 
-  get simulationName(): string {
-    return (
-      this.simulationService.activeSimulationSignal()?.name ||
-      'Untitled Simulation'
-    );
+  get totalNumberOfPassengersSignal(): Signal<number> {
+    return computed(() => {
+      const counts = this.numberOfPassengersByStatusSignal();
+      return counts.reduce((acc, { count }) => acc + count, 0);
+    });
   }
 
-  get simulationData(): string {
-    return (
-      this.simulationService.activeSimulationSignal()?.data ||
-      'Untitled Data Folder'
-    );
+  get totalNumberOfVehiclesSignal(): Signal<number> {
+    return computed(() => {
+      const counts = this.numberOfVehiclesByStatusSignal();
+      return counts.reduce((acc, { count }) => acc + count, 0);
+    });
   }
 
   // MARK: Handlers

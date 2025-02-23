@@ -95,13 +95,13 @@ export class DataService {
           return null;
         }
 
-        const id = rawSimulation['id'];
+        const id = rawSimulation.id;
         if (!id) {
           console.error('Simulation ID not found: ', id);
           return null;
         }
 
-        const status: SimulationStatus = rawSimulation['status'];
+        const status: SimulationStatus = rawSimulation.status;
         if (!status) {
           console.error('Simulation status not found: ', status);
           return null;
@@ -122,25 +122,25 @@ export class DataService {
             simulationEndTime: null,
             simulationTime: null,
             simulationEstimatedEndTime: null,
+            lastUpdateOrder: null,
             completion: 1,
           };
         }
 
-        const name: string = rawSimulation['name'];
+        const name: string = rawSimulation.name;
         if (!name) {
           console.error('Simulation name not found: ', name);
           return null;
         }
 
-        const data: string = rawSimulation['data'];
+        const data: string = rawSimulation.data;
         if (!data) {
           console.error('Simulation data not found: ', data);
           return null;
         }
 
-        const rawStartTime: string = rawSimulation[
-          'startTime'
-        ] as unknown as string;
+        const rawStartTime: string =
+          rawSimulation.startTime as unknown as string;
         if (!rawStartTime) {
           console.error(`Simulation start time not found: ${rawStartTime}`);
           return null;
@@ -171,15 +171,17 @@ export class DataService {
         );
 
         const simulationStartTime: number | null =
-          rawSimulation['simulationStartTime'] ?? null;
+          rawSimulation.simulationStartTime ?? null;
 
         const simulationEndTime: number | null =
-          rawSimulation['simulationEndTime'] ?? null;
+          rawSimulation.simulationEndTime ?? null;
 
-        const simulationTime = rawSimulation['simulationTime'] ?? null;
+        const simulationTime = rawSimulation.simulationTime ?? null;
 
         const simulationEstimatedEndTime =
-          rawSimulation['simulationEstimatedEndTime'] ?? null;
+          rawSimulation.simulationEstimatedEndTime ?? null;
+
+        const lastUpdateOrder = rawSimulation.lastUpdateOrder ?? null;
 
         let completion = 1;
         if (
@@ -202,6 +204,7 @@ export class DataService {
           simulationEndTime,
           simulationTime,
           simulationEstimatedEndTime,
+          lastUpdateOrder,
           completion,
         };
       })

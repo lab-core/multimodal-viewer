@@ -20,6 +20,7 @@ from multimodalsim.simulator.passenger_event import (
     PassengerRelease,
     PassengerToBoard,
 )
+from multimodalsim.simulator.vehicle import Vehicle
 from multimodalsim.simulator.vehicle_event import (
     VehicleAlighted,
     VehicleArrival,
@@ -39,10 +40,11 @@ from simulation_visualization_data_model import (
     SimulationVisualizationDataManager,
     Update,
     UpdateType,
-    VehiclePositionUpdate,
     VehicleStatusUpdate,
+    VehicleStopsUpdate,
     VisualizedEnvironment,
     VisualizedPassenger,
+    VisualizedStop,
     VisualizedVehicle,
 )
 from socketio import Client
@@ -64,7 +66,7 @@ class SimulationVisualizationDataCollector(DataCollector):
         self.sio = sio
 
         self.simulation_information = SimulationInformation(
-            simulation_id, data, None, None
+            simulation_id, data, None, None, None, None
         )
 
         self.current_save_file_path = None
@@ -101,6 +103,11 @@ class SimulationVisualizationDataCollector(DataCollector):
             self.visualized_environment.add_passenger(update.data)
         elif update.type == UpdateType.CREATE_VEHICLE:
             self.visualized_environment.add_vehicle(update.data)
+            data: VisualizedVehicle = update.data
+            if data.polylines is not None:
+                SimulationVisualizationDataManager.set_polylines(
+                    self.simulation_id, self.visualized_environment
+                )
         elif update.type == UpdateType.UPDATE_PASSENGER_STATUS:
             passenger = self.visualized_environment.get_passenger(
                 update.data.passenger_id
@@ -109,10 +116,6 @@ class SimulationVisualizationDataCollector(DataCollector):
         elif update.type == UpdateType.UPDATE_VEHICLE_STATUS:
             vehicle = self.visualized_environment.get_vehicle(update.data.vehicle_id)
             vehicle.status = update.data.status
-        elif update.type == UpdateType.UPDATE_VEHICLE_POSITION:
-            vehicle = self.visualized_environment.get_vehicle(update.data.vehicle_id)
-            vehicle.latitude = update.data.latitude
-            vehicle.longitude = update.data.longitude
 
         if self.update_counter == 0:
             # Add the simulation start time to the simulation information
@@ -275,13 +278,26 @@ class SimulationVisualizationDataCollector(DataCollector):
             )
             return f"{event.time} TODO VehicleBoarding"
 
+        # VehicleDeparture
         elif isinstance(event, VehicleDeparture):
+            route = event._VehicleDeparture__route
+            vehicle = event.state_machine.owner
+
             self.add_update(
                 Update(
                     UpdateType.UPDATE_VEHICLE_STATUS,
                     VehicleStatusUpdate.from_vehicle(
                         event.state_machine.owner,
                     ),
+                    event.time,
+                ),
+                environment,
+            )
+
+            self.add_update(
+                Update(
+                    UpdateType.UPDATE_VEHICLE_STOPS,
+                    VehicleStopsUpdate.from_vehicle_and_route(vehicle, route),
                     event.time,
                 ),
                 environment,
@@ -290,6 +306,9 @@ class SimulationVisualizationDataCollector(DataCollector):
 
         # VehicleArrival
         elif isinstance(event, VehicleArrival):
+            route = event._VehicleArrival__route
+            vehicle = event.state_machine.owner
+
             self.add_update(
                 Update(
                     UpdateType.UPDATE_VEHICLE_STATUS,
@@ -300,6 +319,16 @@ class SimulationVisualizationDataCollector(DataCollector):
                 ),
                 environment,
             )
+
+            self.add_update(
+                Update(
+                    UpdateType.UPDATE_VEHICLE_STOPS,
+                    VehicleStopsUpdate.from_vehicle_and_route(vehicle, route),
+                    event.time,
+                ),
+                environment,
+            )
+
             return f"{event.time} TODO VehicleArrival"
 
         # VehicleComplete
@@ -318,7 +347,9 @@ class SimulationVisualizationDataCollector(DataCollector):
 
         # VehicleReady
         elif isinstance(event, VehicleReady):
-            vehicle = VisualizedVehicle.from_vehicle(event.vehicle)
+            vehicle = VisualizedVehicle.from_vehicle_and_route(
+                event.vehicle, event._VehicleReady__route
+            )
             self.add_update(
                 Update(
                     UpdateType.CREATE_VEHICLE,
@@ -331,6 +362,23 @@ class SimulationVisualizationDataCollector(DataCollector):
 
         # VehicleNotification
         elif isinstance(event, VehicleNotification):
+            vehicle = event._VehicleNotification__vehicle
+            route = event._VehicleNotification__route
+            existing_vehicle = self.visualized_environment.get_vehicle(vehicle.id)
+            if vehicle.polylines != existing_vehicle.polylines:
+                existing_vehicle.polylines = vehicle.polylines
+                SimulationVisualizationDataManager.set_polylines(
+                    self.simulation_id, self.visualized_environment
+                )
+
+            self.add_update(
+                Update(
+                    UpdateType.UPDATE_VEHICLE_STOPS,
+                    VehicleStopsUpdate.from_vehicle_and_route(vehicle, route),
+                    event.time,
+                ),
+                environment,
+            )
             return f"{event.time} TODO VehicleNotification"
 
         # VehicleBoarded
@@ -343,24 +391,7 @@ class SimulationVisualizationDataCollector(DataCollector):
 
         # VehicleUpdatePositionEvent
         elif isinstance(event, VehicleUpdatePositionEvent):
-            updated_vehicle = event.vehicle
-            current_visualized_vehicle = self.visualized_environment.get_vehicle(
-                updated_vehicle.id
-            )
-            if event.vehicle.position is not None and (
-                current_visualized_vehicle.latitude != event.vehicle.position.lat
-                or current_visualized_vehicle.longitude != event.vehicle.position.lon
-            ):
-                self.add_update(
-                    Update(
-                        UpdateType.UPDATE_VEHICLE_POSITION,
-                        VehiclePositionUpdate(
-                            event.vehicle,
-                        ),
-                        event.time,
-                    ),
-                    environment,
-                )
+            # Do nothing ?
             return f"{event.time} TODO VehicleUpdatePositionEvent"
 
         # RecurrentTimeSyncEvent
@@ -400,6 +431,9 @@ class SimulationVisualizationVisualizer(Visualizer):
         if current_event is None:
             self.data_collector.simulation_information.simulation_end_time = (
                 self.data_collector.visualized_environment.timestamp
+            )
+            self.data_collector.simulation_information.last_update_order = (
+                self.data_collector.visualized_environment.order
             )
 
             SimulationVisualizationDataManager.set_simulation_information(

@@ -9,9 +9,11 @@ import {
   WritableSignal,
 } from '@angular/core';
 import {
+  RUNNING_SIMULATION_STATUSES,
   Simulation,
   SimulationEnvironment,
 } from '../interfaces/simulation.model';
+import { AnimationService } from './animation.service';
 import { CommunicationService } from './communication.service';
 import { SimulationService } from './simulation.service';
 
@@ -19,6 +21,10 @@ import { SimulationService } from './simulation.service';
 export class VisualizationService {
   // MARK: Properties
   private timeout: number | null = null;
+
+  private readonly MIN_DEBOUNCE_TIME = 800;
+  private debounceTimeout: number | null = null;
+  private lastDebounceTime = 0;
 
   private speed = 1;
 
@@ -124,8 +130,11 @@ export class VisualizationService {
         return this.visualizationEnvironment;
       }
 
+      const polylines = this.simulationService.simulationPolylinesSignal();
+
       const environment = this.simulationService.buildEnvironment(
         state,
+        polylines,
         visualizationTime,
       );
 
@@ -139,6 +148,7 @@ export class VisualizationService {
     private readonly injector: Injector,
     private readonly communicationService: CommunicationService,
     private readonly simulationService: SimulationService,
+    private readonly animationService: AnimationService,
   ) {
     effect(() => {
       if (!this.isInitializedSignal()) {
@@ -161,6 +171,34 @@ export class VisualizationService {
         return;
       }
 
+      const firstUpdate = simulationStates
+        .sort((a, b) => a.order - b.order)[0]
+        ?.updates.sort((a, b) => a.order - b.order)[0];
+
+      const lastUpdate = simulationStates
+        .sort((a, b) => b.order - a.order)[0]
+        ?.updates.sort((a, b) => b.order - a.order)[0];
+
+      if (
+        firstUpdate !== undefined &&
+        firstUpdate.timestamp < visualizationTime
+      ) {
+        if (
+          lastUpdate !== undefined &&
+          lastUpdate.timestamp > visualizationTime + 5
+        ) {
+          return;
+        }
+
+        if (
+          lastUpdate !== undefined &&
+          simulation.lastUpdateOrder !== null &&
+          lastUpdate.order === simulation.lastUpdateOrder
+        ) {
+          return;
+        }
+      }
+
       const firstStateOrder =
         simulationStates.sort((a, b) => a.order - b.order)[0]?.order ?? -1;
 
@@ -177,17 +215,41 @@ export class VisualizationService {
         return;
       }
 
-      this.lastRequestFirstOrder = firstStateOrder;
-      this.lastRequestLastOrder = lastUpdateOrder;
-      this.lastRequestVisualizationTime = visualizationTime;
+      if (this.debounceTimeout !== null) {
+        clearTimeout(this.debounceTimeout);
+        this.debounceTimeout = null;
+      }
 
-      this.communicationService.emit(
-        'get-missing-simulation-states',
+      const currentTime = Date.now();
+      const timeSinceLastDebounce = currentTime - this.lastDebounceTime;
+
+      if (timeSinceLastDebounce < this.MIN_DEBOUNCE_TIME) {
+        this.debounceTimeout = setTimeout(() => {
+          this.debounceTimeout = null;
+          this.lastDebounceTime = Date.now();
+          this.getMissingSimulationStates(
+            simulation.id,
+            firstStateOrder,
+            lastUpdateOrder,
+            visualizationTime,
+          );
+        }, this.MIN_DEBOUNCE_TIME - timeSinceLastDebounce) as unknown as number;
+        return;
+      }
+
+      this.lastDebounceTime = currentTime;
+      this.getMissingSimulationStates(
         simulation.id,
         firstStateOrder,
         lastUpdateOrder,
         visualizationTime,
       );
+    });
+
+    effect(() => {
+      const polylines = this.simulationService.simulationPolylinesSignal();
+
+      this.animationService.displayPolylines(polylines);
     });
   }
 
@@ -200,10 +262,9 @@ export class VisualizationService {
         null,
     );
     this._visualizationMaxTimeSignal.set(
-      simulation.simulationTime ??
-        simulation.simulationEndTime ??
-        simulation.simulationEstimatedEndTime ??
-        null,
+      (RUNNING_SIMULATION_STATUSES.includes(simulation.status)
+        ? (simulation.simulationTime ?? simulation.simulationStartTime)
+        : simulation.simulationEndTime) ?? null,
     );
 
     if (!this.isInitializedSignal()) {
@@ -289,5 +350,24 @@ export class VisualizationService {
     this.timeout = setTimeout(() => {
       this.updateTick();
     }, 1000 / this.speed) as unknown as number;
+  }
+
+  private getMissingSimulationStates(
+    simulationId: string,
+    firstStateOrder: number,
+    lastUpdateOrder: number,
+    visualizationTime: number,
+  ) {
+    this.lastRequestFirstOrder = firstStateOrder;
+    this.lastRequestLastOrder = lastUpdateOrder;
+    this.lastRequestVisualizationTime = visualizationTime;
+
+    this.communicationService.emit(
+      'get-missing-simulation-states',
+      simulationId,
+      firstStateOrder,
+      lastUpdateOrder,
+      visualizationTime,
+    );
   }
 }
