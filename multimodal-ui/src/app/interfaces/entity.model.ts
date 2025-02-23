@@ -12,6 +12,7 @@ export interface Entity {
 }
 
 export interface VehicleEntity extends Entity {
+  waiting: boolean
   polylineNo: number;
   lineNo: number;
   data: Vehicle;

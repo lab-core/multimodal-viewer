@@ -134,7 +134,7 @@ export class VisualizationService {
         visualizationTime,
       );
 
-      console.log('Visualization environment:', environment);
+      // console.log('Visualization environment:', environment);
 
       this.visualizationEnvironment = structuredClone(environment);
 
@@ -201,7 +201,7 @@ export class VisualizationService {
     effect(() => {
       const polylines = this.simulationService.simulationPolylinesSignal();
 
-      this.animationService.displayPolylines(polylines);
+      // this.animationService.displayPolylines(polylines);
     });
   }
 

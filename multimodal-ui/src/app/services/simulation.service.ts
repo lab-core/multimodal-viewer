@@ -685,9 +685,8 @@ export class SimulationService {
       case 'createVehicle':
         {
           const vehicle = update.data as Vehicle;
-          simulationEnvironment.vehicles[vehicle.id] = vehicle;
-
           this.animationService.addVehicle(vehicle);
+          simulationEnvironment.vehicles[vehicle.id] = vehicle;
         }
         break;
 

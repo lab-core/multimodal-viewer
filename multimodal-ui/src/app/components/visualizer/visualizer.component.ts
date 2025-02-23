@@ -80,6 +80,14 @@ export class VisualizerComponent implements OnDestroy {
 
     // MARK: Effects
     effect(() => {
+      const visualizationEnvironmentSignal = this.visualizationEnvironmentSignal();
+      const visualizationTimeSignal = this.visualizationService.visualizationTimeSignal();
+
+      if (visualizationEnvironmentSignal == null || visualizationTimeSignal == null) return;
+      this.animationService.synchronizeTime(visualizationEnvironmentSignal, visualizationTimeSignal);
+    });
+
+    effect(() => {
       const status = this.visualizerStatusSignal();
 
       if (this.matDialogRef) {
