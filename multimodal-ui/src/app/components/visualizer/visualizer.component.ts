@@ -312,6 +312,20 @@ export class VisualizerComponent implements OnDestroy {
     });
   }
 
+  get totalNumberOfPassengersSignal(): Signal<number> {
+    return computed(() => {
+      const counts = this.numberOfPassengersByStatusSignal();
+      return counts.reduce((acc, { count }) => acc + count, 0);
+    });
+  }
+
+  get totalNumberOfVehiclesSignal(): Signal<number> {
+    return computed(() => {
+      const counts = this.numberOfVehiclesByStatusSignal();
+      return counts.reduce((acc, { count }) => acc + count, 0);
+    });
+  }
+
   // MARK: Handlers
   hideInformationPanel() {
     this.userInterfaceService.hideInformationPanel();

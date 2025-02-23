@@ -597,6 +597,7 @@ class SimulationInformation(Serializable):
     data: str
     simulation_start_time: float | None
     simulation_end_time: float | None
+    last_update_order: int | None
 
     def __init__(
         self,
@@ -604,6 +605,7 @@ class SimulationInformation(Serializable):
         data: str,
         simulation_start_time: str | None,
         simulation_end_time: str | None,
+        last_update_order: int | None,
         version: str = None,
     ) -> None:
         self.version = version
@@ -618,6 +620,7 @@ class SimulationInformation(Serializable):
 
         self.simulation_start_time = simulation_start_time
         self.simulation_end_time = simulation_end_time
+        self.last_update_order = last_update_order
 
     def serialize(self) -> dict:
         serialized = {
@@ -631,6 +634,8 @@ class SimulationInformation(Serializable):
             serialized["simulationStartTime"] = self.simulation_start_time
         if self.simulation_end_time is not None:
             serialized["simulationEndTime"] = self.simulation_end_time
+        if self.last_update_order is not None:
+            serialized["lastUpdateOrder"] = self.last_update_order
         return serialized
 
     @staticmethod
@@ -647,12 +652,14 @@ class SimulationInformation(Serializable):
 
         simulation_start_time = data.get("simulationStartTime", None)
         simulation_end_time = data.get("simulationEndTime", None)
+        last_update_order = data.get("lastUpdateOrder", None)
 
         return SimulationInformation(
             simulation_id,
             simulation_data,
             simulation_start_time,
             simulation_end_time,
+            last_update_order,
             version,
         )
 
@@ -672,8 +679,8 @@ class SimulationVisualizationDataManager:
     __STATES_ORDER_MINIMUM_LENGTH = 8
     __STATES_TIMESTAMP_MINIMUM_LENGTH = 8
 
-    __MINIMUM_STATES_BEFORE = 5
-    __MINIMUM_STATES_AFTER = 5
+    __MINIMUM_STATES_BEFORE = 1
+    __MINIMUM_STATES_AFTER = 1
 
     # MARK: +- Format
     @staticmethod
@@ -917,7 +924,7 @@ class SimulationVisualizationDataManager:
         state_orders_to_keep = []
         for index in range(first_state_index, last_state_index + 1):
             order, state_timestamp = sorted_states[index]
-            if first_order <= order <= last_order:
+            if first_order <= order <= last_order and index != len(sorted_states) - 1:
                 state_orders_to_keep.append(order)
                 continue
 

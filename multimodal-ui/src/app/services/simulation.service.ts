@@ -625,10 +625,12 @@ export class SimulationService {
     state: SimulationState,
     polylinesByVehicleId: Record<string, Polylines>,
     visualizationTime: number,
-  ): SimulationState {
+  ): SimulationEnvironment {
     const simulationEnvironment = structuredClone(state);
 
     const sortedUpdates = state.updates.sort((a, b) => a.order - b.order);
+
+    let lastUpdate: AnySimulationUpdate | null = null;
 
     for (const update of sortedUpdates) {
       if (update.timestamp > visualizationTime) {
@@ -636,6 +638,8 @@ export class SimulationService {
       }
 
       this.applyUpdate(update, simulationEnvironment);
+
+      lastUpdate = update;
     }
 
     for (const [vehicleId, vehicle] of Object.entries(
@@ -643,11 +647,16 @@ export class SimulationService {
     )) {
       const polylines = polylinesByVehicleId[vehicleId];
       if (!polylines) {
-        console.error('Polyline not found for vehicle: ', vehicleId);
+        console.error('Polyline not found for vehicle: ', vehicleId, polylines);
         continue;
       }
 
       vehicle.polylines = polylines;
+    }
+
+    if (lastUpdate) {
+      simulationEnvironment.order = lastUpdate.order;
+      simulationEnvironment.timestamp = lastUpdate.timestamp;
     }
 
     return simulationEnvironment;

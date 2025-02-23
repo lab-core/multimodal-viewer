@@ -22,6 +22,10 @@ export class VisualizationService {
   // MARK: Properties
   private timeout: number | null = null;
 
+  private readonly MIN_DEBOUNCE_TIME = 800;
+  private debounceTimeout: number | null = null;
+  private lastDebounceTime = 0;
+
   private speed = 1;
 
   private tick = -1;
@@ -134,8 +138,6 @@ export class VisualizationService {
         visualizationTime,
       );
 
-      console.log('Visualization environment:', environment);
-
       this.visualizationEnvironment = structuredClone(environment);
 
       return environment;
@@ -169,6 +171,34 @@ export class VisualizationService {
         return;
       }
 
+      const firstUpdate = simulationStates
+        .sort((a, b) => a.order - b.order)[0]
+        ?.updates.sort((a, b) => a.order - b.order)[0];
+
+      const lastUpdate = simulationStates
+        .sort((a, b) => b.order - a.order)[0]
+        ?.updates.sort((a, b) => b.order - a.order)[0];
+
+      if (
+        firstUpdate !== undefined &&
+        firstUpdate.timestamp < visualizationTime
+      ) {
+        if (
+          lastUpdate !== undefined &&
+          lastUpdate.timestamp > visualizationTime + 5
+        ) {
+          return;
+        }
+
+        if (
+          lastUpdate !== undefined &&
+          simulation.lastUpdateOrder !== null &&
+          lastUpdate.order === simulation.lastUpdateOrder
+        ) {
+          return;
+        }
+      }
+
       const firstStateOrder =
         simulationStates.sort((a, b) => a.order - b.order)[0]?.order ?? -1;
 
@@ -185,12 +215,30 @@ export class VisualizationService {
         return;
       }
 
-      this.lastRequestFirstOrder = firstStateOrder;
-      this.lastRequestLastOrder = lastUpdateOrder;
-      this.lastRequestVisualizationTime = visualizationTime;
+      if (this.debounceTimeout !== null) {
+        clearTimeout(this.debounceTimeout);
+        this.debounceTimeout = null;
+      }
 
-      this.communicationService.emit(
-        'get-missing-simulation-states',
+      const currentTime = Date.now();
+      const timeSinceLastDebounce = currentTime - this.lastDebounceTime;
+
+      if (timeSinceLastDebounce < this.MIN_DEBOUNCE_TIME) {
+        this.debounceTimeout = setTimeout(() => {
+          this.debounceTimeout = null;
+          this.lastDebounceTime = Date.now();
+          this.getMissingSimulationStates(
+            simulation.id,
+            firstStateOrder,
+            lastUpdateOrder,
+            visualizationTime,
+          );
+        }, this.MIN_DEBOUNCE_TIME - timeSinceLastDebounce) as unknown as number;
+        return;
+      }
+
+      this.lastDebounceTime = currentTime;
+      this.getMissingSimulationStates(
         simulation.id,
         firstStateOrder,
         lastUpdateOrder,
@@ -302,5 +350,24 @@ export class VisualizationService {
     this.timeout = setTimeout(() => {
       this.updateTick();
     }, 1000 / this.speed) as unknown as number;
+  }
+
+  private getMissingSimulationStates(
+    simulationId: string,
+    firstStateOrder: number,
+    lastUpdateOrder: number,
+    visualizationTime: number,
+  ) {
+    this.lastRequestFirstOrder = firstStateOrder;
+    this.lastRequestLastOrder = lastUpdateOrder;
+    this.lastRequestVisualizationTime = visualizationTime;
+
+    this.communicationService.emit(
+      'get-missing-simulation-states',
+      simulationId,
+      firstStateOrder,
+      lastUpdateOrder,
+      visualizationTime,
+    );
   }
 }

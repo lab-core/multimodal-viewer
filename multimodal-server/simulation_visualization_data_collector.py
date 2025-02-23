@@ -66,7 +66,7 @@ class SimulationVisualizationDataCollector(DataCollector):
         self.sio = sio
 
         self.simulation_information = SimulationInformation(
-            simulation_id, data, None, None
+            simulation_id, data, None, None, None, None
         )
 
         self.current_save_file_path = None
@@ -431,6 +431,9 @@ class SimulationVisualizationVisualizer(Visualizer):
         if current_event is None:
             self.data_collector.simulation_information.simulation_end_time = (
                 self.data_collector.visualized_environment.timestamp
+            )
+            self.data_collector.simulation_information.last_update_order = (
+                self.data_collector.visualized_environment.order
             )
 
             SimulationVisualizationDataManager.set_simulation_information(

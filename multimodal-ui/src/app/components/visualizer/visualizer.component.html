@@ -1,6 +1,8 @@
 @let simulation = simulationSignal();
 @let numberOfPassengersByStatus = numberOfPassengersByStatusSignal();
 @let numberOfVehiclesByStatus = numberOfVehiclesByStatusSignal();
+@let totalNumberOfPassengers = totalNumberOfPassengersSignal();
+@let totalNumberOfVehicles = totalNumberOfVehiclesSignal();
 
 @if (isInitializedSignal() && simulation !== null) {
   <!-- MARK: Search Bar
@@ -26,27 +28,29 @@
             simulation.simulationTime?.toString() ?? "null"
           }}</mat-card-subtitle
         >
-        <mat-card-subtitle>Passengers:</mat-card-subtitle>
-        @for (
-          statusAndCount of numberOfPassengersByStatus;
-          track statusAndCount.status
-        ) {
-          <mat-card-subtitle
-            >{{ statusAndCount.status }}:
-            {{ statusAndCount.count }}</mat-card-subtitle
-          >
-        }
+        <mat-card-subtitle>
+          Passengers ({{ totalNumberOfPassengers }})
+        </mat-card-subtitle>
+        <div class="flex-column">
+          @for (
+            statusAndCount of numberOfPassengersByStatus;
+            track statusAndCount.status
+          ) {
+            <span>{{ statusAndCount.status }}: {{ statusAndCount.count }}</span>
+          }
+        </div>
 
-        <mat-card-subtitle>Vehicles:</mat-card-subtitle>
-        @for (
-          statusAndCount of numberOfVehiclesByStatus;
-          track statusAndCount.status
-        ) {
-          <mat-card-subtitle
-            >{{ statusAndCount.status }}:
-            {{ statusAndCount.count }}</mat-card-subtitle
-          >
-        }
+        <mat-card-subtitle>
+          Vehicles: ({{ totalNumberOfVehicles }})
+        </mat-card-subtitle>
+        <div class="flex-column">
+          @for (
+            statusAndCount of numberOfVehiclesByStatus;
+            track statusAndCount.status
+          ) {
+            <span>{{ statusAndCount.status }}: {{ statusAndCount.count }}</span>
+          }
+        </div>
       </mat-card-content>
       <mat-card-actions align="end">
         <button mat-button (click)="hideInformationPanel()">Hide</button>
