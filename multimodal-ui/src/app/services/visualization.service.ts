@@ -9,6 +9,7 @@ import {
   WritableSignal,
 } from '@angular/core';
 import {
+  RUNNING_SIMULATION_STATUSES,
   Simulation,
   SimulationEnvironment,
 } from '../interfaces/simulation.model';
@@ -133,6 +134,8 @@ export class VisualizationService {
         visualizationTime,
       );
 
+      console.log('Visualization environment:', environment);
+
       this.visualizationEnvironment = structuredClone(environment);
 
       return environment;
@@ -211,10 +214,9 @@ export class VisualizationService {
         null,
     );
     this._visualizationMaxTimeSignal.set(
-      simulation.simulationTime ??
-        simulation.simulationEndTime ??
-        simulation.simulationEstimatedEndTime ??
-        null,
+      (RUNNING_SIMULATION_STATUSES.includes(simulation.status)
+        ? (simulation.simulationTime ?? simulation.simulationStartTime)
+        : simulation.simulationEndTime) ?? null,
     );
 
     if (!this.isInitializedSignal()) {

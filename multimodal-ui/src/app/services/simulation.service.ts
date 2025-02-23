@@ -18,10 +18,11 @@ import {
   SIMULATION_UPDATE_TYPES,
   SimulationEnvironment,
   SimulationState,
+  Stop,
   Vehicle,
   VEHICLE_STATUSES,
-  VehiclePositionUpdate,
   VehicleStatusUpdate,
+  VehicleStopsUpdate,
 } from '../interfaces/simulation.model';
 import { CommunicationService } from './communication.service';
 import { DataService } from './data.service';
@@ -85,6 +86,8 @@ export class SimulationService {
   }
 
   unsetActiveSimulationId() {
+    const activeSimulationId = this._activeSimulationIdSignal();
+
     this._activeSimulationIdSignal.set(null);
 
     this._simulationStatesSignal.set([]);
@@ -92,6 +95,12 @@ export class SimulationService {
     this._simulationPolylinesSignal.set({});
 
     this.communicationService.removeAllListeners('missing-simulation-states');
+
+    if (activeSimulationId) {
+      this.communicationService.removeAllListeners(
+        `polylines-${activeSimulationId}`,
+      );
+    }
   }
 
   get activeSimulationSignal(): Signal<Simulation | null> {
@@ -199,13 +208,13 @@ export class SimulationService {
         }
         return null;
 
-      case 'updateVehiclePosition':
+      case 'updateVehicleStops':
         {
-          const vehiclePositionUpdate = this.extractVehiclePositionUpdate(
-            data as VehiclePositionUpdate,
+          const vehicleStopsUpdate = this.extractVehicleStopsUpdate(
+            data as VehicleStopsUpdate,
           );
-          if (vehiclePositionUpdate) {
-            return { type, order, timestamp, data: vehiclePositionUpdate };
+          if (vehicleStopsUpdate) {
+            return { type, order, timestamp, data: vehicleStopsUpdate };
           }
         }
         return null;
@@ -292,7 +301,50 @@ export class SimulationService {
 
     const longitude = data.longitude ?? null;
 
-    return { id, mode, status, latitude, longitude, polylines: null };
+    if (!Array.isArray(data.previousStops)) {
+      console.error('Vehicle previous stops not found: ', data.previousStops);
+      return null;
+    }
+
+    const previousStops = data.previousStops.map((stop) =>
+      this.extractStop(stop),
+    );
+    if (!previousStops.every((stop) => stop !== null)) {
+      console.error('Vehicle previous stops invalid: ', previousStops);
+      return null;
+    }
+
+    const currentStop =
+      data.currentStop !== undefined
+        ? this.extractStop(data.currentStop!)
+        : null;
+    if (data.currentStop !== undefined && currentStop === null) {
+      console.error('Vehicle current stop invalid: ', data.currentStop);
+      return null;
+    }
+
+    if (!Array.isArray(data.nextStops)) {
+      console.error('Vehicle next stops not found: ', data.nextStops);
+      return null;
+    }
+
+    const nextStops = data.nextStops.map((stop) => this.extractStop(stop));
+    if (!nextStops.every((stop) => stop !== null)) {
+      console.error('Vehicle next stops invalid: ', nextStops);
+      return null;
+    }
+
+    return {
+      id,
+      mode,
+      status,
+      latitude,
+      longitude,
+      polylines: null,
+      previousStops,
+      currentStop,
+      nextStops,
+    };
   }
 
   private extractVehicleStatusUpdate(
@@ -320,11 +372,11 @@ export class SimulationService {
     return { id, status };
   }
 
-  private extractVehiclePositionUpdate(
-    data: VehiclePositionUpdate,
-  ): VehiclePositionUpdate | null {
+  private extractVehicleStopsUpdate(
+    data: VehicleStopsUpdate,
+  ): VehicleStopsUpdate | null {
     // TODO Uncomment for debugging
-    // console.debug('Extracting vehicle position update: ', data);
+    // console.debug('Extracting vehicle stops update: ', data);
 
     const id = data.id;
     if (!id) {
@@ -332,19 +384,55 @@ export class SimulationService {
       return null;
     }
 
-    const latitude = data.latitude;
-    if (latitude === undefined) {
-      console.error('Vehicle latitude not found: ', latitude);
+    if (!Array.isArray(data.previousStops)) {
+      console.error('Vehicle previous stops not found: ', data.previousStops);
       return null;
     }
 
-    const longitude = data.longitude;
-    if (longitude === undefined) {
-      console.error('Vehicle longitude not found: ', longitude);
+    const previousStops = data.previousStops.map((stop) =>
+      this.extractStop(stop),
+    );
+    if (!previousStops.every((stop) => stop !== null)) {
+      console.error('Vehicle previous stops invalid: ', previousStops);
       return null;
     }
 
-    return { id, latitude, longitude };
+    const currentStop =
+      data.currentStop !== undefined
+        ? this.extractStop(data.currentStop!)
+        : null;
+    if (data.currentStop !== undefined && currentStop === null) {
+      console.error('Vehicle current stop invalid: ', data.currentStop);
+      return null;
+    }
+
+    if (!Array.isArray(data.nextStops)) {
+      console.error('Vehicle next stops not found: ', data.nextStops);
+      return null;
+    }
+
+    const nextStops = data.nextStops.map((stop) => this.extractStop(stop));
+    if (!nextStops.every((stop) => stop !== null)) {
+      console.error('Vehicle next stops invalid: ', nextStops);
+      return null;
+    }
+
+    return { id, previousStops, currentStop, nextStops };
+  }
+
+  private extractStop(data: Stop): Stop | null {
+    // TODO Uncomment for debugging
+    // console.debug('Extracting stop: ', data);
+
+    const arrivalTime = data.arrivalTime;
+    if (arrivalTime === undefined) {
+      console.error('Stop arrival time not found: ', arrivalTime);
+      return null;
+    }
+
+    const departureTime = data.departureTime ?? null;
+
+    return { arrivalTime, departureTime };
   }
 
   private extractSimulationEnvironment(
@@ -610,17 +698,19 @@ export class SimulationService {
           vehicle.status = vehicleStatusUpdate.status;
         }
         break;
-      case 'updateVehiclePosition':
+
+      case 'updateVehicleStops':
         {
-          const vehiclePositionUpdate = update.data as VehiclePositionUpdate;
-          const vehicle =
-            simulationEnvironment.vehicles[vehiclePositionUpdate.id];
+          const vehicleStopsUpdate = update.data as VehicleStopsUpdate;
+          const vehicle = simulationEnvironment.vehicles[vehicleStopsUpdate.id];
           if (!vehicle) {
-            console.error('Vehicle not found: ', vehiclePositionUpdate.id);
+            console.error('Vehicle not found: ', vehicleStopsUpdate.id);
             break;
           }
-          vehicle.latitude = vehiclePositionUpdate.latitude;
-          vehicle.longitude = vehiclePositionUpdate.longitude;
+
+          vehicle.previousStops = vehicleStopsUpdate.previousStops;
+          vehicle.currentStop = vehicleStopsUpdate.currentStop;
+          vehicle.nextStops = vehicleStopsUpdate.nextStops;
         }
         break;
     }

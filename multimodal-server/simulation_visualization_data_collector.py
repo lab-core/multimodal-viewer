@@ -41,8 +41,10 @@ from simulation_visualization_data_model import (
     Update,
     UpdateType,
     VehicleStatusUpdate,
+    VehicleStopsUpdate,
     VisualizedEnvironment,
     VisualizedPassenger,
+    VisualizedStop,
     VisualizedVehicle,
 )
 from socketio import Client
@@ -276,13 +278,26 @@ class SimulationVisualizationDataCollector(DataCollector):
             )
             return f"{event.time} TODO VehicleBoarding"
 
+        # VehicleDeparture
         elif isinstance(event, VehicleDeparture):
+            route = event._VehicleDeparture__route
+            vehicle = event.state_machine.owner
+
             self.add_update(
                 Update(
                     UpdateType.UPDATE_VEHICLE_STATUS,
                     VehicleStatusUpdate.from_vehicle(
                         event.state_machine.owner,
                     ),
+                    event.time,
+                ),
+                environment,
+            )
+
+            self.add_update(
+                Update(
+                    UpdateType.UPDATE_VEHICLE_STOPS,
+                    VehicleStopsUpdate.from_vehicle_and_route(vehicle, route),
                     event.time,
                 ),
                 environment,
@@ -291,6 +306,9 @@ class SimulationVisualizationDataCollector(DataCollector):
 
         # VehicleArrival
         elif isinstance(event, VehicleArrival):
+            route = event._VehicleArrival__route
+            vehicle = event.state_machine.owner
+
             self.add_update(
                 Update(
                     UpdateType.UPDATE_VEHICLE_STATUS,
@@ -301,6 +319,16 @@ class SimulationVisualizationDataCollector(DataCollector):
                 ),
                 environment,
             )
+
+            self.add_update(
+                Update(
+                    UpdateType.UPDATE_VEHICLE_STOPS,
+                    VehicleStopsUpdate.from_vehicle_and_route(vehicle, route),
+                    event.time,
+                ),
+                environment,
+            )
+
             return f"{event.time} TODO VehicleArrival"
 
         # VehicleComplete
@@ -319,7 +347,9 @@ class SimulationVisualizationDataCollector(DataCollector):
 
         # VehicleReady
         elif isinstance(event, VehicleReady):
-            vehicle = VisualizedVehicle.from_vehicle(event.vehicle)
+            vehicle = VisualizedVehicle.from_vehicle_and_route(
+                event.vehicle, event._VehicleReady__route
+            )
             self.add_update(
                 Update(
                     UpdateType.CREATE_VEHICLE,
@@ -332,13 +362,23 @@ class SimulationVisualizationDataCollector(DataCollector):
 
         # VehicleNotification
         elif isinstance(event, VehicleNotification):
-            vehicle: Vehicle = event._VehicleNotification__vehicle
+            vehicle = event._VehicleNotification__vehicle
+            route = event._VehicleNotification__route
             existing_vehicle = self.visualized_environment.get_vehicle(vehicle.id)
             if vehicle.polylines != existing_vehicle.polylines:
                 existing_vehicle.polylines = vehicle.polylines
                 SimulationVisualizationDataManager.set_polylines(
                     self.simulation_id, self.visualized_environment
                 )
+
+            self.add_update(
+                Update(
+                    UpdateType.UPDATE_VEHICLE_STOPS,
+                    VehicleStopsUpdate.from_vehicle_and_route(vehicle, route),
+                    event.time,
+                ),
+                environment,
+            )
             return f"{event.time} TODO VehicleNotification"
 
         # VehicleBoarded

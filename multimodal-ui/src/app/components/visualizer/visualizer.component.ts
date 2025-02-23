@@ -312,20 +312,6 @@ export class VisualizerComponent implements OnDestroy {
     });
   }
 
-  get simulationName(): string {
-    return (
-      this.simulationService.activeSimulationSignal()?.name ||
-      'Untitled Simulation'
-    );
-  }
-
-  get simulationData(): string {
-    return (
-      this.simulationService.activeSimulationSignal()?.data ||
-      'Untitled Data Folder'
-    );
-  }
-
   // MARK: Handlers
   hideInformationPanel() {
     this.userInterfaceService.hideInformationPanel();

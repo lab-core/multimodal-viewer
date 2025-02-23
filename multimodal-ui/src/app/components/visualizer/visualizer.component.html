@@ -18,8 +18,14 @@
     <!-- TODO Fill panel -->
     <mat-card class="flex-column information-panel enable-pointer-events">
       <mat-card-content class="flex-1">
-        <mat-card-title>Simulation: {{ simulationName }}</mat-card-title>
-        <mat-card-subtitle>Source: {{ simulationData }}</mat-card-subtitle>
+        <mat-card-title>Simulation: {{ simulation.name }}</mat-card-title>
+        <mat-card-subtitle>Source: {{ simulation.data }}</mat-card-subtitle>
+        <mat-card-subtitle
+          >Current simulation time:
+          {{
+            simulation.simulationTime?.toString() ?? "null"
+          }}</mat-card-subtitle
+        >
         <mat-card-subtitle>Passengers:</mat-card-subtitle>
         @for (
           statusAndCount of numberOfPassengersByStatus;

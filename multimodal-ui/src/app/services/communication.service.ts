@@ -69,6 +69,11 @@ export class CommunicationService {
 
     this.onDisconnect(() => {
       this._communicationStatusSignal.set('disconnected');
+      console.error('Disconnected from the server');
+    });
+
+    this.on('error', (error: string) => {
+      console.error('Socket error:', error);
     });
 
     // If the connection is not established after 1 second, set the status to disconnected

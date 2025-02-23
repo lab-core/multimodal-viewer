@@ -179,6 +179,11 @@ export interface Polyline {
 
 export type Polylines = Record<string, Polyline>;
 
+export interface Stop {
+  arrivalTime: number;
+  departureTime: number | null; // null means infinite
+}
+
 export interface Vehicle {
   id: string;
   mode: string | null;
@@ -186,6 +191,9 @@ export interface Vehicle {
   latitude: number | null;
   longitude: number | null;
   polylines: Polylines | null;
+  previousStops: Stop[];
+  currentStop: Stop | null;
+  nextStops: Stop[];
 }
 
 export interface VehicleStatusUpdate {
@@ -193,10 +201,11 @@ export interface VehicleStatusUpdate {
   status: VehicleStatus;
 }
 
-export interface VehiclePositionUpdate {
+export interface VehicleStopsUpdate {
   id: string;
-  latitude: number;
-  longitude: number;
+  previousStops: Stop[];
+  currentStop: Stop | null;
+  nextStops: Stop[];
 }
 
 export type SimulationUpdateType =
@@ -204,14 +213,14 @@ export type SimulationUpdateType =
   | 'updatePassengerStatus'
   | 'createVehicle'
   | 'updateVehicleStatus'
-  | 'updateVehiclePosition';
+  | 'updateVehicleStops';
 
 export const SIMULATION_UPDATE_TYPES: SimulationUpdateType[] = [
   'createPassenger',
   'updatePassengerStatus',
   'createVehicle',
   'updateVehicleStatus',
-  'updateVehiclePosition',
+  'updateVehicleStops',
 ];
 
 export interface SimulationUpdateTypeMap {
@@ -219,7 +228,7 @@ export interface SimulationUpdateTypeMap {
   updatePassengerStatus: PassengerStatusUpdate;
   createVehicle: Vehicle;
   updateVehicleStatus: VehicleStatusUpdate;
-  updateVehiclePosition: VehiclePositionUpdate;
+  updateVehicleStops: VehicleStopsUpdate;
 }
 
 export interface SimulationUpdate<T extends keyof SimulationUpdateTypeMap> {

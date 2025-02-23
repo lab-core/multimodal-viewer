@@ -1,14 +1,17 @@
 import json
+import math
 import os
 from enum import Enum
 
 from filelock import FileLock
 from multimodalsim.simulator.request import Trip
-from multimodalsim.simulator.vehicle import Vehicle
+from multimodalsim.simulator.stop import Stop
+from multimodalsim.simulator.vehicle import Route, Vehicle
 from multimodalsim.state_machine.status import PassengerStatus, VehicleStatus
 from server_utils import SAVE_VERSION
 
 
+# MARK: Enums
 def convert_passenger_status_to_string(status: PassengerStatus) -> str:
     if status == PassengerStatus.RELEASE:
         return "release"
@@ -73,6 +76,7 @@ def convert_string_to_vehicle_status(status: str) -> VehicleStatus:
         raise ValueError(f"Unknown VehicleStatus {status}")
 
 
+# MARK: Serializable
 class Serializable:
     def serialize(self) -> dict:
         raise NotImplementedError()
@@ -87,6 +91,7 @@ class Serializable:
         raise NotImplementedError()
 
 
+# MARK: Passenger
 class VisualizedPassenger(Serializable):
     passenger_id: str
     name: str | None
@@ -131,41 +136,109 @@ class VisualizedPassenger(Serializable):
         return VisualizedPassenger(passenger_id, name, status)
 
 
+# MARK: Stop
+class VisualizedStop(Serializable):
+    arrival_time: float
+    departure_time: float | None
+
+    def __init__(self, arrival_time: float, departure_time: float) -> None:
+        self.arrival_time = arrival_time
+        self.departure_time = departure_time
+
+    @classmethod
+    def from_stop(cls, stop: Stop) -> "VisualizedStop":
+        return cls(
+            stop.arrival_time,
+            stop.departure_time if stop.departure_time != math.inf else None,
+        )
+
+    def serialize(self) -> dict:
+        serialized = {"arrivalTime": self.arrival_time}
+
+        if self.departure_time is not None:
+            serialized["departureTime"] = self.departure_time
+
+        return serialized
+
+    @staticmethod
+    def deserialize(data: str) -> "VisualizedStop":
+        if isinstance(data, str):
+            data = json.loads(data.replace("'", '"'))
+
+        if "arrivalTime" not in data:
+            raise ValueError("Invalid data for VisualizedStop")
+
+        arrival_time = float(data["arrivalTime"])
+        departure_time = data.get("departureTime", None)
+
+        return VisualizedStop(arrival_time, departure_time)
+
+
+# MARK: Vehicle
 class VisualizedVehicle(Serializable):
     vehicle_id: str
     mode: str | None
     status: VehicleStatus
     polylines: dict[str, tuple[str, list[float]]] | None
+    previous_stops: list[VisualizedStop]
+    current_stop: VisualizedStop | None
+    next_stops: list[VisualizedStop]
 
     def __init__(
         self,
-        vehicle_id: str,
+        vehicle_id: str | int,
         mode: str | None,
         status: VehicleStatus,
         polylines: dict[str, tuple[str, list[float]]] | None,
+        previous_stops: list[VisualizedStop],
+        current_stop: VisualizedStop | None,
+        next_stops: list[VisualizedStop],
     ) -> None:
-        self.vehicle_id = vehicle_id
+        self.vehicle_id = str(vehicle_id)
         self.mode = mode
         self.status = status
         self.polylines = polylines
 
+        self.previous_stops = previous_stops
+        self.current_stop = current_stop
+        self.next_stops = next_stops
+
     @classmethod
-    def from_vehicle(cls, vehicle: Vehicle) -> "VisualizedVehicle":
+    def from_vehicle_and_route(
+        cls, vehicle: Vehicle, route: Route
+    ) -> "VisualizedVehicle":
+        previous_stops = [
+            VisualizedStop.from_stop(stop) for stop in route.previous_stops
+        ]
+        current_stop = (
+            VisualizedStop.from_stop(route.current_stop)
+            if route.current_stop is not None
+            else None
+        )
+        next_stops = [VisualizedStop.from_stop(stop) for stop in route.next_stops]
         return cls(
             vehicle.id,
             vehicle.mode,
             vehicle.status,
             vehicle.polylines,
+            previous_stops,
+            current_stop,
+            next_stops,
         )
 
     def serialize(self) -> dict:
         serialized = {
             "id": self.vehicle_id,
             "status": convert_vehicle_status_to_string(self.status),
+            "previousStops": [stop.serialize() for stop in self.previous_stops],
+            "nextStops": [stop.serialize() for stop in self.next_stops],
         }
 
         if self.mode is not None:
             serialized["mode"] = self.mode
+
+        if self.current_stop is not None:
+            serialized["currentStop"] = self.current_stop.serialize()
 
         return serialized
 
@@ -174,16 +247,34 @@ class VisualizedVehicle(Serializable):
         if isinstance(data, str):
             data = json.loads(data.replace("'", '"'))
 
-        if "id" not in data or "status" not in data:
+        if (
+            "id" not in data
+            or "status" not in data
+            or "previousStops" not in data
+            or "nextStops" not in data
+        ):
             raise ValueError("Invalid data for VisualizedVehicle")
 
         vehicle_id = str(data["id"])
         mode = data.get("mode", None)
         status = convert_string_to_vehicle_status(data["status"])
+        previous_stops = [
+            VisualizedStop.deserialize(stop_data) for stop_data in data["previousStops"]
+        ]
+        next_stops = [
+            VisualizedStop.deserialize(stop_data) for stop_data in data["nextStops"]
+        ]
 
-        return VisualizedVehicle(vehicle_id, mode, status, None)
+        current_stop = data.get("currentStop", None)
+        if current_stop is not None:
+            current_stop = VisualizedStop.deserialize(current_stop)
+
+        return VisualizedVehicle(
+            vehicle_id, mode, status, None, previous_stops, current_stop, next_stops
+        )
 
 
+# MARK: Environment
 class VisualizedEnvironment(Serializable):
     passengers: dict[str, VisualizedPassenger]
     vehicles: dict[str, VisualizedVehicle]
@@ -255,11 +346,13 @@ class VisualizedEnvironment(Serializable):
         return environment
 
 
+# MARK: Updates
 class UpdateType(Enum):
     CREATE_PASSENGER = "createPassenger"
     CREATE_VEHICLE = "createVehicle"
     UPDATE_PASSENGER_STATUS = "updatePassengerStatus"
     UPDATE_VEHICLE_STATUS = "updateVehicleStatus"
+    UPDATE_VEHICLE_STOPS = "updateVehicleStops"
 
 
 class PassengerStatusUpdate(Serializable):
@@ -322,6 +415,74 @@ class VehicleStatusUpdate(Serializable):
         return VehicleStatusUpdate(vehicle_id, status)
 
 
+class VehicleStopsUpdate(Serializable):
+    vehicle_id: str
+    previous_stops: list[VisualizedStop]
+    current_stop: VisualizedStop | None
+    next_stops: list[VisualizedStop]
+
+    def __init__(
+        self,
+        vehicle_id: str,
+        previous_stops: list[VisualizedStop],
+        current_stop: VisualizedStop | None,
+        next_stops: list[VisualizedStop],
+    ) -> None:
+        self.vehicle_id = vehicle_id
+        self.previous_stops = previous_stops
+        self.current_stop = current_stop
+        self.next_stops = next_stops
+
+    @classmethod
+    def from_vehicle_and_route(
+        cls, vehicle: Vehicle, route: Route
+    ) -> "VehicleStopsUpdate":
+        previous_stops = [
+            VisualizedStop.from_stop(stop) for stop in route.previous_stops
+        ]
+        current_stop = (
+            VisualizedStop.from_stop(route.current_stop)
+            if route.current_stop is not None
+            else None
+        )
+        next_stops = [VisualizedStop.from_stop(stop) for stop in route.next_stops]
+        return cls(vehicle.id, previous_stops, current_stop, next_stops)
+
+    def serialize(self) -> dict:
+        serialized = {
+            "id": self.vehicle_id,
+            "previousStops": [stop.serialize() for stop in self.previous_stops],
+            "nextStops": [stop.serialize() for stop in self.next_stops],
+        }
+
+        if self.current_stop is not None:
+            serialized["currentStop"] = self.current_stop.serialize()
+
+        return serialized
+
+    @staticmethod
+    def deserialize(data: str) -> "VehicleStopsUpdate":
+        if isinstance(data, str):
+            data = json.loads(data.replace("'", '"'))
+
+        if "id" not in data or "previousStops" not in data or "nextStops" not in data:
+            raise ValueError("Invalid data for VehicleStopsUpdate")
+
+        vehicle_id = str(data["id"])
+        previous_stops = [
+            VisualizedStop.deserialize(stop_data) for stop_data in data["previousStops"]
+        ]
+        next_stops = [
+            VisualizedStop.deserialize(stop_data) for stop_data in data["nextStops"]
+        ]
+
+        current_stop = data.get("currentStop", None)
+        if current_stop is not None:
+            current_stop = VisualizedStop.deserialize(current_stop)
+
+        return VehicleStopsUpdate(vehicle_id, previous_stops, current_stop, next_stops)
+
+
 class Update(Serializable):
     type: UpdateType
     data: Serializable
@@ -372,12 +533,15 @@ class Update(Serializable):
             update_data = PassengerStatusUpdate.deserialize(update_data)
         elif update_type == UpdateType.UPDATE_VEHICLE_STATUS:
             update_data = VehicleStatusUpdate.deserialize(update_data)
+        elif update_type == UpdateType.UPDATE_VEHICLE_STOPS:
+            update_data = VehicleStopsUpdate.deserialize(update_data)
 
         update = Update(update_type, update_data, timestamp)
         update.order = data["order"]
         return update
 
 
+# MARK: State
 class VisualizedState(VisualizedEnvironment):
     updates: list[Update]
 
@@ -424,6 +588,7 @@ class VisualizedState(VisualizedEnvironment):
         return state
 
 
+# MARK: Simulation Information
 class SimulationInformation(Serializable):
     version: str
     simulation_id: str
