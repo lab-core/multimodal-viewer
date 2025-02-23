@@ -1,8 +1,15 @@
-import { Injectable, Signal, signal, WritableSignal } from '@angular/core';
+import {
+  computed,
+  Injectable,
+  Signal,
+  signal,
+  WritableSignal,
+} from '@angular/core';
 import {
   Simulation,
   SIMULATION_STATUSES,
   SimulationStatus,
+  STATUSES_ORDER,
 } from '../interfaces/simulation.model';
 import { CommunicationService } from './communication.service';
 
@@ -10,6 +17,7 @@ import { CommunicationService } from './communication.service';
   providedIn: 'root',
 })
 export class DataService {
+  // MARK: Properties
   private readonly _simulationsSignal: WritableSignal<Simulation[]> = signal(
     [],
   );
@@ -17,6 +25,7 @@ export class DataService {
   private readonly _availableSimulationDataSignal: WritableSignal<string[]> =
     signal([]);
 
+  // MARK: Constructor
   constructor(private readonly communicationService: CommunicationService) {
     this.listen();
 
@@ -27,12 +36,20 @@ export class DataService {
     });
   }
 
+  // MARK: Getters
   get simulationsSignal(): Signal<Simulation[]> {
-    return this._simulationsSignal;
+    return computed(() =>
+      this._simulationsSignal().sort(this.sortSimulations.bind(this)),
+    );
   }
 
   get availableSimulationDataSignal(): Signal<string[]> {
     return this._availableSimulationDataSignal;
+  }
+
+  // MARK: Communication
+  queryAvailableData() {
+    this.communicationService.emit('get-available-data');
   }
 
   private listen() {
@@ -55,10 +72,15 @@ export class DataService {
   }
 
   private query() {
-    this.communicationService.emit('get-simulations');
-    this.communicationService.emit('get-available-data');
+    this.querySimulations();
+    this.queryAvailableData();
   }
 
+  private querySimulations() {
+    this.communicationService.emit('get-simulations');
+  }
+
+  // MARK: Extraction
   /**
    * Validate and extract simulation from the raw data.
    */
@@ -79,6 +101,31 @@ export class DataService {
           return null;
         }
 
+        const status: SimulationStatus = rawSimulation['status'];
+        if (!status) {
+          console.error('Simulation status not found: ', status);
+          return null;
+        }
+        if (!SIMULATION_STATUSES.includes(status)) {
+          console.error('Simulation status not recognized: ', status);
+          return null;
+        }
+
+        if (status === 'corrupted') {
+          return {
+            id,
+            name: id.split('-')[2] ?? 'unknown',
+            data: 'unknown',
+            status,
+            startTime: new Date(),
+            simulationStartTime: null,
+            simulationEndTime: null,
+            simulationTime: null,
+            simulationEstimatedEndTime: null,
+            completion: 1,
+          };
+        }
+
         const name: string = rawSimulation['name'];
         if (!name) {
           console.error('Simulation name not found: ', name);
@@ -88,16 +135,6 @@ export class DataService {
         const data: string = rawSimulation['data'];
         if (!data) {
           console.error('Simulation data not found: ', data);
-          return null;
-        }
-
-        const status: SimulationStatus = rawSimulation['status'];
-        if (!status) {
-          console.error('Simulation status not found: ', status);
-          return null;
-        }
-        if (!SIMULATION_STATUSES.includes(status)) {
-          console.error('Simulation status not recognized: ', status);
           return null;
         }
 
@@ -133,14 +170,60 @@ export class DataService {
           milliseconds,
         );
 
+        const simulationStartTime: number | null =
+          rawSimulation['simulationStartTime'] ?? null;
+
+        const simulationEndTime: number | null =
+          rawSimulation['simulationEndTime'] ?? null;
+
+        const simulationTime = rawSimulation['simulationTime'] ?? null;
+
+        const simulationEstimatedEndTime =
+          rawSimulation['simulationEstimatedEndTime'] ?? null;
+
+        let completion = 1;
+        if (
+          simulationStartTime !== null &&
+          simulationTime !== null &&
+          simulationEstimatedEndTime !== null
+        ) {
+          completion =
+            (simulationTime - simulationStartTime) /
+            (simulationEstimatedEndTime - simulationStartTime);
+        }
+
         return {
           id,
           name,
           data,
           status,
           startTime,
+          simulationStartTime,
+          simulationEndTime,
+          simulationTime,
+          simulationEstimatedEndTime,
+          completion,
         };
       })
       .filter((simulation) => !!simulation);
+  }
+
+  private sortSimulations(a: Simulation, b: Simulation): number {
+    // First compare the orders
+    const aOrder = STATUSES_ORDER[a.status];
+    const bOrder = STATUSES_ORDER[b.status];
+
+    if (aOrder < bOrder) {
+      return -1;
+    }
+    if (aOrder > bOrder) {
+      return 1;
+    }
+
+    // If the orders are the same, compare the start times
+    if (a.startTime < b.startTime) {
+      return 1;
+    }
+    return -1;
   }
 }

@@ -8,6 +8,10 @@
     "Pixi",
     "polyline",
     "polylines",
-    "socketio"
+    "pycache",
+    "socketio",
+    "SVDM",
+    "titlecase",
+    "venv"
   ]
 }

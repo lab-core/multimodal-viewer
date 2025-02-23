@@ -4,6 +4,7 @@ import 'leaflet-pixi-overlay';
 import * as PIXI from 'pixi.js';
 import { Entity, EntityOwner, VehicleEntity } from '../interfaces/entity.model';
 import { Vehicle } from '../interfaces/simulation.model';
+import { Polylines } from '../interfaces/simulation.model';
 
 @Injectable({
   providedIn: 'root',
@@ -22,6 +23,7 @@ export class AnimationService {
   addVehicle(vehicle: Vehicle, type = 'sample-bus') {
     if (vehicle.polylines == null) return;
     if (vehicle.polylines[0].polyline.length == 0) return;
+    console.log(vehicle);
     this.frozen = false; // Temp
 
     const sprite = PIXI.Sprite.from(`images/${type}.png`) as EntityOwner;
@@ -183,5 +185,34 @@ export class AnimationService {
       pixiLayer.redraw({ type: 'redraw', delta: delta } as L.LeafletEvent);
     });
     this.ticker.start();
+  }
+
+  private lines: L.Polyline[] = [];
+
+  removePolylines() {
+    this.lines.forEach((line) => line.remove());
+    this.lines = [];
+  }
+
+  displayPolylines(polylinesByVehicleId: Record<string, Polylines>) {
+    this.removePolylines();
+
+    Object.keys(polylinesByVehicleId).forEach((vehicleId) => {
+      const polylines = polylinesByVehicleId[vehicleId];
+      Object.keys(polylines).forEach((polylineId) => {
+        const polyline = polylines[polylineId];
+        const points = polyline.polyline.map((point) => ({
+          lat: point.latitude,
+          lng: point.longitude,
+        }));
+        const line = L.polyline(points, {
+          color: 'blue',
+          weight: 5,
+          opacity: 0.7,
+        });
+        line.addTo(this.utils.getMap());
+        this.lines.push(line);
+      });
+    });
   }
 }

@@ -2,20 +2,21 @@ import datetime
 import inspect
 import logging
 import multiprocessing
-from enum import Enum
+import os
+import tempfile
+import time
 
 from flask_socketio import emit
-from server_utils import CLIENT_ROOM, log
+from server_utils import (
+    CLIENT_ROOM,
+    SAVE_VERSION,
+    STATE_SAVE_STEP,
+    SimulationStatus,
+    get_session_id,
+    log,
+)
 from simulation import run_simulation
-
-
-class SimulationStatus(Enum):
-    PAUSED = "paused"
-    RUNNING = "running"
-    COMPLETED = "completed"
-
-    """ The simulation has been abnormally stopped """
-    STOPPED = "stopped"
+from simulation_visualization_data_model import SimulationVisualizationDataManager
 
 
 class MinimalistSimulationConfiguration:
@@ -45,13 +46,12 @@ class SimulationHandler:
     process: multiprocessing.Process | None
     status: SimulationStatus
     socket_id: str | None
-    response_event: str | None
 
-    # TODO
-    # simulation_start_time: float | None
-    # expected_simulation_end_time: float | None
-    # configuration: MinimalistSimulationConfiguration
-    # completion: float | None
+    simulation_start_time: float | None
+    simulation_end_time: float | None
+
+    simulation_time: float | None
+    simulation_estimated_end_time: float | None
 
     def __init__(
         self,
@@ -70,7 +70,11 @@ class SimulationHandler:
         self.status = status
 
         self.socket_id = None
-        self.response_event = None
+
+        self.simulation_start_time = None
+        self.simulation_end_time = None
+        self.simulation_time = None
+        self.simulation_estimated_end_time = None
 
 
 class SimulationManager:
@@ -99,19 +103,22 @@ class SimulationManager:
             name,
             start_time,
             data,
-            SimulationStatus.RUNNING,
+            SimulationStatus.STARTING,
             simulation_process,
         )
-
-        simulation_handler.response_event = response_event
 
         self.simulations[simulation_id] = simulation_handler
 
         simulation_process.start()
 
+        self.emit_simulations()
+
+        log(f'Emitting response event "{response_event}"', "server")
+        emit(response_event, simulation_id, to=CLIENT_ROOM)
+
         return simulation_handler
 
-    def on_simulation_start(self, simulation_id, socket_id):
+    def on_simulation_start(self, simulation_id, socket_id, simulation_start_time):
         if simulation_id not in self.simulations:
             log(
                 f"{__file__} {inspect.currentframe().f_lineno}: Simulation {simulation_id} not found",
@@ -123,13 +130,10 @@ class SimulationManager:
         simulation = self.simulations[simulation_id]
 
         simulation.socket_id = socket_id
+        simulation.status = SimulationStatus.RUNNING
+        simulation.simulation_start_time = simulation_start_time
 
         self.emit_simulations()
-
-        if simulation.response_event is not None:
-            log(f'Emitting response event "{simulation.response_event}"', "server")
-            emit(simulation.response_event, simulation_id, to=CLIENT_ROOM)
-            simulation.response_event = None
 
     def stop_simulation(self, simulation_id):
         if simulation_id not in self.simulations:
@@ -141,10 +145,11 @@ class SimulationManager:
             return
 
         simulation = self.simulations[simulation_id]
+        simulation.status = SimulationStatus.STOPPING
 
         emit("stop-simulation", to=simulation.socket_id)
 
-    def on_simulation_end(self, simulation_id):
+    def on_simulation_end(self, simulation_id: str):
         if simulation_id not in self.simulations:
             log(
                 f"{__file__} {inspect.currentframe().f_lineno}: Simulation {simulation_id} not found",
@@ -225,41 +230,290 @@ class SimulationManager:
         ]
 
         if len(matching_simulation_ids) != 1:
-            log(
-                f"{__file__} {inspect.currentframe().f_lineno}: Simulation not found",
-                "server",
-                logging.ERROR,
-            )
+            # The simulation has already been disconnected properly
             return
 
         simulation_id = matching_simulation_ids[0]
 
         simulation = self.simulations[simulation_id]
 
-        simulation.socket_id = None
-        simulation.process = None
-        simulation.response_event = None
+        simulation.status = SimulationStatus.LOST
 
-        if simulation.status == SimulationStatus.COMPLETED:
+        self.emit_simulations()
+
+    def on_simulation_update_time(self, simulation_id, timestamp):
+        if simulation_id not in self.simulations:
+            log(
+                f"{__file__} {inspect.currentframe().f_lineno}: Simulation {simulation_id} not found",
+                "server",
+                logging.ERROR,
+            )
             return
 
-        # If the simulation is not completed, it has been disconnected abnormally
-        simulation.status = SimulationStatus.STOPPED
+        simulation = self.simulations[simulation_id]
+
+        simulation.simulation_time = timestamp
+
+        self.emit_simulations()
+
+    def on_simulation_update_estimated_end_time(
+        self, simulation_id, estimated_end_time
+    ):
+        if simulation_id not in self.simulations:
+            log(
+                f"{__file__} {inspect.currentframe().f_lineno}: Simulation {simulation_id} not found",
+                "server",
+                logging.ERROR,
+            )
+            return
+
+        simulation = self.simulations[simulation_id]
+
+        simulation.simulation_estimated_end_time = estimated_end_time
+
+        self.emit_simulations()
+
+    def on_simulation_identification(
+        self,
+        simulation_id,
+        simulation_time,
+        simulation_estimated_end_time,
+        status,
+        socket_id,
+    ):
+        # For now, we only identify simulations that are lost
+        if (
+            simulation_id not in self.simulations
+            or self.simulations[simulation_id].status != SimulationStatus.LOST
+        ):
+            return
+
+        log(
+            f"Identifying simulation {simulation_id}",
+            "simulation",
+        )
+
+        simulation = self.simulations[simulation_id]
+
+        simulation.status = SimulationStatus[status]
+        simulation.simulation_time = simulation_time
+        simulation.simulation_estimated_end_time = simulation_estimated_end_time
+        simulation.socket_id = socket_id
+
+        self.emit_simulations()
 
     def emit_simulations(self):
+        self.query_simulations()
+
+        serialized_simulations = []
+
+        for simulation_id, simulation in self.simulations.items():
+            serialized_simulation = {
+                "id": simulation_id,
+                "name": simulation.name,
+                "status": simulation.status.value,
+                "startTime": simulation.start_time,
+                "data": simulation.data,
+            }
+
+            if simulation.simulation_start_time is not None:
+                serialized_simulation["simulationStartTime"] = (
+                    simulation.simulation_start_time
+                )
+
+            if simulation.simulation_end_time is not None:
+                serialized_simulation["simulationEndTime"] = (
+                    simulation.simulation_end_time
+                )
+
+            if simulation.simulation_time is not None:
+                serialized_simulation["simulationTime"] = simulation.simulation_time
+
+            if simulation.simulation_estimated_end_time is not None:
+                serialized_simulation["simulationEstimatedEndTime"] = (
+                    simulation.simulation_estimated_end_time
+                )
+
+            serialized_simulations.append(serialized_simulation)
+
         emit(
             "simulations",
-            [
-                {
-                    "id": simulation.simulation_id,
-                    "name": simulation.name,
-                    "status": simulation.status.value,
-                    "startTime": simulation.start_time,
-                    "data": simulation.data,
-                }
-                for simulation in self.simulations.values()
-            ],
+            serialized_simulations,
             to=CLIENT_ROOM,
         )
 
         log("Emitting simulations", "server")
+
+    def emit_missing_simulation_states(
+        self,
+        simulation_id: str,
+        first_state_order: float,
+        last_state_order: float,
+        visualization_time: float,
+    ) -> None:
+        if simulation_id not in self.simulations:
+            log(
+                f"{__file__} {inspect.currentframe().f_lineno}: Simulation {simulation_id} not found",
+                "server",
+                logging.ERROR,
+            )
+            return
+
+        simulation = self.simulations[simulation_id]
+
+        try:
+            (missing_states, state_orders_to_keep) = (
+                SimulationVisualizationDataManager.get_missing_states(
+                    simulation_id,
+                    first_state_order,
+                    last_state_order,
+                    visualization_time,
+                )
+            )
+
+            self.emit_simulation_polylines(simulation_id)
+
+            emit(
+                "missing-simulation-states",
+                ([state.serialize() for state in missing_states], state_orders_to_keep),
+                to=get_session_id(),
+            )
+
+        except Exception as e:
+            log(
+                f"Error while emitting missing simulation states for {simulation_id}: {e}",
+                "server",
+                logging.ERROR,
+            )
+            log(
+                f"Marking simulation {simulation_id} as corrupted",
+                "server",
+                logging.ERROR,
+            )
+
+            simulation.status = SimulationStatus.CORRUPTED
+
+            SimulationVisualizationDataManager.mark_simulation_as_corrupted(
+                simulation_id
+            )
+
+            self.emit_simulations()
+
+    def emit_simulation_polylines(self, simulation_id):
+        if simulation_id not in self.simulations:
+            log(
+                f"{__file__} {inspect.currentframe().f_lineno}: Simulation {simulation_id} not found",
+                "server",
+                logging.ERROR,
+            )
+            return
+
+        polylines = SimulationVisualizationDataManager.get_polylines(simulation_id)
+
+        emit(f"polylines-{simulation_id}", polylines, to=CLIENT_ROOM)
+
+    def query_simulations(self):
+        all_simulation_ids = (
+            SimulationVisualizationDataManager.get_all_saved_simulation_ids()
+        )
+
+        for simulation_id in all_simulation_ids:
+            # Non valid save files might throw an exception
+            self.query_simulation(simulation_id)
+
+    def query_simulation(self, simulation_id) -> None:
+        if simulation_id in self.simulations and self.simulations[
+            simulation_id
+        ].status in [
+            SimulationStatus.RUNNING,
+            SimulationStatus.PAUSED,
+            SimulationStatus.STOPPING,
+            SimulationStatus.STARTING,
+            SimulationStatus.LOST,
+        ]:
+            return
+
+        is_corrupted = SimulationVisualizationDataManager.is_simulation_corrupted(
+            simulation_id
+        )
+
+        if not is_corrupted:
+            # Non valid save files throw an exception
+            try:
+                # Get the simulation information from the save file
+                simulation_information = (
+                    SimulationVisualizationDataManager.get_simulation_information(
+                        simulation_id
+                    )
+                )
+
+                # Verify the version of the save file
+                version = simulation_information.version
+                major_version, minor_version = version.split(".")
+
+                save_major_version, save_minor_version = SAVE_VERSION.split(".")
+
+                status = SimulationStatus.OUTDATED
+                if major_version == save_major_version:
+                    if minor_version <= save_minor_version:
+                        status = SimulationStatus.COMPLETED
+                    elif minor_version > save_minor_version:
+                        status = SimulationStatus.FUTURE
+                elif major_version < save_major_version:
+                    status = SimulationStatus.OUTDATED
+                else:
+                    status = SimulationStatus.FUTURE
+
+                if status == SimulationStatus.OUTDATED:
+                    log(
+                        f"Simulation {simulation_id} version is outdated",
+                        "server",
+                        logging.DEBUG,
+                    )
+                if status == SimulationStatus.FUTURE:
+                    log(
+                        f"Simulation {simulation_id} version is future",
+                        "server",
+                        logging.DEBUG,
+                    )
+
+                simulation = SimulationHandler(
+                    simulation_id,
+                    simulation_information.name,
+                    simulation_information.start_time,
+                    simulation_information.data,
+                    status,
+                )
+
+                simulation.simulation_start_time = (
+                    simulation_information.simulation_start_time
+                )
+                simulation.simulation_end_time = (
+                    simulation_information.simulation_end_time
+                )
+
+                if simulation_information.simulation_end_time is None:
+                    # The simulation is not running but the end time is not set
+                    raise Exception("Simulation is corrupted")
+
+                self.simulations[simulation_id] = simulation
+
+            except:
+                is_corrupted = True
+
+        if is_corrupted:
+            log(f"Simulation {simulation_id} is corrupted", "server", logging.DEBUG)
+
+            simulation = SimulationHandler(
+                simulation_id,
+                "unknown",
+                "unknown",
+                "unknown",
+                SimulationStatus.CORRUPTED,
+            )
+
+            self.simulations[simulation_id] = simulation
+
+            SimulationVisualizationDataManager.mark_simulation_as_corrupted(
+                simulation_id
+            )

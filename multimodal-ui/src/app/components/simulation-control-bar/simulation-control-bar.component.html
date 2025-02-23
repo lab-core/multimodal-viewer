@@ -1,60 +1,125 @@
+@let isSimulationPaused = isSimulationPausedSignal();
+@let isVisualizationPaused = isVisualizationPausedSignal();
 @let simulation = simulationInputSignal();
-@let isPaused = isPausedSignal();
+@let simulationStartTime = simulationStartTimeSignal();
+@let simulationEndTime = simulationEndTimeSignal();
+@let visualizationMaxTime = visualizationMaxTimeSignal();
+@let visualizationTime = visualizationTimeSignal();
 
-<mat-card>
-  <mat-card-content class="flex-row align-center">
-    <button
-      mat-icon-button
-      [matTooltip]="isPaused ? 'Resume the simulation' : 'Pause the simulation'"
-      (click)="togglePause(isPaused, simulation.id)"
-    >
-      <mat-icon>{{ isPausedSignal() ? "play_arrow" : "pause" }}</mat-icon>
-    </button>
+@let isInitialized = isInitializedSignal();
 
-    @if (isPausedSignal()) {
-      <button mat-icon-button [matTooltip]="'Step one event backward'">
-        <mat-icon>skip_previous</mat-icon>
+@if (
+  isInitialized &&
+  simulation !== null &&
+  simulationStartTime !== null &&
+  simulationEndTime !== null &&
+  visualizationMaxTime !== null &&
+  visualizationTime !== null
+) {
+  <mat-card>
+    <mat-card-content class="flex-row align-center">
+      <button
+        mat-icon-button
+        [matTooltip]="
+          isVisualizationPaused
+            ? 'Resume the visualization'
+            : 'Pause the visualization'
+        "
+        (click)="toggleVisualizationPause(isVisualizationPaused)"
+      >
+        <mat-icon>{{
+          isVisualizationPaused ? "play_arrow" : "pause"
+        }}</mat-icon>
       </button>
-      <button mat-icon-button [matTooltip]="'Step one event forward'">
-        <mat-icon>skip_next</mat-icon>
-      </button>
-    } @else {
-      <button mat-icon-button [matTooltip]="'Slow down the simulation'">
-        <mat-icon>fast_rewind</mat-icon>
-      </button>
-      <button mat-icon-button [matTooltip]="'Speed up the simulation'">
-        <mat-icon>fast_forward</mat-icon>
-      </button>
-    }
 
-    <div>{{ currentTimeSignal().toLocaleTimeString() }}</div>
+      @if (isVisualizationPaused) {
+        <button
+          mat-icon-button
+          disabled
+          [matTooltip]="'Step one event backward'"
+        >
+          <mat-icon>skip_previous</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          disabled
+          [matTooltip]="'Step one event forward'"
+        >
+          <mat-icon>skip_next</mat-icon>
+        </button>
+      } @else {
+        <button
+          mat-icon-button
+          disabled
+          [matTooltip]="'Slow down the simulation'"
+        >
+          <mat-icon>fast_rewind</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          disabled
+          [matTooltip]="'Speed up the simulation'"
+        >
+          <mat-icon>fast_forward</mat-icon>
+        </button>
+      }
 
-    <div class="flex-1 slider">
-      <mat-slider discrete [displayWith]="sliderLabelFormatter">
-        <input matSliderThumb />
-      </mat-slider>
-    </div>
+      <div>{{ visualizationTime }}</div>
 
-    <button
-      mat-icon-button
-      [matTooltip]="'Configure the simulation'"
-      (click)="editSimulationConfiguration()"
-    >
-      <mat-icon>settings</mat-icon>
-    </button>
-    <button
-      mat-icon-button
-      [matTooltip]="'Stop the simulation'"
-      (click)="stopSimulation(simulation)"
-    >
-      <mat-icon>stop</mat-icon>
-    </button>
-    <button
-      mat-icon-button
-      [matTooltip]="'Leave the visualization'"
-      (click)="leaveVisualization()"
-    >
-      <mat-icon>exit_to_app</mat-icon>
-    </button>
-  </mat-card-content>
-</mat-card>
+      <div class="flex-1 slider">
+        <mat-slider
+          discrete
+          [displayWith]="
+            sliderLabelFormatter(simulationStartTime, simulationEndTime)
+          "
+          [min]="simulationStartTime"
+          [max]="simulationEndTime"
+        >
+          <input
+            matSliderThumb
+            [value]="visualizationTime"
+            (valueChange)="onSliderChange($event)"
+          />
+        </mat-slider>
+      </div>
+
+      @if (simulation.status === "running" || simulation.status === "paused") {
+        <button
+          mat-icon-button
+          [matTooltip]="
+            isSimulationPaused
+              ? 'Resume the simulation'
+              : 'Pause the simulation'
+          "
+          (click)="toggleSimulationPause(isSimulationPaused, simulation.id)"
+        >
+          <mat-icon>{{ isSimulationPaused ? "play_arrow" : "pause" }}</mat-icon>
+        </button>
+
+        <button
+          mat-icon-button
+          [matTooltip]="'Stop the simulation'"
+          (click)="stopSimulation(simulation.id)"
+        >
+          <mat-icon>stop</mat-icon>
+        </button>
+      }
+
+      <button
+        mat-icon-button
+        disabled
+        [matTooltip]="'Configure the simulation'"
+      >
+        <mat-icon>settings</mat-icon>
+      </button>
+
+      <button
+        mat-icon-button
+        [matTooltip]="'Leave the visualization'"
+        (click)="leaveVisualization()"
+      >
+        <mat-icon>exit_to_app</mat-icon>
+      </button>
+    </mat-card-content>
+  </mat-card>
+}

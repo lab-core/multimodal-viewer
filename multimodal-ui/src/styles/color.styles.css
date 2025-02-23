@@ -1,45 +1,56 @@
 * {
-  --error-text-color: #ff0000;
-  --error-background-color: #ffdddd;
+  --red-text-color: #ff0000;
+  --red-background-color: #ffdddd;
 
-  --warning-text-color: #ee8800;
-  --warning-background-color: #ffebcc;
+  --yellow-text-color: #ffc21b;
+  --yellow-background-color: #ffe6a4;
 
-  --success-text-color: #00aa00;
-  --success-background-color: #ccffcc;
+  --green-text-color: #00aa00;
+  --green-background-color: #ccffcc;
 
-  --disabled-text-color: #666666;
-  --disabled-background-color: #f0f0f0;
+  --gray-text-color: #666666;
+  --gray-background-color: #f0f0f0;
+
+  --blue-text-color: #4488ff;
+  --blue-background-color: #cce5ff;
 }
 
-.text-error {
-  color: var(--error-text-color);
+.text-red {
+  color: var(--red-text-color);
 }
 
-.background-error {
-  background-color: var(--error-background-color);
+.background-red {
+  background-color: var(--red-background-color);
 }
 
-.text-warning {
-  color: var(--warning-text-color);
+.text-yellow {
+  color: var(--yellow-text-color);
 }
 
-.background-warning {
-  background-color: var(--warning-background-color);
+.background-yellow {
+  background-color: var(--yellow-background-color);
 }
 
-.text-success {
-  color: var(--success-text-color);
+.text-green {
+  color: var(--green-text-color);
 }
 
-.background-success {
-  background-color: var(--success-background-color);
+.background-green {
+  background-color: var(--green-background-color);
 }
 
-.text-disabled {
-  color: var(--disabled-text-color);
+.text-gray {
+  color: var(--gray-text-color);
 }
 
-.background-disabled {
-  background-color: var(--disabled-background-color);
+.background-gray {
+  background-color: var(--gray-background-color);
+}
+
+.text-blue {
+  color: var(--blue-text-color);
+}
+
+.background-blue {
+  background-color: var(--blue-background-color);
 }

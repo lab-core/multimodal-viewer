@@ -12,11 +12,13 @@ import { MatIcon } from '@angular/material/icon';
 export interface InformationDialogData {
   title: string;
   message: string;
-  type: 'error' | 'warning' | 'info';
-  closeButtonOverride: string | null;
+  type: 'error' | 'warning' | 'info' | null;
+  confirmButtonOverride: string | null;
+  cancelButtonOverride: string | null;
+  canCancel: boolean;
 }
 
-export type InformationDialogResult = null;
+export type InformationDialogResult = boolean | null;
 
 @Component({
   selector: 'app-information-dialog',

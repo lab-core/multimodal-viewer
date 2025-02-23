@@ -2,10 +2,14 @@
 venv
 
 # Python cache
-__pycache__/
+__pycache__
 
 # Saved logs
-multimodal-server/saved_logs/
+multimodal-server/saved_logs
 
 # Saved simulations
-multimodal-server/saved_simulations/
+multimodal-server/saved_simulations
+
+# Data folder too large
+data/medium-taxi
+data/small-taxi

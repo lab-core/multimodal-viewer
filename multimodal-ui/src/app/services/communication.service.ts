@@ -49,7 +49,9 @@ export class CommunicationService {
               message:
                 'The connection to the server has been lost. Please verify that the server is running and try again. The application will attempt to reconnect automatically.',
               type: 'error',
-              closeButtonOverride: 'Continue Anyway',
+              confirmButtonOverride: 'Continue Anyway',
+              cancelButtonOverride: null,
+              canCancel: false,
             },
           );
         }
@@ -67,6 +69,11 @@ export class CommunicationService {
 
     this.onDisconnect(() => {
       this._communicationStatusSignal.set('disconnected');
+      console.error('Disconnected from the server');
+    });
+
+    this.on('error', (error: string) => {
+      console.error('Socket error:', error);
     });
 
     // If the connection is not established after 1 second, set the status to disconnected

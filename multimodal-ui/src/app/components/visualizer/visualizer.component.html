@@ -1,6 +1,8 @@
 @let simulation = simulationSignal();
+@let numberOfPassengersByStatus = numberOfPassengersByStatusSignal();
+@let numberOfVehiclesByStatus = numberOfVehiclesByStatusSignal();
 
-@if (simulation) {
+@if (isInitializedSignal() && simulation !== null) {
   <!-- MARK: Search Bar
   -->
   <mat-form-field class="search-bar enable-pointer-events">
@@ -25,7 +27,35 @@
     <!-- TODO Fill panel -->
     <mat-card class="flex-column information-panel enable-pointer-events">
       <mat-card-content class="flex-1">
-        <mat-card-title>Simulation Information</mat-card-title>
+        <mat-card-title>Simulation: {{ simulation.name }}</mat-card-title>
+        <mat-card-subtitle>Source: {{ simulation.data }}</mat-card-subtitle>
+        <mat-card-subtitle
+          >Current simulation time:
+          {{
+            simulation.simulationTime?.toString() ?? "null"
+          }}</mat-card-subtitle
+        >
+        <mat-card-subtitle>Passengers:</mat-card-subtitle>
+        @for (
+          statusAndCount of numberOfPassengersByStatus;
+          track statusAndCount.status
+        ) {
+          <mat-card-subtitle
+            >{{ statusAndCount.status }}:
+            {{ statusAndCount.count }}</mat-card-subtitle
+          >
+        }
+
+        <mat-card-subtitle>Vehicles:</mat-card-subtitle>
+        @for (
+          statusAndCount of numberOfVehiclesByStatus;
+          track statusAndCount.status
+        ) {
+          <mat-card-subtitle
+            >{{ statusAndCount.status }}:
+            {{ statusAndCount.count }}</mat-card-subtitle
+          >
+        }
       </mat-card-content>
       <mat-card-actions align="end">
         <button mat-button (click)="hideInformationPanel()">Hide</button>
@@ -46,5 +76,10 @@
   <app-simulation-control-bar
     class="enable-pointer-events"
     [simulation]="simulation"
+    (pauseSimulation)="pauseSimulation($event)"
+    (resumeSimulation)="resumeSimulation($event)"
+    (stopSimulation)="stopSimulation($event)"
+    (leaveVisualization)="leaveVisualization()"
+  ></app-simulation-control-bar>
   />
 }

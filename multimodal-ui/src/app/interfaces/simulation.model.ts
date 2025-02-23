@@ -1,11 +1,45 @@
-export type SimulationStatus = 'paused' | 'running' | 'completed' | 'stopped';
+export type SimulationStatus =
+  | 'starting'
+  | 'paused'
+  | 'running'
+  | 'stopping'
+  | 'completed'
+  | 'lost'
+  | 'corrupted'
+  | 'outdated'
+  | 'future';
 
 export const SIMULATION_STATUSES: SimulationStatus[] = [
+  'starting',
   'paused',
   'running',
+  'stopping',
   'completed',
-  'stopped',
+  'lost',
+  'corrupted',
+  'outdated',
+  'future',
 ];
+
+export const RUNNING_SIMULATION_STATUSES: SimulationStatus[] = [
+  'starting',
+  'running',
+  'paused',
+  'stopping',
+  'lost',
+];
+
+export const STATUSES_ORDER: Record<SimulationStatus, number> = {
+  starting: 0,
+  running: 1,
+  paused: 1,
+  stopping: 2,
+  lost: 3,
+  completed: 4,
+  corrupted: 5,
+  outdated: 5,
+  future: 5,
+};
 
 export interface Simulation {
   /**
@@ -41,12 +75,27 @@ export interface Simulation {
   /**
    * The time in the simulation at which the simulation starts
    */
-  // simulationStartTime: number;
+  simulationStartTime: number | null;
 
   /**
    * The time in the simulation at which the simulation ends
    */
-  // expectedSimulationEndTime: number;
+  simulationEndTime: number | null;
+
+  /**
+   * The current time in the simulation
+   */
+  simulationTime: number | null;
+
+  /**
+   * The estimated time at which the simulation will end
+   */
+  simulationEstimatedEndTime: number | null;
+
+  /**
+   * The current completion of the simulation
+   */
+  completion: number;
 
   /**
    * Current configuration of the simulation
@@ -96,7 +145,7 @@ export const PASSENGER_STATUSES: PassengerStatus[] = [
 
 export interface Passenger {
   id: string;
-  name: string;
+  name: string | null;
   status: PassengerStatus;
 }
 export interface PassengerStatusUpdate {
@@ -121,18 +170,30 @@ export const VEHICLE_STATUSES: VehicleStatus[] = [
   'complete',
 ];
 
+export type RawPolylines = Record<string, [string, number[]]>;
+
 export interface Polyline {
   polyline: { latitude: number; longitude: number }[];
   coefficients: number[];
 }
 
+export type Polylines = Record<string, Polyline>;
+
+export interface Stop {
+  arrivalTime: number;
+  departureTime: number | null; // null means infinite
+}
+
 export interface Vehicle {
   id: string;
-  mode: string;
+  mode: string | null;
   status: VehicleStatus;
   latitude: number | null;
   longitude: number | null;
-  polylines: Record<string, Polyline> | null;
+  polylines: Polylines | null;
+  previousStops: Stop[];
+  currentStop: Stop | null;
+  nextStops: Stop[];
 }
 
 export interface VehicleStatusUpdate {
@@ -140,10 +201,11 @@ export interface VehicleStatusUpdate {
   status: VehicleStatus;
 }
 
-export interface VehiclePositionUpdate {
+export interface VehicleStopsUpdate {
   id: string;
-  latitude: number;
-  longitude: number;
+  previousStops: Stop[];
+  currentStop: Stop | null;
+  nextStops: Stop[];
 }
 
 export type SimulationUpdateType =
@@ -151,14 +213,14 @@ export type SimulationUpdateType =
   | 'updatePassengerStatus'
   | 'createVehicle'
   | 'updateVehicleStatus'
-  | 'updateVehiclePosition';
+  | 'updateVehicleStops';
 
 export const SIMULATION_UPDATE_TYPES: SimulationUpdateType[] = [
   'createPassenger',
   'updatePassengerStatus',
   'createVehicle',
   'updateVehicleStatus',
-  'updateVehiclePosition',
+  'updateVehicleStops',
 ];
 
 export interface SimulationUpdateTypeMap {
@@ -166,7 +228,7 @@ export interface SimulationUpdateTypeMap {
   updatePassengerStatus: PassengerStatusUpdate;
   createVehicle: Vehicle;
   updateVehicleStatus: VehicleStatusUpdate;
-  updateVehiclePosition: VehiclePositionUpdate;
+  updateVehicleStops: VehicleStopsUpdate;
 }
 
 export interface SimulationUpdate<T extends keyof SimulationUpdateTypeMap> {
@@ -180,9 +242,36 @@ export type AnySimulationUpdate = SimulationUpdate<
   keyof SimulationUpdateTypeMap
 >;
 
-// TODO temporary
+/**
+ * Snapshot of the simulation environment at a given time
+ */
 export interface SimulationEnvironment {
-  lastUpdateOrder: number;
   passengers: Record<string, Passenger>;
   vehicles: Record<string, Vehicle>;
+
+  /**
+   * The timestamp of the last update before the snapshot
+   */
+  timestamp: number;
+
+  /**
+   * The order of the last update before the snapshot
+   */
+  order: number;
 }
+
+export interface RawSimulationEnvironment
+  extends Pick<SimulationEnvironment, 'timestamp' | 'order'> {
+  passengers: Passenger[];
+  vehicles: Vehicle[];
+}
+
+export interface RawSimulationState extends RawSimulationEnvironment {
+  updates: AnySimulationUpdate[];
+}
+
+export interface SimulationState extends SimulationEnvironment {
+  updates: AnySimulationUpdate[];
+}
+
+export const STATE_SAVE_STEP = 500;
