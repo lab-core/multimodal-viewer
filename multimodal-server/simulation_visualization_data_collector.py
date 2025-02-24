@@ -116,6 +116,12 @@ class SimulationVisualizationDataCollector(DataCollector):
         elif update.type == UpdateType.UPDATE_VEHICLE_STATUS:
             vehicle = self.visualized_environment.get_vehicle(update.data.vehicle_id)
             vehicle.status = update.data.status
+        elif update.type == UpdateType.UPDATE_VEHICLE_STOPS:
+            vehicle = self.visualized_environment.get_vehicle(update.data.vehicle_id)
+            stops_update: VehicleStopsUpdate = update.data
+            vehicle.previous_stops = stops_update.previous_stops
+            vehicle.next_stops = stops_update.next_stops
+            vehicle.current_stop = stops_update.current_stop
 
         if self.update_counter == 0:
             # Add the simulation start time to the simulation information

@@ -88,6 +88,11 @@ export class VisualizerComponent implements OnDestroy {
     });
 
     effect(() => {
+      const isVisualizationPausedSignal = this.visualizationService.isVisualizationPausedSignal();
+      this.animationService.setPause(isVisualizationPausedSignal);
+    })
+
+    effect(() => {
       const status = this.visualizerStatusSignal();
 
       if (this.matDialogRef) {
