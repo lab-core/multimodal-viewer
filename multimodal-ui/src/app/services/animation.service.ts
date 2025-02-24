@@ -11,8 +11,6 @@ import { MapService } from './map.service';
   providedIn: 'root',
 })
 export class AnimationService {
-  fpsSignal: WritableSignal<number> = signal(0);
-
   private ticker: PIXI.Ticker = new PIXI.Ticker();
   private vehicles: VehicleEntity[] = [];
 
@@ -234,8 +232,6 @@ export class AnimationService {
 
   private onRedraw(event: L.LeafletEvent) {
     if (!this.pause) this.animationVisualizationTime += this.ticker.deltaMS / 1000;
-    const fps = Math.round(1000 / this.ticker.deltaMS);
-    this.fpsSignal.set(fps);
 
     this.setVehiclePositions();
   }

@@ -14,15 +14,6 @@
     <mat-icon matSuffix>search</mat-icon>
   </mat-form-field>
 
-  <!-- MARK: FPS Display 
-   -->
-  <mat-chip class="fps-display" [style.background-color]="'var(--disabled-background-color)'">
-    <div class="flex-row align-center gap-0-5-rem text-disabled" style="text-align: center;">
-      FPS: {{ fpsSignal() }}
-    </div>
-  </mat-chip>
-  
-
   <!-- MARK: Information Panel
     -->
   @if (shouldShowInformationPanelSignal()) {

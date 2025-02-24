@@ -43,7 +43,6 @@ export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 export class VisualizerComponent implements OnDestroy {
   // MARK: Properties
   readonly simulationSignal: Signal<Simulation | null>;
-  readonly fpsSignal: Signal<number>;
 
   private matDialogRef: MatDialogRef<InformationDialogComponent> | null = null;
 
@@ -76,7 +75,6 @@ export class VisualizerComponent implements OnDestroy {
     private readonly visualizationService: VisualizationService,
   ) {
     this.simulationSignal = this.simulationService.activeSimulationSignal;
-    this.fpsSignal = this.animationService.fpsSignal;
 
     // MARK: Effects
     effect(() => {
