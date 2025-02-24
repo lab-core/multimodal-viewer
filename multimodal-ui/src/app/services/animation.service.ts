@@ -22,32 +22,20 @@ export class AnimationService {
 
   private animationVisualizationTime: number = 0;
 
-  constructor(private readonly mapService: MapService) {
+  constructor() {
 
   }
 
-  synchronizeTime(simulationEnvironment: SimulationEnvironment, visualizationTimeSignal: number) {
-    //console.log('animation service');
-    //console.log(visualizationTimeSignal);
-
-    // visualizationTimeSignal += 900; // Make the damn vehicles move NOW
-    // If animation time is a second too late/too soon than simulation time, sync it.
+  synchronizeEnvironment(simulationEnvironment: SimulationEnvironment) {
     console.log('Simulation env: ', simulationEnvironment);
-    console.log('[anim]', this.animationVisualizationTime.toFixed(2), '[simu]', visualizationTimeSignal);
-    
-    const timeDifference = this.animationVisualizationTime - visualizationTimeSignal;
-    if (Math.abs(timeDifference) > 1.5)  {
-      console.log('syncthime time because difference is ', timeDifference)
-      this.animationVisualizationTime = visualizationTimeSignal;
-    }
 
+    this.container.removeChildren();
+    this.vehicles = [];
 
 
     let vehicleIdStillAlive = false;
     if (!this.lastSelectedEntity) vehicleIdStillAlive = true;
 
-    this.container.removeChildren();
-    this.vehicles = [];
     for (const vehicle of Object.values(simulationEnvironment.vehicles)) {
       if (this.lastSelectedEntity && this.lastSelectedEntity.data.id == vehicle.id) vehicleIdStillAlive = true;
       this.addVehicle(vehicle);
@@ -55,7 +43,17 @@ export class AnimationService {
 
     if (vehicleIdStillAlive == false)  {
       this.lastSelectedEntity = undefined;
-      console.error('the vehicle you were looking at is not in the environment anymore..')
+      console.log('the vehicle you were looking at is not in the environment anymore..')
+    }
+  }
+
+  synchronizeTime(visualizationTimeSignal: number) {
+    console.log('[anim]', this.animationVisualizationTime.toFixed(2), '[simu]', visualizationTimeSignal);
+    
+    const timeDifference = this.animationVisualizationTime - visualizationTimeSignal;
+    if (Math.abs(timeDifference) > 1.5)  {
+      console.log('syncthime time because difference is ', timeDifference)
+      this.animationVisualizationTime = visualizationTimeSignal;
     }
   }
 
@@ -91,12 +89,6 @@ export class AnimationService {
     };
     sprite.entity = entity;
 
-    //this.vehicleIDs[vehicle.id] = entity;
-
-    
-    // this.updateVehiclePath(entity);
-    // entity.sprite.rotation = entity.requestedRotation;
-
     this.container.addChild(sprite);
     this.vehicles.push(entity);
   }
@@ -120,11 +112,8 @@ export class AnimationService {
         continue;
       };
 
-      // if (vehicle.data.id == this.lastSelectedEntity?.data.id) console.log(vehicle);
-
       // If we have a current stop
       if (vehicle.data.currentStop) {
-        if (vehicle.data.id == this.lastSelectedEntity?.data.id) console.log('ur vehicle has a currenstop now', vehicle)
         let polylineNo = vehicle.data.previousStops.length
         let polyline = vehicle.data.polylines[polylineNo];
 
@@ -138,8 +127,6 @@ export class AnimationService {
           console.error('geoPos undefined', vehicle.data);
         }
         const point = this.utils.latLngToLayerPoint([geoPos.latitude, geoPos.longitude]);
-
-        if (this.lastSelectedEntity?.data.id == vehicle.data.id) this.mapService.map?.setView([geoPos.latitude, geoPos.longitude]);
 
         if (vehicle.data.status == 'complete') vehicle.sprite.tint = 0xFFCDCD;
         else if (vehicle.data.status == 'idle') vehicle.sprite.tint = 0xCDCDFF;
@@ -237,8 +224,7 @@ export class AnimationService {
   }
 
   private onClick(event: L.LeafletMouseEvent) {
-    // this.changeEntitiesDestination(event.latlng);
-    // this.addEntity();
+
   }
 
   private onEntityPointerdown(event: PIXI.FederatedPointerEvent) {
@@ -250,9 +236,9 @@ export class AnimationService {
 
     sprite.tint = 0xFFAAAA; // Red
     
-    if (this.lastSelectedEntity != null) this.lastSelectedEntity.sprite.tint = 0xFFFFFF; // White
-    this.lastSelectedEntity = entity;
-    console.log(entity.data)
+    // if (this.lastSelectedEntity != null) this.lastSelectedEntity.sprite.tint = 0xFFFFFF; // White
+    // this.lastSelectedEntity = entity;
+    // console.log(entity.data)
   }
 
   addPixiOverlay(map: L.Map) {
