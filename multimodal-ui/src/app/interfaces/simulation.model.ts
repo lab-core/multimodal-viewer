@@ -93,6 +93,11 @@ export interface Simulation {
   simulationEstimatedEndTime: number | null;
 
   /**
+   * The order of the last update
+   */
+  lastUpdateOrder: number | null;
+
+  /**
    * The current completion of the simulation
    */
   completion: number;
