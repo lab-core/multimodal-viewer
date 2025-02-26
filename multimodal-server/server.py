@@ -5,13 +5,19 @@ import shutil
 import time
 
 from flask import Flask
+from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
+from http_routes import http_routes
 from server_utils import CLIENT_ROOM, HOST, PORT, get_session_id, log
 from simulation_manager import SimulationManager
 
 
 def run_server():
     app = Flask(__name__)
+
+    # Register HTTP routes
+    CORS(app)
+    app.register_blueprint(http_routes)
 
     socketio = SocketIO(app, cors_allowed_origins="*")
 

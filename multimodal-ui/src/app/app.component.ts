@@ -1,4 +1,5 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
+import { HttpService } from './services/http.service';
 
 // import * as L from 'leaflet';
 import { RouterOutlet } from '@angular/router';
@@ -13,7 +14,17 @@ import { DataService } from './services/data.service';
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
   // Declare the service to ensure it is created
-  constructor(private readonly dataService: DataService) {}
+  message = '';
+
+  constructor(private readonly dataService: DataService, private httpService: HttpService) {}
+
+  ngOnInit() {
+    this.httpService.getData().subscribe((data: any) => {
+      this.message = data.message;
+    });
+  }
 }
+
+
