@@ -11,16 +11,20 @@ import { MapService } from './map.service';
   providedIn: 'root',
 })
 export class AnimationService {
+  private readonly MAX_DESYNC_DIFF = 1.5;
+  private readonly LIGHT_RED = 0xFFCDCD;
+  private readonly LIGHT_BLUE = 0xCDCDFF;
+  private readonly SATURATED_RED = 0xCD2222;
+
+  private pause: boolean = false;
+  private animationVisualizationTime: number = 0;
+
   private ticker: PIXI.Ticker = new PIXI.Ticker();
   private vehicles: VehicleEntity[] = [];
-
   private container = new PIXI.Container();
   private utils!: L.PixiOverlayUtils;
-  private pause: boolean = false;
 
-  private lastSelectedEntity: VehicleEntity | undefined;
-
-  private animationVisualizationTime: number = 0;
+  private selectedVehicle: Vehicle | null = null;
 
   constructor() {
 
@@ -32,18 +36,16 @@ export class AnimationService {
     this.container.removeChildren();
     this.vehicles = [];
 
-
-    let vehicleIdStillAlive = false;
-    if (!this.lastSelectedEntity) vehicleIdStillAlive = true;
+    let isSelectedVehicleInEnvironment = false;
 
     for (const vehicle of Object.values(simulationEnvironment.vehicles)) {
-      if (this.lastSelectedEntity && this.lastSelectedEntity.data.id == vehicle.id) vehicleIdStillAlive = true;
+      if (vehicle.id == this.selectedVehicle?.id) isSelectedVehicleInEnvironment = true;
       this.addVehicle(vehicle);
     }
 
-    if (vehicleIdStillAlive == false)  {
-      this.lastSelectedEntity = undefined;
-      console.log('the vehicle you were looking at is not in the environment anymore..')
+    if (this.selectedVehicle && !isSelectedVehicleInEnvironment)  {
+      this.selectedVehicle = null;
+      console.warn('The vehicle you selected is not in the environment anymore. It has been deselected.');
     }
   }
 
@@ -51,7 +53,7 @@ export class AnimationService {
     console.log('[anim]', this.animationVisualizationTime.toFixed(2), '[simu]', visualizationTimeSignal);
     
     const timeDifference = this.animationVisualizationTime - visualizationTimeSignal;
-    if (Math.abs(timeDifference) > 1.5)  {
+    if (Math.abs(timeDifference) > this.MAX_DESYNC_DIFF)  {
       console.log('syncthime time because difference is ', timeDifference)
       this.animationVisualizationTime = visualizationTimeSignal;
     }
@@ -59,19 +61,19 @@ export class AnimationService {
 
   addVehicle(vehicle: Vehicle, type = 'sample-bus') {
     if (!vehicle.polylines)  {
-      if (vehicle.id == this.lastSelectedEntity?.data.id) console.error('the vehicle you watched has no more poylines', vehicle);
+      //if (vehicle.id == this.selectedVehicle?.id) console.error('the vehicle you watched has no more poylines', vehicle);
       //console.error('vehicle has no polyline', vehicle);
       return;
     };
 
     if (!vehicle.polylines[0])  {
-      if (vehicle.id == this.lastSelectedEntity?.data.id) console.error('the vehicle you watched poyline obj but is empty', vehicle);
+      //if (vehicle.id == this.selectedVehicle?.id) console.error('the vehicle you watched poyline obj but is empty', vehicle);
       //console.error('vehicle poyline obj but is empty', vehicle);
       return;
     }
 
     if (vehicle.polylines[0].polyline.length == 0) {
-      if (vehicle.id == this.lastSelectedEntity?.data.id) console.error('the vehicle you watched has one polyline but has no lines', vehicle);
+      //if (vehicle.id == this.selectedVehicle?.id) console.error('the vehicle you watched has one polyline but has no lines', vehicle);
       // console.error('vehicle has one polyline but has no lines', vehicle);
       return;
     } 
@@ -103,7 +105,6 @@ export class AnimationService {
   }
 
   private setVehiclePositions() {
-    const time = this.animationVisualizationTime;
     for (let index = 0; index < this.vehicles.length; ++index) {
       const vehicle = this.vehicles[index];
 
@@ -112,96 +113,96 @@ export class AnimationService {
         continue;
       };
 
-      // If we have a current stop
+      let polylineNo = -1;
+      let polyline = undefined;
+      let lineNo = -1;
+      let lineProgress = -1;
+
+
+      // Vehicle has current stop
       if (vehicle.data.currentStop) {
-        let polylineNo = vehicle.data.previousStops.length
-        let polyline = vehicle.data.polylines[polylineNo];
+        polylineNo = vehicle.data.previousStops.length
+        polyline = vehicle.data.polylines[polylineNo];
+        lineNo = 0;
+        lineProgress = 0;
 
         if (polyline == null) {
-          //console.error('no polyline', polylineNo, vehicle.data);
-          // get last polyline
-          polyline = vehicle.data.polylines[Object.values(vehicle.data.polylines).length -1]
-        }
-        const geoPos = polyline.polyline[0];
-        if (!geoPos) {
-          console.error('geoPos undefined', vehicle.data);
-        }
-        const point = this.utils.latLngToLayerPoint([geoPos.latitude, geoPos.longitude]);
-
-        if (vehicle.data.status == 'complete') vehicle.sprite.tint = 0xFFCDCD;
-        else if (vehicle.data.status == 'idle') vehicle.sprite.tint = 0xCDCDFF;
-        else vehicle.sprite.tint = 0xCD2222;
-
-        vehicle.sprite.x = point.x;
-        vehicle.sprite.y = point.y;
-        continue;
-      }
-
-      let polylineNo = vehicle.data.previousStops.length -1;
-      let departureTime = vehicle.data.previousStops[polylineNo].departureTime ?? 0;
-      let arrivalTime = vehicle.data.nextStops[0].arrivalTime;
-
-      if (departureTime >= arrivalTime) {
-        console.log('something went wrong...', vehicle)
-        continue;
-      };
-
-      let polylineProgress = (time - departureTime) / (arrivalTime - departureTime);
-      let polyline = vehicle.data.polylines[polylineNo];
-      if (!polyline) {
-        console.error('no polyline', polylineProgress, polylineNo, vehicle.data);
-      }
-      let coefficients = polyline.coefficients;
-
-      let cummulativeProgress = 0;
-      let lineNo = 0;
-      let lineProgress = 0;
-      // Find we're in which line
-      for (; lineNo < coefficients.length; ++lineNo) {
-        let nextCummulativeProgress = cummulativeProgress + coefficients[lineNo];
-
-        // Are we below the progress of this line?
-        if (polylineProgress < nextCummulativeProgress) {
-          lineProgress = (polylineProgress - cummulativeProgress) / (nextCummulativeProgress - cummulativeProgress);
-          break;
+          polyline = vehicle.data.polylines[Object.values(vehicle.data.polylines).length -1]; // Get last polyline
         }
 
-        cummulativeProgress = nextCummulativeProgress;
+        if (vehicle.data.status == 'complete') vehicle.sprite.tint = this.LIGHT_RED;
+        else if (vehicle.data.status == 'idle') vehicle.sprite.tint = this.LIGHT_BLUE;
+        else vehicle.sprite.tint = this.SATURATED_RED;
+
+      }
+      // Vehicle is (theorhetically) enroute
+      else {
+        polylineNo = vehicle.data.previousStops.length -1;
+
+        // Calculate polyline progress
+        /////////////////
+        let departureTime = vehicle.data.previousStops[polylineNo].departureTime ?? 0;
+        let arrivalTime = vehicle.data.nextStops[0].arrivalTime;
+        if (departureTime >= arrivalTime) {
+          console.log('something went wrong...', vehicle)
+          continue;
+        };
+        let polylineProgress = (this.animationVisualizationTime - departureTime) / (arrivalTime - departureTime);
+        /////////////////
+
+        polyline = vehicle.data.polylines[polylineNo];
+        if (!polyline) {
+          console.error('no polyline', polylineProgress, polylineNo, vehicle.data);
+          continue;
+        }
+
+        // Find line number and line progress
+        /////////////////
+        let coefficients = polyline.coefficients;
+        let cummulativeProgress = 0;
+        lineNo = 0;
+        for (; lineNo < coefficients.length; ++lineNo) {
+          let nextCummulativeProgress = cummulativeProgress + coefficients[lineNo];
+          if (polylineProgress < nextCummulativeProgress) {
+            lineProgress = (polylineProgress - cummulativeProgress) / (nextCummulativeProgress - cummulativeProgress);
+            break;
+          }
+          cummulativeProgress = nextCummulativeProgress;
+        }
+        /////////////////
+
+        // Log progress if vehicle is selected
+        if (vehicle.data.id == this.selectedVehicle?.id) {
+          console.log('[polylineProgress]', vehicle.data.id, polylineProgress.toFixed(2), '[polylineNo]', polylineNo, '[noLine]', lineNo);
+        }
       }
 
-      if (vehicle.data.id == this.lastSelectedEntity?.data.id) {
-        console.log('[polylineProgress]', vehicle.data.id, polylineProgress.toFixed(2), '[polylineNo]', polylineNo, '[noLine]', lineNo);
-      }
-
-      // console.log('[coefficient]', coefficients[lineNo]);
-      // console.log('[cummulativeProgress]', cummulativeProgress);
-      // console.log('[lineProgress]', lineProgress);
-      // console.log('[polylineNo]', polylineNo);
-      // console.log('[lineNo]', lineNo);
-      // console.log('[timeToReach]', timeToReach);
-      // console.log('[currentTime]', currentTime);
-      // console.log('------')
-
-      const geoPosA = polyline.polyline[lineNo];
+      // Interpolate position
+      ////////////////////////////
+      let geoPosA = polyline.polyline[lineNo];
       let geoPosB = polyline.polyline[lineNo + 1];
 
-      // if (!geoPosA) {};
-      if (!geoPosB) {geoPosB = geoPosA}//{console.error('no geoposB',  polylineProgress, polylineNo, lineNo, vehicle); continue};;
+      if (!geoPosB) {
+        geoPosB = geoPosA;
+        geoPosA = polyline.polyline[lineNo -1];
+        lineProgress = 1;
+      }
+
       const pointA = this.utils.latLngToLayerPoint([geoPosA.latitude, geoPosA.longitude]);
       const pointB = this.utils.latLngToLayerPoint([geoPosB.latitude, geoPosB.longitude]);
-  
-      // Set orientation
-      const direction = pointB.subtract(pointA);
-      const angle = -Math.atan2(direction.x, direction.y) + Math.PI / 2;
-      vehicle.sprite.rotation = angle;
 
       const newPosition = pointB
       .multiplyBy(lineProgress)
       .add(pointA.multiplyBy(1 - lineProgress));
       
-      vehicle.sprite.tint = 0xFFFFFF;
       vehicle.sprite.x = newPosition.x;
       vehicle.sprite.y = newPosition.y;
+      ////////////////////////////
+
+      // Set orientation
+      const direction = pointB.subtract(pointA);
+      const angle = -Math.atan2(direction.x, direction.y) + Math.PI / 2;
+      vehicle.sprite.rotation = angle;
     }    
 
   }
@@ -234,11 +235,8 @@ export class AnimationService {
     const entity = sprite.entity;
     if (!entity) return;
 
-    sprite.tint = 0xFFAAAA; // Red
-    
-    // if (this.lastSelectedEntity != null) this.lastSelectedEntity.sprite.tint = 0xFFFFFF; // White
-    // this.lastSelectedEntity = entity;
-    // console.log(entity.data)
+    this.selectedVehicle = entity.data;
+    console.log(this.selectedVehicle);
   }
 
   addPixiOverlay(map: L.Map) {
