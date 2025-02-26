@@ -15,6 +15,8 @@ export class AnimationService {
   private readonly LIGHT_RED = 0xFFCDCD;
   private readonly LIGHT_BLUE = 0xCDCDFF;
   private readonly SATURATED_RED = 0xCD2222;
+  private readonly SKY_BLUE = 0x00A2E8;
+  private readonly LIGHT_GREY = 0x7F7F7F;
 
   private pause: boolean = false;
   private animationVisualizationTime: number = 0;
@@ -43,16 +45,18 @@ export class AnimationService {
     let isSelectedVehicleInEnvironment = false;
 
     for (const vehicle of Object.values(simulationEnvironment.vehicles)) {
-      if (vehicle.id == this.selectedVehicle?.id) isSelectedVehicleInEnvironment = true;
+      if (vehicle.id == this.selectedVehicle?.id)  {
+        isSelectedVehicleInEnvironment = true;
+        this.selectedVehicle = vehicle; // Update the data
+      }
       this.addVehicle(vehicle);
     }
 
     if (this.selectedVehicle && !isSelectedVehicleInEnvironment)  {
       this.selectedVehicle = null;
+      this.selectedVehiclePolyline.clear();
       console.warn('The vehicle you selected is not in the environment anymore. It has been deselected.');
     }
-
-    this.redrawPolyline();
   }
 
   synchronizeTime(visualizationTimeSignal: number) {
@@ -133,7 +137,8 @@ export class AnimationService {
         lineProgress = 0;
 
         if (polyline == null) {
-          polyline = vehicle.data.polylines[Object.values(vehicle.data.polylines).length -1]; // Get last polyline
+          polylineNo = Object.values(vehicle.data.polylines).length -1;
+          polyline = vehicle.data.polylines[polylineNo]; // Get last polyline
         }
 
         if (vehicle.data.status == 'complete') vehicle.sprite.tint = this.LIGHT_RED;
@@ -203,6 +208,12 @@ export class AnimationService {
       
       vehicle.sprite.x = newPosition.x;
       vehicle.sprite.y = newPosition.y;
+
+
+      if (vehicle.data.id == this.selectedVehicle?.id) {
+        this.redrawPolyline(polylineNo, lineNo, newPosition);
+      }
+
       ////////////////////////////
 
       // Set orientation
@@ -213,23 +224,57 @@ export class AnimationService {
 
   }
 
-  private redrawPolyline() {
+  private redrawPolyline(polylineNo: number, lineNo: number, interpolatedPoint: L.Point) {
     let graphics = this.selectedVehiclePolyline;
     graphics.clear();
-    graphics.lineStyle(3 / this.utils?.getScale(), 0x444444, 0.9);
+    graphics.lineStyle(4 / this.utils?.getScale(), this.SKY_BLUE, 0.9);
 
+    
     const polylines = Object.values(this.selectedVehicle?.polylines ?? {});
     if (polylines.length == 0) return;
 
     const polyline = polylines[0].polyline;
     if (polyline.length == 0) return;
 
-    const geoPos = polyline[0];
-    const point = this.utils.latLngToLayerPoint([geoPos.latitude, geoPos.longitude]);
+    {
+      const geoPos = polyline[0];
+      const point = this.utils.latLngToLayerPoint([geoPos.latitude, geoPos.longitude]);
+      graphics.moveTo(point.x, point.y);
+    }
 
-    // We want to scale the object with the first point as origin
-    graphics.moveTo(point.x, point.y);
-    for (let i = 0; i < polylines.length; ++i) {
+    // Draw all poylines before the polylineNo
+    for (let i = 0; i < polylineNo; ++i) {
+      const polyline = polylines[i];
+      for (let j = 0; j < polyline.polyline.length; ++j) {
+        const geoPos = polyline.polyline[j];
+        const point = this.utils.latLngToLayerPoint([geoPos.latitude, geoPos.longitude]);
+        graphics.lineTo(point.x, point.y);
+      }
+    }
+
+    // Draw all the lines of polylineNo but before lineNo
+    const currentPolyline = polylines[polylineNo];
+    for (let j = 0; j < lineNo; ++j) {
+      const geoPos = currentPolyline.polyline[j];
+      const point = this.utils.latLngToLayerPoint([geoPos.latitude, geoPos.longitude]);
+      graphics.lineTo(point.x, point.y);
+    }
+
+    // Draw line until interpolated point
+    graphics.lineTo(interpolatedPoint.x, interpolatedPoint.y);
+
+    // Change color
+    graphics.lineStyle(4 / this.utils?.getScale(), this.LIGHT_GREY, 0.9);
+
+    // Draw rest of lines of polylineNo
+    for (let j = lineNo + 1; j < currentPolyline.polyline.length; ++j) {
+      const geoPos = currentPolyline.polyline[j];
+      const point = this.utils.latLngToLayerPoint([geoPos.latitude, geoPos.longitude]);
+      graphics.lineTo(point.x, point.y);
+    }
+
+    // Draw rest of polylines
+    for (let i = polylineNo + 1; i < polylines.length; ++i) {
       const polyline = polylines[i];
       for (let j = 0; j < polyline.polyline.length; ++j) {
         const geoPos = polyline.polyline[j];
@@ -253,7 +298,6 @@ export class AnimationService {
 
   private onZoomEnd(event: L.LeafletEvent) {
     const invScale = 1 / this.utils.getScale();
-    this.redrawPolyline();
     this.vehicles.forEach((entity) => {
       entity.sprite.scale.set(invScale);
     });
@@ -277,8 +321,6 @@ export class AnimationService {
     if (!entity) return;
 
     this.selectedVehicle = entity.data;
-    this.redrawPolyline();
-    
     console.log(this.selectedVehicle);
   }
 
