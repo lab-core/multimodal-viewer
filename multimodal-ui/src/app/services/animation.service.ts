@@ -22,9 +22,12 @@ export class AnimationService {
   private ticker: PIXI.Ticker = new PIXI.Ticker();
   private vehicles: VehicleEntity[] = [];
   private container = new PIXI.Container();
+
+  private lastScale: number = 0;
   private utils!: L.PixiOverlayUtils;
 
   private selectedVehicle: Vehicle | null = null;
+  private selectedVehiclePolyline: PIXI.Graphics = new PIXI.Graphics();
 
   constructor() {
 
@@ -34,6 +37,7 @@ export class AnimationService {
     console.log('Simulation env: ', simulationEnvironment);
 
     this.container.removeChildren();
+    this.container.addChild(this.selectedVehiclePolyline);
     this.vehicles = [];
 
     let isSelectedVehicleInEnvironment = false;
@@ -47,6 +51,8 @@ export class AnimationService {
       this.selectedVehicle = null;
       console.warn('The vehicle you selected is not in the environment anymore. It has been deselected.');
     }
+
+    this.redrawPolyline();
   }
 
   synchronizeTime(visualizationTimeSignal: number) {
@@ -207,14 +213,49 @@ export class AnimationService {
 
   }
 
+  private redrawPolyline() {
+    let graphics = this.selectedVehiclePolyline;
+    graphics.clear();
+    graphics.lineStyle(3 / this.utils?.getScale(), 0x444444, 0.9);
+
+    const polylines = Object.values(this.selectedVehicle?.polylines ?? {});
+    if (polylines.length == 0) return;
+
+    const polyline = polylines[0].polyline;
+    if (polyline.length == 0) return;
+
+    const geoPos = polyline[0];
+    const point = this.utils.latLngToLayerPoint([geoPos.latitude, geoPos.longitude]);
+
+    // We want to scale the object with the first point as origin
+    graphics.moveTo(point.x, point.y);
+    for (let i = 0; i < polylines.length; ++i) {
+      const polyline = polylines[i];
+      for (let j = 0; j < polyline.polyline.length; ++j) {
+        const geoPos = polyline.polyline[j];
+        const point = this.utils.latLngToLayerPoint([geoPos.latitude, geoPos.longitude]);
+        graphics.lineTo(point.x, point.y);
+      }
+    }
+  }
+
   // Called once when Pixi layer is added.
   private onAdd(utils: L.PixiOverlayUtils) {
-    console.log('PixiJS layer added.');
+    this.lastScale = utils.getScale();
+    console.log('[PixiJS layer added.]');
   }
 
   private onMoveEnd(event: L.LeafletEvent) {
+    const scale = this.utils.getScale();
+    if (scale != this.lastScale) this.onZoomEnd(event);
+    this.lastScale = scale;
+  }
+
+  private onZoomEnd(event: L.LeafletEvent) {
+    const invScale = 1 / this.utils.getScale();
+    this.redrawPolyline();
     this.vehicles.forEach((entity) => {
-      entity.sprite.scale.set(1 / this.utils.getScale());
+      entity.sprite.scale.set(invScale);
     });
   }
 
@@ -236,6 +277,8 @@ export class AnimationService {
     if (!entity) return;
 
     this.selectedVehicle = entity.data;
+    this.redrawPolyline();
+    
     console.log(this.selectedVehicle);
   }
 
