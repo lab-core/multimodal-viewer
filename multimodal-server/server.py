@@ -93,26 +93,6 @@ def run_server():
             simulation_id, first_state_order, last_state_order, visualization_time
         )
 
-    # TODO Implement or remove
-    # @socketio.on("import-folder")
-    # def on_import_folder(data):
-    #     log("importing folder", folder_name)
-    #     folder_name = data.get("folderName")
-    #     files = data.get("files", [])
-
-    #     if not folder_name or not files:
-    #         return
-    #     # Define the destination folder
-    #     current_dir = os.path.dirname(os.path.realpath(__file__))
-    #     target_dir = os.path.join(current_dir, "..", "data", folder_name)
-
-    #     os.makedirs(target_dir, exist_ok=True)
-
-    #     for file in files:
-    #         file_path = os.path.join(target_dir, file["name"])
-    #         os.makedirs(os.path.dirname(file_path), exist_ok=True)
-    #         with open(file_path, "w", encoding="utf-8") as f:
-    #             f.write(file["content"])
 
     # MARK: Script events
     @socketio.on("terminate")
