@@ -245,7 +245,7 @@ export class AnimationService {
     // Draw all poylines before the polylineNo
     for (let i = 0; i < polylineNo; ++i) {
       const polyline = polylines[i];
-      for (let j = 0; j < polyline.polyline.length; ++j) {
+      for (let j = 1; j < polyline.polyline.length; ++j) {
         const geoPos = polyline.polyline[j];
         const point = this.utils.latLngToLayerPoint([geoPos.latitude, geoPos.longitude]);
         graphics.lineTo(point.x, point.y);
@@ -254,7 +254,7 @@ export class AnimationService {
 
     // Draw all the lines of polylineNo but before lineNo
     const currentPolyline = polylines[polylineNo];
-    for (let j = 0; j < lineNo; ++j) {
+    for (let j = 1; j <= lineNo; ++j) {
       const geoPos = currentPolyline.polyline[j];
       const point = this.utils.latLngToLayerPoint([geoPos.latitude, geoPos.longitude]);
       graphics.lineTo(point.x, point.y);
@@ -276,7 +276,7 @@ export class AnimationService {
     // Draw rest of polylines
     for (let i = polylineNo + 1; i < polylines.length; ++i) {
       const polyline = polylines[i];
-      for (let j = 0; j < polyline.polyline.length; ++j) {
+      for (let j = 1; j < polyline.polyline.length; ++j) {
         const geoPos = polyline.polyline[j];
         const point = this.utils.latLngToLayerPoint([geoPos.latitude, geoPos.longitude]);
         graphics.lineTo(point.x, point.y);
