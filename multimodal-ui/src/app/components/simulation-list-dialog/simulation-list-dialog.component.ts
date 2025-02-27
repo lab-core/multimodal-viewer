@@ -24,6 +24,7 @@ import {
 import { DataService } from '../../services/data.service';
 import { DialogService } from '../../services/dialog.service';
 import { SimulationService } from '../../services/simulation.service';
+import { CommunicationService } from '../../services/communication.service';
 
 export type SimulationListDialogData = null;
 
@@ -86,6 +87,7 @@ export class SimulationListDialogComponent {
     private readonly simulationService: SimulationService,
     private readonly dialogService: DialogService,
     private readonly matDialogRef: MatDialogRef<SimulationListDialogComponent>,
+    private communicationService: CommunicationService,
   ) {}
 
   getColorFromStatus(status: Simulation['status']): string {
@@ -139,5 +141,13 @@ export class SimulationListDialogComponent {
 
   private get simulationsSignal(): Signal<Simulation[]> {
     return this.dataService.simulationsSignal;
+  }
+
+  pauseResumeHandler(simulationId: string, isRunning: boolean) {
+    if (isRunning) {
+      this.simulationService.pauseSimulation(simulationId);
+    } else {
+      this.simulationService.resumeSimulation(simulationId);
+    }
   }
 }
