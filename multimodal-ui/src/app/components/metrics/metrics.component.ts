@@ -1,4 +1,4 @@
-import { Component, ElementRef, Input } from '@angular/core';
+import { Component, ElementRef, Input, OnInit, OnDestroy } from '@angular/core';
 import Stats from 'stats.js';
 
 @Component({
@@ -7,8 +7,8 @@ import Stats from 'stats.js';
   templateUrl: './metrics.component.html',
   styleUrl: './metrics.component.css'
 })
-export class MetricsComponent {
-  @Input() mode: string = '';
+export class MetricsComponent implements OnInit, OnDestroy {
+  @Input() mode = '';
   
   private stats!: Stats;
 
@@ -21,7 +21,10 @@ export class MetricsComponent {
     else if (this.mode === 'ms') this.stats.showPanel(1);
 
     this.stats.dom.removeAttribute('style'); // Remove the position fixing
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     this.el.nativeElement.appendChild(this.stats.dom);
+    
     this.update();
   }
 
@@ -35,6 +38,7 @@ export class MetricsComponent {
   }
 
   ngOnDestroy(): void {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     this.el.nativeElement.removeChild(this.stats.dom);
   }
 }
