@@ -245,11 +245,10 @@ export class VisualizationService {
       );
     });
 
-    effect(() => {
-      const polylines = this.simulationService.simulationPolylinesSignal();
-
-      // this.animationService.displayPolylines(polylines);
-    });
+    // effect(() => {
+    //   const polylines = this.simulationService.simulationPolylinesSignal();
+    //   this.animationService.displayPolylines(polylines);
+    // });
   }
 
   // MARK: Lifecycle

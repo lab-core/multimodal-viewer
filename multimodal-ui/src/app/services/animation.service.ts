@@ -1,11 +1,10 @@
-import { Injectable, signal, WritableSignal } from '@angular/core';
+import { Injectable } from '@angular/core';
 import * as L from 'leaflet';
 import 'leaflet-pixi-overlay';
 import * as PIXI from 'pixi.js';
-import { Entity, EntityOwner, VehicleEntity } from '../interfaces/entity.model';
+import { EntityOwner, VehicleEntity } from '../interfaces/entity.model';
 import { SimulationEnvironment, Vehicle } from '../interfaces/simulation.model';
 import { Polylines } from '../interfaces/simulation.model';
-import { MapService } from './map.service';
 
 @Injectable({
   providedIn: 'root',
@@ -18,8 +17,8 @@ export class AnimationService {
   private readonly SKY_BLUE = 0x00A2E8;
   private readonly LIGHT_GREY = 0x7F7F7F;
 
-  private pause: boolean = false;
-  private animationVisualizationTime: number = 0;
+  private pause = false;
+  private animationVisualizationTime = 0;
 
   private ticker: PIXI.Ticker = new PIXI.Ticker();
   private vehicles: VehicleEntity[] = [];
@@ -30,10 +29,6 @@ export class AnimationService {
 
   private selectedVehicle: Vehicle | null = null;
   private selectedVehiclePolyline: PIXI.Graphics = new PIXI.Graphics();
-
-  constructor() {
-
-  }
 
   synchronizeEnvironment(simulationEnvironment: SimulationEnvironment) {
     console.log('Simulation env: ', simulationEnvironment);
@@ -152,13 +147,13 @@ export class AnimationService {
 
         // Calculate polyline progress
         /////////////////
-        let departureTime = vehicle.data.previousStops[polylineNo].departureTime ?? 0;
-        let arrivalTime = vehicle.data.nextStops[0].arrivalTime;
+        const departureTime = vehicle.data.previousStops[polylineNo].departureTime ?? 0;
+        const arrivalTime = vehicle.data.nextStops[0].arrivalTime;
         if (departureTime >= arrivalTime) {
           console.log('something went wrong...', vehicle)
           continue;
         };
-        let polylineProgress = (this.animationVisualizationTime - departureTime) / (arrivalTime - departureTime);
+        const polylineProgress = (this.animationVisualizationTime - departureTime) / (arrivalTime - departureTime);
         /////////////////
 
         polyline = vehicle.data.polylines[polylineNo];
@@ -169,11 +164,11 @@ export class AnimationService {
 
         // Find line number and line progress
         /////////////////
-        let coefficients = polyline.coefficients;
+        const coefficients = polyline.coefficients;
         let cummulativeProgress = 0;
         lineNo = 0;
         for (; lineNo < coefficients.length; ++lineNo) {
-          let nextCummulativeProgress = cummulativeProgress + coefficients[lineNo];
+          const nextCummulativeProgress = cummulativeProgress + coefficients[lineNo];
           if (polylineProgress < nextCummulativeProgress) {
             lineProgress = (polylineProgress - cummulativeProgress) / (nextCummulativeProgress - cummulativeProgress);
             break;
@@ -316,7 +311,7 @@ export class AnimationService {
   }
 
   private onClick(event: L.LeafletMouseEvent) {
-
+    // Do something.
   }
 
   private onEntityPointerdown(event: PIXI.FederatedPointerEvent) {

@@ -1,4 +1,3 @@
-import { pixiOverlay, Point } from 'leaflet';
 import { Sprite } from 'pixi.js';
 import { Vehicle } from './simulation.model';
 

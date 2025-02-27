@@ -27,7 +27,6 @@ import {
 import { CommunicationService } from './communication.service';
 import { DataService } from './data.service';
 import { AnimationService } from './animation.service';
-import { Polyline } from 'leaflet';
 import { decode } from 'polyline';
 
 @Injectable({
