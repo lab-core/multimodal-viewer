@@ -225,9 +225,15 @@ export class AnimationService {
   }
 
   private redrawPolyline(polylineNo: number, lineNo: number, interpolatedPoint: L.Point) {
+    const BASE_LINE_WIDTH = 4;
+    const MIN_WIDTH = 0.04; // By testing out values
+    const ALPHA = 0.9;
+
+    const width = Math.max(BASE_LINE_WIDTH / this.utils?.getScale(), MIN_WIDTH);
+
     let graphics = this.selectedVehiclePolyline;
     graphics.clear();
-    graphics.lineStyle(4 / this.utils?.getScale(), this.SKY_BLUE, 0.9);
+    graphics.lineStyle(width, this.SKY_BLUE, ALPHA);
 
     
     const polylines = Object.values(this.selectedVehicle?.polylines ?? {});
@@ -264,7 +270,7 @@ export class AnimationService {
     graphics.lineTo(interpolatedPoint.x, interpolatedPoint.y);
 
     // Change color
-    graphics.lineStyle(4 / this.utils?.getScale(), this.LIGHT_GREY, 0.9);
+    graphics.lineStyle(width, this.LIGHT_GREY, ALPHA);
 
     // Draw rest of lines of polylineNo
     for (let j = lineNo + 1; j < currentPolyline.polyline.length; ++j) {
