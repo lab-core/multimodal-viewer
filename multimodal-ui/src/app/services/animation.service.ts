@@ -14,8 +14,8 @@ export class AnimationService {
   private readonly LIGHT_RED = 0xFFCDCD;
   private readonly LIGHT_BLUE = 0xCDCDFF;
   private readonly SATURATED_RED = 0xCD2222;
-  private readonly SKY_BLUE = 0x00A2E8;
-  private readonly LIGHT_GREY = 0x7F7F7F;
+  private readonly KELLY_GREEN = 0x4CBB17;
+  private readonly DESATURED_BLUE = 0x8F6F8F;
 
   private pause = false;
   private animationVisualizationTime = 0;
@@ -228,7 +228,7 @@ export class AnimationService {
 
     const graphics = this.selectedVehiclePolyline;
     graphics.clear();
-    graphics.lineStyle(width, this.SKY_BLUE, ALPHA);
+    graphics.lineStyle(width, this.KELLY_GREEN, ALPHA);
 
     
     const polylines = Object.values(this.selectedVehicle?.polylines ?? {});
@@ -265,7 +265,7 @@ export class AnimationService {
     graphics.lineTo(interpolatedPoint.x, interpolatedPoint.y);
 
     // Change color
-    graphics.lineStyle(width, this.LIGHT_GREY, ALPHA);
+    graphics.lineStyle(width, this.DESATURED_BLUE, ALPHA);
 
     // Draw rest of lines of polylineNo
     for (let j = lineNo + 1; j < currentPolyline.polyline.length; ++j) {
