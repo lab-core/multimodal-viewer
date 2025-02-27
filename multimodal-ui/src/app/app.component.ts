@@ -15,15 +15,10 @@ import { DataService } from './services/data.service';
   styleUrl: './app.component.css',
 })
 export class AppComponent implements OnInit {
-  // Declare the service to ensure it is created
-  message = '';
-
   constructor(private readonly dataService: DataService, private httpService: HttpService) {}
 
   ngOnInit() {
-    this.httpService.getData().subscribe((data: any) => {
-      this.message = data.message;
-    });
+    this.httpService.confirmConnection()
   }
 }
 
