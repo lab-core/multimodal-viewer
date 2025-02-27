@@ -24,7 +24,7 @@ export class AnimationService {
   private vehicles: VehicleEntity[] = [];
   private container = new PIXI.Container();
 
-  private lastScale: number = 0;
+  private lastScale = 0;
   private utils!: L.PixiOverlayUtils;
 
   private selectedVehicle: Vehicle | null = null;
@@ -226,7 +226,7 @@ export class AnimationService {
 
     const width = Math.max(BASE_LINE_WIDTH / this.utils?.getScale(), MIN_WIDTH);
 
-    let graphics = this.selectedVehiclePolyline;
+    const graphics = this.selectedVehiclePolyline;
     graphics.clear();
     graphics.lineStyle(width, this.SKY_BLUE, ALPHA);
 
