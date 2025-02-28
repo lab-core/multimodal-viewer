@@ -55,12 +55,6 @@
   width: calc(100% - 1rem - 20rem - 1rem - 1rem);
 }
 
-.fps-display {
-  position: absolute;
-  bottom: 1.8rem; /* The attribution text is just below */
-  left: 1rem;
-}
-
 .information-panel {
   position: absolute;
   /* 4rem for the control bar and 1rem for the gaps */

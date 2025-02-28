@@ -44,13 +44,19 @@ export class AnimationService {
     }
   }
 
-  synchronizeTime(visualizationTimeSignal: number) {
-    console.log('[anim]', this.animationVisualizationTime.toFixed(2), '[simu]', visualizationTimeSignal);
+  synchronizeTime(simulationEnvironment: SimulationEnvironment, visualizationTime: number) {
+    // Don't sync if we don't have the right state
+    if (simulationEnvironment.timestamp != visualizationTime) {
+      console.warn('Animation not synced since simulation timestamp doesn\'t match visualisation time');
+      return;
+    };
+
+    console.log('[anim]', this.animationVisualizationTime.toFixed(2), '[simu]', visualizationTime);
     
-    const timeDifference = this.animationVisualizationTime - visualizationTimeSignal;
+    const timeDifference = this.animationVisualizationTime - visualizationTime;
     if (Math.abs(timeDifference) > this.MAX_DESYNC_DIFF)  {
       console.log('syncthime time because difference is ', timeDifference)
-      this.animationVisualizationTime = visualizationTimeSignal;
+      this.animationVisualizationTime = visualizationTime;
     }
   }
 
@@ -100,6 +106,7 @@ export class AnimationService {
   }
 
   private setVehiclePositions() {
+    // eslint-disable-next-line @typescript-eslint/prefer-for-of
     for (let index = 0; index < this.vehicles.length; ++index) {
       const vehicle = this.vehicles[index];
 
