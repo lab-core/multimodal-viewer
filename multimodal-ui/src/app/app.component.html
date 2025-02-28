@@ -1,4 +1,9 @@
 <app-map />
 <router-outlet />
 
+<div class="metrics">
+    <app-metrics [mode]="'fps'"></app-metrics>
+    <app-metrics [mode]="'ms'"></app-metrics>
+</div>
+
 <app-connection-status />
