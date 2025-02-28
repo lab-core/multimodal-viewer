@@ -17,6 +17,7 @@ export class AnimationService {
   private readonly MIN_LERPABLE_DESYNC_DIFF = 1.5;
   private readonly MAX_LERPABLE_DESYNC_DIFF = 900;
 
+  private readonly WHITE = 0xffffff;
   private readonly LIGHT_RED = 0xffcdcd;
   private readonly LIGHT_BLUE = 0xcdcdff;
   private readonly SATURATED_RED = 0xcd2222;
@@ -242,15 +243,18 @@ export class AnimationService {
 
       let lineNo = reachedEnd ? polyline.polyline.length - 1 : 0;
       let lineProgress = reachedEnd ? 1 : 0;
-      if (!isWaiting)
+      if (isWaiting) {
+        if (vehicle.data.status == 'complete')
+          vehicle.sprite.tint = this.LIGHT_RED;
+        else vehicle.sprite.tint = this.LIGHT_BLUE;
+      } else {
+        vehicle.sprite.tint = this.WHITE;
         [lineNo, lineProgress] = this.getLineNoAndProgress(
           polyline,
           departureTime,
           arrivalTime,
         );
-      else if (vehicle.data.status == 'complete')
-        vehicle.sprite.tint = this.LIGHT_RED;
-      else vehicle.sprite.tint = this.LIGHT_BLUE;
+      }
 
       this.applyInterpolation(vehicle, polyline, lineNo, lineProgress);
     }
