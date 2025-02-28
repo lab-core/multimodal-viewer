@@ -17,11 +17,12 @@ export class AnimationService {
   private readonly MIN_LERPABLE_DESYNC_DIFF = 1.5;
   private readonly MAX_LERPABLE_DESYNC_DIFF = 900;
 
+  private readonly WHITE = 0xffffff;
   private readonly LIGHT_RED = 0xffcdcd;
   private readonly LIGHT_BLUE = 0xcdcdff;
   private readonly SATURATED_RED = 0xcd2222;
-  private readonly KELLY_GREEN = 0x4cbb17;
-  private readonly DESATURED_BLUE = 0x8f6f8f;
+  private readonly KELLY_GREEN = 0x028a0f;
+  private readonly DESATURED_BLUE = 0x666666;
 
   private pause = false;
   private animationVisualizationTime = 0;
@@ -47,10 +48,8 @@ export class AnimationService {
     let isSelectedVehicleInEnvironment = false;
 
     for (const vehicle of Object.values(simulationEnvironment.vehicles)) {
-      if (vehicle.id == this.selectedVehicle?.id) {
+      if (vehicle.id == this.selectedVehicle?.id)
         isSelectedVehicleInEnvironment = true;
-        this.selectedVehicle = vehicle; // Update the data
-      }
       this.addVehicle(vehicle);
     }
 
@@ -159,8 +158,10 @@ export class AnimationService {
         lineProgress = 0;
 
         if (polyline == null) {
-          polylineNo = Object.values(vehicle.data.polylines).length - 1;
-          polyline = vehicle.data.polylines[polylineNo]; // Get last polyline
+          polyline =
+            vehicle.data.polylines[
+              Object.values(vehicle.data.polylines).length - 1
+            ]; // Get last polyline
         }
 
         if (vehicle.data.status == 'complete')
@@ -249,19 +250,25 @@ export class AnimationService {
 
       polylineNo = Math.min(polylineNo, polylines.length - 1);
 
-      const polyline = polylines[Math.min(polylineNo, polylines.length - 1)];
+      const polyline = polylines[polylineNo];
       if (!polyline)
         console.error('no polyline', polylineNo, isWaiting, vehicle.data);
 
       let lineNo = reachedEnd ? polyline.polyline.length - 1 : 0;
       let lineProgress = reachedEnd ? 1 : 0;
-      if (!isWaiting)
+      if (isWaiting) {
+        if (vehicle.data.status == 'complete')
+          vehicle.sprite.tint = this.LIGHT_RED;
+        else vehicle.sprite.tint = this.LIGHT_BLUE;
+      }
+      if (!isWaiting) {
+        vehicle.sprite.tint = this.WHITE;
         [lineNo, lineProgress] = this.getLineNoAndProgress(
           polyline,
           departureTime,
           arrivalTime,
         );
-      else if (vehicle.data.status == 'complete')
+      } else if (vehicle.data.status == 'complete')
         vehicle.sprite.tint = this.LIGHT_RED;
       else vehicle.sprite.tint = this.LIGHT_BLUE;
 
@@ -347,9 +354,13 @@ export class AnimationService {
     let geoPosA = polyline.polyline[lineNo];
     let geoPosB = polyline.polyline[lineNo + 1];
 
+    // If no next point, take previous point instead
     if (!geoPosB) {
       geoPosB = geoPosA;
       geoPosA = polyline.polyline[lineNo - 1];
+
+      // If no previous point, share same point
+      if (!geoPosA) geoPosA = geoPosB;
       lineProgress = 1;
     }
 
@@ -460,11 +471,40 @@ export class AnimationService {
         graphics.lineTo(point.x, point.y);
       }
     }
+
+    // Draw stops that are completed
+    graphics.lineStyle(width, this.KELLY_GREEN, ALPHA);
+    for (let i = 0; i < polylineNo; ++i) {
+      const polyline = polylines[i];
+      const geoPos = polyline.polyline[polyline.polyline.length - 1];
+      const point = this.utils.latLngToLayerPoint([
+        geoPos.latitude,
+        geoPos.longitude,
+      ]);
+      graphics.beginFill(this.WHITE, 1);
+      graphics.drawCircle(point.x, point.y, width * 1.2);
+      graphics.endFill();
+    }
+
+    // Draw stops that are not completed
+    graphics.lineStyle(width, this.DESATURED_BLUE, ALPHA);
+    for (let i = polylineNo; i < polylines.length - 1; ++i) {
+      const polyline = polylines[i];
+      const geoPos = polyline.polyline[polyline.polyline.length - 1];
+      const point = this.utils.latLngToLayerPoint([
+        geoPos.latitude,
+        geoPos.longitude,
+      ]);
+      graphics.beginFill(this.WHITE, 1);
+      graphics.drawCircle(point.x, point.y, width * 1.2);
+      graphics.endFill();
+    }
   }
 
   private updateAnimationTime() {
     const deltaSec = this.ticker.deltaMS / 1000;
     this.animationVisualizationTime += deltaSec;
+    this.lastVisualisationTime += deltaSec;
 
     const desyncDiff =
       this.lastVisualisationTime - this.animationVisualizationTime;
