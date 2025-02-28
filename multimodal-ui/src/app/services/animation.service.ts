@@ -186,17 +186,22 @@ export class AnimationService {
       [...vehicle.data.previousStops, vehicle.data.currentStop, ...vehicle.data.nextStops] :
       [...vehicle.data.previousStops, ...vehicle.data.nextStops];
 
-      const [polylineNo, departureTime, arrivalTime, isWaiting] = this.getPolylineNoAndStatus(allStops);
+      // eslint-disable-next-line prefer-const
+      let [polylineNo, departureTime, arrivalTime, isWaiting] = this.getPolylineNoAndStatus(allStops);
+      const reachedEnd = polylineNo >= polylines.length;
 
+      polylineNo = Math.min(polylineNo, polylines.length -1);
+      
       const polyline = polylines[Math.min(polylineNo, polylines.length -1)];
       if (!polyline) console.error('no polyline', polylineNo, isWaiting, vehicle.data);
 
-      let lineNo = 0;
-      let lineProgress = 0;
+      let lineNo = reachedEnd ? polyline.polyline.length -1 : 0;
+      let lineProgress = reachedEnd ? 1 : 0;
       if (!isWaiting) [lineNo, lineProgress] = this.getLineNoAndProgress(polyline, departureTime, arrivalTime);
+      else if (vehicle.data.status == 'complete') vehicle.sprite.tint = this.LIGHT_RED;
       else vehicle.sprite.tint = this.LIGHT_BLUE;
 
-      this.applyInterpolation(vehicle, polyline, lineNo, lineProgress)
+      this.applyInterpolation(vehicle, polyline, lineNo, lineProgress);
     }    
   }
 
