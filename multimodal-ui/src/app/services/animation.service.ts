@@ -236,7 +236,7 @@ export class AnimationService {
 
       polylineNo = Math.min(polylineNo, polylines.length - 1);
 
-      const polyline = polylines[Math.min(polylineNo, polylines.length - 1)];
+      const polyline = polylines[polylineNo];
       if (!polyline)
         console.error('no polyline', polylineNo, isWaiting, vehicle.data);
 
@@ -327,9 +327,13 @@ export class AnimationService {
     let geoPosA = polyline.polyline[lineNo];
     let geoPosB = polyline.polyline[lineNo + 1];
 
+    // If no next point, take previous point instead
     if (!geoPosB) {
       geoPosB = geoPosA;
       geoPosA = polyline.polyline[lineNo - 1];
+
+      // If no previous point, share same point
+      if (!geoPosA) geoPosA = geoPosB;
       lineProgress = 1;
     }
 
@@ -358,6 +362,7 @@ export class AnimationService {
   private updateAnimationTime() {
     const deltaSec = this.ticker.deltaMS / 1000;
     this.animationVisualizationTime += deltaSec;
+    this.lastVisualisationTime += deltaSec;
 
     const desyncDiff =
       this.lastVisualisationTime - this.animationVisualizationTime;
