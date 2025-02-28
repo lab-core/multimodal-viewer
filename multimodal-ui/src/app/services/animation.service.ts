@@ -10,7 +10,9 @@ import { Polylines } from '../interfaces/simulation.model';
   providedIn: 'root',
 })
 export class AnimationService {
-  private readonly MAX_DESYNC_DIFF = 1.5;
+  private readonly MIN_LERPABLE_DESYNC_DIFF = 1.5;
+  private readonly MAX_LERPABLE_DESYNC_DIFF = 900;
+
   private readonly LIGHT_RED = 0xFFCDCD;
   private readonly LIGHT_BLUE = 0xCDCDFF;
   private readonly SATURATED_RED = 0xCD2222;
@@ -19,6 +21,7 @@ export class AnimationService {
 
   private pause = false;
   private animationVisualizationTime = 0;
+  private lastVisualisationTime = 0;
 
   private ticker: PIXI.Ticker = new PIXI.Ticker();
   private vehicles: VehicleEntity[] = [];
@@ -54,14 +57,22 @@ export class AnimationService {
     }
   }
 
-  synchronizeTime(visualizationTimeSignal: number) {
-    console.log('[anim]', this.animationVisualizationTime.toFixed(2), '[simu]', visualizationTimeSignal);
+  synchronizeTime(simulationEnvironment: SimulationEnvironment, visualizationTime: number) {
+    // Don't sync if we don't have the right state
+    if (simulationEnvironment.timestamp != visualizationTime) {
+      console.warn('Animation not synced since simulation timestamp doesn\'t match visualisation time');
+      return;
+    };
+
+    console.log('[anim]', this.animationVisualizationTime.toFixed(2), '[simu]', visualizationTime);
     
-    const timeDifference = this.animationVisualizationTime - visualizationTimeSignal;
-    if (Math.abs(timeDifference) > this.MAX_DESYNC_DIFF)  {
+    const timeDifference = this.animationVisualizationTime - visualizationTime;
+    if (Math.abs(timeDifference) > this.MAX_LERPABLE_DESYNC_DIFF)  {
       console.log('syncthime time because difference is ', timeDifference)
-      this.animationVisualizationTime = visualizationTimeSignal;
+      this.animationVisualizationTime = visualizationTime;
     }
+
+    this.lastVisualisationTime = visualizationTime;
   }
 
   addVehicle(vehicle: Vehicle, type = 'sample-bus') {
@@ -110,6 +121,7 @@ export class AnimationService {
   }
 
   private setVehiclePositions() {
+    // eslint-disable-next-line @typescript-eslint/prefer-for-of
     for (let index = 0; index < this.vehicles.length; ++index) {
       const vehicle = this.vehicles[index];
 
@@ -284,6 +296,17 @@ export class AnimationService {
       }
     }
   }
+  
+  private updateAnimationTime() {
+    const deltaSec = this.ticker.deltaMS / 1000;
+    this.animationVisualizationTime += deltaSec;
+
+    const desyncDiff = this.lastVisualisationTime - this.animationVisualizationTime;
+    const absDesyncDiff = Math.abs(desyncDiff);
+    if (absDesyncDiff > this.MIN_LERPABLE_DESYNC_DIFF && absDesyncDiff < this.MAX_LERPABLE_DESYNC_DIFF) {
+      this.animationVisualizationTime += desyncDiff * (1 - Math.exp(-5 * deltaSec));
+    }   
+  }
 
   // Called once when Pixi layer is added.
   private onAdd(utils: L.PixiOverlayUtils) {
@@ -305,7 +328,7 @@ export class AnimationService {
   }
 
   private onRedraw(event: L.LeafletEvent) {
-    if (!this.pause) this.animationVisualizationTime += this.ticker.deltaMS / 1000;
+    if (!this.pause) this.updateAnimationTime();
 
     this.setVehiclePositions();
   }

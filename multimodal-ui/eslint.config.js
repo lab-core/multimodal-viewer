@@ -45,7 +45,6 @@ module.exports = tseslint.config(
       "@typescript-eslint/no-misused-promises": ["error"],
       "@angular-eslint/no-input-rename": ["off"],
       "@angular-eslint/no-output-rename": ["off"],
-      "@typescript-eslint/prefer-for-of": ["off"],
     },
   },
   {

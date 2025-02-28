@@ -137,6 +137,7 @@ export class VisualizationService {
         polylines,
         visualizationTime,
       );
+      environment.timestamp = visualizationTime;
 
       this.visualizationEnvironment = structuredClone(environment);
 
@@ -244,11 +245,6 @@ export class VisualizationService {
         visualizationTime,
       );
     });
-
-    // effect(() => {
-    //   const polylines = this.simulationService.simulationPolylinesSignal();
-    //   this.animationService.displayPolylines(polylines);
-    // });
   }
 
   // MARK: Lifecycle
