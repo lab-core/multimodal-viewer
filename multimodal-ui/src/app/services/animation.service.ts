@@ -3,8 +3,8 @@ import * as L from 'leaflet';
 import 'leaflet-pixi-overlay';
 import * as PIXI from 'pixi.js';
 import { EntityOwner, VehicleEntity } from '../interfaces/entity.model';
-import { SimulationEnvironment, Vehicle } from '../interfaces/simulation.model';
-import { Polylines } from '../interfaces/simulation.model';
+import { SimulationEnvironment, Stop, Vehicle } from '../interfaces/simulation.model';
+import { Polyline, Polylines } from '../interfaces/simulation.model';
 
 @Injectable({
   providedIn: 'root',
@@ -135,7 +135,6 @@ export class AnimationService {
       let lineNo = -1;
       let lineProgress = -1;
 
-
       // Vehicle has current stop
       if (vehicle.data.currentStop) {
         polylineNo = vehicle.data.previousStops.length
@@ -157,78 +156,143 @@ export class AnimationService {
       else {
         polylineNo = vehicle.data.previousStops.length -1;
 
-        // Calculate polyline progress
-        /////////////////
         const departureTime = vehicle.data.previousStops[polylineNo].departureTime ?? 0;
         const arrivalTime = vehicle.data.nextStops[0].arrivalTime;
         if (departureTime >= arrivalTime) {
-          console.log('something went wrong...', vehicle)
+          console.log('Something went wrong. departureTime >= arrivalTime...', vehicle)
           continue;
         };
-        const polylineProgress = (this.animationVisualizationTime - departureTime) / (arrivalTime - departureTime);
-        /////////////////
 
         polyline = vehicle.data.polylines[polylineNo];
         if (!polyline) {
-          console.error('no polyline', polylineProgress, polylineNo, vehicle.data);
+          console.error('no polyline', polylineNo, vehicle.data);
           continue;
         }
 
-        // Find line number and line progress
-        /////////////////
-        const coefficients = polyline.coefficients;
-        let cummulativeProgress = 0;
-        lineNo = 0;
-        for (; lineNo < coefficients.length; ++lineNo) {
-          const nextCummulativeProgress = cummulativeProgress + coefficients[lineNo];
-          if (polylineProgress < nextCummulativeProgress) {
-            lineProgress = (polylineProgress - cummulativeProgress) / (nextCummulativeProgress - cummulativeProgress);
-            break;
-          }
-          cummulativeProgress = nextCummulativeProgress;
-        }
-        /////////////////
+        [lineNo, lineProgress] = this.getLineNoAndProgress(polyline, departureTime, arrivalTime);
 
         // Log progress if vehicle is selected
         if (vehicle.data.id == this.selectedVehicle?.id) {
-          console.log('[polylineProgress]', vehicle.data.id, polylineProgress.toFixed(2), '[polylineNo]', polylineNo, '[noLine]', lineNo);
+          console.log('[polylineProgress]', vehicle.data.id, '[polylineNo]', polylineNo, '[noLine]', lineNo);
         }
       }
 
-      // Interpolate position
-      ////////////////////////////
-      let geoPosA = polyline.polyline[lineNo];
-      let geoPosB = polyline.polyline[lineNo + 1];
-
-      if (!geoPosB) {
-        geoPosB = geoPosA;
-        geoPosA = polyline.polyline[lineNo -1];
-        lineProgress = 1;
-      }
-
-      const pointA = this.utils.latLngToLayerPoint([geoPosA.latitude, geoPosA.longitude]);
-      const pointB = this.utils.latLngToLayerPoint([geoPosB.latitude, geoPosB.longitude]);
-
-      const newPosition = pointB
-      .multiplyBy(lineProgress)
-      .add(pointA.multiplyBy(1 - lineProgress));
-      
-      vehicle.sprite.x = newPosition.x;
-      vehicle.sprite.y = newPosition.y;
-
-
-      if (vehicle.data.id == this.selectedVehicle?.id) {
-        this.redrawPolyline(polylineNo, lineNo, newPosition);
-      }
-
-      ////////////////////////////
-
-      // Set orientation
-      const direction = pointB.subtract(pointA);
-      const angle = -Math.atan2(direction.x, direction.y) + Math.PI / 2;
-      vehicle.sprite.rotation = angle;
+      this.applyInterpolation(vehicle, polyline, polylineNo, lineNo, lineProgress);
     }    
+  }
 
+  private setVehiclePositionsV2() {
+    // eslint-disable-next-line @typescript-eslint/prefer-for-of
+    for (let index = 0; index < this.vehicles.length; ++index) {
+      const vehicle = this.vehicles[index];
+
+      if (vehicle.data.polylines == null)  {
+        console.error(`Vehicle ${vehicle.data.id} has no polyline.`, vehicle.data);
+        continue;
+      };
+
+      const polylines = Object.values(vehicle.data.polylines);
+
+      const allStops = vehicle.data.currentStop ? 
+      [...vehicle.data.previousStops, vehicle.data.currentStop, ...vehicle.data.nextStops] :
+      [...vehicle.data.previousStops, ...vehicle.data.nextStops];
+
+      // eslint-disable-next-line prefer-const
+      let [polylineNo, departureTime, arrivalTime, isWaiting] = this.getPolylineNoAndStatus(allStops);
+      const reachedEnd = polylineNo >= polylines.length;
+
+      polylineNo = Math.min(polylineNo, polylines.length -1);
+      
+      const polyline = polylines[Math.min(polylineNo, polylines.length -1)];
+      if (!polyline) console.error('no polyline', polylineNo, isWaiting, vehicle.data);
+
+      let lineNo = reachedEnd ? polyline.polyline.length -1 : 0;
+      let lineProgress = reachedEnd ? 1 : 0;
+      if (!isWaiting) [lineNo, lineProgress] = this.getLineNoAndProgress(polyline, departureTime, arrivalTime);
+      else if (vehicle.data.status == 'complete') vehicle.sprite.tint = this.LIGHT_RED;
+      else vehicle.sprite.tint = this.LIGHT_BLUE;
+
+      this.applyInterpolation(vehicle, polyline, polylineNo, lineNo, lineProgress)
+    }    
+  }
+
+  private getPolylineNoAndStatus(stops: Stop[]) : [number, number, number, boolean] {
+    let arrivalTime = -1;
+    let departureTime = -1;
+    let isWaiting = false;
+
+    let polylineNo = 0;
+    for (; polylineNo < stops.length; ++polylineNo) {
+      const stop = stops[polylineNo];
+      if (stop == null || stop.departureTime == null) continue;
+
+      arrivalTime = stop.arrivalTime;
+
+      if (this.animationVisualizationTime < stop.arrivalTime) {
+        isWaiting = false;
+        break;
+      }
+
+      if (this.animationVisualizationTime < stop.departureTime ) {
+        isWaiting = true;
+        break;
+      };
+
+      departureTime = stop.departureTime;
+    }
+
+    if (departureTime === -1) isWaiting = true; // Not even at the first stop
+    if (departureTime >= arrivalTime) isWaiting = true; // Went through all his stops
+    if (!isWaiting) polylineNo -= 1;
+
+    return [polylineNo, departureTime, arrivalTime, isWaiting];
+  }
+
+  private getLineNoAndProgress(polyline: Polyline, departureTime: number, arrivalTime: number) {
+    const polylineProgress = (this.animationVisualizationTime - departureTime) / (arrivalTime - departureTime);
+
+    const coefficients = polyline.coefficients;
+    let lineProgress = 0;
+    let cummulativeProgress = 0;
+    let lineNo = 0;
+    for (; lineNo < coefficients.length; ++lineNo) {
+      const nextCummulativeProgress = cummulativeProgress + coefficients[lineNo];
+      if (polylineProgress < nextCummulativeProgress) {
+        lineProgress = (polylineProgress - cummulativeProgress) / (nextCummulativeProgress - cummulativeProgress);
+        break;
+      }
+      cummulativeProgress = nextCummulativeProgress;
+    }
+
+    return [lineNo, lineProgress];
+  }
+
+  private applyInterpolation(vehicleEntity: VehicleEntity, polyline: Polyline, polylineNo: number, lineNo: number, lineProgress: number) {
+    let geoPosA = polyline.polyline[lineNo];
+    let geoPosB = polyline.polyline[lineNo + 1];
+
+    if (!geoPosB) {
+      geoPosB = geoPosA;
+      geoPosA = polyline.polyline[lineNo -1];
+      lineProgress = 1;
+    }
+
+    const pointA = this.utils.latLngToLayerPoint([geoPosA.latitude, geoPosA.longitude]);
+    const pointB = this.utils.latLngToLayerPoint([geoPosB.latitude, geoPosB.longitude]);
+
+    const newPosition = pointB
+    .multiplyBy(lineProgress)
+    .add(pointA.multiplyBy(1 - lineProgress));
+    
+    vehicleEntity.sprite.x = newPosition.x;
+    vehicleEntity.sprite.y = newPosition.y;
+
+    // Set orientation
+    const direction = pointB.subtract(pointA);
+    const angle = -Math.atan2(direction.x, direction.y) + Math.PI / 2;
+    vehicleEntity.sprite.rotation = angle;
+
+    if (this.selectedVehicle?.id == vehicleEntity.data.id) this.redrawPolyline(polylineNo, lineNo, newPosition);
   }
 
   private redrawPolyline(polylineNo: number, lineNo: number, interpolatedPoint: L.Point) {
@@ -330,7 +394,7 @@ export class AnimationService {
   private onRedraw(event: L.LeafletEvent) {
     if (!this.pause) this.updateAnimationTime();
 
-    this.setVehiclePositions();
+    this.setVehiclePositionsV2();
   }
 
   private onClick(event: L.LeafletMouseEvent) {
