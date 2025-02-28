@@ -260,17 +260,14 @@ export class AnimationService {
         if (vehicle.data.status == 'complete')
           vehicle.sprite.tint = this.LIGHT_RED;
         else vehicle.sprite.tint = this.LIGHT_BLUE;
-      }
-      if (!isWaiting) {
+      } else {
         vehicle.sprite.tint = this.WHITE;
         [lineNo, lineProgress] = this.getLineNoAndProgress(
           polyline,
           departureTime,
           arrivalTime,
         );
-      } else if (vehicle.data.status == 'complete')
-        vehicle.sprite.tint = this.LIGHT_RED;
-      else vehicle.sprite.tint = this.LIGHT_BLUE;
+      }
 
       this.applyInterpolation(
         vehicle,
