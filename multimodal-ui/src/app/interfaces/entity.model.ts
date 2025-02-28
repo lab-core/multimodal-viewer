@@ -12,5 +12,5 @@ export interface VehicleEntity extends Entity {
 
 // Maybe will change (VehicleEntity extends Sprite?)
 export interface EntityOwner extends Sprite {
-  entity: VehicleEntity
+  entity: VehicleEntity;
 }

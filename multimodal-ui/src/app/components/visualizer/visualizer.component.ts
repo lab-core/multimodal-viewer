@@ -81,22 +81,27 @@ export class VisualizerComponent implements OnDestroy {
     effect(() => {
       const visualizationEnvironment = this.visualizationEnvironmentSignal();
       if (visualizationEnvironment == null) return;
-      
+
       this.animationService.synchronizeEnvironment(visualizationEnvironment);
     });
 
     effect(() => {
       const visualizationEnvironment = this.visualizationEnvironmentSignal();
-      const visualizationTime = this.visualizationService.visualizationTimeSignal();
+      const visualizationTime =
+        this.visualizationService.visualizationTimeSignal();
       if (visualizationEnvironment == null || visualizationTime == null) return;
 
-      this.animationService.synchronizeTime(visualizationEnvironment, visualizationTime);
+      this.animationService.synchronizeTime(
+        visualizationEnvironment,
+        visualizationTime,
+      );
     });
 
     effect(() => {
-      const isVisualizationPausedSignal = this.visualizationService.isVisualizationPausedSignal();
+      const isVisualizationPausedSignal =
+        this.visualizationService.isVisualizationPausedSignal();
       this.animationService.setPause(isVisualizationPausedSignal);
-    })
+    });
 
     effect(() => {
       const status = this.visualizerStatusSignal();

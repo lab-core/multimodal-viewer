@@ -48,7 +48,7 @@ export class SimulationService {
   constructor(
     private readonly dataService: DataService,
     private readonly communicationService: CommunicationService,
-    private readonly animationService: AnimationService
+    private readonly animationService: AnimationService,
   ) {}
 
   // MARK: Active simulation
