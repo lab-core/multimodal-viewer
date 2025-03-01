@@ -34,7 +34,7 @@ export class AnimationService {
   private selectedVehicle: Vehicle | null = null;
 
   synchronizeEnvironment(simulationEnvironment: SimulationEnvironment) {
-    console.log('Simulation env: ', simulationEnvironment);
+    console.log('[Simulation Environment]', simulationEnvironment);
 
     this.container.removeChildren();
     this.vehicles = [];
@@ -62,21 +62,13 @@ export class AnimationService {
     // Don't sync if we don't have the right state
     if (simulationEnvironment.timestamp != visualizationTime) {
       console.warn(
-        "Animation not synced since simulation timestamp doesn't match visualisation time",
+        "Animation not synced: simulation timestamp doesn't match visualisation time",
       );
       return;
     }
 
-    console.log(
-      '[anim]',
-      this.animationVisualizationTime.toFixed(2),
-      '[simu]',
-      visualizationTime,
-    );
-
     const timeDifference = this.animationVisualizationTime - visualizationTime;
     if (Math.abs(timeDifference) > this.MAX_LERPABLE_DESYNC_DIFF) {
-      console.log('syncthime time because difference is ', timeDifference);
       this.animationVisualizationTime = visualizationTime;
     }
 
@@ -85,20 +77,17 @@ export class AnimationService {
 
   addVehicle(vehicle: Vehicle, type = 'sample-bus') {
     if (!vehicle.polylines) {
-      //if (vehicle.id == this.selectedVehicle?.id) console.error('the vehicle you watched has no more poylines', vehicle);
-      //console.error('vehicle has no polyline', vehicle);
+      // console.error('Vehicle has no polyline.', vehicle);
       return;
     }
 
     if (!vehicle.polylines[0]) {
-      //if (vehicle.id == this.selectedVehicle?.id) console.error('the vehicle you watched poyline obj but is empty', vehicle);
-      //console.error('vehicle poyline obj but is empty', vehicle);
+      // console.error('Vehicle has a polyline object but is empty.', vehicle);
       return;
     }
 
     if (vehicle.polylines[0].polyline.length == 0) {
-      //if (vehicle.id == this.selectedVehicle?.id) console.error('the vehicle you watched has one polyline but has no lines', vehicle);
-      // console.error('vehicle has one polyline but has no lines', vehicle);
+      // console.error('Vehicle has one polyline but has no lines.', vehicle);
       return;
     }
 
@@ -134,7 +123,7 @@ export class AnimationService {
       const vehicle = this.vehicles[index];
 
       if (vehicle.data.polylines == null) {
-        console.error(`vehicle ${vehicle.data.id} has no polyline`);
+        console.error(`Vehicle ${vehicle.data.id} has no polyline.`);
         continue;
       }
 
@@ -170,17 +159,14 @@ export class AnimationService {
         const departureTime =
           vehicle.data.previousStops[polylineNo].departureTime ?? 0;
         const arrivalTime = vehicle.data.nextStops[0].arrivalTime;
-        if (departureTime >= arrivalTime) {
-          console.log(
-            'Something went wrong. departureTime >= arrivalTime...',
-            vehicle,
-          );
-          continue;
-        }
 
         polyline = vehicle.data.polylines[polylineNo];
         if (!polyline) {
-          console.error('no polyline', polylineNo, vehicle.data);
+          console.error(
+            'Could not correctly get polyline.',
+            polylineNo,
+            vehicle.data,
+          );
           continue;
         }
 
@@ -189,18 +175,8 @@ export class AnimationService {
           departureTime,
           arrivalTime,
         );
-
-        // Log progress if vehicle is selected
-        if (vehicle.data.id == this.selectedVehicle?.id) {
-          console.log(
-            '[polylineProgress]',
-            vehicle.data.id,
-            '[polylineNo]',
-            polylineNo,
-            '[noLine]',
-            lineNo,
-          );
-        }
+        lineProgress = Math.max(0, lineProgress);
+        lineProgress = Math.min(lineProgress, 1);
       }
 
       this.applyInterpolation(vehicle, polyline, lineNo, lineProgress);
@@ -238,8 +214,6 @@ export class AnimationService {
       polylineNo = Math.min(polylineNo, polylines.length - 1);
 
       const polyline = polylines[polylineNo];
-      if (!polyline)
-        console.error('no polyline', polylineNo, isWaiting, vehicle.data);
 
       let lineNo = reachedEnd ? polyline.polyline.length - 1 : 0;
       let lineProgress = reachedEnd ? 1 : 0;
@@ -382,7 +356,7 @@ export class AnimationService {
 
   // Called once when Pixi layer is added.
   private onAdd(utils: L.PixiOverlayUtils) {
-    console.log('PixiJS layer added.');
+    // Do something.
   }
 
   private onMoveEnd(event: L.LeafletEvent) {
@@ -409,7 +383,7 @@ export class AnimationService {
     if (!entity) return;
 
     this.selectedVehicle = entity.data;
-    console.log(this.selectedVehicle);
+    console.log('Vehicle selected:', this.selectedVehicle);
   }
 
   addPixiOverlay(map: L.Map) {
