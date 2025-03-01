@@ -38,6 +38,8 @@ export class AnimationService {
   private selectedVehicle: Vehicle | null = null;
   private selectedVehiclePolyline: PIXI.Graphics = new PIXI.Graphics();
 
+  private frame_onEntityPointerDownCalled = false;
+
   synchronizeEnvironment(simulationEnvironment: SimulationEnvironment) {
     console.log('Simulation env: ', simulationEnvironment);
 
@@ -382,8 +384,9 @@ export class AnimationService {
     const angle = -Math.atan2(direction.x, direction.y) + Math.PI / 2;
     vehicleEntity.sprite.rotation = angle;
 
-    if (this.selectedVehicle?.id == vehicleEntity.data.id)
+    if (this.selectedVehicle?.id == vehicleEntity.data.id) {
       this.redrawPolyline(polylineNo, lineNo, newPosition);
+    }
   }
 
   private redrawPolyline(
@@ -540,8 +543,13 @@ export class AnimationService {
     this.setVehiclePositionsV2();
   }
 
+  // onClick is called after onEntityPointerdown
   private onClick(event: L.LeafletMouseEvent) {
-    // Do something.
+    if (!this.frame_onEntityPointerDownCalled) {
+      this.selectedVehicle = null;
+      this.selectedVehiclePolyline.clear();
+    }
+    this.frame_onEntityPointerDownCalled = false;
   }
 
   private onEntityPointerdown(event: PIXI.FederatedPointerEvent) {
@@ -552,6 +560,7 @@ export class AnimationService {
     if (!entity) return;
 
     this.selectedVehicle = entity.data;
+    this.frame_onEntityPointerDownCalled = true;
     console.log(this.selectedVehicle);
   }
 
