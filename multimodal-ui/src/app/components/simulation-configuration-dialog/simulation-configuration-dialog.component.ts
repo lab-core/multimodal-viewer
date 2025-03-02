@@ -202,7 +202,7 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
 
   //! This function simply downloads instance 7. Move to appropriate place and make it take the folder name as param
   importNewFolder() {
-    this.httpService.getInputData('instance_07').subscribe((response: Blob) => {
+    this.httpService.exportInputData('instance_07').subscribe((response: Blob) => {
       const blob = new Blob([response], { type: 'application/zip' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
