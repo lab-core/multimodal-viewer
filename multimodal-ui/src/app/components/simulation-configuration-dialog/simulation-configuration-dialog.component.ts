@@ -7,6 +7,7 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import JSZip from 'jszip';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import {
@@ -201,7 +202,7 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
   }
 
   //! This function simply downloads instance 7. Move to appropriate place and make it take the folder name as param
-  importNewFolder() {
+  exportInputData() {
     this.httpService.exportInputData('instance_07').subscribe((response: Blob) => {
       const blob = new Blob([response], { type: 'application/zip' });
       const url = window.URL.createObjectURL(blob);
@@ -214,5 +215,41 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
       window.URL.revokeObjectURL(url);
     });
   }
+
+  importImportData() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.webkitdirectory = true;
+    input.multiple = true;
+  
+    input.addEventListener('change', async (event: Event) => {
+      const files = (event.target as HTMLInputElement).files;
+      if (!files || files.length === 0) {
+        return;
+      }
+  
+      const zip = new JSZip();
+      let baseFolder = files[0].webkitRelativePath.split('/')[0]; // Get the root folder name
+  
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const relativePath = file.webkitRelativePath.replace(baseFolder + '/', ''); // Remove the root folder from path
+        zip.file(relativePath, file);
+      }
+  
+      const blob = await zip.generateAsync({ type: 'blob' });
+  
+      const formData = new FormData();
+      formData.append('file', blob, 'folder.zip');
+  
+      this.httpService.importInputData(baseFolder, formData).subscribe(response => {
+        console.log('Upload successful:', response);
+      });
+    });
+  
+    input.click();
+  }
+  
+  
   
 }

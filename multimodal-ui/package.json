@@ -23,6 +23,7 @@
     "@angular/router": "^19.1.0",
     "@bluehalo/ngx-leaflet": "^19.0.0",
     "@types/node": "^22.13.4",
+    "jszip": "^3.10.1",
     "leaflet": "^1.9.4",
     "leaflet-pixi-overlay": "^1.9.4",
     "ngx-socket-io": "^4.8.2",
