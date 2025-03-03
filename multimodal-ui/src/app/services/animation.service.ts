@@ -244,7 +244,7 @@ export class AnimationService {
     let polylineNo = 0;
     for (; polylineNo < stops.length; ++polylineNo) {
       const stop = stops[polylineNo];
-      if (stop == null || stop.departureTime == null) continue;
+      if (stop == null) continue;
 
       arrivalTime = stop.arrivalTime;
 
@@ -253,7 +253,10 @@ export class AnimationService {
         break;
       }
 
-      if (this.animationVisualizationTime < stop.departureTime) {
+      if (
+        stop.departureTime == null ||
+        this.animationVisualizationTime < stop.departureTime
+      ) {
         isWaiting = true;
         break;
       }
