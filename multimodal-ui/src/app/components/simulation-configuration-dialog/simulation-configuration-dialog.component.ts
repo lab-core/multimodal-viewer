@@ -221,34 +221,40 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     input.type = 'file';
     input.webkitdirectory = true;
     input.multiple = true;
-  
-    input.addEventListener('change', async (event: Event) => {
-      const files = (event.target as HTMLInputElement).files;
-      if (!files || files.length === 0) {
-        return;
-      }
-  
-      const zip = new JSZip();
-      let baseFolder = files[0].webkitRelativePath.split('/')[0]; // Get the root folder name
-  
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const relativePath = file.webkitRelativePath.replace(baseFolder + '/', ''); // Remove the root folder from path
-        zip.file(relativePath, file);
-      }
-  
-      const blob = await zip.generateAsync({ type: 'blob' });
-  
-      const formData = new FormData();
-      formData.append('file', blob, 'folder.zip');
-  
-      this.httpService.importInputData(baseFolder, formData).subscribe(response => {
-        console.log('Upload successful:', response);
-      });
+
+    const handleFileChange = async (event: Event) => {
+        const files = (event.target as HTMLInputElement).files;
+        if (!files || files.length === 0) {
+            return;
+        }
+
+        const zip = new JSZip();
+        const baseFolder = files[0].webkitRelativePath.split('/')[0]; // Get the root folder name
+
+        // Use for-of loop instead of a traditional for loop
+        for (const file of Array.from(files)) {
+            const relativePath = file.webkitRelativePath.replace(baseFolder + '/', ''); // Remove the root folder from path
+            zip.file(relativePath, file);
+        }
+
+        const blob = await zip.generateAsync({ type: 'blob' });
+
+        const formData = new FormData();
+        formData.append('file', blob, 'folder.zip');
+
+        this.httpService.importInputData(baseFolder, formData).subscribe(response => {
+            console.log('Upload successful:', response);
+        });
+    };
+
+    input.addEventListener('change', (event: Event) => {
+        handleFileChange(event).catch(error => {
+            console.error('Error handling file change:', error);
+        });
     });
-  
+
     input.click();
-  }
+}
   
   
   

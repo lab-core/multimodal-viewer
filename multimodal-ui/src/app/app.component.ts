@@ -1,5 +1,4 @@
 import { Component } from '@angular/core';
-import { OnInit } from '@angular/core';
 
 // import * as L from 'leaflet';
 import { RouterOutlet } from '@angular/router';

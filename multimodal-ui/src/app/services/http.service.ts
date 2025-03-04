@@ -14,9 +14,8 @@ export class HttpService {
     return this.http.get(this.apiUrl + `input_data/${folderName}`, { responseType: 'blob' });
   }
 
-  importInputData(folderName: string, formData: FormData): Observable<any> {
-    return this.http.post(this.apiUrl + `input_data/${folderName}`, formData);
+  importInputData(folderName: string, formData: FormData): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(this.apiUrl + `input_data/${folderName}`, formData);
   }
-  
   
 }
