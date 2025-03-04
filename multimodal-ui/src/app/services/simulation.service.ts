@@ -26,7 +26,7 @@ import {
 } from '../interfaces/simulation.model';
 import { CommunicationService } from './communication.service';
 import { DataService } from './data.service';
-
+import { AnimationService } from './animation.service';
 import { decode } from 'polyline';
 
 @Injectable({
@@ -48,6 +48,7 @@ export class SimulationService {
   constructor(
     private readonly dataService: DataService,
     private readonly communicationService: CommunicationService,
+    private readonly animationService: AnimationService,
   ) {}
 
   // MARK: Active simulation
