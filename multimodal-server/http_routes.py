@@ -4,11 +4,13 @@ import zipfile
 from flask import Blueprint, request, jsonify, send_file
 import logging
 import tempfile
+from pathlib import Path
 
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+data_dir = BASE_DIR / "data"
 
 http_routes = Blueprint("http_routes", __name__)
-
-data_dir = os.path.abspath("../data") 
 
 @http_routes.route("/api/input_data/<folder_name>", methods=["GET"])
 def export_input_data(folder_name):
