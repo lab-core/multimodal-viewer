@@ -63,8 +63,3 @@ def delete_input_data(folder_name):
     
     shutil.rmtree(folder_path)
     return jsonify({"message": f"Folder '{folder_name}' deleted successfully"})
-
-@http_routes.route("/api/confirm_connection", methods=["GET"])
-def get_data():
-    logging.info("HTTP Connection confirmed")
-    return jsonify({"message": "Connection confirmed"}), 200

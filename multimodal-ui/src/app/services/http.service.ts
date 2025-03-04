@@ -10,14 +10,6 @@ export class HttpService {
 
   constructor(private http: HttpClient) {}
 
-  confirmConnection(): void {
-    this.http.get<void>(this.apiUrl + 'confirm_connection');
-  }
-
-  getData(): Observable<any> {
-    return this.http.get<any>(this.apiUrl);
-  }
-
   exportInputData(folderName: string): Observable<Blob> {
     return this.http.get(this.apiUrl + `input_data/${folderName}`, { responseType: 'blob' });
   }

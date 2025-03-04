@@ -1,5 +1,5 @@
-import { Component, OnInit } from '@angular/core';
-import { HttpService } from './services/http.service';
+import { Component } from '@angular/core';
+import { OnInit } from '@angular/core';
 
 // import * as L from 'leaflet';
 import { RouterOutlet } from '@angular/router';
@@ -14,12 +14,9 @@ import { DataService } from './services/data.service';
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
 })
-export class AppComponent implements OnInit {
-  constructor(private readonly dataService: DataService, private httpService: HttpService) {}
+export class AppComponent {
+  constructor(private readonly dataService: DataService) {}
 
-  ngOnInit() {
-    this.httpService.confirmConnection()
-  }
 }
 
 
