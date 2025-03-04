@@ -38,7 +38,9 @@ export class AnimationService {
   private selectedVehicle: Vehicle | null = null;
   private selectedVehiclePolyline: PIXI.Graphics = new PIXI.Graphics();
 
+  // Variable that are alive for a single frame (could probably improve)
   private frame_onEntityPointerDownCalled = false;
+  private frame_pointToFollow: L.LatLngExpression | null = null;
 
   synchronizeEnvironment(simulationEnvironment: SimulationEnvironment) {
     console.log('[Simulation Environment]', simulationEnvironment);
@@ -245,13 +247,19 @@ export class AnimationService {
         );
       }
 
-      this.applyInterpolation(
+      const interpolatedPosition = this.applyInterpolation(
         vehicle,
         polyline,
         polylineNo,
         lineNo,
         lineProgress,
       );
+
+      if (this.selectedVehicle?.id == vehicle.data.id) {
+        this.frame_pointToFollow =
+          this.utils.layerPointToLatLng(interpolatedPosition);
+        this.redrawPolyline(polylineNo, lineNo, interpolatedPosition);
+      }
     }
   }
 
@@ -349,21 +357,19 @@ export class AnimationService {
       geoPosB.longitude,
     ]);
 
-    const newPosition = pointB
+    const interpolatedPosition = pointB
       .multiplyBy(lineProgress)
       .add(pointA.multiplyBy(1 - lineProgress));
 
-    vehicleEntity.sprite.x = newPosition.x;
-    vehicleEntity.sprite.y = newPosition.y;
+    vehicleEntity.sprite.x = interpolatedPosition.x;
+    vehicleEntity.sprite.y = interpolatedPosition.y;
 
     // Set orientation
     const direction = pointB.subtract(pointA);
     const angle = -Math.atan2(direction.x, direction.y) + Math.PI / 2;
     vehicleEntity.sprite.rotation = angle;
 
-    if (this.selectedVehicle?.id == vehicleEntity.data.id) {
-      this.redrawPolyline(polylineNo, lineNo, newPosition);
-    }
+    return interpolatedPosition;
   }
 
   private redrawPolyline(
@@ -515,7 +521,6 @@ export class AnimationService {
 
   private onRedraw(event: L.LeafletEvent) {
     if (!this.pause) this.updateAnimationTime();
-
     this.setVehiclePositionsV2();
   }
 
@@ -562,8 +567,12 @@ export class AnimationService {
 
     pixiLayer.addTo(map);
 
-    this.ticker.add(function (delta) {
+    this.ticker.add((delta) => {
       pixiLayer.redraw({ type: 'redraw', delta: delta } as L.LeafletEvent);
+
+      if (this.frame_pointToFollow)
+        this.utils.getMap().setView(this.frame_pointToFollow);
+      this.frame_pointToFollow = null;
     });
     this.ticker.start();
   }
