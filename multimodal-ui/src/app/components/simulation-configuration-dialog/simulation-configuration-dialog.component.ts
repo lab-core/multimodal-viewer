@@ -255,7 +255,4 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
 
     input.click();
 }
-  
-  
-  
 }

@@ -17,5 +17,9 @@ export class HttpService {
   importInputData(folderName: string, formData: FormData): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(this.apiUrl + `input_data/${folderName}`, formData);
   }
+
+  deleteInputData(folderName: string): Observable<{ message: string }> {
+    return this.http.delete<{ message: string }>(this.apiUrl + `input_data/${folderName}`);
+  }
   
 }
