@@ -137,6 +137,7 @@ export class VisualizationService {
         polylines,
         visualizationTime,
       );
+      environment.timestamp = visualizationTime;
 
       this.visualizationEnvironment = structuredClone(environment);
 
@@ -156,7 +157,6 @@ export class VisualizationService {
       }
 
       const currentVisualizationTime = this._visualizationTimeSignal();
-
       this.visualizationTime = currentVisualizationTime;
     });
 
@@ -244,12 +244,6 @@ export class VisualizationService {
         lastUpdateOrder,
         visualizationTime,
       );
-    });
-
-    effect(() => {
-      const polylines = this.simulationService.simulationPolylinesSignal();
-
-      this.animationService.displayPolylines(polylines);
     });
   }
 

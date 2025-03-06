@@ -2,90 +2,397 @@ import { Injectable } from '@angular/core';
 import * as L from 'leaflet';
 import 'leaflet-pixi-overlay';
 import * as PIXI from 'pixi.js';
-import { Entity } from '../interfaces/entity.model';
-import { Polylines } from '../interfaces/simulation.model';
+import { EntityOwner, VehicleEntity } from '../interfaces/entity.model';
+import {
+  SimulationEnvironment,
+  Stop,
+  Vehicle,
+} from '../interfaces/simulation.model';
+import { Polyline, Polylines } from '../interfaces/simulation.model';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AnimationService {
+  private readonly MIN_LERPABLE_DESYNC_DIFF = 1.5;
+  private readonly MAX_LERPABLE_DESYNC_DIFF = 900;
+
+  private readonly WHITE = 0xffffff;
+  private readonly LIGHT_RED = 0xffcdcd;
+  private readonly LIGHT_BLUE = 0xcdcdff;
+  private readonly SATURATED_RED = 0xcd2222;
+
+  private pause = false;
+  private animationVisualizationTime = 0;
+  private lastVisualisationTime = 0;
+
   private ticker: PIXI.Ticker = new PIXI.Ticker();
-  private entities: Entity[] = [];
+  private vehicles: VehicleEntity[] = [];
   private container = new PIXI.Container();
   private utils!: L.PixiOverlayUtils;
 
-  private pointToReach: L.Point = new L.Point(45.523066, -73.652687);
+  private selectedVehicle: Vehicle | null = null;
 
-  private addEntity(type = 'sample-marker') {
-    const sprite = PIXI.Sprite.from(`images/${type}.png`);
+  synchronizeEnvironment(simulationEnvironment: SimulationEnvironment) {
+    console.log('[Simulation Environment]', simulationEnvironment);
 
-    sprite.anchor.set(0.5, 1);
-    sprite.scale.set(1 / this.utils.getScale());
-    this.container.addChild(sprite);
+    this.container.removeChildren();
+    this.vehicles = [];
 
-    const entity: Entity = {
-      sprite,
-      startPos: this.pointToReach,
-      endPos: this.pointToReach,
-      speed: Math.random() * 2 + 1,
-      currentTime: 0,
-      timeToReach: 5,
-    };
+    let isSelectedVehicleInEnvironment = false;
 
-    this.entities.push(entity);
+    for (const vehicle of Object.values(simulationEnvironment.vehicles)) {
+      if (vehicle.id == this.selectedVehicle?.id)
+        isSelectedVehicleInEnvironment = true;
+      this.addVehicle(vehicle);
+    }
+
+    if (this.selectedVehicle && !isSelectedVehicleInEnvironment) {
+      this.selectedVehicle = null;
+      console.warn(
+        'The vehicle you selected is not in the environment anymore. It has been deselected.',
+      );
+    }
   }
 
-  private changeEntitiesDestination(latlng: L.LatLng) {
-    this.pointToReach = this.utils.latLngToLayerPoint(latlng);
-    this.entities.forEach((entity) => {
-      entity.startPos.x = entity.sprite.x;
-      entity.startPos.y = entity.sprite.y;
-      entity.endPos = this.pointToReach;
-
-      const distanceVec = entity.endPos.subtract(entity.startPos);
-      const distance = Math.sqrt(
-        distanceVec.x * distanceVec.x + distanceVec.y * distanceVec.y,
+  synchronizeTime(
+    simulationEnvironment: SimulationEnvironment,
+    visualizationTime: number,
+  ) {
+    // Don't sync if we don't have the right state
+    if (simulationEnvironment.timestamp != visualizationTime) {
+      console.warn(
+        "Animation not synced: simulation timestamp doesn't match visualisation time",
       );
-      entity.timeToReach = (distance * 0.5) / entity.speed;
-      entity.currentTime = 0;
-    });
+      return;
+    }
+
+    const timeDifference = this.animationVisualizationTime - visualizationTime;
+    if (Math.abs(timeDifference) > this.MAX_LERPABLE_DESYNC_DIFF) {
+      this.animationVisualizationTime = visualizationTime;
+    }
+
+    this.lastVisualisationTime = visualizationTime;
+  }
+
+  addVehicle(vehicle: Vehicle, type = 'sample-bus') {
+    if (!vehicle.polylines) {
+      // console.error('Vehicle has no polyline.', vehicle);
+      return;
+    }
+
+    if (!vehicle.polylines[0]) {
+      // console.error('Vehicle has a polyline object but is empty.', vehicle);
+      return;
+    }
+
+    if (vehicle.polylines[0].polyline.length == 0) {
+      // console.error('Vehicle has one polyline but has no lines.', vehicle);
+      return;
+    }
+
+    const sprite = PIXI.Sprite.from(`images/${type}.png`) as EntityOwner;
+    sprite.anchor.set(0.5, 0.5);
+    sprite.scale.set(1 / this.utils.getScale());
+    sprite.interactive = true;
+    sprite.on('pointerdown', (e) => this.onEntityPointerdown(e));
+
+    const entity: VehicleEntity = {
+      data: vehicle,
+      sprite,
+      requestedRotation: 0,
+    };
+    sprite.entity = entity;
+
+    this.container.addChild(sprite);
+    this.vehicles.push(entity);
+  }
+
+  clearAnimations() {
+    this.container.removeChildren();
+    this.vehicles = [];
+  }
+
+  setPause(pause: boolean) {
+    this.pause = pause;
+  }
+
+  private setVehiclePositions() {
+    // eslint-disable-next-line @typescript-eslint/prefer-for-of
+    for (let index = 0; index < this.vehicles.length; ++index) {
+      const vehicle = this.vehicles[index];
+
+      if (vehicle.data.polylines == null) {
+        console.error(`Vehicle ${vehicle.data.id} has no polyline.`);
+        continue;
+      }
+
+      let polylineNo = -1;
+      let polyline = undefined;
+      let lineNo = -1;
+      let lineProgress = -1;
+
+      // Vehicle has current stop
+      if (vehicle.data.currentStop) {
+        polylineNo = vehicle.data.previousStops.length;
+        polyline = vehicle.data.polylines[polylineNo];
+        lineNo = 0;
+        lineProgress = 0;
+
+        if (polyline == null) {
+          polyline =
+            vehicle.data.polylines[
+              Object.values(vehicle.data.polylines).length - 1
+            ]; // Get last polyline
+        }
+
+        if (vehicle.data.status == 'complete')
+          vehicle.sprite.tint = this.LIGHT_RED;
+        else if (vehicle.data.status == 'idle')
+          vehicle.sprite.tint = this.LIGHT_BLUE;
+        else vehicle.sprite.tint = this.SATURATED_RED;
+      }
+      // Vehicle is (theorhetically) enroute
+      else {
+        polylineNo = vehicle.data.previousStops.length - 1;
+
+        const departureTime =
+          vehicle.data.previousStops[polylineNo].departureTime ?? 0;
+        const arrivalTime = vehicle.data.nextStops[0].arrivalTime;
+
+        polyline = vehicle.data.polylines[polylineNo];
+        if (!polyline) {
+          console.error(
+            'Could not correctly get polyline.',
+            polylineNo,
+            vehicle.data,
+          );
+          continue;
+        }
+
+        [lineNo, lineProgress] = this.getLineNoAndProgress(
+          polyline,
+          departureTime,
+          arrivalTime,
+        );
+        lineProgress = Math.max(0, lineProgress);
+        lineProgress = Math.min(lineProgress, 1);
+      }
+
+      this.applyInterpolation(vehicle, polyline, lineNo, lineProgress);
+    }
+  }
+
+  private setVehiclePositionsV2() {
+    // eslint-disable-next-line @typescript-eslint/prefer-for-of
+    for (let index = 0; index < this.vehicles.length; ++index) {
+      const vehicle = this.vehicles[index];
+
+      if (vehicle.data.polylines == null) {
+        console.error(
+          `Vehicle ${vehicle.data.id} has no polyline.`,
+          vehicle.data,
+        );
+        continue;
+      }
+
+      const polylines = Object.values(vehicle.data.polylines);
+
+      const allStops = vehicle.data.currentStop
+        ? [
+            ...vehicle.data.previousStops,
+            vehicle.data.currentStop,
+            ...vehicle.data.nextStops,
+          ]
+        : [...vehicle.data.previousStops, ...vehicle.data.nextStops];
+
+      // eslint-disable-next-line prefer-const
+      let [polylineNo, departureTime, arrivalTime, isWaiting] =
+        this.getPolylineNoAndStatus(allStops);
+      const reachedEnd = polylineNo >= polylines.length;
+
+      polylineNo = Math.min(polylineNo, polylines.length - 1);
+
+      const polyline = polylines[polylineNo];
+
+      let lineNo = reachedEnd ? polyline.polyline.length - 1 : 0;
+      let lineProgress = reachedEnd ? 1 : 0;
+      if (isWaiting) {
+        if (vehicle.data.status == 'complete')
+          vehicle.sprite.tint = this.LIGHT_RED;
+        else vehicle.sprite.tint = this.LIGHT_BLUE;
+      } else {
+        vehicle.sprite.tint = this.WHITE;
+        [lineNo, lineProgress] = this.getLineNoAndProgress(
+          polyline,
+          departureTime,
+          arrivalTime,
+        );
+      }
+
+      this.applyInterpolation(vehicle, polyline, lineNo, lineProgress);
+    }
+  }
+
+  private getPolylineNoAndStatus(
+    stops: Stop[],
+  ): [number, number, number, boolean] {
+    let arrivalTime = -1;
+    let departureTime = -1;
+    let isWaiting = false;
+
+    let polylineNo = 0;
+    for (; polylineNo < stops.length; ++polylineNo) {
+      const stop = stops[polylineNo];
+      if (stop == null) continue;
+
+      arrivalTime = stop.arrivalTime;
+
+      if (this.animationVisualizationTime < stop.arrivalTime) {
+        isWaiting = false;
+        break;
+      }
+
+      if (
+        stop.departureTime == null ||
+        this.animationVisualizationTime < stop.departureTime
+      ) {
+        isWaiting = true;
+        break;
+      }
+
+      departureTime = stop.departureTime;
+    }
+
+    if (departureTime === -1) isWaiting = true; // Not even at the first stop
+    if (departureTime >= arrivalTime) isWaiting = true; // Went through all his stops
+    if (!isWaiting) polylineNo -= 1;
+
+    return [polylineNo, departureTime, arrivalTime, isWaiting];
+  }
+
+  private getLineNoAndProgress(
+    polyline: Polyline,
+    departureTime: number,
+    arrivalTime: number,
+  ) {
+    const polylineProgress =
+      (this.animationVisualizationTime - departureTime) /
+      (arrivalTime - departureTime);
+
+    const coefficients = polyline.coefficients;
+    let lineProgress = 0;
+    let cummulativeProgress = 0;
+    let lineNo = 0;
+    for (; lineNo < coefficients.length; ++lineNo) {
+      const nextCummulativeProgress =
+        cummulativeProgress + coefficients[lineNo];
+      if (polylineProgress < nextCummulativeProgress) {
+        lineProgress =
+          (polylineProgress - cummulativeProgress) /
+          (nextCummulativeProgress - cummulativeProgress);
+        break;
+      }
+      cummulativeProgress = nextCummulativeProgress;
+    }
+
+    return [lineNo, lineProgress];
+  }
+
+  private applyInterpolation(
+    vehicleEntity: VehicleEntity,
+    polyline: Polyline,
+    lineNo: number,
+    lineProgress: number,
+  ) {
+    let geoPosA = polyline.polyline[lineNo];
+    let geoPosB = polyline.polyline[lineNo + 1];
+
+    // If no next point, take previous point instead
+    if (!geoPosB) {
+      geoPosB = geoPosA;
+      geoPosA = polyline.polyline[lineNo - 1];
+
+      // If no previous point, share same point
+      if (!geoPosA) geoPosA = geoPosB;
+      lineProgress = 1;
+    }
+
+    const pointA = this.utils.latLngToLayerPoint([
+      geoPosA.latitude,
+      geoPosA.longitude,
+    ]);
+    const pointB = this.utils.latLngToLayerPoint([
+      geoPosB.latitude,
+      geoPosB.longitude,
+    ]);
+
+    const newPosition = pointB
+      .multiplyBy(lineProgress)
+      .add(pointA.multiplyBy(1 - lineProgress));
+
+    vehicleEntity.sprite.x = newPosition.x;
+    vehicleEntity.sprite.y = newPosition.y;
+
+    // Set orientation
+    const direction = pointB.subtract(pointA);
+    const angle = -Math.atan2(direction.x, direction.y) + Math.PI / 2;
+    vehicleEntity.sprite.rotation = angle;
+  }
+
+  private updateAnimationTime() {
+    const deltaSec = this.ticker.deltaMS / 1000;
+    this.animationVisualizationTime += deltaSec;
+    this.lastVisualisationTime += deltaSec;
+
+    const desyncDiff =
+      this.lastVisualisationTime - this.animationVisualizationTime;
+    const absDesyncDiff = Math.abs(desyncDiff);
+    if (
+      absDesyncDiff > this.MIN_LERPABLE_DESYNC_DIFF &&
+      absDesyncDiff < this.MAX_LERPABLE_DESYNC_DIFF
+    ) {
+      this.animationVisualizationTime +=
+        desyncDiff * (1 - Math.exp(-5 * deltaSec));
+    }
   }
 
   // Called once when Pixi layer is added.
   private onAdd(utils: L.PixiOverlayUtils) {
-    console.log('PixiJS layer added.');
+    // Do something.
   }
 
   private onMoveEnd(event: L.LeafletEvent) {
-    // this.markers.forEach((marker) => {
-    //   marker.scale.set(1 / this.utils.getScale());
-    // });
-  }
-
-  private onRedraw(event: L.LeafletEvent) {
-    this.entities.forEach((entity) => {
-      entity.currentTime += this.ticker.deltaTime / this.ticker.FPS;
-      const progress = entity.currentTime / entity.timeToReach;
+    this.vehicles.forEach((entity) => {
       entity.sprite.scale.set(1 / this.utils.getScale());
-      if (progress >= 1) return;
-      const newPosition = entity.endPos
-        .multiplyBy(progress)
-        .add(entity.startPos.multiplyBy(1 - progress));
-      entity.sprite.x = newPosition.x;
-      entity.sprite.y = newPosition.y;
     });
   }
 
+  private onRedraw(event: L.LeafletEvent) {
+    if (!this.pause) this.updateAnimationTime();
+
+    this.setVehiclePositionsV2();
+  }
+
   private onClick(event: L.LeafletMouseEvent) {
-    this.changeEntitiesDestination(event.latlng);
-    this.addEntity();
+    // Do something.
+  }
+
+  private onEntityPointerdown(event: PIXI.FederatedPointerEvent) {
+    const sprite = event.target as EntityOwner;
+    if (!sprite) return;
+
+    const entity = sprite.entity;
+    if (!entity) return;
+
+    this.selectedVehicle = entity.data;
+    console.log('Vehicle selected:', this.selectedVehicle);
   }
 
   addPixiOverlay(map: L.Map) {
     map.on('click', (event) => {
       this.onClick(event);
     });
-
     const pixiLayer = (() => {
       return L.pixiOverlay(
         (utils, event) => {

@@ -20,6 +20,8 @@ import { UserInterfaceService } from '../../services/user-interface.service';
 import { VisualizationService } from '../../services/visualization.service';
 import { InformationDialogComponent } from '../information-dialog/information-dialog.component';
 import { SimulationControlBarComponent } from '../simulation-control-bar/simulation-control-bar.component';
+import { AnimationService } from '../../services/animation.service';
+import { MatChipsModule } from '@angular/material/chips';
 
 export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 
@@ -32,6 +34,7 @@ export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    MatChipsModule,
   ],
   providers: [VisualizationService],
   templateUrl: './visualizer.component.html',
@@ -67,12 +70,39 @@ export class VisualizerComponent implements OnDestroy {
     private readonly router: Router,
     private readonly communicationService: CommunicationService,
     private readonly dialogService: DialogService,
+    private readonly animationService: AnimationService,
     private readonly loadingService: LoadingService,
     private readonly visualizationService: VisualizationService,
   ) {
     this.simulationSignal = this.simulationService.activeSimulationSignal;
 
     // MARK: Effects
+
+    effect(() => {
+      const visualizationEnvironment = this.visualizationEnvironmentSignal();
+      if (visualizationEnvironment == null) return;
+
+      this.animationService.synchronizeEnvironment(visualizationEnvironment);
+    });
+
+    effect(() => {
+      const visualizationEnvironment = this.visualizationEnvironmentSignal();
+      const visualizationTime =
+        this.visualizationService.visualizationTimeSignal();
+      if (visualizationEnvironment == null || visualizationTime == null) return;
+
+      this.animationService.synchronizeTime(
+        visualizationEnvironment,
+        visualizationTime,
+      );
+    });
+
+    effect(() => {
+      const isVisualizationPausedSignal =
+        this.visualizationService.isVisualizationPausedSignal();
+      this.animationService.setPause(isVisualizationPausedSignal);
+    });
+
     effect(() => {
       const status = this.visualizerStatusSignal();
 
