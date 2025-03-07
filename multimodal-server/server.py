@@ -47,12 +47,12 @@ def run_server():
 
     # MARK: Client events
     @socketio.on("start-simulation")
-    def on_client_start_simulation(name, data, response_event):
+    def on_client_start_simulation(name, data, response_event, max_time):
         log(
-            f"starting simulation {name} with data {data} and response event {response_event}",
+            f"starting simulation {name} with data {data}, response event {response_event} and max time {max_time}",
             "client",
         )
-        simulation_manager.start_simulation(name, data, response_event)
+        simulation_manager.start_simulation(name, data, response_event, max_time)
 
     @socketio.on("stop-simulation")
     def on_client_stop_simulation(simulation_id):
@@ -92,6 +92,14 @@ def run_server():
         simulation_manager.emit_missing_simulation_states(
             simulation_id, first_state_order, last_state_order, visualization_time
         )
+
+    @socketio.on("edit-simulation-configuration")
+    def on_client_edit_simulation_configuration(simulation_id, max_time):
+        log(
+            f"editing simulation {simulation_id} configuration with max time {max_time}",
+            "client",
+        )
+        simulation_manager.edit_simulation_configuration(simulation_id, max_time)
 
     # TODO Implement or remove
     # @socketio.on("import-folder")
@@ -156,11 +164,11 @@ def run_server():
         simulation_manager.on_simulation_resume(simulation_id)
 
     @socketio.on("log")
-    def on_simulation_log_event(simulation_id, message):
+    def on_simulation_log(simulation_id, message):
         log(f"simulation  {simulation_id}: {message}", "simulation", logging.DEBUG)
 
     @socketio.on("simulation-update-time")
-    def on_simulation_log_event(simulation_id, timestamp):
+    def on_simulation_update_time(simulation_id, timestamp):
         log(
             f"simulation  {simulation_id} time: {timestamp}",
             "simulation",
@@ -169,7 +177,7 @@ def run_server():
         simulation_manager.on_simulation_update_time(simulation_id, timestamp)
 
     @socketio.on("simulation-update-estimated-end-time")
-    def on_simulation_log_event(simulation_id, estimated_end_time):
+    def on_simulation_update_estimated_end_time(simulation_id, estimated_end_time):
         log(
             f"simulation  {simulation_id} estimated end time: {estimated_end_time}",
             "simulation",

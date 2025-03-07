@@ -590,7 +590,7 @@ class VisualizedState(VisualizedEnvironment):
 
 # MARK: Simulation Information
 class SimulationInformation(Serializable):
-    version: str
+    version: int
     simulation_id: str
     name: str
     start_time: str
@@ -606,7 +606,7 @@ class SimulationInformation(Serializable):
         simulation_start_time: str | None,
         simulation_end_time: str | None,
         last_update_order: int | None,
-        version: str = None,
+        version: int | None,
     ) -> None:
         self.version = version
         if self.version is None:
@@ -646,7 +646,7 @@ class SimulationInformation(Serializable):
         if "version" not in data or "simulationId" not in data:
             raise ValueError("Invalid data for SimulationInformation")
 
-        version = str(data["version"])
+        version = int(data["version"])
         simulation_id = str(data["simulationId"])
         simulation_data = str(data["data"])
 
@@ -889,12 +889,15 @@ class SimulationVisualizationDataManager:
             simulation_id
         )
 
-        first_state_with_equal_timestamp_index = None
+        if len(sorted_states) == 0:
+            return [], []
+
+        last_state_with_lower_timestamp_index = None
         first_state_with_greater_timestamp_index = None
 
         for index, (order, state_timestamp) in enumerate(sorted_states):
-            if state_timestamp == visualization_time:
-                first_state_with_equal_timestamp_index = index
+            if state_timestamp < visualization_time:
+                last_state_with_lower_or_equal_timestamp_index = index
             elif state_timestamp > visualization_time:
                 first_state_with_greater_timestamp_index = index
                 break
@@ -902,10 +905,10 @@ class SimulationVisualizationDataManager:
         if first_state_with_greater_timestamp_index is None:
             first_state_with_greater_timestamp_index = len(sorted_states)
 
-        if first_state_with_equal_timestamp_index is None:
-            first_state_index = first_state_with_greater_timestamp_index - 1
+        if last_state_with_lower_timestamp_index is None:
+            first_state_index = 0
         else:
-            first_state_index = first_state_with_equal_timestamp_index - 1
+            first_state_index = last_state_with_lower_timestamp_index + 1
 
         last_state_index = first_state_with_greater_timestamp_index - 1
 

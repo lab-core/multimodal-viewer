@@ -124,6 +124,9 @@ export class DataService {
             simulationEstimatedEndTime: null,
             lastUpdateOrder: null,
             completion: 1,
+            configuration: {
+              maxTime: null,
+            },
           };
         }
 
@@ -194,6 +197,8 @@ export class DataService {
             (simulationEstimatedEndTime - simulationStartTime);
         }
 
+        const maxTime = rawSimulation.configuration?.maxTime ?? null;
+
         return {
           id,
           name,
@@ -206,6 +211,9 @@ export class DataService {
           simulationEstimatedEndTime,
           lastUpdateOrder,
           completion,
+          configuration: {
+            maxTime,
+          },
         };
       })
       .filter((simulation) => !!simulation);

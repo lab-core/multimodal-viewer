@@ -49,6 +49,10 @@ export class SimulationControlBarComponent {
     alias: 'leaveVisualization',
   });
 
+  readonly editSimulationConfigurationOutput = output<Simulation>({
+    alias: 'editSimulationConfiguration',
+  });
+
   // MARK: Constructor
   constructor(private readonly visualizationService: VisualizationService) {}
 
@@ -96,6 +100,10 @@ export class SimulationControlBarComponent {
 
   stopSimulation(id: string) {
     this.stopSimulationOutput.emit(id);
+  }
+
+  editSimulationConfiguration(simulation: Simulation) {
+    this.editSimulationConfigurationOutput.emit(simulation);
   }
 
   leaveVisualization(): void {

@@ -1,6 +1,7 @@
 import { Component, computed, effect, OnDestroy, Signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatChipsModule } from '@angular/material/chips';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -12,6 +13,7 @@ import {
   SimulationEnvironment,
   SimulationStatus,
 } from '../../interfaces/simulation.model';
+import { AnimationService } from '../../services/animation.service';
 import { CommunicationService } from '../../services/communication.service';
 import { DialogService } from '../../services/dialog.service';
 import { LoadingService } from '../../services/loading.service';
@@ -20,8 +22,6 @@ import { UserInterfaceService } from '../../services/user-interface.service';
 import { VisualizationService } from '../../services/visualization.service';
 import { InformationDialogComponent } from '../information-dialog/information-dialog.component';
 import { SimulationControlBarComponent } from '../simulation-control-bar/simulation-control-bar.component';
-import { AnimationService } from '../../services/animation.service';
-import { MatChipsModule } from '@angular/material/chips';
 
 export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 
@@ -393,6 +393,26 @@ export class VisualizerComponent implements OnDestroy {
     }
 
     this.simulationService.stopSimulation(id);
+  }
+
+  async editSimulationConfiguration(simulation: Simulation) {
+    const result = await firstValueFrom(
+      this.dialogService
+        .openSimulationConfigurationDialog({
+          mode: 'edit',
+          currentConfiguration: simulation.configuration,
+        })
+        .afterClosed(),
+    );
+
+    if (!result) {
+      return;
+    }
+
+    this.simulationService.editSimulationConfiguration(
+      simulation.id,
+      result.configuration.maxTime,
+    );
   }
 
   async leaveVisualization() {

@@ -5,6 +5,7 @@ import {
   Signal,
   WritableSignal,
 } from '@angular/core';
+import { decode } from 'polyline';
 import {
   AnySimulationUpdate,
   Passenger,
@@ -24,10 +25,9 @@ import {
   VehicleStatusUpdate,
   VehicleStopsUpdate,
 } from '../interfaces/simulation.model';
+import { AnimationService } from './animation.service';
 import { CommunicationService } from './communication.service';
 import { DataService } from './data.service';
-import { AnimationService } from './animation.service';
-import { decode } from 'polyline';
 
 @Injectable({
   providedIn: 'root',
@@ -132,6 +132,14 @@ export class SimulationService {
 
   stopSimulation(simulationId: string) {
     this.communicationService.emit('stop-simulation', simulationId);
+  }
+
+  editSimulationConfiguration(simulationId: string, maxTime: number | null) {
+    this.communicationService.emit(
+      'edit-simulation-configuration',
+      simulationId,
+      maxTime,
+    );
   }
 
   // MARK: Data extraction

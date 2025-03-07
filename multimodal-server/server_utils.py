@@ -15,10 +15,7 @@ SCRIPT_ROOM = "script"
 STATE_SAVE_STEP = 100
 
 # If the version is identical, the save file can be loaded
-# If the version is higher, the simulation will be marked as future version
-# If the major version is lower, the simulation will be marked as outdated
-# If the minor version is lower, the simulation can loaded safely
-SAVE_VERSION = "1.0"
+SAVE_VERSION = 2
 
 
 class SimulationStatus(Enum):

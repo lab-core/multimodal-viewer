@@ -14,8 +14,12 @@
           </mat-form-field>
 
           <mat-form-field>
-            <mat-select formControlName="data" (openedChange)="refreshAvailableData()">
-              <!-- <mat-option (click)="importNewFolder()">➕ Import New Folder</mat-option> --> <!-- For some reason, this disconnects the client. From my research, it looks like copying entire folders has not worked with angular since 2016 for security reasons -->
+            <mat-select
+              formControlName="data"
+              (openedChange)="refreshAvailableData()"
+            >
+              <!-- <mat-option (click)="importNewFolder()">➕ Import New Folder</mat-option> -->
+              <!-- For some reason, this disconnects the client. From my research, it looks like copying entire folders has not worked with angular since 2016 for security reasons -->
               @for (data of availableSimulationDataSignal(); track data) {
                 <mat-option [value]="data">{{ data }}</mat-option>
               }
@@ -43,31 +47,10 @@
         </span>
       }
 
-      <div>
-        <section class="flex-row gap-1-rem">
-          <mat-form-field>
-            <input type="number" matInput formControlName="maxTime" />
-            <mat-label>Max Time</mat-label>
-          </mat-form-field>
-
-          <mat-form-field>
-            <input type="number" matInput formControlName="speed" />
-            <mat-label>Speed</mat-label>
-          </mat-form-field>
-        </section>
-
-        <section class="flex-row gap-1-rem">
-          <mat-form-field>
-            <input type="number" matInput formControlName="timeStep" />
-            <mat-label>Time Step</mat-label>
-          </mat-form-field>
-
-          <mat-form-field>
-            <input type="number" matInput formControlName="positionTimeStep" />
-            <mat-label>Position Time Step</mat-label>
-          </mat-form-field>
-        </section>
-      </div>
+      <mat-form-field>
+        <input type="number" matInput formControlName="maxTime" />
+        <mat-label>Max Time</mat-label>
+      </mat-form-field>
     </div>
   </form>
 </mat-dialog-content>
