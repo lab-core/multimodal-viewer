@@ -64,7 +64,9 @@
         </button>
       }
 
-      <div>{{ visualizationTime }}</div>
+      <div [matTooltip]="visualizationTime.toString()">
+        {{ visualizationTime | simulationTime }}
+      </div>
 
       <div class="flex-1 slider">
         <mat-slider

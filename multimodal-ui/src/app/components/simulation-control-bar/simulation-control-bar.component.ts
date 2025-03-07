@@ -12,6 +12,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSliderModule } from '@angular/material/slider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Simulation } from '../../interfaces/simulation.model';
+import { SimulationTimePipe } from '../../pipes/simulation-time.pipe';
 import { VisualizationService } from '../../services/visualization.service';
 
 @Component({
@@ -22,6 +23,7 @@ import { VisualizationService } from '../../services/visualization.service';
     MatIconModule,
     MatTooltipModule,
     MatSliderModule,
+    SimulationTimePipe,
   ],
   templateUrl: './simulation-control-bar.component.html',
   styleUrl: './simulation-control-bar.component.css',
