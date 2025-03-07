@@ -1,0 +1,13 @@
+FROM node:18
+
+WORKDIR /app/visualizer
+
+COPY multimodal-ui/package*.json ./
+
+RUN npm ci
+
+COPY multimodal-ui .
+
+EXPOSE 4200 5000
+
+CMD ["npm", "start", "--", "--host", "0.0.0.0", "--poll", "500", "--disable-host-check"]
