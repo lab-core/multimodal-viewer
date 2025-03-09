@@ -10,9 +10,8 @@ RUN apt-get update && apt-get install -y git
 # Clone the repository (including submodules)
 RUN git clone --recurse-submodules https://github.com/RTOpt/multimodal-simulator.git /app/multimodal-simulator
 
-# Copy the server and data directories
+# Copy the server 
 COPY multimodal-server /app/multimodal-server
-COPY data /app/data
 
 # Upgrade pip
 RUN pip install --upgrade pip
