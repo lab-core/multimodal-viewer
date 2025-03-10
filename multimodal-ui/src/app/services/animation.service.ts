@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Signal, signal, WritableSignal } from '@angular/core';
 import * as L from 'leaflet';
 import 'leaflet-pixi-overlay';
 import * as PIXI from 'pixi.js';
@@ -14,6 +14,9 @@ import { Polyline, Polylines } from '../interfaces/simulation.model';
   providedIn: 'root',
 })
 export class AnimationService {
+  private readonly _selectedVehicleSignal: WritableSignal<Vehicle | null> =
+    signal(null);
+
   private readonly MIN_LERPABLE_DESYNC_DIFF = 1.5;
   private readonly MAX_LERPABLE_DESYNC_DIFF = 900;
 
@@ -35,12 +38,15 @@ export class AnimationService {
   private lastScale = 0;
   private utils!: L.PixiOverlayUtils;
 
-  private selectedVehicle: Vehicle | null = null;
   private selectedVehiclePolyline: PIXI.Graphics = new PIXI.Graphics();
 
   // Variable that are alive for a single frame (could probably improve)
   private frame_onEntityPointerDownCalled = false;
   private frame_pointToFollow: L.LatLngExpression | null = null;
+
+  get selectedVehicleSignal(): Signal<Vehicle | null> {
+    return this._selectedVehicleSignal;
+  }
 
   synchronizeEnvironment(simulationEnvironment: SimulationEnvironment) {
     console.log('[Simulation Environment]', simulationEnvironment);
@@ -52,13 +58,13 @@ export class AnimationService {
     let isSelectedVehicleInEnvironment = false;
 
     for (const vehicle of Object.values(simulationEnvironment.vehicles)) {
-      if (vehicle.id == this.selectedVehicle?.id)
+      if (vehicle.id == this._selectedVehicleSignal()?.id)
         isSelectedVehicleInEnvironment = true;
       this.addVehicle(vehicle);
     }
 
-    if (this.selectedVehicle && !isSelectedVehicleInEnvironment) {
-      this.selectedVehicle = null;
+    if (this._selectedVehicleSignal() && !isSelectedVehicleInEnvironment) {
+      this._selectedVehicleSignal.set(null);
       console.warn(
         'The vehicle you selected is not in the environment anymore. It has been deselected.',
       );
@@ -85,7 +91,7 @@ export class AnimationService {
     this.lastVisualisationTime = visualizationTime;
   }
 
-  addVehicle(vehicle: Vehicle, type = 'sample-bus') {
+  private addVehicle(vehicle: Vehicle, type = 'sample-bus') {
     if (!vehicle.polylines) {
       // console.error('Vehicle has no polyline.', vehicle);
       return;
@@ -254,7 +260,7 @@ export class AnimationService {
         lineProgress,
       );
 
-      if (this.selectedVehicle?.id == vehicle.data.id) {
+      if (this._selectedVehicleSignal()?.id == vehicle.data.id) {
         this.frame_pointToFollow =
           this.utils.layerPointToLatLng(interpolatedPosition);
         this.redrawPolyline(polylineNo, lineNo, interpolatedPosition);
@@ -386,7 +392,9 @@ export class AnimationService {
     graphics.clear();
     graphics.lineStyle(width, this.KELLY_GREEN, ALPHA);
 
-    const polylines = Object.values(this.selectedVehicle?.polylines ?? {});
+    const polylines = Object.values(
+      this._selectedVehicleSignal()?.polylines ?? {},
+    );
     if (polylines.length == 0) return;
 
     const polyline = polylines[0].polyline;
@@ -524,7 +532,7 @@ export class AnimationService {
   // onClick is called after onEntityPointerdown
   private onClick(event: L.LeafletMouseEvent) {
     if (!this.frame_onEntityPointerDownCalled) {
-      this.selectedVehicle = null;
+      this._selectedVehicleSignal.set(null);
       this.selectedVehiclePolyline.clear();
       this.container.removeChild(this.selectedVehiclePolyline);
     }
@@ -538,10 +546,10 @@ export class AnimationService {
     const entity = sprite.entity;
     if (!entity) return;
 
-    this.selectedVehicle = entity.data;
+    this._selectedVehicleSignal.set(entity.data);
     this.frame_onEntityPointerDownCalled = true;
     this.container.addChild(this.selectedVehiclePolyline);
-    console.log('Vehicle selected:', this.selectedVehicle);
+    console.log('Vehicle selected:', this._selectedVehicleSignal());
   }
 
   addPixiOverlay(map: L.Map) {
