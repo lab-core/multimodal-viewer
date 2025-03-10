@@ -64,9 +64,6 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
   readonly nameFormControl: FormControl<string | null>;
   readonly dataFormControl: FormControl<string | null>;
   readonly maxTimeFormControl: FormControl<number | null>;
-  readonly speedFormControl: FormControl<number | null>;
-  readonly timeStepFormControl: FormControl<number | null>;
-  readonly positionTimeStepFormControl: FormControl<number | null>;
   readonly shouldRunInBackgroundFormControl: FormControl<boolean | null>;
 
   private readonly unsubscribe$ = new Subject<void>();
@@ -83,20 +80,23 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
   ) {
     // TODO Validators
     // Initialize form
-    this.nameFormControl = this.formBuilder.control(null, [
+    this.nameFormControl = this.formBuilder.control(null);
+    if (this.data.mode === 'start') {
       // eslint-disable-next-line @typescript-eslint/unbound-method
-      Validators.required,
-    ]);
-    this.dataFormControl = this.formBuilder.control(null, [
+      this.nameFormControl.addValidators(Validators.required);
+    }
+
+    this.dataFormControl = this.formBuilder.control(null);
+    if (this.data.mode === 'start') {
       // eslint-disable-next-line @typescript-eslint/unbound-method
-      Validators.required,
-    ]);
+      this.dataFormControl.addValidators(Validators.required);
+    }
+
     this.shouldRunInBackgroundFormControl = this.formBuilder.control(false);
 
-    this.maxTimeFormControl = this.formBuilder.control(null);
-    this.speedFormControl = this.formBuilder.control(null);
-    this.timeStepFormControl = this.formBuilder.control(null);
-    this.positionTimeStepFormControl = this.formBuilder.control(null);
+    this.maxTimeFormControl = this.formBuilder.control(null, [
+      Validators.min(0),
+    ]);
 
     this.generalFormGroup = this.formBuilder.group({
       name: this.nameFormControl,
@@ -106,9 +106,6 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
 
     this.configurationFormGroup = this.formBuilder.group({
       maxTime: this.maxTimeFormControl,
-      speed: this.speedFormControl,
-      timeStep: this.timeStepFormControl,
-      positionTimeStep: this.positionTimeStepFormControl,
     });
 
     this.formGroup = this.formBuilder.group({
@@ -119,13 +116,6 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     // Prefill form
     if (this.data.mode === 'edit' && this.data.currentConfiguration) {
       this.maxTimeFormControl.setValue(this.data.currentConfiguration.maxTime);
-      this.speedFormControl.setValue(this.data.currentConfiguration.speed);
-      this.timeStepFormControl.setValue(
-        this.data.currentConfiguration.timeStep,
-      );
-      this.positionTimeStepFormControl.setValue(
-        this.data.currentConfiguration.positionTimeStep,
-      );
     }
 
     // Disable fields if data is not provided
@@ -173,25 +163,16 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
       },
       configuration: {
         maxTime: this.maxTimeFormControl.value,
-        speed: this.speedFormControl.value,
-        timeStep: this.timeStepFormControl.value,
-        positionTimeStep: this.positionTimeStepFormControl.value,
       },
     };
   }
 
   private disableConfigurationFields() {
     this.maxTimeFormControl.disable();
-    this.speedFormControl.disable();
-    this.timeStepFormControl.disable();
-    this.positionTimeStepFormControl.disable();
   }
 
   private enableConfigurationFields() {
     this.maxTimeFormControl.enable();
-    this.speedFormControl.enable();
-    this.timeStepFormControl.enable();
-    this.positionTimeStepFormControl.enable();
   }
 
   refreshAvailableData() {

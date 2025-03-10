@@ -104,10 +104,8 @@ export interface Simulation {
 
   /**
    * Current configuration of the simulation
-   *
-   * TODO Maybe change to an array of configurations to keep track of the changes in the configuration.
    */
-  // configuration: SimulationConfiguration;
+  configuration: SimulationConfiguration;
 }
 
 export interface SimulationConfiguration {
@@ -115,22 +113,6 @@ export interface SimulationConfiguration {
    * The time at which the simulation will be automatically stopped
    */
   maxTime: number | null;
-
-  /**
-   * TODO I don't know what this is
-   * TODO Maybe remove the speed and always run at full speed
-   */
-  speed: number | null;
-
-  /**
-   * The maximum time between two events in the simulation
-   */
-  timeStep: number | null;
-
-  /**
-   * TODO I don't know what this is
-   */
-  positionTimeStep: number | null;
 }
 
 export type PassengerStatus =
