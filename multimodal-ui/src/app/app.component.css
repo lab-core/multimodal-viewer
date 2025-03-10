@@ -53,3 +53,9 @@ app-connection-status {
 
   z-index: 500;
 }
+
+.metrics {
+  position: absolute;
+  bottom: 1.5rem; /* The attribution text is just below */
+  z-index: 500;
+}

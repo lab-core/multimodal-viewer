@@ -26,7 +26,7 @@ import {
 } from '../interfaces/simulation.model';
 import { CommunicationService } from './communication.service';
 import { DataService } from './data.service';
-
+import { AnimationService } from './animation.service';
 import { decode } from 'polyline';
 
 @Injectable({
@@ -48,6 +48,7 @@ export class SimulationService {
   constructor(
     private readonly dataService: DataService,
     private readonly communicationService: CommunicationService,
+    private readonly animationService: AnimationService,
   ) {}
 
   // MARK: Active simulation
@@ -626,8 +627,6 @@ export class SimulationService {
     polylinesByVehicleId: Record<string, Polylines>,
     visualizationTime: number,
   ): SimulationEnvironment {
-    const simulationEnvironment = structuredClone(state);
-
     const sortedUpdates = state.updates.sort((a, b) => a.order - b.order);
 
     let lastUpdate: AnySimulationUpdate | null = null;
@@ -637,14 +636,12 @@ export class SimulationService {
         break;
       }
 
-      this.applyUpdate(update, simulationEnvironment);
+      this.applyUpdate(update, state);
 
       lastUpdate = update;
     }
 
-    for (const [vehicleId, vehicle] of Object.entries(
-      simulationEnvironment.vehicles,
-    )) {
+    for (const [vehicleId, vehicle] of Object.entries(state.vehicles)) {
       const polylines = polylinesByVehicleId[vehicleId];
       if (!polylines) {
         console.error('Polyline not found for vehicle: ', vehicleId, polylines);
@@ -655,11 +652,11 @@ export class SimulationService {
     }
 
     if (lastUpdate) {
-      simulationEnvironment.order = lastUpdate.order;
-      simulationEnvironment.timestamp = lastUpdate.timestamp;
+      state.order = lastUpdate.order;
+      state.timestamp = lastUpdate.timestamp;
     }
 
-    return simulationEnvironment;
+    return state;
   }
 
   private applyUpdate(
@@ -734,16 +731,13 @@ export class SimulationService {
       return states;
     }
 
-    // Deep copy of the states
-    const newStates = structuredClone(missingStates);
-
     // Add states to keep
     for (const state of states) {
       if (stateOrdersToKeep.includes(state.order)) {
-        newStates.push(state);
+        missingStates.push(state);
       }
     }
 
-    return newStates;
+    return missingStates;
   }
 }
