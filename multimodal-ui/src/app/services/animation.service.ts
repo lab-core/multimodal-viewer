@@ -22,7 +22,7 @@ export class AnimationService {
   private readonly LIGHT_BLUE = 0xcdcdff;
   private readonly SATURATED_RED = 0xcd2222;
   private readonly KELLY_GREEN = 0x028a0f;
-  private readonly DESATURED_BLUE = 0x666666;
+  private readonly DESATURATED_BLUE = 0x666666;
 
   private pause = false;
   private animationVisualizationTime = 0;
