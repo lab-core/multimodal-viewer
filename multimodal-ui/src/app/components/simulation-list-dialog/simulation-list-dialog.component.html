@@ -103,8 +103,9 @@
               }
 
               @if (group.group === "completed") {
-                <button mat-icon-button [matTooltip]="'Export'">
+                <button mat-icon-button [matTooltip]="'Export'" (click)="exportSimulation(simulation.id)">
                   <mat-icon>cloud_download</mat-icon>
+                  
                 </button>
                 <button mat-icon-button [matTooltip]="'Delete'">
                   <mat-icon>delete</mat-icon>

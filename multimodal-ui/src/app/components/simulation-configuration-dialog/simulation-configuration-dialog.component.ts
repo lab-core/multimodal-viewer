@@ -201,21 +201,6 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     this.dataService.queryAvailableData();
   }
 
-  //! This function simply downloads instance 7. Move to appropriate place and make it take the folder name as param
-  exportInputData() {
-    this.httpService.exportInputData('instance_07').subscribe((response: Blob) => {
-      const blob = new Blob([response], { type: 'application/zip' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'instance_07.zip';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    });
-  }
-
   importImportData() {
     const input = document.createElement('input');
     input.type = 'file';

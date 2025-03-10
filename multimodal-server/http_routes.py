@@ -9,12 +9,29 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 data_dir = BASE_DIR / "data"
+saved_simulations_dir = saved_simulations_dir = Path(__file__).parent / "saved_simulations"
 
 http_routes = Blueprint("http_routes", __name__)
 
 @http_routes.route("/api/input_data/<folder_name>", methods=["GET"])
 def export_input_data(folder_name):
     folder_path = os.path.join(data_dir, folder_name)
+    logging.info(f"Requested folder: {folder_path}")
+    if not os.path.isdir(folder_path):
+        return jsonify({"error": "Folder not found"}), 404
+    
+    zip_path = os.path.join(tempfile.gettempdir(), f"{folder_name}.zip")
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for root, _, files in os.walk(folder_path):
+            for file in files:
+                file_path = os.path.join(root, file)
+                zipf.write(file_path, os.path.relpath(file_path, folder_path))
+    
+    return send_file(zip_path, as_attachment=True)
+
+@http_routes.route("/api/simulation/<folder_name>", methods=["GET"])
+def export_saved_simulation(folder_name):
+    folder_path = os.path.join(saved_simulations_dir, folder_name)
     logging.info(f"Requested folder: {folder_path}")
     if not os.path.isdir(folder_path):
         return jsonify({"error": "Folder not found"}), 404

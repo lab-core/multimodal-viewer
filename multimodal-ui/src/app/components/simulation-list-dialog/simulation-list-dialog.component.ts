@@ -25,6 +25,7 @@ import { DataService } from '../../services/data.service';
 import { DialogService } from '../../services/dialog.service';
 import { SimulationService } from '../../services/simulation.service';
 import { CommunicationService } from '../../services/communication.service';
+import { HttpService } from '../../services/http.service';
 
 export type SimulationListDialogData = null;
 
@@ -88,6 +89,7 @@ export class SimulationListDialogComponent {
     private readonly dialogService: DialogService,
     private readonly matDialogRef: MatDialogRef<SimulationListDialogComponent>,
     private communicationService: CommunicationService,
+    private httpService: HttpService,
   ) {}
 
   getColorFromStatus(status: Simulation['status']): string {
@@ -150,4 +152,18 @@ export class SimulationListDialogComponent {
       this.simulationService.resumeSimulation(simulationId);
     }
   }
+
+    exportSimulation(name: string) {
+      this.httpService.exportSimulation(name).subscribe((response: Blob) => {
+        const blob = new Blob([response], { type: 'application/zip' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = name + '.zip';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      });
+    }
 }

@@ -10,6 +10,10 @@ export class HttpService {
 
   constructor(private http: HttpClient) {}
 
+  exportSimulation(folderName: string): Observable<Blob> {
+    return this.http.get(this.apiUrl + `simulation/${folderName}`, { responseType: 'blob' });
+  }
+
   exportInputData(folderName: string): Observable<Blob> {
     return this.http.get(this.apiUrl + `input_data/${folderName}`, { responseType: 'blob' });
   }
