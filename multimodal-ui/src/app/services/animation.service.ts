@@ -53,6 +53,7 @@ export class AnimationService {
 
     this.selectedVehiclePolyline.clear();
     this.container.removeChildren();
+    this.container.addChild(this.selectedVehiclePolyline);
     this.vehicles = [];
 
     let isSelectedVehicleInEnvironment = false;
@@ -68,7 +69,7 @@ export class AnimationService {
       console.warn(
         'The vehicle you selected is not in the environment anymore. It has been deselected.',
       );
-    } else this.container.addChild(this.selectedVehiclePolyline);
+    }
   }
 
   synchronizeTime(
@@ -534,7 +535,6 @@ export class AnimationService {
     if (!this.frame_onEntityPointerDownCalled) {
       this._selectedVehicleSignal.set(null);
       this.selectedVehiclePolyline.clear();
-      this.container.removeChild(this.selectedVehiclePolyline);
     }
     this.frame_onEntityPointerDownCalled = false;
   }
@@ -548,7 +548,6 @@ export class AnimationService {
 
     this._selectedVehicleSignal.set(entity.data);
     this.frame_onEntityPointerDownCalled = true;
-    this.container.addChild(this.selectedVehiclePolyline);
     console.log('Vehicle selected:', this._selectedVehicleSignal());
   }
 
