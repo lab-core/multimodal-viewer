@@ -22,7 +22,7 @@ export class AnimationService {
   private readonly LIGHT_BLUE = 0xcdcdff;
   private readonly SATURATED_RED = 0xcd2222;
   private readonly KELLY_GREEN = 0x028a0f;
-  private readonly DESATURATED_BLUE = 0x666666;
+  private readonly LIGHT_GRAY = 0x666666;
 
   private pause = false;
   private animationVisualizationTime = 0;
@@ -428,7 +428,7 @@ export class AnimationService {
     graphics.lineTo(interpolatedPoint.x, interpolatedPoint.y);
 
     // Change color
-    graphics.lineStyle(width, this.DESATURED_BLUE, ALPHA);
+    graphics.lineStyle(width, this.LIGHT_GRAY, ALPHA);
 
     // Draw rest of lines of polylineNo
     for (let j = lineNo + 1; j < currentPolyline.polyline.length; ++j) {
@@ -468,7 +468,7 @@ export class AnimationService {
     }
 
     // Draw stops that are not completed
-    graphics.lineStyle(width, this.DESATURED_BLUE, ALPHA);
+    graphics.lineStyle(width, this.LIGHT_GRAY, ALPHA);
     for (let i = polylineNo; i < polylines.length - 1; ++i) {
       const polyline = polylines[i];
       const geoPos = polyline.polyline[polyline.polyline.length - 1];
