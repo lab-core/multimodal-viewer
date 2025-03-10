@@ -3,3 +3,4 @@ flask-socketio==5.5.1
 eventlet==0.39.0
 websocket-client==1.8.0
 filelock==3.17.0
+flask_cors
