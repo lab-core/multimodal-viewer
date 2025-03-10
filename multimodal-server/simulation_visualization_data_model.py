@@ -953,13 +953,27 @@ class SimulationVisualizationDataManager:
 
     # MARK: +- Polylines
     @staticmethod
-    def get_saved_simulation_polylines_file_path(simulation_id: str) -> str:
+    def get_saved_simulation_polylines_directory_path(simulation_id: str) -> str:
         simulation_directory_path = (
             SimulationVisualizationDataManager.get_saved_simulation_directory_path(
                 simulation_id
             )
         )
-        file_path = f"{simulation_directory_path}/{SimulationVisualizationDataManager.__POLYLINES_FILE_NAME}"
+        directory_path = f"{simulation_directory_path}/polylines"
+
+        if not os.path.exists(directory_path):
+            os.makedirs(directory_path)
+
+        return directory_path
+
+    @staticmethod
+    def get_saved_simulation_polylines_file_path(
+        simulation_id: str, vehicle_id: str
+    ) -> str:
+        directory_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_directory_path(
+            simulation_id
+        )
+        file_path = f"{directory_path}/{vehicle_id}.json"
 
         if not os.path.exists(file_path):
             with open(file_path, "w") as file:
@@ -968,39 +982,54 @@ class SimulationVisualizationDataManager:
         return file_path
 
     @staticmethod
-    def set_polylines(simulation_id: str, environment: VisualizedEnvironment) -> None:
+    def get_saved_simulation_all_polylines_file_path(simulation_id: str) -> list[str]:
+        directory_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_directory_path(
+            simulation_id
+        )
+        return [f"{directory_path}/{file}" for file in os.listdir(directory_path)]
+
+    @staticmethod
+    def set_polylines(simulation_id: str, vehicle: VisualizedVehicle) -> None:
+        timer = Timer()
+        timer.start("set_polylines")
         file_path = (
             SimulationVisualizationDataManager.get_saved_simulation_polylines_file_path(
-                simulation_id
+                simulation_id, vehicle.vehicle_id
             )
         )
 
-        lock = FileLock(f"{file_path}.lock")
-
-        polylines_by_vehicle_id = {
-            vehicle_id: vehicle.polylines
-            for vehicle_id, vehicle in environment.vehicles.items()
-        }
+        # This lock file is the same for all vehicles to prevent reading and writing two
+        # different vehicles at the same time.
+        lock = FileLock(f"{simulation_id}.lock")
 
         with lock:
             with open(file_path, "w") as file:
                 SimulationVisualizationDataManager.__format_json_readable(
-                    polylines_by_vehicle_id, file
+                    vehicle.polylines, file
                 )
+
+        timer.end("set_polylines")
 
     @staticmethod
     def get_polylines(
         simulation_id: str,
-    ) -> dict[str, dict[str, tuple[str, list[float]]]]:
-        file_path = (
-            SimulationVisualizationDataManager.get_saved_simulation_polylines_file_path(
-                simulation_id
-            )
+    ) -> dict[str, str]:
+        """
+        Get all polylines as unparsed JSON strings by vehicle ID.
+        """
+
+        polylines = {}
+
+        lock = FileLock(f"{simulation_id}.lock")
+
+        all_polylines_file_paths = SimulationVisualizationDataManager.get_saved_simulation_all_polylines_file_path(
+            simulation_id
         )
 
-        lock = FileLock(f"{file_path}.lock")
-
         with lock:
-            with open(file_path, "r") as file:
-                data = file.read()
-                return json.loads(data)
+            for file_path in all_polylines_file_paths:
+                with open(file_path, "r") as file:
+                    vehicle_id = file_path.split("/")[-1].split(".")[0]
+                    polylines[vehicle_id] = file.read()
+
+        return polylines

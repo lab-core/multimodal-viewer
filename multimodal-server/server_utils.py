@@ -50,3 +50,24 @@ def log(message: str, auth_type: str, level=logging.INFO, should_emit=True) -> N
                 f"{level} [{auth_type}] {get_session_id()} {message}",
                 to=CLIENT_ROOM,
             )
+
+
+import time
+
+
+class Timer:
+    def __init__(self):
+        self.start_times = {}
+        self.end_times = {}
+        self.durations = {}
+
+    def start(self, name):
+        self.start_times[name] = time.time()
+        self.end_times[name] = None
+
+    def end(self, name, log=True) -> float:
+        self.end_times[name] = time.time()
+        duration = self.end_times[name] - self.start_times[name]
+        if log:
+            logging.warning(f"Timer {name} took {duration} seconds")
+        return duration

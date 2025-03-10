@@ -5,6 +5,7 @@ import {
   Signal,
   WritableSignal,
 } from '@angular/core';
+import { decode } from 'polyline';
 import {
   AnySimulationUpdate,
   Passenger,
@@ -24,10 +25,9 @@ import {
   VehicleStatusUpdate,
   VehicleStopsUpdate,
 } from '../interfaces/simulation.model';
+import { AnimationService } from './animation.service';
 import { CommunicationService } from './communication.service';
 import { DataService } from './data.service';
-import { AnimationService } from './animation.service';
-import { decode } from 'polyline';
 
 @Injectable({
   providedIn: 'root',
@@ -79,7 +79,7 @@ export class SimulationService {
       (polylinesByVehicleId) => {
         this._simulationPolylinesSignal.set(
           this.extractPolylines(
-            polylinesByVehicleId as unknown as Record<string, RawPolylines>,
+            polylinesByVehicleId as unknown as Record<string, string>,
           ) ?? {},
         );
       },
@@ -512,21 +512,31 @@ export class SimulationService {
   }
 
   private extractPolylines(
-    rawPolylinesByVehicleId: Record<string, RawPolylines>,
+    rawPolylinesByVehicleId: Record<string, string>,
   ): Record<string, Polylines> | null {
-    if (!rawPolylinesByVehicleId) {
-      console.error('Polylines not found: ', rawPolylinesByVehicleId);
+    const parsedPolylinesByVehicleId = Object.entries(
+      rawPolylinesByVehicleId,
+    ).reduce(
+      (acc, [vehicleId, rawPolylines]) => {
+        acc[vehicleId] = JSON.parse(rawPolylines) as RawPolylines;
+        return acc;
+      },
+      {} as Record<string, RawPolylines>,
+    );
+
+    if (!parsedPolylinesByVehicleId) {
+      console.error('Polylines not found: ', parsedPolylinesByVehicleId);
       return null;
     }
 
-    if (Object.keys(rawPolylinesByVehicleId).length === 0) {
+    if (Object.keys(parsedPolylinesByVehicleId).length === 0) {
       return {};
     }
 
     const polylinesByVehicleId: Record<string, Polylines> = {};
 
     for (const [vehicleId, rawPolylines] of Object.entries(
-      rawPolylinesByVehicleId,
+      parsedPolylinesByVehicleId,
     )) {
       const polylines: Polylines = {};
 

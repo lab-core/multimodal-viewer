@@ -106,7 +106,7 @@ class SimulationVisualizationDataCollector(DataCollector):
             data: VisualizedVehicle = update.data
             if data.polylines is not None:
                 SimulationVisualizationDataManager.set_polylines(
-                    self.simulation_id, self.visualized_environment
+                    self.simulation_id, data
                 )
         elif update.type == UpdateType.UPDATE_PASSENGER_STATUS:
             passenger = self.visualized_environment.get_passenger(
@@ -374,7 +374,7 @@ class SimulationVisualizationDataCollector(DataCollector):
             if vehicle.polylines != existing_vehicle.polylines:
                 existing_vehicle.polylines = vehicle.polylines
                 SimulationVisualizationDataManager.set_polylines(
-                    self.simulation_id, self.visualized_environment
+                    self.simulation_id, existing_vehicle
                 )
 
             self.add_update(
