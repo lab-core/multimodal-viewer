@@ -45,8 +45,8 @@ export class AnimationService {
   synchronizeEnvironment(simulationEnvironment: SimulationEnvironment) {
     console.log('[Simulation Environment]', simulationEnvironment);
 
+    this.selectedVehiclePolyline.clear();
     this.container.removeChildren();
-    this.container.addChild(this.selectedVehiclePolyline);
     this.vehicles = [];
 
     let isSelectedVehicleInEnvironment = false;
@@ -59,11 +59,10 @@ export class AnimationService {
 
     if (this.selectedVehicle && !isSelectedVehicleInEnvironment) {
       this.selectedVehicle = null;
-      this.selectedVehiclePolyline.clear();
       console.warn(
         'The vehicle you selected is not in the environment anymore. It has been deselected.',
       );
-    }
+    } else this.container.addChild(this.selectedVehiclePolyline);
   }
 
   synchronizeTime(
@@ -527,6 +526,7 @@ export class AnimationService {
     if (!this.frame_onEntityPointerDownCalled) {
       this.selectedVehicle = null;
       this.selectedVehiclePolyline.clear();
+      this.container.removeChild(this.selectedVehiclePolyline);
     }
     this.frame_onEntityPointerDownCalled = false;
   }
@@ -540,6 +540,7 @@ export class AnimationService {
 
     this.selectedVehicle = entity.data;
     this.frame_onEntityPointerDownCalled = true;
+    this.container.addChild(this.selectedVehiclePolyline);
     console.log('Vehicle selected:', this.selectedVehicle);
   }
 
