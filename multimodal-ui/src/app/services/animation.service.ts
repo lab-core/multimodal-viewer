@@ -393,14 +393,12 @@ export class AnimationService {
     const polyline = polylines[0].polyline;
     if (polyline.length == 0) return;
 
-    {
-      const geoPos = polyline[0];
-      const point = this.utils.latLngToLayerPoint([
-        geoPos.latitude,
-        geoPos.longitude,
-      ]);
-      graphics.moveTo(point.x, point.y);
-    }
+    const geoPos = polyline[0];
+    const point = this.utils.latLngToLayerPoint([
+      geoPos.latitude,
+      geoPos.longitude,
+    ]);
+    graphics.moveTo(point.x, point.y);
 
     // Draw all poylines before the polylineNo
     for (let i = 0; i < polylineNo; ++i) {
