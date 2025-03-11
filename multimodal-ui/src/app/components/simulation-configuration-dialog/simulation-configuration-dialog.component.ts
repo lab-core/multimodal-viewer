@@ -201,7 +201,7 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     this.dataService.queryAvailableData();
   }
 
-  importImportData() {
+  importInputData() {
     const input = document.createElement('input');
     input.type = 'file';
     input.webkitdirectory = true;
@@ -214,20 +214,19 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
         }
 
         const zip = new JSZip();
-        const baseFolder = files[0].webkitRelativePath.split('/')[0]; // Get the root folder name
+        const baseFolder = files[0].webkitRelativePath.split('/')[0]; 
 
-        // Use for-of loop instead of a traditional for loop
         for (const file of Array.from(files)) {
-            const relativePath = file.webkitRelativePath.replace(baseFolder + '/', ''); // Remove the root folder from path
+            const relativePath = file.webkitRelativePath.replace(baseFolder + '/', '');
             zip.file(relativePath, file);
         }
 
         const blob = await zip.generateAsync({ type: 'blob' });
-
+        const contentType = 'input_data'
         const formData = new FormData();
         formData.append('file', blob, 'folder.zip');
 
-        this.httpService.importInputData(baseFolder, formData).subscribe(response => {
+        this.httpService.importFolder(contentType, baseFolder, formData).subscribe(response => {
             console.log('Upload successful:', response);
         });
     };

@@ -154,7 +154,8 @@ export class SimulationListDialogComponent {
   }
 
     exportSimulation(name: string) {
-      this.httpService.exportSimulation(name).subscribe((response: Blob) => {
+      const folderContents = 'simulation'
+      this.httpService.exportFolder(folderContents, name).subscribe((response: Blob) => {
         const blob = new Blob([response], { type: 'application/zip' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
