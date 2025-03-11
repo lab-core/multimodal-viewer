@@ -229,4 +229,10 @@ export class DataService {
     }
     return -1;
   }
+
+  removeSimulation(simulationId: string): void {
+    this._simulationsSignal.update((simulations) =>
+      simulations.filter((simulation) => simulation.id !== simulationId)
+    );
+  }
 }

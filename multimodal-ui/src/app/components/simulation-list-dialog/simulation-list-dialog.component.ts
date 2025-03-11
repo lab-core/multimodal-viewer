@@ -88,7 +88,6 @@ export class SimulationListDialogComponent {
     private readonly simulationService: SimulationService,
     private readonly dialogService: DialogService,
     private readonly matDialogRef: MatDialogRef<SimulationListDialogComponent>,
-    private communicationService: CommunicationService,
     private httpService: HttpService,
   ) {}
 
@@ -165,6 +164,23 @@ export class SimulationListDialogComponent {
         a.click();
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
+      });
+    }
+
+    deleteSimulation(simulationId: string): void {
+      const folderContents = 'simulation';
+      this.httpService.deleteFolder(folderContents, simulationId).subscribe({
+        next: (response: { message?: string; error?: string }) => {
+          if (response.message) {
+            console.log(response.message);
+            this.dataService.removeSimulation(simulationId);
+          } else if (response.error) {
+            console.error('Failed to delete simulation:', response.error);
+          }
+        },
+        error: (err) => {
+          console.error('HTTP error during deletion:', err);
+        },
       });
     }
 }

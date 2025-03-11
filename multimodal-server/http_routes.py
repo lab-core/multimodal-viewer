@@ -97,7 +97,7 @@ def import_saved_simulation(folder_name):
 def delete_saved_simulation(folder_name):
     folder_path = os.path.join(saved_simulations_dir, folder_name)
     if not os.path.isdir(folder_path):
-        return jsonify({"error": "Folder not found"}), 404
+        return jsonify({"message": "Folder not found"}), 404
     
     shutil.rmtree(folder_path)
     return jsonify({"message": f"Folder '{folder_name}' deleted successfully"})

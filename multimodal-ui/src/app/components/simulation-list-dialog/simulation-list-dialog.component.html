@@ -107,7 +107,7 @@
                   <mat-icon>cloud_download</mat-icon>
                   
                 </button>
-                <button mat-icon-button [matTooltip]="'Delete'">
+                <button mat-icon-button [matTooltip]="'Delete'" (click)="deleteSimulation(simulation.id)">
                   <mat-icon>delete</mat-icon>
                 </button>
               }
