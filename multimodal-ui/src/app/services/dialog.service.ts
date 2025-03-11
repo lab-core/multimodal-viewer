@@ -38,6 +38,7 @@ export class DialogService {
       autoFocus: false,
       maxWidth: '80vw',
       maxHeight: '80vh',
+      minWidth: '600px',
     });
   }
 
@@ -55,7 +56,7 @@ export class DialogService {
       autoFocus: false,
       maxWidth: '80vw',
       maxHeight: '80vh',
-      minWidth: '30vw',
+      minWidth: '600px',
     });
   }
 

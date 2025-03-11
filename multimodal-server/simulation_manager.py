@@ -7,6 +7,7 @@ from flask_socketio import emit
 from server_utils import (
     CLIENT_ROOM,
     SAVE_VERSION,
+    SIMULATION_SAVE_FILE_SEPARATOR,
     SimulationStatus,
     get_session_id,
     log,
@@ -77,7 +78,7 @@ class SimulationManager:
         start_time = start_time[:-3]
 
         # Start time first to sort easily
-        simulation_id = f"{start_time}-{name}"
+        simulation_id = f"{start_time}{SIMULATION_SAVE_FILE_SEPARATOR}{name}"
 
         simulation_process = multiprocessing.Process(
             target=run_simulation, args=(simulation_id, data, max_time)

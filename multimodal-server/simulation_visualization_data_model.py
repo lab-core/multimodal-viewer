@@ -8,7 +8,7 @@ from multimodalsim.simulator.request import Trip
 from multimodalsim.simulator.stop import Stop
 from multimodalsim.simulator.vehicle import Route, Vehicle
 from multimodalsim.state_machine.status import PassengerStatus, VehicleStatus
-from server_utils import SAVE_VERSION
+from server_utils import SAVE_VERSION, SIMULATION_SAVE_FILE_SEPARATOR
 
 
 # MARK: Enums
@@ -614,8 +614,8 @@ class SimulationInformation(Serializable):
 
         self.simulation_id = simulation_id
 
-        self.name = simulation_id.split("-")[2]
-        self.start_time = "-".join(simulation_id.split("-")[:2])
+        self.name = simulation_id.split(SIMULATION_SAVE_FILE_SEPARATOR)[1]
+        self.start_time = simulation_id.split(SIMULATION_SAVE_FILE_SEPARATOR)[0]
         self.data = data
 
         self.simulation_start_time = simulation_start_time
