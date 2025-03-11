@@ -664,6 +664,16 @@ class SimulationInformation(Serializable):
         )
 
 
+# TODO Send it to client
+# def get_size(start_path: str) -> int:
+#     total_size = 0
+#     for directory_path, _, file_names in os.walk(start_path):
+#         for file_name in file_names:
+#             file_path = os.path.join(directory_path, file_name)
+#             total_size += os.path.getsize(file_path)
+#     return total_size
+
+
 # MARK: SVDM
 class SimulationVisualizationDataManager:
     """
@@ -673,14 +683,13 @@ class SimulationVisualizationDataManager:
     __CORRUPTED_FILE_NAME = ".corrupted"
     __SAVED_SIMULATIONS_DIRECTORY_NAME = "saved_simulations"
     __SIMULATION_INFORMATION_FILE_NAME = "simulation_information.json"
-    __POLYLINES_FILE_NAME = "polylines.json"
     __STATES_DIRECTORY_NAME = "states"
 
     __STATES_ORDER_MINIMUM_LENGTH = 8
     __STATES_TIMESTAMP_MINIMUM_LENGTH = 8
 
-    __MINIMUM_STATES_BEFORE = 1
-    __MINIMUM_STATES_AFTER = 1
+    __MINIMUM_STATES_BEFORE = 2
+    __MINIMUM_STATES_AFTER = 2
 
     # MARK: +- Format
     @staticmethod
@@ -884,7 +893,7 @@ class SimulationVisualizationDataManager:
     @staticmethod
     def get_missing_states(
         simulation_id: str, first_order: int, last_order: int, visualization_time: float
-    ) -> tuple[list[VisualizedState], list[int]]:
+    ) -> tuple[list[str], list[int], dict[list[str]]]:
         sorted_states = SimulationVisualizationDataManager.get_sorted_states(
             simulation_id
         )
@@ -921,6 +930,7 @@ class SimulationVisualizationDataManager:
         )
 
         missing_states = []
+        missing_updates = {}
         state_orders_to_keep = []
         for index in range(first_state_index, last_state_index + 1):
             order, state_timestamp = sorted_states[index]
@@ -939,17 +949,16 @@ class SimulationVisualizationDataManager:
             with lock:
                 with open(state_file_path, "r") as file:
                     environment_data = file.readline()
-                    environment = VisualizedEnvironment.deserialize(environment_data)
-                    state = VisualizedState.from_environment(environment)
+                    missing_states.append(environment_data)
 
                     updates_data = file.readlines()
+                    current_state_updates = []
                     for update_data in updates_data:
-                        update = Update.deserialize(update_data)
-                        state.updates.append(update)
+                        current_state_updates.append(update_data)
 
-                    missing_states.append(state)
+                    missing_updates[order] = current_state_updates
 
-        return missing_states, state_orders_to_keep
+        return missing_states, state_orders_to_keep, missing_updates
 
     # MARK: +- Polylines
     @staticmethod
@@ -990,8 +999,6 @@ class SimulationVisualizationDataManager:
 
     @staticmethod
     def set_polylines(simulation_id: str, vehicle: VisualizedVehicle) -> None:
-        timer = Timer()
-        timer.start("set_polylines")
         file_path = (
             SimulationVisualizationDataManager.get_saved_simulation_polylines_file_path(
                 simulation_id, vehicle.vehicle_id
@@ -1007,8 +1014,6 @@ class SimulationVisualizationDataManager:
                 SimulationVisualizationDataManager.__format_json_readable(
                     vehicle.polylines, file
                 )
-
-        timer.end("set_polylines")
 
     @staticmethod
     def get_polylines(

@@ -2,15 +2,11 @@ import datetime
 import inspect
 import logging
 import multiprocessing
-import os
-import tempfile
-import time
 
 from flask_socketio import emit
 from server_utils import (
     CLIENT_ROOM,
     SAVE_VERSION,
-    STATE_SAVE_STEP,
     SimulationStatus,
     get_session_id,
     log,
@@ -362,7 +358,7 @@ class SimulationManager:
         simulation = self.simulations[simulation_id]
 
         try:
-            (missing_states, state_orders_to_keep) = (
+            (missing_states, state_orders_to_keep, missing_updates) = (
                 SimulationVisualizationDataManager.get_missing_states(
                     simulation_id,
                     first_state_order,
@@ -375,7 +371,7 @@ class SimulationManager:
 
             emit(
                 "missing-simulation-states",
-                ([state.serialize() for state in missing_states], state_orders_to_keep),
+                (missing_states, state_orders_to_keep, missing_updates),
                 to=get_session_id(),
             )
 

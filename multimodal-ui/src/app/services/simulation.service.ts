@@ -59,10 +59,26 @@ export class SimulationService {
 
     this.communicationService.on(
       'missing-simulation-states',
-      (rawMissingStates, stateOrdersToKeep) => {
+      (rawMissingStates, stateOrdersToKeep, missingUpdates) => {
         this._simulationStatesSignal.update((states) => {
-          const missingStates = (rawMissingStates as RawSimulationState[])
-            .map((rawState) => this.extractSimulationState(rawState))
+          const parsedMissingStates = (rawMissingStates as string[]).map(
+            (rawState) => JSON.parse(rawState) as RawSimulationState,
+          );
+          const parsedMissingUpdates = Object.entries(
+            missingUpdates as Record<string, string[]>,
+          ).reduce(
+            (acc, [order, rawUpdates]) => {
+              acc[parseInt(order)] = rawUpdates.map(
+                (rawUpdate) => JSON.parse(rawUpdate) as AnySimulationUpdate,
+              );
+              return acc;
+            },
+            {} as Record<number, AnySimulationUpdate[]>,
+          );
+          const missingStates = parsedMissingStates
+            .map((rawState) =>
+              this.extractSimulationState(rawState, parsedMissingUpdates),
+            )
             .filter((state) => state !== null);
 
           return this.mergeStates(
@@ -479,6 +495,7 @@ export class SimulationService {
 
   private extractSimulationState(
     rawSimulationState: RawSimulationState,
+    allUpdates: Record<number, AnySimulationUpdate[]>,
   ): SimulationState | null {
     // TODO Uncomment for debugging
     // console.debug('Extracting simulation state: ', rawSimulationState);
@@ -489,7 +506,7 @@ export class SimulationService {
       return null;
     }
 
-    const rawUpdates = rawSimulationState.updates;
+    const rawUpdates = allUpdates[environment.order];
     if (!Array.isArray(rawUpdates)) {
       console.error('Simulation state updates not found: ', rawUpdates);
       return null;
