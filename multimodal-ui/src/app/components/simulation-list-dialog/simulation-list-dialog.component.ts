@@ -3,6 +3,7 @@ import { Component, computed, Signal } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import JSZip from 'jszip';
 import {
   MatDialogActions,
   MatDialogClose,
@@ -24,8 +25,8 @@ import {
 import { DataService } from '../../services/data.service';
 import { DialogService } from '../../services/dialog.service';
 import { SimulationService } from '../../services/simulation.service';
-import { CommunicationService } from '../../services/communication.service';
 import { HttpService } from '../../services/http.service';
+import { CommunicationService } from '../../services/communication.service';
 
 export type SimulationListDialogData = null;
 
@@ -89,6 +90,7 @@ export class SimulationListDialogComponent {
     private readonly dialogService: DialogService,
     private readonly matDialogRef: MatDialogRef<SimulationListDialogComponent>,
     private httpService: HttpService,
+    private communicationService: CommunicationService,
   ) {}
 
   getColorFromStatus(status: Simulation['status']): string {
@@ -152,35 +154,83 @@ export class SimulationListDialogComponent {
     }
   }
 
-    exportSimulation(name: string) {
-      const folderContents = 'simulation'
-      this.httpService.exportFolder(folderContents, name).subscribe((response: Blob) => {
-        const blob = new Blob([response], { type: 'application/zip' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = name + '.zip';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
+  importSimulation() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.webkitdirectory = true;
+      input.multiple = true;
+  
+      const handleFileChange = async (event: Event) => {
+          const files = (event.target as HTMLInputElement).files;
+          if (!files || files.length === 0) {
+              return;
+          }
+  
+          const zip = new JSZip();
+          const baseFolder = files[0].webkitRelativePath.split('/')[0]; 
+  
+          for (const file of Array.from(files)) {
+              const relativePath = file.webkitRelativePath.replace(baseFolder + '/', '');
+              zip.file(relativePath, file);
+          }
+  
+          const blob = await zip.generateAsync({ type: 'blob' });
+          const formData = new FormData();
+          formData.append('file', blob, 'folder.zip');
+  
+          this.httpService.importFolder('simulation', baseFolder, formData).subscribe({
+            next: (response: { message?: string; error?: string }) => {
+              if (response.message) {
+                console.log('Upload successful:', response.message);
+                this.communicationService.emit('get-simulations');
+              } else if (response.error) {
+                console.error('Upload failed:', response.error);
+              }
+            },
+            error: (err) => {
+              console.error('HTTP error during upload:', err);
+            },
+          });
+      };
+  
+      input.addEventListener('change', (event: Event) => {
+          handleFileChange(event).catch(error => {
+              console.error('Error handling file change:', error);
+          });
       });
+  
+      input.click();
     }
 
-    deleteSimulation(simulationId: string): void {
-      const folderContents = 'simulation';
-      this.httpService.deleteFolder(folderContents, simulationId).subscribe({
-        next: (response: { message?: string; error?: string }) => {
-          if (response.message) {
-            console.log(response.message);
-            this.dataService.removeSimulation(simulationId);
-          } else if (response.error) {
-            console.error('Failed to delete simulation:', response.error);
-          }
-        },
-        error: (err) => {
-          console.error('HTTP error during deletion:', err);
-        },
-      });
-    }
+  exportSimulation(name: string) {
+    const folderContents = 'simulation'
+    this.httpService.exportFolder(folderContents, name).subscribe((response: Blob) => {
+      const blob = new Blob([response], { type: 'application/zip' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name + '.zip';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    });
+  }
+
+  deleteSimulation(simulationId: string): void {
+    const folderContents = 'simulation';
+    this.httpService.deleteFolder(folderContents, simulationId).subscribe({
+      next: (response: { message?: string; error?: string }) => {
+        if (response.message) {
+          console.log(response.message);
+          this.dataService.removeSimulation(simulationId);
+        } else if (response.error) {
+          console.error('Failed to delete simulation:', response.error);
+        }
+      },
+      error: (err) => {
+        console.error('HTTP error during deletion:', err);
+      },
+    });
+  }
 }
