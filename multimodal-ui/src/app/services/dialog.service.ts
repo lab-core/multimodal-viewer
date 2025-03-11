@@ -36,8 +36,9 @@ export class DialogService {
       data,
       disableClose: true,
       autoFocus: false,
-      maxWidth: '80vw',
       maxHeight: '80vh',
+      // To avoid the dialog to change size when the content changes
+      width: '600px',
     });
   }
 
@@ -55,7 +56,7 @@ export class DialogService {
       autoFocus: false,
       maxWidth: '80vw',
       maxHeight: '80vh',
-      minWidth: '30vw',
+      minWidth: '600px',
     });
   }
 

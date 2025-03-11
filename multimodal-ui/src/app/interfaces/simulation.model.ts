@@ -1,3 +1,5 @@
+export const SIMULATION_SAVE_FILE_SEPARATOR = '---';
+
 export type SimulationStatus =
   | 'starting'
   | 'paused'

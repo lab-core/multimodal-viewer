@@ -1,9 +1,12 @@
 import { Component, Inject, OnDestroy, Signal } from '@angular/core';
 import {
+  AbstractControl,
   FormBuilder,
   FormControl,
   FormGroup,
   ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
   Validators,
 } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -21,7 +24,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { Subject, takeUntil } from 'rxjs';
-import { SimulationConfiguration } from '../../interfaces/simulation.model';
+import {
+  SIMULATION_SAVE_FILE_SEPARATOR,
+  SimulationConfiguration,
+} from '../../interfaces/simulation.model';
 import { DataService } from '../../services/data.service';
 
 export interface SimulationConfigurationDialogData {
@@ -78,9 +84,12 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     >,
     private readonly formBuilder: FormBuilder,
   ) {
-    // TODO Validators
     // Initialize form
-    this.nameFormControl = this.formBuilder.control(null);
+    this.nameFormControl = this.formBuilder.control(null, [
+      Validators.minLength(3),
+      Validators.maxLength(50),
+      this.validateName(),
+    ]);
     if (this.data.mode === 'start') {
       // eslint-disable-next-line @typescript-eslint/unbound-method
       this.nameFormControl.addValidators(Validators.required);
@@ -154,10 +163,19 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     return this.dataService.availableSimulationDataSignal;
   }
 
+  refreshAvailableData() {
+    this.dataService.queryAvailableData();
+  }
+
   private buildResult(): SimulationConfigurationDialogResult {
+    let name = this.nameFormControl.value as string;
+    if (typeof name === 'string') {
+      name = name.trim().replace(/\s/g, '_');
+    }
+
     return {
       general: {
-        name: this.nameFormControl.value as string,
+        name,
         data: this.dataFormControl.value as string,
         shouldRunInBackground: !!this.shouldRunInBackgroundFormControl.value,
       },
@@ -175,28 +193,25 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     this.maxTimeFormControl.enable();
   }
 
-  refreshAvailableData() {
-    this.dataService.queryAvailableData();
-  }
+  private validateName(): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      if (
+        typeof control.value === 'string') {
+          // Forbid the use of the simulation save file separator
+          if (
 
-  // TODO Implement or remove
-  // importNewFolder() {
-  // const input = document.createElement('input');
-  // input.type = 'file';
-  // input.webkitdirectory = true; // Allows selecting a folder
-  // input.multiple = true; // Allows multiple files selection
-  // input.addEventListener('change', async (event: Event) => {
-  //   const files = (event.target as HTMLInputElement).files;
-  //   if (!files) return;
-  //   const folderName = files[0].webkitRelativePath.split('/')[0]; // Get the root folder name
-  //   const fileData: { name: string; content: string }[] = [];
-  //   for (const file of Array.from(files)) {
-  //     const content = await file.text(); // Read file content as text (or use FileReader for binary)
-  //     fileData.push({ name: file.webkitRelativePath, content });
-  //   }
-  //   // Emit event to server
-  //   this.dataService.importFolder(folderName, fileData);
-  // });
-  // input.click();
-  // }
+        control.value.match(SIMULATION_SAVE_FILE_SEPARATOR)
+      ) {
+        return { invalidPattern: true };
+
+      }
+      // Forbid the use of characters that might cause issues with the file system
+      else if (
+        control.value.match(/[<>:"/\\|?*]/)
+      ) {
+        return { invalidCharacter: true };
+      }}
+      return null;
+    };
+  }
 }
