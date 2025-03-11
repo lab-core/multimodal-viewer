@@ -17,9 +17,14 @@
               <mat-error>Name must be at least 3 characters long</mat-error>
             } @else if (nameFormControl.hasError("maxlength")) {
               <mat-error>Name must be at most 50 characters long</mat-error>
-            } @else if (nameFormControl.hasError("invalidContainedPattern")) {
+            } @else if (nameFormControl.hasError("invalidPattern")) {
               <mat-error>
                 The name must not contain three successive dashes
+              </mat-error>
+            } @else if (nameFormControl.hasError("invalidCharacter")) {
+              <mat-error>
+                The name muse not contain characters that might affect the file
+                system (e.g. /, \, :, *, ?, ", <, >, |)
               </mat-error>
             }
           </mat-form-field>

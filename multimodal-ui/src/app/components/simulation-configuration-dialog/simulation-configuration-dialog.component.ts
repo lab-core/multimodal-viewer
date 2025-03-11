@@ -196,11 +196,21 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
   private validateName(): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
       if (
-        typeof control.value === 'string' &&
+        typeof control.value === 'string') {
+          // Forbid the use of the simulation save file separator
+          if (
+
         control.value.match(SIMULATION_SAVE_FILE_SEPARATOR)
       ) {
-        return { invalidContainedPattern: true };
+        return { invalidPattern: true };
+
       }
+      // Forbid the use of characters that might cause issues with the file system
+      else if (
+        control.value.match(/[<>:"/\\|?*]/)
+      ) {
+        return { invalidCharacter: true };
+      }}
       return null;
     };
   }
