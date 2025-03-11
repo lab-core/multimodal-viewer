@@ -4,11 +4,12 @@ import 'leaflet-pixi-overlay';
 import * as PIXI from 'pixi.js';
 import { EntityOwner, VehicleEntity } from '../interfaces/entity.model';
 import {
+  Polyline,
+  Polylines,
   SimulationEnvironment,
   Stop,
   Vehicle,
 } from '../interfaces/simulation.model';
-import { Polyline, Polylines } from '../interfaces/simulation.model';
 
 @Injectable({
   providedIn: 'root',
@@ -134,79 +135,49 @@ export class AnimationService {
     this.pause = pause;
   }
 
-  private setVehiclePositions() {
-    // eslint-disable-next-line @typescript-eslint/prefer-for-of
-    for (let index = 0; index < this.vehicles.length; ++index) {
-      const vehicle = this.vehicles[index];
+  centerMap() {
+    if (this.vehicles.length == 0) return;
 
-      if (vehicle.data.polylines == null) {
-        console.error(`Vehicle ${vehicle.data.id} has no polyline.`);
-        continue;
-      }
+    this.unselectVehicle();
 
-      let polylineNo = -1;
-      let polyline = undefined;
-      let lineNo = -1;
-      let lineProgress = -1;
+    const minimumLatitude = Math.min(
+      ...this.vehicles.map((vehicle) => vehicle.sprite.y),
+    );
+    const maximumLatitude = Math.max(
+      ...this.vehicles.map((vehicle) => vehicle.sprite.y),
+    );
 
-      // Vehicle has current stop
-      if (vehicle.data.currentStop) {
-        polylineNo = vehicle.data.previousStops.length;
-        polyline = vehicle.data.polylines[polylineNo];
-        lineNo = 0;
-        lineProgress = 0;
+    const minimumLongitude = Math.min(
+      ...this.vehicles.map((vehicle) => vehicle.sprite.x),
+    );
+    const maximumLongitude = Math.max(
+      ...this.vehicles.map((vehicle) => vehicle.sprite.x),
+    );
 
-        if (polyline == null) {
-          polyline =
-            vehicle.data.polylines[
-              Object.values(vehicle.data.polylines).length - 1
-            ]; // Get last polyline
-        }
+    // Add some padding (at least 10% of the horizontal/vertical space)
+    const padding = 0.1;
 
-        if (vehicle.data.status == 'complete')
-          vehicle.sprite.tint = this.LIGHT_RED;
-        else if (vehicle.data.status == 'idle')
-          vehicle.sprite.tint = this.LIGHT_BLUE;
-        else vehicle.sprite.tint = this.SATURATED_RED;
-      }
-      // Vehicle is (theorhetically) enroute
-      else {
-        polylineNo = vehicle.data.previousStops.length - 1;
+    const horizontalDistance = maximumLongitude - minimumLongitude;
+    const verticalDistance = maximumLatitude - minimumLatitude;
 
-        const departureTime =
-          vehicle.data.previousStops[polylineNo].departureTime ?? 0;
-        const arrivalTime = vehicle.data.nextStops[0].arrivalTime;
+    const southWest = this.utils.layerPointToLatLng(
+      new L.Point(
+        minimumLongitude - padding * horizontalDistance,
+        minimumLatitude - padding * verticalDistance,
+      ),
+    );
 
-        polyline = vehicle.data.polylines[polylineNo];
-        if (!polyline) {
-          console.error(
-            'Could not correctly get polyline.',
-            polylineNo,
-            vehicle.data,
-          );
-          continue;
-        }
+    const northEast = this.utils.layerPointToLatLng(
+      new L.Point(
+        maximumLongitude + padding * horizontalDistance,
+        maximumLatitude + padding * verticalDistance,
+      ),
+    );
 
-        [lineNo, lineProgress] = this.getLineNoAndProgress(
-          polyline,
-          departureTime,
-          arrivalTime,
-        );
-        lineProgress = Math.max(0, lineProgress);
-        lineProgress = Math.min(lineProgress, 1);
-      }
-
-      this.applyInterpolation(
-        vehicle,
-        polyline,
-        polylineNo,
-        lineNo,
-        lineProgress,
-      );
-    }
+    this.utils.getMap().flyToBounds(new L.LatLngBounds(southWest, northEast));
   }
 
-  private setVehiclePositionsV2() {
+  private setVehiclePositions() {
     // eslint-disable-next-line @typescript-eslint/prefer-for-of
     for (let index = 0; index < this.vehicles.length; ++index) {
       const vehicle = this.vehicles[index];
@@ -527,14 +498,13 @@ export class AnimationService {
 
   private onRedraw(event: L.LeafletEvent) {
     if (!this.pause) this.updateAnimationTime();
-    this.setVehiclePositionsV2();
+    this.setVehiclePositions();
   }
 
   // onClick is called after onEntityPointerdown
   private onClick(event: L.LeafletMouseEvent) {
     if (!this.frame_onEntityPointerDownCalled) {
-      this._selectedVehicleSignal.set(null);
-      this.selectedVehiclePolyline.clear();
+      this.unselectVehicle();
     }
     this.frame_onEntityPointerDownCalled = false;
   }
@@ -546,9 +516,18 @@ export class AnimationService {
     const entity = sprite.entity;
     if (!entity) return;
 
-    this._selectedVehicleSignal.set(entity.data);
+    this.selectVehicle(entity.data);
     this.frame_onEntityPointerDownCalled = true;
     console.log('Vehicle selected:', this._selectedVehicleSignal());
+  }
+
+  private selectVehicle(vehicle: Vehicle) {
+    this._selectedVehicleSignal.set(vehicle);
+  }
+
+  private unselectVehicle() {
+    this._selectedVehicleSignal.set(null);
+    this.selectedVehiclePolyline.clear();
   }
 
   addPixiOverlay(map: L.Map) {

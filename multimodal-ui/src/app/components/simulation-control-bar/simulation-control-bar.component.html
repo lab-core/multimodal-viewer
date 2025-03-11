@@ -64,6 +64,14 @@
         </button>
       }
 
+      <button
+        mat-icon-button
+        [matTooltip]="'Center the map'"
+        (click)="centerMap()"
+      >
+        <mat-icon>my_location</mat-icon>
+      </button>
+
       <div [matTooltip]="visualizationTime.toString()">
         {{ visualizationTime | simulationTime }}
       </div>
