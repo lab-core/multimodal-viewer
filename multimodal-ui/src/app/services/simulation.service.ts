@@ -19,6 +19,7 @@ import {
   SIMULATION_UPDATE_TYPES,
   SimulationEnvironment,
   SimulationState,
+  SimulationStates,
   Stop,
   Vehicle,
   VEHICLE_STATUSES,
@@ -37,12 +38,14 @@ export class SimulationService {
   private readonly _activeSimulationIdSignal: WritableSignal<string | null> =
     signal(null);
 
-  private readonly _simulationStatesSignal: WritableSignal<SimulationState[]> =
-    signal([]);
+  private readonly _simulationStatesSignal: WritableSignal<SimulationStates> =
+    signal({ states: [], hasFollowingStates: true });
 
   private readonly _simulationPolylinesSignal: WritableSignal<
     Record<string, Polylines>
   > = signal({});
+
+  private readonly _isFetchingSignal: WritableSignal<boolean> = signal(false);
 
   // MARK: Constructor
   constructor(
@@ -59,7 +62,12 @@ export class SimulationService {
 
     this.communicationService.on(
       'missing-simulation-states',
-      (rawMissingStates, stateOrdersToKeep, missingUpdates) => {
+      (
+        rawMissingStates,
+        missingUpdates,
+        stateOrdersToKeep,
+        hasFollowingStates,
+      ) => {
         this._simulationStatesSignal.update((states) => {
           const parsedMissingStates = (rawMissingStates as string[]).map(
             (rawState) => JSON.parse(rawState) as RawSimulationState,
@@ -81,12 +89,27 @@ export class SimulationService {
             )
             .filter((state) => state !== null);
 
+          // const currentStateOrders = states.states
+          //   .map((state) => state.order)
+          //   .sort((a, b) => a - b);
+          // const missingStateOrders = missingStates
+          //   .map((state) => state.order)
+          //   .sort((a, b) => a - b);
+          // console.log(
+          //   currentStateOrders,
+          //   missingStateOrders,
+          //   stateOrdersToKeep,
+          //   hasFollowingStates,
+          // );
           return this.mergeStates(
-            states,
+            states.states,
             missingStates,
             stateOrdersToKeep as number[],
+            !!hasFollowingStates,
           );
         });
+
+        this._isFetchingSignal.set(false);
       },
     );
 
@@ -107,9 +130,14 @@ export class SimulationService {
 
     this._activeSimulationIdSignal.set(null);
 
-    this._simulationStatesSignal.set([]);
+    this._simulationStatesSignal.set({
+      states: [],
+      hasFollowingStates: true,
+    });
 
     this._simulationPolylinesSignal.set({});
+
+    this._isFetchingSignal.set(false);
 
     this.communicationService.removeAllListeners('missing-simulation-states');
 
@@ -155,6 +183,33 @@ export class SimulationService {
       'edit-simulation-configuration',
       simulationId,
       maxTime,
+    );
+  }
+
+  getMissingSimulationStates(
+    simulationId: string,
+    visualizationTime: number,
+    firstUpdateTime: number,
+    lastUpdateTime: number,
+    polylinesVersion: number,
+  ) {
+    this._isFetchingSignal.set(true);
+
+    console.log('Getting missing simulation states: ', {
+      simulationId,
+      visualizationTime,
+      firstUpdateTime,
+      lastUpdateTime,
+      polylinesVersion,
+    });
+
+    this.communicationService.emit(
+      'get-missing-simulation-states',
+      simulationId,
+      visualizationTime,
+      firstUpdateTime,
+      lastUpdateTime,
+      polylinesVersion,
     );
   }
 
@@ -646,12 +701,16 @@ export class SimulationService {
   }
 
   // MARK: Build environment
-  get simulationStatesSignal(): Signal<SimulationState[]> {
+  get simulationStatesSignal(): Signal<SimulationStates> {
     return this._simulationStatesSignal;
   }
 
   get simulationPolylinesSignal(): Signal<Record<string, Polylines>> {
     return this._simulationPolylinesSignal;
+  }
+
+  get isFetchingSignal(): Signal<boolean> {
+    return this._isFetchingSignal;
   }
 
   /**
@@ -662,7 +721,12 @@ export class SimulationService {
     polylinesByVehicleId: Record<string, Polylines>,
     visualizationTime: number,
   ): SimulationEnvironment {
-    const sortedUpdates = state.updates.sort((a, b) => a.order - b.order);
+    const start = Date.now();
+    const clonedState = structuredClone(state);
+    const end = Date.now();
+    console.log('Cloning time: ', end - start);
+
+    const sortedUpdates = clonedState.updates.sort((a, b) => a.order - b.order);
 
     let lastUpdate: AnySimulationUpdate | null = null;
 
@@ -671,12 +735,12 @@ export class SimulationService {
         break;
       }
 
-      this.applyUpdate(update, state);
+      this.applyUpdate(update, clonedState);
 
       lastUpdate = update;
     }
 
-    for (const [vehicleId, vehicle] of Object.entries(state.vehicles)) {
+    for (const [vehicleId, vehicle] of Object.entries(clonedState.vehicles)) {
       const polylines = polylinesByVehicleId[vehicleId];
       if (!polylines) {
         console.error('Polyline not found for vehicle: ', vehicleId, polylines);
@@ -687,11 +751,11 @@ export class SimulationService {
     }
 
     if (lastUpdate) {
-      state.order = lastUpdate.order;
-      state.timestamp = lastUpdate.timestamp;
+      clonedState.order = lastUpdate.order;
+      clonedState.timestamp = lastUpdate.timestamp;
     }
 
-    return state;
+    return clonedState;
   }
 
   private applyUpdate(
@@ -761,18 +825,17 @@ export class SimulationService {
     states: SimulationState[],
     missingStates: SimulationState[],
     stateOrdersToKeep: number[],
-  ): SimulationState[] {
-    if (missingStates.length === 0) {
-      return states;
-    }
-
-    // Add states to keep
+    hasFollowingStates: boolean,
+  ): SimulationStates {
     for (const state of states) {
       if (stateOrdersToKeep.includes(state.order)) {
         missingStates.push(state);
       }
     }
 
-    return missingStates;
+    return {
+      states: missingStates.sort((a, b) => a.order - b.order),
+      hasFollowingStates,
+    };
   }
 }

@@ -78,14 +78,22 @@ def run_server():
 
     @socketio.on("get-missing-simulation-states")
     def on_client_get_missing_simulation_states(
-        simulation_id, first_state_order, last_state_order, visualization_time
+        simulation_id,
+        visualization_time,
+        first_update_time,
+        last_update_time,
+        polylines_version,
     ):
         log(
-            f"getting missing simulation states for {simulation_id} with orders {first_state_order} and {last_state_order} at time {visualization_time}",
+            f"getting missing simulation states for {simulation_id} with visualization time {visualization_time}, first update time {first_update_time}, last update time {last_update_time} and polylines version {polylines_version}",
             "client",
         )
         simulation_manager.emit_missing_simulation_states(
-            simulation_id, first_state_order, last_state_order, visualization_time
+            simulation_id,
+            visualization_time,
+            first_update_time,
+            last_update_time,
+            polylines_version,
         )
 
     @socketio.on("edit-simulation-configuration")

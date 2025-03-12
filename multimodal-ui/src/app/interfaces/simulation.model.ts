@@ -263,4 +263,9 @@ export interface SimulationState extends SimulationEnvironment {
   updates: AnySimulationUpdate[];
 }
 
+export interface SimulationStates {
+  states: SimulationState[];
+  hasFollowingStates: boolean;
+}
+
 export const STATE_SAVE_STEP = 500;

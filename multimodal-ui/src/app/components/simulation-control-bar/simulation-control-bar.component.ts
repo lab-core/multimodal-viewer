@@ -83,8 +83,8 @@ export class SimulationControlBarComponent {
     return this.visualizationService.isVisualizationPausedSignal;
   }
 
-  get visualizationTimeSignal(): Signal<number | null> {
-    return this.visualizationService.visualizationTimeSignal;
+  get wantedVisualizationTimeSignal(): Signal<number | null> {
+    return this.visualizationService.wantedVisualizationTimeSignal;
   }
 
   // MARK: Handlers

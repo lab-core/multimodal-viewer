@@ -371,9 +371,10 @@ class SimulationManager:
     def emit_missing_simulation_states(
         self,
         simulation_id: str,
-        first_state_order: float,
-        last_state_order: float,
         visualization_time: float,
+        first_update_time: float,
+        last_update_time: float,
+        polyline_version: int,
     ) -> None:
         if simulation_id not in self.simulations:
             log(
@@ -386,20 +387,32 @@ class SimulationManager:
         simulation = self.simulations[simulation_id]
 
         try:
-            (missing_states, state_orders_to_keep, missing_updates) = (
-                SimulationVisualizationDataManager.get_missing_states(
-                    simulation_id,
-                    first_state_order,
-                    last_state_order,
-                    visualization_time,
-                )
+            # TODO Start thread to avoid blocking socket emit
+            (
+                missing_states,
+                missing_updates,
+                state_orders_to_keep,
+                has_following_states,
+            ) = SimulationVisualizationDataManager.get_missing_states(
+                simulation_id,
+                visualization_time,
+                first_update_time,
+                last_update_time,
+                simulation.status not in RUNNING_SIMULATION_STATUSES,
             )
 
+            # TODO Start thread to avoid blocking socket emit
+            # TODO Implement polyline versioning
             self.emit_simulation_polylines(simulation_id)
 
             emit(
                 "missing-simulation-states",
-                (missing_states, state_orders_to_keep, missing_updates),
+                (
+                    missing_states,
+                    missing_updates,
+                    state_orders_to_keep,
+                    has_following_states,
+                ),
                 to=get_session_id(),
             )
 
