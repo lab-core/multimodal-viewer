@@ -899,7 +899,7 @@ class SimulationVisualizationDataManager:
         )
 
         if len(sorted_states) == 0:
-            return [], []
+            return [], [], []
 
         last_state_with_lower_timestamp_index = None
         first_state_with_greater_timestamp_index = None

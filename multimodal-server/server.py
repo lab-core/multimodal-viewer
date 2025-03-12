@@ -1,10 +1,16 @@
 import logging
-import os
 import time
 
 from flask import Flask
 from flask_socketio import SocketIO, emit, join_room, leave_room
-from server_utils import CLIENT_ROOM, HOST, PORT, get_session_id, log
+from server_utils import (
+    CLIENT_ROOM,
+    HOST,
+    PORT,
+    get_available_data,
+    get_session_id,
+    log,
+)
 from simulation_manager import SimulationManager
 
 
@@ -17,13 +23,6 @@ def run_server():
     sockets_types_by_session_id = dict()
 
     simulation_manager = SimulationManager()
-
-    # Define the data directory
-    current_dir = os.path.dirname(os.path.realpath(__file__))
-    data_dir = os.path.join(current_dir, "..", "data")
-
-    # Ensure the data directory exists
-    os.makedirs(data_dir, exist_ok=True)
 
     # MARK: Main events
     @socketio.on("connect")
@@ -75,9 +74,7 @@ def run_server():
     @socketio.on("get-available-data")
     def on_client_get_data():
         log("getting available data", "client")
-        current_dir = os.path.dirname(os.path.realpath(__file__))
-        data_dir = os.path.join(current_dir, "..", "data")
-        emit("available-data", os.listdir(data_dir), to=CLIENT_ROOM)
+        emit("available-data", get_available_data(), to=CLIENT_ROOM)
 
     @socketio.on("get-missing-simulation-states")
     def on_client_get_missing_simulation_states(
@@ -146,11 +143,6 @@ def run_server():
             simulation_id, get_session_id(), simulation_start_time
         )
 
-    @socketio.on("simulation-end")
-    def on_simulation_end(simulation_id):
-        log(f"simulation {simulation_id} ended", "simulation")
-        simulation_manager.on_simulation_end(simulation_id)
-
     @socketio.on("simulation-pause")
     def on_simulation_pause(simulation_id):
         log(f"simulation {simulation_id} paused", "simulation")
@@ -187,15 +179,27 @@ def run_server():
 
     @socketio.on("simulation-identification")
     def on_simulation_identification(
-        simulation_id, timestamp, estimated_end_time, status
+        simulation_id,
+        data,
+        simulation_start_time,
+        timestamp,
+        estimated_end_time,
+        max_time,
+        status,
     ):
         log(
-            f"simulation  {simulation_id} identified with timestamp {timestamp}, estimated end time {estimated_end_time} and status {status}",
+            f"simulation  {simulation_id} identified with data {data}, simulation start time {simulation_start_time}, timestamp {timestamp}, estimated end time {estimated_end_time}, max time {max_time} and status {status}",
             "simulation",
-            logging.DEBUG,
         )
         simulation_manager.on_simulation_identification(
-            simulation_id, timestamp, estimated_end_time, status, get_session_id()
+            simulation_id,
+            data,
+            simulation_start_time,
+            timestamp,
+            estimated_end_time,
+            max_time,
+            status,
+            get_session_id(),
         )
 
     logging.basicConfig(level=logging.DEBUG)
