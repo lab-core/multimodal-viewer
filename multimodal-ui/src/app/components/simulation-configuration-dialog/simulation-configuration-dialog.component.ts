@@ -1,10 +1,13 @@
 import { Component, Inject, OnDestroy, Signal } from '@angular/core';
 import { HttpService } from '../../services/http.service';
 import {
+  AbstractControl,
   FormBuilder,
   FormControl,
   FormGroup,
   ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
   Validators,
 } from '@angular/forms';
 import JSZip from 'jszip';
@@ -23,7 +26,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { Subject, takeUntil } from 'rxjs';
-import { SimulationConfiguration } from '../../interfaces/simulation.model';
+import {
+  SIMULATION_SAVE_FILE_SEPARATOR,
+  SimulationConfiguration,
+} from '../../interfaces/simulation.model';
 import { DataService } from '../../services/data.service';
 
 export interface SimulationConfigurationDialogData {
@@ -66,9 +72,6 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
   readonly nameFormControl: FormControl<string | null>;
   readonly dataFormControl: FormControl<string | null>;
   readonly maxTimeFormControl: FormControl<number | null>;
-  readonly speedFormControl: FormControl<number | null>;
-  readonly timeStepFormControl: FormControl<number | null>;
-  readonly positionTimeStepFormControl: FormControl<number | null>;
   readonly shouldRunInBackgroundFormControl: FormControl<boolean | null>;
 
   private readonly unsubscribe$ = new Subject<void>();
@@ -84,22 +87,28 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     private readonly formBuilder: FormBuilder,
     private httpService: HttpService,
   ) {
-    // TODO Validators
     // Initialize form
     this.nameFormControl = this.formBuilder.control(null, [
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      Validators.required,
+      Validators.minLength(3),
+      Validators.maxLength(50),
+      this.validateName(),
     ]);
-    this.dataFormControl = this.formBuilder.control(null, [
+    if (this.data.mode === 'start') {
       // eslint-disable-next-line @typescript-eslint/unbound-method
-      Validators.required,
-    ]);
+      this.nameFormControl.addValidators(Validators.required);
+    }
+
+    this.dataFormControl = this.formBuilder.control(null);
+    if (this.data.mode === 'start') {
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      this.dataFormControl.addValidators(Validators.required);
+    }
+
     this.shouldRunInBackgroundFormControl = this.formBuilder.control(false);
 
-    this.maxTimeFormControl = this.formBuilder.control(null);
-    this.speedFormControl = this.formBuilder.control(null);
-    this.timeStepFormControl = this.formBuilder.control(null);
-    this.positionTimeStepFormControl = this.formBuilder.control(null);
+    this.maxTimeFormControl = this.formBuilder.control(null, [
+      Validators.min(0),
+    ]);
 
     this.generalFormGroup = this.formBuilder.group({
       name: this.nameFormControl,
@@ -109,9 +118,6 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
 
     this.configurationFormGroup = this.formBuilder.group({
       maxTime: this.maxTimeFormControl,
-      speed: this.speedFormControl,
-      timeStep: this.timeStepFormControl,
-      positionTimeStep: this.positionTimeStepFormControl,
     });
 
     this.formGroup = this.formBuilder.group({
@@ -122,13 +128,6 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     // Prefill form
     if (this.data.mode === 'edit' && this.data.currentConfiguration) {
       this.maxTimeFormControl.setValue(this.data.currentConfiguration.maxTime);
-      this.speedFormControl.setValue(this.data.currentConfiguration.speed);
-      this.timeStepFormControl.setValue(
-        this.data.currentConfiguration.timeStep,
-      );
-      this.positionTimeStepFormControl.setValue(
-        this.data.currentConfiguration.positionTimeStep,
-      );
     }
 
     // Disable fields if data is not provided
@@ -167,40 +166,57 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     return this.dataService.availableSimulationDataSignal;
   }
 
+  refreshAvailableData() {
+    this.dataService.queryAvailableData();
+  }
+
   private buildResult(): SimulationConfigurationDialogResult {
+    let name = this.nameFormControl.value as string;
+    if (typeof name === 'string') {
+      name = name.trim().replace(/\s/g, '_');
+    }
+
     return {
       general: {
-        name: this.nameFormControl.value as string,
+        name,
         data: this.dataFormControl.value as string,
         shouldRunInBackground: !!this.shouldRunInBackgroundFormControl.value,
       },
       configuration: {
         maxTime: this.maxTimeFormControl.value,
-        speed: this.speedFormControl.value,
-        timeStep: this.timeStepFormControl.value,
-        positionTimeStep: this.positionTimeStepFormControl.value,
       },
     };
   }
 
   private disableConfigurationFields() {
     this.maxTimeFormControl.disable();
-    this.speedFormControl.disable();
-    this.timeStepFormControl.disable();
-    this.positionTimeStepFormControl.disable();
   }
 
   private enableConfigurationFields() {
     this.maxTimeFormControl.enable();
-    this.speedFormControl.enable();
-    this.timeStepFormControl.enable();
-    this.positionTimeStepFormControl.enable();
   }
 
-  refreshAvailableData() {
-    this.dataService.queryAvailableData();
-  }
+  private validateName(): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      if (
+        typeof control.value === 'string') {
+          // Forbid the use of the simulation save file separator
+          if (
 
+        control.value.match(SIMULATION_SAVE_FILE_SEPARATOR)
+      ) {
+        return { invalidPattern: true };
+      }
+      // Forbid the use of characters that might cause issues with the file system
+      else if (
+        control.value.match(/[<>:"/\\|?*]/)
+      ) {
+        return { invalidCharacter: true };
+      }}
+      return null;
+    };
+  }
+  
   importInputData() {
     const input = document.createElement('input');
     input.type = 'file';
@@ -270,5 +286,4 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
         console.error('HTTP error during deletion:', err);
       },
     });
-  }
 }

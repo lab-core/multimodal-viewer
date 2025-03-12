@@ -1,4 +1,3 @@
-<!-- TODO Add Help and validation -->
 <h2 mat-dialog-title>Configure Simulation</h2>
 
 <mat-dialog-content>
@@ -7,20 +6,44 @@
       <h3>General</h3>
 
       <div formGroupName="general">
-        <section class="flex-row gap-1-rem">
-          <mat-form-field>
+        <section class="flex-row gap-1-rem no-stretch">
+          <mat-form-field [subscriptSizing]="'dynamic'">
             <input matInput formControlName="name" />
             <mat-label>Name</mat-label>
+            <mat-hint>Spaces will be replaced by underscores</mat-hint>
+            @if (nameFormControl.hasError("required")) {
+              <mat-error>Name is required</mat-error>
+            } @else if (nameFormControl.hasError("minlength")) {
+              <mat-error>Name must be at least 3 characters long</mat-error>
+            } @else if (nameFormControl.hasError("maxlength")) {
+              <mat-error>Name must be at most 50 characters long</mat-error>
+            } @else if (nameFormControl.hasError("invalidPattern")) {
+              <mat-error>
+                The name must not contain three successive dashes
+              </mat-error>
+            } @else if (nameFormControl.hasError("invalidCharacter")) {
+              <mat-error>
+                The name muse not contain characters that might affect the file
+                system (e.g. /, \, :, *, ?, ", <, >, |)
+              </mat-error>
+            }
           </mat-form-field>
 
-          <mat-form-field>
-            <mat-select formControlName="data" (openedChange)="refreshAvailableData()">
+          <mat-form-field [subscriptSizing]="'dynamic'">
+            <mat-select
+              formControlName="data"
+              (openedChange)="refreshAvailableData()"
+            >
               <mat-option (click)="importInputData()">➕ Import New Folder</mat-option> 
+
               @for (data of availableSimulationDataSignal(); track data) {
                 <mat-option [value]="data">{{ data }}</mat-option>
               }
             </mat-select>
             <mat-label>Data</mat-label>
+            @if (dataFormControl.hasError("required")) {
+              <mat-error>Data is required</mat-error>
+            }
           </mat-form-field>
         </section>
 
@@ -43,31 +66,13 @@
         </span>
       }
 
-      <div>
-        <section class="flex-row gap-1-rem">
-          <mat-form-field>
-            <input type="number" matInput formControlName="maxTime" />
-            <mat-label>Max Time</mat-label>
-          </mat-form-field>
-
-          <mat-form-field>
-            <input type="number" matInput formControlName="speed" />
-            <mat-label>Speed</mat-label>
-          </mat-form-field>
-        </section>
-
-        <section class="flex-row gap-1-rem">
-          <mat-form-field>
-            <input type="number" matInput formControlName="timeStep" />
-            <mat-label>Time Step</mat-label>
-          </mat-form-field>
-
-          <mat-form-field>
-            <input type="number" matInput formControlName="positionTimeStep" />
-            <mat-label>Position Time Step</mat-label>
-          </mat-form-field>
-        </section>
-      </div>
+      <mat-form-field>
+        <input type="number" matInput formControlName="maxTime" />
+        <mat-label>Maximal Simulation Time</mat-label>
+        @if (maxTimeFormControl.hasError("min")) {
+          <mat-error>Max Time must be greater than 0</mat-error>
+        }
+      </mat-form-field>
     </div>
   </form>
 </mat-dialog-content>

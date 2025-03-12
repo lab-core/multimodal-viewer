@@ -69,6 +69,7 @@
                   mat-icon-button
                   [disabled]="isConfigureButtonDisabled"
                   [matTooltip]="'Configure'"
+                  (click)="editSimulationConfiguration(simulation)"
                 >
                   <mat-icon>settings</mat-icon>
                 </button>

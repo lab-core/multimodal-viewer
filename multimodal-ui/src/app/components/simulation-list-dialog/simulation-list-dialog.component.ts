@@ -22,6 +22,7 @@ import {
   RUNNING_SIMULATION_STATUSES,
   Simulation,
 } from '../../interfaces/simulation.model';
+import { CommunicationService } from '../../services/communication.service';
 import { DataService } from '../../services/data.service';
 import { DialogService } from '../../services/dialog.service';
 import { SimulationService } from '../../services/simulation.service';
@@ -114,6 +115,26 @@ export class SimulationListDialogComponent {
       case 'corrupted':
         return 'red';
     }
+  }
+
+  async editSimulationConfiguration(simulation: Simulation) {
+    const result = await firstValueFrom(
+      this.dialogService
+        .openSimulationConfigurationDialog({
+          mode: 'edit',
+          currentConfiguration: simulation.configuration,
+        })
+        .afterClosed(),
+    );
+
+    if (!result) {
+      return;
+    }
+
+    this.simulationService.editSimulationConfiguration(
+      simulation.id,
+      result.configuration.maxTime,
+    );
   }
 
   async stopSimulation(simulation: Simulation): Promise<void> {

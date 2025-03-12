@@ -75,7 +75,27 @@ export class HomeComponent {
         this.communicationService.on(uniqueId, async (id: string) => {
           clearTimeout(timeout);
           this.loadingService.stop();
-          await this.router.navigate([`visualize/${id}`]);
+
+          if (!result.general.shouldRunInBackground) {
+            await this.router.navigate([`visualize/${id}`]);
+          } else {
+            await firstValueFrom(
+              this.dialogService
+                .openInformationDialog({
+                  title: 'Simulation started',
+                  message:
+                    'The simulation is starting in the background. You can check its status in the simulations list.',
+                  type: 'info',
+                  confirmButtonOverride: null,
+                  cancelButtonOverride: null,
+                  canCancel: false,
+                })
+                .afterClosed(),
+            );
+
+            this.shouldShowMainMenuSignal.set(true);
+            return;
+          }
           resolve();
         });
 
@@ -84,6 +104,7 @@ export class HomeComponent {
           result.general.name,
           result.general.data,
           uniqueId,
+          result.configuration.maxTime,
         );
       });
 

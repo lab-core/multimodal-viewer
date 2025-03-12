@@ -64,7 +64,17 @@
         </button>
       }
 
-      <div>{{ visualizationTime }}</div>
+      <button
+        mat-icon-button
+        [matTooltip]="'Center the map'"
+        (click)="centerMap()"
+      >
+        <mat-icon>my_location</mat-icon>
+      </button>
+
+      <div [matTooltip]="visualizationTime.toString()">
+        {{ visualizationTime | simulationTime }}
+      </div>
 
       <div class="flex-1 slider">
         <mat-slider
@@ -107,8 +117,8 @@
 
       <button
         mat-icon-button
-        disabled
         [matTooltip]="'Configure the simulation'"
+        (click)="editSimulationConfiguration(simulation)"
       >
         <mat-icon>settings</mat-icon>
       </button>

@@ -139,7 +139,7 @@ export class VisualizationService {
       );
       environment.timestamp = visualizationTime;
 
-      this.visualizationEnvironment = structuredClone(environment);
+      this.visualizationEnvironment = environment;
 
       return environment;
     });
