@@ -19,16 +19,16 @@
       "request": "launch",
       "program": "${workspaceFolder}/multimodal-server/simulation.py",
       "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/multimodal-server",
+      "cwd": "${workspaceFolder}/multimodal-server"
       // "justMyCode": false,
-      "args": [
-        "--name",
-        "launch",
-        "--data",
-        "instance_very_small_16",
-        "--max-time",
-        "60000"
-      ]
+      // "args": [
+      //   "--name",
+      //   "launch",
+      //   "--data",
+      //   "instance_very_small_16",
+      //   "--max-time",
+      //   "60000"
+      // ]
     }
   ]
 }
