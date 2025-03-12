@@ -286,4 +286,5 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
         console.error('HTTP error during deletion:', err);
       },
     });
+  }
 }

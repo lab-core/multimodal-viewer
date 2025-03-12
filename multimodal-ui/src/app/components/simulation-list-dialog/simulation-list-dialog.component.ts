@@ -27,7 +27,6 @@ import { DataService } from '../../services/data.service';
 import { DialogService } from '../../services/dialog.service';
 import { SimulationService } from '../../services/simulation.service';
 import { HttpService } from '../../services/http.service';
-import { CommunicationService } from '../../services/communication.service';
 
 export type SimulationListDialogData = null;
 
