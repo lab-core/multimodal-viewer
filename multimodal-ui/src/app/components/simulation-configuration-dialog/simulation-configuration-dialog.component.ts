@@ -240,7 +240,7 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     input.click();
   }
 
-  exportSimulation(name: string) {
+  exportInputData(name: string) {
     const folderContents = 'input_data'
     this.httpService.exportFolder(folderContents, name).subscribe((response: Blob) => {
       const blob = new Blob([response], { type: 'application/zip' });
@@ -255,7 +255,7 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     });
   }
 
-  deleteSimulation(simulationId: string): void {
+  deleteInputData(simulationId: string): void {
     const folderContents = 'input_data';
     this.httpService.deleteFolder(folderContents, simulationId).subscribe({
       next: (response: { message?: string; error?: string }) => {
