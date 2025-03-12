@@ -58,8 +58,11 @@ class SimulationVisualizationDataCollector(DataCollector):
     sio: Client
     simulation_information: SimulationInformation
     current_save_file_path: str
+    max_time: float | None
 
-    def __init__(self, simulation_id: str, data: str, sio: Client) -> None:
+    def __init__(
+        self, simulation_id: str, data: str, sio: Client, max_time: float | None
+    ) -> None:
         self.simulation_id = simulation_id
         self.update_counter = 0
         self.visualized_environment = VisualizedEnvironment()
@@ -71,6 +74,8 @@ class SimulationVisualizationDataCollector(DataCollector):
 
         self.current_save_file_path = None
 
+        self.max_time = max_time
+
     # MARK: +- Collect
     def collect(
         self,
@@ -79,6 +84,8 @@ class SimulationVisualizationDataCollector(DataCollector):
         event_index: Optional[int] = None,
         event_priority: Optional[int] = None,
     ) -> None:
+        env.simulation_config.max_time = self.max_time
+
         if current_event is None:
             return
 
@@ -106,7 +113,7 @@ class SimulationVisualizationDataCollector(DataCollector):
             data: VisualizedVehicle = update.data
             if data.polylines is not None:
                 SimulationVisualizationDataManager.set_polylines(
-                    self.simulation_id, self.visualized_environment
+                    self.simulation_id, data
                 )
         elif update.type == UpdateType.UPDATE_PASSENGER_STATUS:
             passenger = self.visualized_environment.get_passenger(
@@ -150,21 +157,21 @@ class SimulationVisualizationDataCollector(DataCollector):
                 )
                 self.visualized_environment.timestamp = update.timestamp
 
-            if (
-                environment.estimated_end_time
-                != self.visualized_environment.estimated_end_time
-            ):
+            estimated_end_time = min(
+                environment.estimated_end_time,
+                (
+                    self.max_time
+                    if self.max_time is not None
+                    else environment.estimated_end_time
+                ),
+            )
+            if estimated_end_time != self.visualized_environment.estimated_end_time:
                 # Notify the server that the simulation estimated end time has been updated
                 self.sio.emit(
                     "simulation-update-estimated-end-time",
-                    (
-                        self.simulation_id,
-                        environment.estimated_end_time,
-                    ),
+                    (self.simulation_id, estimated_end_time),
                 )
-                self.visualized_environment.estimated_end_time = (
-                    environment.estimated_end_time
-                )
+                self.visualized_environment.estimated_end_time = estimated_end_time
 
         SimulationVisualizationDataManager.save_update(
             self.current_save_file_path, update
@@ -374,7 +381,7 @@ class SimulationVisualizationDataCollector(DataCollector):
             if vehicle.polylines != existing_vehicle.polylines:
                 existing_vehicle.polylines = vehicle.polylines
                 SimulationVisualizationDataManager.set_polylines(
-                    self.simulation_id, self.visualized_environment
+                    self.simulation_id, existing_vehicle
                 )
 
             self.add_update(
@@ -453,10 +460,13 @@ class SimulationVisualizationVisualizer(Visualizer):
 
 # MARK: Environment Observer
 class SimulationVisualizationEnvironmentObserver(EnvironmentObserver):
+    data_collector: SimulationVisualizationDataCollector
 
-    def __init__(self, simulation_id: str, data: str, sio: Client) -> None:
+    def __init__(
+        self, simulation_id: str, data: str, sio: Client, max_time: float | None
+    ) -> None:
         self.data_collector = SimulationVisualizationDataCollector(
-            simulation_id, data, sio
+            simulation_id, data, sio, max_time
         )
         super().__init__(
             visualizers=SimulationVisualizationVisualizer(
@@ -464,3 +474,11 @@ class SimulationVisualizationEnvironmentObserver(EnvironmentObserver):
             ),
             data_collectors=self.data_collector,
         )
+
+    @property
+    def max_time(self) -> float | None:
+        return self.data_collector.max_time
+
+    @max_time.setter
+    def max_time(self, max_time: float | None) -> None:
+        self.data_collector.max_time = max_time

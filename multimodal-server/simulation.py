@@ -10,13 +10,13 @@ from simulation_visualization_data_collector import (
 from socketio import Client
 
 
-def run_simulation(simulation_id: str, data: str) -> None:
+def run_simulation(simulation_id: str, data: str, max_time: float | None) -> None:
     sio = Client()
 
     status = SimulationStatus.STARTING
 
     environment_observer = SimulationVisualizationEnvironmentObserver(
-        simulation_id, data, sio
+        simulation_id, data, sio, max_time
     )
 
     @sio.on("pause-simulation")
@@ -51,6 +51,10 @@ def run_simulation(simulation_id: str, data: str) -> None:
                 status.value,
             ),
         )
+
+    @sio.on("edit-simulation-configuration")
+    def on_edit_simulation_configuration(max_time: float | None):
+        environment_observer.max_time = max_time
 
     sio.connect(f"http://{HOST}:{PORT}", auth={"type": "simulation"})
 

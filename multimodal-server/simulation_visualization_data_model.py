@@ -8,7 +8,7 @@ from multimodalsim.simulator.request import Trip
 from multimodalsim.simulator.stop import Stop
 from multimodalsim.simulator.vehicle import Route, Vehicle
 from multimodalsim.state_machine.status import PassengerStatus, VehicleStatus
-from server_utils import SAVE_VERSION
+from server_utils import SAVE_VERSION, SIMULATION_SAVE_FILE_SEPARATOR
 
 
 # MARK: Enums
@@ -590,7 +590,7 @@ class VisualizedState(VisualizedEnvironment):
 
 # MARK: Simulation Information
 class SimulationInformation(Serializable):
-    version: str
+    version: int
     simulation_id: str
     name: str
     start_time: str
@@ -606,7 +606,7 @@ class SimulationInformation(Serializable):
         simulation_start_time: str | None,
         simulation_end_time: str | None,
         last_update_order: int | None,
-        version: str = None,
+        version: int | None,
     ) -> None:
         self.version = version
         if self.version is None:
@@ -614,8 +614,8 @@ class SimulationInformation(Serializable):
 
         self.simulation_id = simulation_id
 
-        self.name = simulation_id.split("-")[2]
-        self.start_time = "-".join(simulation_id.split("-")[:2])
+        self.name = simulation_id.split(SIMULATION_SAVE_FILE_SEPARATOR)[1]
+        self.start_time = simulation_id.split(SIMULATION_SAVE_FILE_SEPARATOR)[0]
         self.data = data
 
         self.simulation_start_time = simulation_start_time
@@ -646,7 +646,7 @@ class SimulationInformation(Serializable):
         if "version" not in data or "simulationId" not in data:
             raise ValueError("Invalid data for SimulationInformation")
 
-        version = str(data["version"])
+        version = int(data["version"])
         simulation_id = str(data["simulationId"])
         simulation_data = str(data["data"])
 
@@ -664,6 +664,16 @@ class SimulationInformation(Serializable):
         )
 
 
+# TODO Send it to client
+# def get_size(start_path: str) -> int:
+#     total_size = 0
+#     for directory_path, _, file_names in os.walk(start_path):
+#         for file_name in file_names:
+#             file_path = os.path.join(directory_path, file_name)
+#             total_size += os.path.getsize(file_path)
+#     return total_size
+
+
 # MARK: SVDM
 class SimulationVisualizationDataManager:
     """
@@ -673,14 +683,13 @@ class SimulationVisualizationDataManager:
     __CORRUPTED_FILE_NAME = ".corrupted"
     __SAVED_SIMULATIONS_DIRECTORY_NAME = "saved_simulations"
     __SIMULATION_INFORMATION_FILE_NAME = "simulation_information.json"
-    __POLYLINES_FILE_NAME = "polylines.json"
     __STATES_DIRECTORY_NAME = "states"
 
     __STATES_ORDER_MINIMUM_LENGTH = 8
     __STATES_TIMESTAMP_MINIMUM_LENGTH = 8
 
-    __MINIMUM_STATES_BEFORE = 1
-    __MINIMUM_STATES_AFTER = 1
+    __MINIMUM_STATES_BEFORE = 2
+    __MINIMUM_STATES_AFTER = 2
 
     # MARK: +- Format
     @staticmethod
@@ -884,17 +893,20 @@ class SimulationVisualizationDataManager:
     @staticmethod
     def get_missing_states(
         simulation_id: str, first_order: int, last_order: int, visualization_time: float
-    ) -> tuple[list[VisualizedState], list[int]]:
+    ) -> tuple[list[str], list[int], dict[list[str]]]:
         sorted_states = SimulationVisualizationDataManager.get_sorted_states(
             simulation_id
         )
 
-        first_state_with_equal_timestamp_index = None
+        if len(sorted_states) == 0:
+            return [], []
+
+        last_state_with_lower_timestamp_index = None
         first_state_with_greater_timestamp_index = None
 
         for index, (order, state_timestamp) in enumerate(sorted_states):
-            if state_timestamp == visualization_time:
-                first_state_with_equal_timestamp_index = index
+            if state_timestamp < visualization_time:
+                last_state_with_lower_or_equal_timestamp_index = index
             elif state_timestamp > visualization_time:
                 first_state_with_greater_timestamp_index = index
                 break
@@ -902,10 +914,10 @@ class SimulationVisualizationDataManager:
         if first_state_with_greater_timestamp_index is None:
             first_state_with_greater_timestamp_index = len(sorted_states)
 
-        if first_state_with_equal_timestamp_index is None:
-            first_state_index = first_state_with_greater_timestamp_index - 1
+        if last_state_with_lower_timestamp_index is None:
+            first_state_index = 0
         else:
-            first_state_index = first_state_with_equal_timestamp_index - 1
+            first_state_index = last_state_with_lower_timestamp_index + 1
 
         last_state_index = first_state_with_greater_timestamp_index - 1
 
@@ -921,6 +933,7 @@ class SimulationVisualizationDataManager:
         )
 
         missing_states = []
+        missing_updates = {}
         state_orders_to_keep = []
         for index in range(first_state_index, last_state_index + 1):
             order, state_timestamp = sorted_states[index]
@@ -939,27 +952,40 @@ class SimulationVisualizationDataManager:
             with lock:
                 with open(state_file_path, "r") as file:
                     environment_data = file.readline()
-                    environment = VisualizedEnvironment.deserialize(environment_data)
-                    state = VisualizedState.from_environment(environment)
+                    missing_states.append(environment_data)
 
                     updates_data = file.readlines()
+                    current_state_updates = []
                     for update_data in updates_data:
-                        update = Update.deserialize(update_data)
-                        state.updates.append(update)
+                        current_state_updates.append(update_data)
 
-                    missing_states.append(state)
+                    missing_updates[order] = current_state_updates
 
-        return missing_states, state_orders_to_keep
+        return missing_states, state_orders_to_keep, missing_updates
 
     # MARK: +- Polylines
     @staticmethod
-    def get_saved_simulation_polylines_file_path(simulation_id: str) -> str:
+    def get_saved_simulation_polylines_directory_path(simulation_id: str) -> str:
         simulation_directory_path = (
             SimulationVisualizationDataManager.get_saved_simulation_directory_path(
                 simulation_id
             )
         )
-        file_path = f"{simulation_directory_path}/{SimulationVisualizationDataManager.__POLYLINES_FILE_NAME}"
+        directory_path = f"{simulation_directory_path}/polylines"
+
+        if not os.path.exists(directory_path):
+            os.makedirs(directory_path)
+
+        return directory_path
+
+    @staticmethod
+    def get_saved_simulation_polylines_file_path(
+        simulation_id: str, vehicle_id: str
+    ) -> str:
+        directory_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_directory_path(
+            simulation_id
+        )
+        file_path = f"{directory_path}/{vehicle_id}.json"
 
         if not os.path.exists(file_path):
             with open(file_path, "w") as file:
@@ -968,39 +994,50 @@ class SimulationVisualizationDataManager:
         return file_path
 
     @staticmethod
-    def set_polylines(simulation_id: str, environment: VisualizedEnvironment) -> None:
+    def get_saved_simulation_all_polylines_file_path(simulation_id: str) -> list[str]:
+        directory_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_directory_path(
+            simulation_id
+        )
+        return [f"{directory_path}/{file}" for file in os.listdir(directory_path)]
+
+    @staticmethod
+    def set_polylines(simulation_id: str, vehicle: VisualizedVehicle) -> None:
         file_path = (
             SimulationVisualizationDataManager.get_saved_simulation_polylines_file_path(
-                simulation_id
+                simulation_id, vehicle.vehicle_id
             )
         )
 
-        lock = FileLock(f"{file_path}.lock")
-
-        polylines_by_vehicle_id = {
-            vehicle_id: vehicle.polylines
-            for vehicle_id, vehicle in environment.vehicles.items()
-        }
+        # This lock file is the same for all vehicles to prevent reading and writing two
+        # different vehicles at the same time.
+        lock = FileLock(f"{simulation_id}.lock")
 
         with lock:
             with open(file_path, "w") as file:
                 SimulationVisualizationDataManager.__format_json_readable(
-                    polylines_by_vehicle_id, file
+                    vehicle.polylines, file
                 )
 
     @staticmethod
     def get_polylines(
         simulation_id: str,
-    ) -> dict[str, dict[str, tuple[str, list[float]]]]:
-        file_path = (
-            SimulationVisualizationDataManager.get_saved_simulation_polylines_file_path(
-                simulation_id
-            )
+    ) -> dict[str, str]:
+        """
+        Get all polylines as unparsed JSON strings by vehicle ID.
+        """
+
+        polylines = {}
+
+        lock = FileLock(f"{simulation_id}.lock")
+
+        all_polylines_file_paths = SimulationVisualizationDataManager.get_saved_simulation_all_polylines_file_path(
+            simulation_id
         )
 
-        lock = FileLock(f"{file_path}.lock")
-
         with lock:
-            with open(file_path, "r") as file:
-                data = file.read()
-                return json.loads(data)
+            for file_path in all_polylines_file_paths:
+                with open(file_path, "r") as file:
+                    vehicle_id = file_path.split("/")[-1].split(".")[0]
+                    polylines[vehicle_id] = file.read()
+
+        return polylines

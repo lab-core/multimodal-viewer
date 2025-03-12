@@ -5,7 +5,7 @@
   <h3>Actions</h3>
 
   <section class="flex-row gap-1-rem">
-    <button mat-raised-button [matTooltip]="'Import a simulation'">
+    <button mat-raised-button [matTooltip]="'Import a simulation'" (click)="importSimulation()">
       <mat-icon>cloud_upload</mat-icon>
       <span>Import</span>
     </button>
@@ -69,6 +69,7 @@
                   mat-icon-button
                   [disabled]="isConfigureButtonDisabled"
                   [matTooltip]="'Configure'"
+                  (click)="editSimulationConfiguration(simulation)"
                 >
                   <mat-icon>settings</mat-icon>
                 </button>
@@ -103,10 +104,11 @@
               }
 
               @if (group.group === "completed") {
-                <button mat-icon-button [matTooltip]="'Export'">
+                <button mat-icon-button [matTooltip]="'Export'" (click)="exportSimulation(simulation.id)">
                   <mat-icon>cloud_download</mat-icon>
+                  
                 </button>
-                <button mat-icon-button [matTooltip]="'Delete'">
+                <button mat-icon-button [matTooltip]="'Delete'" (click)="deleteSimulation(simulation.id)">
                   <mat-icon>delete</mat-icon>
                 </button>
               }

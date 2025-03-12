@@ -22,12 +22,14 @@
       <mat-card-content class="flex-1">
         <mat-card-title>Simulation: {{ simulation.name }}</mat-card-title>
         <mat-card-subtitle>Source: {{ simulation.data }}</mat-card-subtitle>
-        <mat-card-subtitle
-          >Current simulation time:
-          {{
-            simulation.simulationTime?.toString() ?? "null"
-          }}</mat-card-subtitle
-        >
+        <mat-card-subtitle>
+          Current simulation time:
+          {{ simulation.simulationTime ?? "null" }}
+        </mat-card-subtitle>
+        <mat-card-subtitle>
+          Max simulation time:
+          {{ simulation.configuration.maxTime ?? "null" }}
+        </mat-card-subtitle>
         <mat-card-subtitle>
           Passengers ({{ totalNumberOfPassengers }})
         </mat-card-subtitle>
@@ -74,6 +76,7 @@
     (pauseSimulation)="pauseSimulation($event)"
     (resumeSimulation)="resumeSimulation($event)"
     (stopSimulation)="stopSimulation($event)"
+    (editSimulationConfiguration)="editSimulationConfiguration($event)"
     (leaveVisualization)="leaveVisualization()"
   ></app-simulation-control-bar>
 }

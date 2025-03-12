@@ -2,40 +2,21 @@ import datetime
 import inspect
 import logging
 import multiprocessing
-import os
-import tempfile
-import time
 
 from flask_socketio import emit
 from server_utils import (
     CLIENT_ROOM,
     SAVE_VERSION,
-    STATE_SAVE_STEP,
+    SIMULATION_SAVE_FILE_SEPARATOR,
     SimulationStatus,
     get_session_id,
     log,
 )
 from simulation import run_simulation
-from simulation_visualization_data_model import SimulationVisualizationDataManager
-
-
-class MinimalistSimulationConfiguration:
-    max_time: float | None
-    time_step: float | None
-    speed: float | None
-    update_position_time_step: float | None
-
-    def __init__(
-        self,
-        max_time: float | None,
-        time_step: float | None,
-        speed: float | None,
-        update_position_time_step: float | None,
-    ):
-        self.max_time = max_time
-        self.time_step = time_step
-        self.speed = speed
-        self.update_position_time_step = update_position_time_step
+from simulation_visualization_data_model import (
+    SimulationInformation,
+    SimulationVisualizationDataManager,
+)
 
 
 class SimulationHandler:
@@ -53,6 +34,8 @@ class SimulationHandler:
     simulation_time: float | None
     simulation_estimated_end_time: float | None
 
+    max_time: float | None
+
     def __init__(
         self,
         simulation_id: str,
@@ -60,7 +43,8 @@ class SimulationHandler:
         start_time: float,
         data: str,
         status: SimulationStatus,
-        process: multiprocessing.Process | None = None,
+        max_time: float | None,
+        process: multiprocessing.Process | None,
     ) -> None:
         self.simulation_id = simulation_id
         self.name = name
@@ -76,6 +60,8 @@ class SimulationHandler:
         self.simulation_time = None
         self.simulation_estimated_end_time = None
 
+        self.max_time = max_time
+
 
 class SimulationManager:
     simulations: dict[str, SimulationHandler]
@@ -84,7 +70,7 @@ class SimulationManager:
         self.simulations = {}
 
     def start_simulation(
-        self, name: str, data: str, response_event: str
+        self, name: str, data: str, response_event: str, max_time: float | None
     ) -> SimulationHandler:
         # Get the current time
         start_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S%f")
@@ -92,10 +78,10 @@ class SimulationManager:
         start_time = start_time[:-3]
 
         # Start time first to sort easily
-        simulation_id = f"{start_time}-{name}"
+        simulation_id = f"{start_time}{SIMULATION_SAVE_FILE_SEPARATOR}{name}"
 
         simulation_process = multiprocessing.Process(
-            target=run_simulation, args=(simulation_id, data)
+            target=run_simulation, args=(simulation_id, data, max_time)
         )
 
         simulation_handler = SimulationHandler(
@@ -104,6 +90,7 @@ class SimulationManager:
             start_time,
             data,
             SimulationStatus.STARTING,
+            max_time,
             simulation_process,
         )
 
@@ -222,6 +209,31 @@ class SimulationManager:
 
         self.emit_simulations()
 
+    def edit_simulation_configuration(
+        self, simulation_id: str, max_time: float | None
+    ) -> None:
+        if simulation_id not in self.simulations:
+            log(
+                f"{__file__} {inspect.currentframe().f_lineno}: Simulation {simulation_id} not found",
+                "server",
+                logging.ERROR,
+            )
+            return
+
+        simulation = self.simulations[simulation_id]
+
+        simulation.max_time = max_time
+
+        emit("edit-simulation-configuration", (max_time,), to=simulation.socket_id)
+
+        self.emit_simulations()
+
+        log(
+            f"Emitted simulations with new max time {max_time} for simulation {simulation_id}",
+            "server",
+            logging.WARN,
+        )
+
     def on_simulation_disconnect(self, socket_id):
         matching_simulation_ids = [
             simulation_id
@@ -334,6 +346,11 @@ class SimulationManager:
                     simulation.simulation_estimated_end_time
                 )
 
+            if simulation.max_time is not None:
+                serialized_simulation["configuration"] = {
+                    "maxTime": simulation.max_time
+                }
+
             serialized_simulations.append(serialized_simulation)
 
         emit(
@@ -362,7 +379,7 @@ class SimulationManager:
         simulation = self.simulations[simulation_id]
 
         try:
-            (missing_states, state_orders_to_keep) = (
+            (missing_states, state_orders_to_keep, missing_updates) = (
                 SimulationVisualizationDataManager.get_missing_states(
                     simulation_id,
                     first_state_order,
@@ -375,7 +392,7 @@ class SimulationManager:
 
             emit(
                 "missing-simulation-states",
-                ([state.serialize() for state in missing_states], state_orders_to_keep),
+                (missing_states, state_orders_to_keep, missing_updates),
                 to=get_session_id(),
             )
 
@@ -449,19 +466,11 @@ class SimulationManager:
 
                 # Verify the version of the save file
                 version = simulation_information.version
-                major_version, minor_version = version.split(".")
 
-                save_major_version, save_minor_version = SAVE_VERSION.split(".")
-
-                status = SimulationStatus.OUTDATED
-                if major_version == save_major_version:
-                    if minor_version <= save_minor_version:
-                        status = SimulationStatus.COMPLETED
-                    elif minor_version > save_minor_version:
-                        status = SimulationStatus.FUTURE
-                elif major_version < save_major_version:
+                status = SimulationStatus.COMPLETED
+                if version < SAVE_VERSION:
                     status = SimulationStatus.OUTDATED
-                else:
+                elif version > SAVE_VERSION:
                     status = SimulationStatus.FUTURE
 
                 if status == SimulationStatus.OUTDATED:
@@ -483,6 +492,8 @@ class SimulationManager:
                     simulation_information.start_time,
                     simulation_information.data,
                     status,
+                    None,
+                    None,
                 )
 
                 simulation.simulation_start_time = (
@@ -510,6 +521,8 @@ class SimulationManager:
                 "unknown",
                 "unknown",
                 SimulationStatus.CORRUPTED,
+                None,
+                None,
             )
 
             self.simulations[simulation_id] = simulation

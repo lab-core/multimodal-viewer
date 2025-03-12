@@ -10,16 +10,16 @@ export class HttpService {
 
   constructor(private http: HttpClient) {}
 
-  exportInputData(folderName: string): Observable<Blob> {
-    return this.http.get(this.apiUrl + `input_data/${folderName}`, { responseType: 'blob' });
+  exportFolder(folderContent: string, folderName: string): Observable<Blob> {
+    return this.http.get(this.apiUrl + `${folderContent}/${folderName}`, { responseType: 'blob' });
   }
 
-  importInputData(folderName: string, formData: FormData): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(this.apiUrl + `input_data/${folderName}`, formData);
+  importFolder(folderContent: string, folderName: string, formData: FormData): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(this.apiUrl + `${folderContent}/${folderName}`, formData);
   }
 
-  deleteInputData(folderName: string): Observable<{ message: string }> {
-    return this.http.delete<{ message: string }>(this.apiUrl + `input_data/${folderName}`);
+  deleteFolder(folderContent: string, folderName: string): Observable<{ message: string }> {
+    return this.http.delete<{ message: string }>(this.apiUrl + `${folderContent}/${folderName}`);
   }
   
 }

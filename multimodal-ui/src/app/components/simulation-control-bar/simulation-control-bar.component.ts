@@ -13,6 +13,7 @@ import { MatSliderModule } from '@angular/material/slider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Simulation } from '../../interfaces/simulation.model';
 import { SimulationTimePipe } from '../../pipes/simulation-time.pipe';
+import { AnimationService } from '../../services/animation.service';
 import { VisualizationService } from '../../services/visualization.service';
 
 @Component({
@@ -51,8 +52,15 @@ export class SimulationControlBarComponent {
     alias: 'leaveVisualization',
   });
 
+  readonly editSimulationConfigurationOutput = output<Simulation>({
+    alias: 'editSimulationConfiguration',
+  });
+
   // MARK: Constructor
-  constructor(private readonly visualizationService: VisualizationService) {}
+  constructor(
+    private readonly visualizationService: VisualizationService,
+    private readonly animationService: AnimationService,
+  ) {}
 
   // MARK: Getters
   get isInitializedSignal(): Signal<boolean> {
@@ -96,8 +104,16 @@ export class SimulationControlBarComponent {
     }
   }
 
+  centerMap() {
+    this.animationService.centerMap();
+  }
+
   stopSimulation(id: string) {
     this.stopSimulationOutput.emit(id);
+  }
+
+  editSimulationConfiguration(simulation: Simulation) {
+    this.editSimulationConfigurationOutput.emit(simulation);
   }
 
   leaveVisualization(): void {
