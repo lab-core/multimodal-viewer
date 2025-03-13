@@ -115,6 +115,11 @@ class SimulationVisualizationDataCollector(DataCollector):
                 SimulationVisualizationDataManager.set_polylines(
                     self.simulation_id, data
                 )
+                if self.sio.connected:
+                    self.sio.emit(
+                        "simulation-update-polylines-version",
+                        self.simulation_id,
+                    )
         elif update.type == UpdateType.UPDATE_PASSENGER_STATUS:
             passenger = self.visualized_environment.get_passenger(
                 update.data.passenger_id
@@ -384,6 +389,11 @@ class SimulationVisualizationDataCollector(DataCollector):
                 SimulationVisualizationDataManager.set_polylines(
                     self.simulation_id, existing_vehicle
                 )
+                if self.sio.connected:
+                    self.sio.emit(
+                        "simulation-update-polylines-version",
+                        self.simulation_id,
+                    )
 
             self.add_update(
                 Update(

@@ -108,6 +108,11 @@ export interface Simulation {
    * Current configuration of the simulation
    */
   configuration: SimulationConfiguration;
+
+  /**
+   * Version of the polylines
+   */
+  polylinesVersion: number;
 }
 
 export interface SimulationConfiguration {
@@ -167,6 +172,11 @@ export interface Polyline {
 }
 
 export type Polylines = Record<string, Polyline>;
+
+export interface AllPolylines {
+  version: number;
+  polylinesByVehicleId: Record<string, Polylines>;
+}
 
 export interface Stop {
   arrivalTime: number;

@@ -684,6 +684,9 @@ class SimulationVisualizationDataManager:
     __SAVED_SIMULATIONS_DIRECTORY_NAME = "saved_simulations"
     __SIMULATION_INFORMATION_FILE_NAME = "simulation_information.json"
     __STATES_DIRECTORY_NAME = "states"
+    __POLYLINES_DIRECTORY_NAME = "polylines"
+    __POLYLINES_VERSION_FILE_NAME = "version"
+    __POLYLINES_BY_VEHICLE_ID_DIRECTORY_NAME = "by_vehicle_id"
 
     __STATES_ORDER_MINIMUM_LENGTH = 8
     __STATES_TIMESTAMP_MINIMUM_LENGTH = 8
@@ -1056,13 +1059,17 @@ class SimulationVisualizationDataManager:
 
     # MARK: +- Polylines
     @staticmethod
+    def get_saved_simulation_polylines_lock(simulation_id: str) -> FileLock:
+        return FileLock(f"{simulation_id}.lock")
+
+    @staticmethod
     def get_saved_simulation_polylines_directory_path(simulation_id: str) -> str:
         simulation_directory_path = (
             SimulationVisualizationDataManager.get_saved_simulation_directory_path(
                 simulation_id
             )
         )
-        directory_path = f"{simulation_directory_path}/polylines"
+        directory_path = f"{simulation_directory_path}/{SimulationVisualizationDataManager.__POLYLINES_DIRECTORY_NAME}"
 
         if not os.path.exists(directory_path):
             os.makedirs(directory_path)
@@ -1070,10 +1077,71 @@ class SimulationVisualizationDataManager:
         return directory_path
 
     @staticmethod
+    def get_saved_simulation_polylines_version_file_path(simulation_id: str) -> str:
+        directory_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_directory_path(
+            simulation_id
+        )
+        file_path = f"{directory_path}/{SimulationVisualizationDataManager.__POLYLINES_VERSION_FILE_NAME}"
+
+        if not os.path.exists(file_path):
+            with open(file_path, "w") as file:
+                file.write(str(0))
+
+        return file_path
+
+    @staticmethod
+    def set_polylines_version(simulation_id: str, version: int) -> None:
+        """
+        Should always be called in a lock.
+        """
+        file_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_version_file_path(
+            simulation_id
+        )
+
+        with open(file_path, "w") as file:
+            file.write(str(version))
+
+    @staticmethod
+    def get_polylines_version(simulation_id: str) -> int:
+        """
+        Should always be called in a lock.
+        """
+        file_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_version_file_path(
+            simulation_id
+        )
+
+        with open(file_path, "r") as file:
+            return int(file.read())
+
+    @staticmethod
+    def get_polylines_version_with_lock(simulation_id: str) -> int:
+        lock = SimulationVisualizationDataManager.get_saved_simulation_polylines_lock(
+            simulation_id
+        )
+        with lock:
+            return SimulationVisualizationDataManager.get_polylines_version(
+                simulation_id
+            )
+
+    @staticmethod
+    def get_saved_simulation_polylines_by_vehicle_id_directory_path(
+        simulation_id: str,
+    ) -> str:
+        directory_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_directory_path(
+            simulation_id
+        )
+        polylines_by_vehicle_id_directory_path = f"{directory_path}/{SimulationVisualizationDataManager.__POLYLINES_BY_VEHICLE_ID_DIRECTORY_NAME}"
+
+        if not os.path.exists(polylines_by_vehicle_id_directory_path):
+            os.makedirs(polylines_by_vehicle_id_directory_path)
+
+        return polylines_by_vehicle_id_directory_path
+
+    @staticmethod
     def get_saved_simulation_polylines_file_path(
         simulation_id: str, vehicle_id: str
     ) -> str:
-        directory_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_directory_path(
+        directory_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_by_vehicle_id_directory_path(
             simulation_id
         )
         file_path = f"{directory_path}/{vehicle_id}.json"
@@ -1085,8 +1153,8 @@ class SimulationVisualizationDataManager:
         return file_path
 
     @staticmethod
-    def get_saved_simulation_all_polylines_file_path(simulation_id: str) -> list[str]:
-        directory_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_directory_path(
+    def get_saved_simulation_all_polylines_file_paths(simulation_id: str) -> list[str]:
+        directory_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_by_vehicle_id_directory_path(
             simulation_id
         )
         return [f"{directory_path}/{file}" for file in os.listdir(directory_path)]
@@ -1101,9 +1169,20 @@ class SimulationVisualizationDataManager:
 
         # This lock file is the same for all vehicles to prevent reading and writing two
         # different vehicles at the same time.
-        lock = FileLock(f"{simulation_id}.lock")
+        lock = SimulationVisualizationDataManager.get_saved_simulation_polylines_lock(
+            simulation_id
+        )
 
         with lock:
+            # Increment the version to notify the client that the polylines have changed
+            version = SimulationVisualizationDataManager.get_polylines_version(
+                simulation_id
+            )
+            version += 1
+            SimulationVisualizationDataManager.set_polylines_version(
+                simulation_id, version
+            )
+
             with open(file_path, "w") as file:
                 SimulationVisualizationDataManager.__format_json_readable(
                     vehicle.polylines, file
@@ -1112,23 +1191,31 @@ class SimulationVisualizationDataManager:
     @staticmethod
     def get_polylines(
         simulation_id: str,
-    ) -> dict[str, str]:
+    ) -> tuple[dict[str, str], int]:
         """
-        Get all polylines as unparsed JSON strings by vehicle ID.
+        Get all polylines as unparsed JSON strings by vehicle ID, and the version of the polylines.
         """
 
         polylines = {}
 
-        lock = FileLock(f"{simulation_id}.lock")
-
-        all_polylines_file_paths = SimulationVisualizationDataManager.get_saved_simulation_all_polylines_file_path(
+        lock = SimulationVisualizationDataManager.get_saved_simulation_polylines_lock(
             simulation_id
         )
 
+        all_polylines_file_paths = SimulationVisualizationDataManager.get_saved_simulation_all_polylines_file_paths(
+            simulation_id
+        )
+
+        version = 0
+
         with lock:
+            version = SimulationVisualizationDataManager.get_polylines_version(
+                simulation_id
+            )
+
             for file_path in all_polylines_file_paths:
                 with open(file_path, "r") as file:
                     vehicle_id = file_path.split("/")[-1].split(".")[0]
                     polylines[vehicle_id] = file.read()
 
-        return polylines
+        return polylines, version

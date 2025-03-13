@@ -21,9 +21,13 @@ export class VisualizationService {
   // MARK: Properties
   private timeout: number | null = null;
 
-  private readonly MIN_DEBOUNCE_TIME = 800;
-  private fetchTimeout: number | null = null;
-  private lastFetchTime = 0;
+  private readonly MIN_STATES_DEBOUNCE_TIME = 800;
+  private fetchStatesTimeout: number | null = null;
+  private lastFetchStatesTime = 0;
+
+  private readonly MIN_POLYLINES_DEBOUNCE_TIME = 800;
+  private fetchPolylinesTimeout: number | null = null;
+  private lastFetchPolylinesTime = 0;
 
   private speed = 1;
 
@@ -127,7 +131,7 @@ export class VisualizationService {
 
       const environment = this.simulationService.buildEnvironment(
         state,
-        polylines,
+        polylines?.polylinesByVehicleId ?? {},
         wantedVisualizationTime,
       );
 
@@ -193,7 +197,7 @@ export class VisualizationService {
       }
 
       const simulationStates = this.simulationService.simulationStatesSignal();
-      const isFetching = this.simulationService.isFetchingSignal();
+      const isFetching = this.simulationService.isFetchingStatesSignal();
 
       // Find first and last update time
       let firstUpdateTime = -1;
@@ -244,7 +248,6 @@ export class VisualizationService {
           wantedVisualizationTime,
           firstUpdateTime,
           lastUpdateTime,
-          5, // TODO
         );
       }
 
@@ -252,6 +255,24 @@ export class VisualizationService {
         wantedVisualizationTime < firstUpdateTime ||
           wantedVisualizationTime > lastUpdateTime,
       );
+    });
+
+    effect(() => {
+      const simulation = this.simulationService.activeSimulationSignal();
+
+      if (simulation === null) {
+        return;
+      }
+
+      const polylines = this.simulationService.simulationPolylinesSignal();
+      const isFetching = this.simulationService.isFetchingPolylinesSignal();
+
+      const needPolylineUpdate =
+        polylines === null || polylines.version !== simulation.polylinesVersion;
+
+      if (needPolylineUpdate && !isFetching) {
+        this.getPolylines(simulation.id);
+      }
     });
   }
 
@@ -359,38 +380,57 @@ export class VisualizationService {
     wantedVisualizationTime: number,
     firstUpdateTime: number,
     lastUpdateTime: number,
-    polylinesVersion: number,
   ) {
-    if (this.fetchTimeout !== null) {
-      clearTimeout(this.fetchTimeout);
-      this.fetchTimeout = null;
+    if (this.fetchStatesTimeout !== null) {
+      clearTimeout(this.fetchStatesTimeout);
+      this.fetchStatesTimeout = null;
     }
 
     const currentTime = Date.now();
-    const timeSinceLastDebounce = currentTime - this.lastFetchTime;
+    const timeSinceLastDebounce = currentTime - this.lastFetchStatesTime;
 
-    if (timeSinceLastDebounce < this.MIN_DEBOUNCE_TIME) {
-      this.fetchTimeout = setTimeout(() => {
-        this.fetchTimeout = null;
-        this.lastFetchTime = currentTime;
+    if (timeSinceLastDebounce < this.MIN_STATES_DEBOUNCE_TIME) {
+      this.fetchStatesTimeout = setTimeout(() => {
+        this.fetchStatesTimeout = null;
+        this.lastFetchStatesTime = currentTime;
         this.simulationService.getMissingSimulationStates(
           simulationId,
           wantedVisualizationTime,
           firstUpdateTime,
           lastUpdateTime,
-          polylinesVersion,
         );
-      }, this.MIN_DEBOUNCE_TIME - timeSinceLastDebounce) as unknown as number;
+      }, this.MIN_STATES_DEBOUNCE_TIME - timeSinceLastDebounce) as unknown as number;
       return;
     }
 
-    this.lastFetchTime = currentTime;
+    this.lastFetchStatesTime = currentTime;
     this.simulationService.getMissingSimulationStates(
       simulationId,
       wantedVisualizationTime,
       firstUpdateTime,
       lastUpdateTime,
-      polylinesVersion,
     );
+  }
+
+  private getPolylines(simulationId: string) {
+    if (this.fetchPolylinesTimeout !== null) {
+      clearTimeout(this.fetchPolylinesTimeout);
+      this.fetchPolylinesTimeout = null;
+    }
+
+    const currentTime = Date.now();
+    const timeSinceLastDebounce = currentTime - this.lastFetchPolylinesTime;
+
+    if (timeSinceLastDebounce < this.MIN_POLYLINES_DEBOUNCE_TIME) {
+      this.fetchPolylinesTimeout = setTimeout(() => {
+        this.fetchPolylinesTimeout = null;
+        this.lastFetchPolylinesTime = currentTime;
+        this.simulationService.getPolylines(simulationId);
+      }, this.MIN_POLYLINES_DEBOUNCE_TIME - timeSinceLastDebounce) as unknown as number;
+      return;
+    }
+
+    this.lastFetchPolylinesTime = currentTime;
+    this.simulationService.getPolylines(simulationId);
   }
 }

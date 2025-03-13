@@ -7,6 +7,7 @@ import {
 } from '@angular/core';
 import { decode } from 'polyline';
 import {
+  AllPolylines,
   AnySimulationUpdate,
   Passenger,
   PASSENGER_STATUSES,
@@ -41,11 +42,13 @@ export class SimulationService {
   private readonly _simulationStatesSignal: WritableSignal<SimulationStates> =
     signal({ states: [], hasFollowingStates: true });
 
-  private readonly _simulationPolylinesSignal: WritableSignal<
-    Record<string, Polylines>
-  > = signal({});
+  private readonly _simulationPolylinesSignal: WritableSignal<AllPolylines | null> =
+    signal(null);
 
-  private readonly _isFetchingSignal: WritableSignal<boolean> = signal(false);
+  private readonly _isFetchingStatesSignal: WritableSignal<boolean> =
+    signal(false);
+  private readonly _isFetchingPolylinesSignal: WritableSignal<boolean> =
+    signal(false);
 
   // MARK: Constructor
   constructor(
@@ -97,17 +100,20 @@ export class SimulationService {
           );
         });
 
-        this._isFetchingSignal.set(false);
+        this._isFetchingStatesSignal.set(false);
       },
     );
 
     this.communicationService.on(
       `polylines-${simulationId}`,
-      (polylinesByVehicleId) => {
+      (polylinesByVehicleId, version) => {
+        this._isFetchingPolylinesSignal.set(false);
+
         this._simulationPolylinesSignal.set(
           this.extractPolylines(
             polylinesByVehicleId as unknown as Record<string, string>,
-          ) ?? {},
+            version as number,
+          ) ?? null,
         );
       },
     );
@@ -123,9 +129,10 @@ export class SimulationService {
       hasFollowingStates: true,
     });
 
-    this._simulationPolylinesSignal.set({});
+    this._simulationPolylinesSignal.set(null);
 
-    this._isFetchingSignal.set(false);
+    this._isFetchingStatesSignal.set(false);
+    this._isFetchingPolylinesSignal.set(false);
 
     this.communicationService.removeAllListeners('missing-simulation-states');
 
@@ -179,9 +186,8 @@ export class SimulationService {
     visualizationTime: number,
     firstUpdateTime: number,
     lastUpdateTime: number,
-    polylinesVersion: number,
   ) {
-    this._isFetchingSignal.set(true);
+    this._isFetchingStatesSignal.set(true);
 
     this.communicationService.emit(
       'get-missing-simulation-states',
@@ -189,8 +195,13 @@ export class SimulationService {
       visualizationTime,
       firstUpdateTime,
       lastUpdateTime,
-      polylinesVersion,
     );
+  }
+
+  getPolylines(simulationId: string) {
+    this._isFetchingPolylinesSignal.set(true);
+
+    this.communicationService.emit('get-polylines', simulationId);
   }
 
   // MARK: Data extraction
@@ -573,7 +584,8 @@ export class SimulationService {
 
   private extractPolylines(
     rawPolylinesByVehicleId: Record<string, string>,
-  ): Record<string, Polylines> | null {
+    version: number,
+  ): AllPolylines | null {
     const parsedPolylinesByVehicleId = Object.entries(
       rawPolylinesByVehicleId,
     ).reduce(
@@ -589,8 +601,13 @@ export class SimulationService {
       return null;
     }
 
+    if (typeof version !== 'number') {
+      console.error('Polylines version not found: ', version);
+      return null;
+    }
+
     if (Object.keys(parsedPolylinesByVehicleId).length === 0) {
-      return {};
+      return { version, polylinesByVehicleId: {} };
     }
 
     const polylinesByVehicleId: Record<string, Polylines> = {};
@@ -677,7 +694,7 @@ export class SimulationService {
       polylinesByVehicleId[vehicleId] = polylines;
     }
 
-    return polylinesByVehicleId;
+    return { version, polylinesByVehicleId };
   }
 
   // MARK: Build environment
@@ -685,12 +702,16 @@ export class SimulationService {
     return this._simulationStatesSignal;
   }
 
-  get simulationPolylinesSignal(): Signal<Record<string, Polylines>> {
+  get simulationPolylinesSignal(): Signal<AllPolylines | null> {
     return this._simulationPolylinesSignal;
   }
 
-  get isFetchingSignal(): Signal<boolean> {
-    return this._isFetchingSignal;
+  get isFetchingStatesSignal(): Signal<boolean> {
+    return this._isFetchingStatesSignal;
+  }
+
+  get isFetchingPolylinesSignal(): Signal<boolean> {
+    return this._isFetchingPolylinesSignal;
   }
 
   /**
@@ -701,9 +722,7 @@ export class SimulationService {
     polylinesByVehicleId: Record<string, Polylines>,
     visualizationTime: number,
   ): SimulationEnvironment {
-    const start = Date.now();
     const clonedState = structuredClone(state);
-    const end = Date.now();
 
     const sortedUpdates = clonedState.updates.sort((a, b) => a.order - b.order);
 
