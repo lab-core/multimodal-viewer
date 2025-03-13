@@ -222,7 +222,7 @@ export class SimulationListDialogComponent {
       input.click();
     }
 
-  exportSimulation(name: string) {
+  exportSimulation(simulationId: string) {
     const folderContents = 'simulation'
     this.httpService.exportFolder(folderContents, name).subscribe((response: Blob) => {
       const blob = new Blob([response], { type: 'application/zip' });
