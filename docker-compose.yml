@@ -7,10 +7,10 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
     ports:
-      - "4200:4200"
-    volumes:
-      - ./multimodal-ui:/app/visualizer
-      - /app/visualizer/node_modules
+      - "80:80"
+    # volumes:
+      # - ./multimodal-ui:/app/visualizer
+      # - /app/visualizer/node_modules
     networks:
       - multimodal-network
     depends_on:
