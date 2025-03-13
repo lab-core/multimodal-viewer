@@ -1,7 +1,7 @@
 import os
+import sys
 import threading
 
-from multimodalsim.observer.environment_observer import EnvironmentObserver
 from multimodalsim.simulator.simulator import Simulator
 from server_utils import (
     HOST,
@@ -9,6 +9,7 @@ from server_utils import (
     SimulationStatus,
     build_simulation_id,
     get_available_data,
+    set_event_on_input,
     verify_simulation_name,
 )
 from simulation_visualization_data_collector import (
@@ -17,7 +18,12 @@ from simulation_visualization_data_collector import (
 from socketio import Client
 
 
-def run_simulation(simulation_id: str, data: str, max_time: float | None) -> None:
+def run_simulation(
+    simulation_id: str,
+    data: str,
+    max_time: float | None,
+    stop_event: threading.Event | None = None,
+) -> None:
     sio = Client(reconnection_attempts=1)
 
     status = SimulationStatus.STARTING
@@ -81,29 +87,31 @@ def run_simulation(simulation_id: str, data: str, max_time: float | None) -> Non
 
     status = SimulationStatus.RUNNING
 
-    # Listen for a keyboard interrupt
-    try:
-        # Wait for the thread to finish while checking for keyboard interrupts
-        while simulation_thread.is_alive():
-            simulation_thread.join(timeout=1)
-            if not sio.connected and status != SimulationStatus.STOPPING:
-                try:
-                    print("Trying to reconnect")
-                    sio.connect(f"http://{HOST}:{PORT}", auth={"type": "simulation"})
-                except Exception as e:
-                    print(f"Failed to connect to server: {e}")
-                    print("Continuing in offline mode")
+    # Wait for the thread to finish while reconnecting if necessary
+    while simulation_thread.is_alive() and (
+        stop_event is None or not stop_event.is_set()
+    ):
+        simulation_thread.join(timeout=5)
+        if not sio.connected and status != SimulationStatus.STOPPING:
+            try:
+                print("Trying to reconnect")
+                sio.connect(f"http://{HOST}:{PORT}", auth={"type": "simulation"})
+            except Exception as e:
+                print(f"Failed to connect to server: {e}")
+                print("Continuing in offline mode")
 
-    except KeyboardInterrupt:
-        print("Ending simulation")
-        status = SimulationStatus.STOPPING
-        simulator.stop()
+    status = SimulationStatus.STOPPING
+    simulator.stop()
+
+    if stop_event is not None:
+        stop_event.set()
 
     # Wait for the simulation to end
     simulation_thread.join()
-
     if sio.connected:
         sio.disconnect()
+
+    sio.wait()
 
 
 if __name__ == "__main__":
@@ -161,7 +169,19 @@ if __name__ == "__main__":
         f"Running simulation with id: {simulation_id}, data: {data} and {f'max time: {max_time}' if max_time is not None else 'no max time'}"
     )
 
-    run_simulation(simulation_id, data, max_time)
+    stop_event = threading.Event()
+    input_listener_thread = threading.Thread(
+        target=set_event_on_input,
+        args=("stop the simulation", "q", stop_event),
+        name="InputListener",
+        # This is a daemon thread, so it will be
+        # automatically terminated when the main thread is terminated.
+        daemon=True,
+    )
+
+    input_listener_thread.start()
+
+    run_simulation(simulation_id, data, max_time, stop_event)
 
     print("To run a simulation with the same configuration, use the following command:")
     print(

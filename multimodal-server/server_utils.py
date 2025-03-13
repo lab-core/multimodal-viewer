@@ -1,6 +1,7 @@
 import datetime
 import logging
 import os
+import threading
 from enum import Enum
 
 from flask import request
@@ -95,3 +96,16 @@ def verify_simulation_name(name: str | None) -> str | None:
     elif any(char in name for char in ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]):
         return 'The name muse not contain characters that might affect the file system (e.g. /, \, :, *, ?, ", <, >, |)'
     return None
+
+
+def set_event_on_input(action: str, key: str, event: threading.Event) -> None:
+    try:
+        user_input = ""
+        while user_input != key:
+            user_input = input(f"Press {key} to {action}: ")
+
+    except EOFError:
+        pass
+
+    print(f"Received {key}: {action}")
+    event.set()
