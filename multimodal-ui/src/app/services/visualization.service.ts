@@ -138,7 +138,7 @@ export class VisualizationService {
       return environment;
     });
 
-  private readonly _isLoadingSignal: WritableSignal<boolean> = signal(false);
+  private readonly _isLoadingSignal: WritableSignal<boolean> = signal(true);
 
   readonly firstLoadedTimeSignal: Signal<number | null> = computed(() => {
     const simulationStates = this.simulationService.simulationStatesSignal();
