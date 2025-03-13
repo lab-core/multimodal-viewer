@@ -42,7 +42,6 @@ def run_simulation(simulation_id: str, data: str, max_time: float | None) -> Non
     def stopSimulator():
         simulator.stop()
         status = SimulationStatus.STOPPING
-        sio.disconnect()
 
     @sio.on("connect")
     def on_connect():
@@ -106,9 +105,6 @@ def run_simulation(simulation_id: str, data: str, max_time: float | None) -> Non
     if sio.connected:
         sio.disconnect()
 
-    # Wait for the socket to disconnect
-    sio.wait()
-
 
 if __name__ == "__main__":
     import argparse
@@ -169,5 +165,5 @@ if __name__ == "__main__":
 
     print("To run a simulation with the same configuration, use the following command:")
     print(
-        f"python simulation.py {name} --data {data}{f' --max-time {max_time}' if max_time is not None else ''}"
+        f"python --name simulation.py {name} --data {data}{f' --max-time {max_time}' if max_time is not None else ''}"
     )
