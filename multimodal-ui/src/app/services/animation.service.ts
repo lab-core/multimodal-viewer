@@ -50,8 +50,6 @@ export class AnimationService {
   }
 
   synchronizeEnvironment(simulationEnvironment: SimulationEnvironment) {
-    console.log('[Simulation Environment]', simulationEnvironment);
-
     this.selectedVehiclePolyline.clear();
     this.container.removeChildren();
     this.container.addChild(this.selectedVehiclePolyline);
@@ -518,7 +516,6 @@ export class AnimationService {
 
     this.selectVehicle(entity.data);
     this.frame_onEntityPointerDownCalled = true;
-    console.log('Vehicle selected:', this._selectedVehicleSignal());
   }
 
   private selectVehicle(vehicle: Vehicle) {

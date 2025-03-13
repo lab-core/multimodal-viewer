@@ -140,6 +140,32 @@ export class VisualizationService {
 
   private readonly _isLoadingSignal: WritableSignal<boolean> = signal(false);
 
+  readonly firstLoadedTimeSignal: Signal<number | null> = computed(() => {
+    const simulationStates = this.simulationService.simulationStatesSignal();
+
+    if (simulationStates.states.length === 0) {
+      return null;
+    }
+
+    return simulationStates.states[0].timestamp;
+  });
+
+  readonly lastLoadedTimeSignal: Signal<number | null> = computed(() => {
+    const simulationStates = this.simulationService.simulationStatesSignal();
+
+    if (simulationStates.states.length === 0) {
+      return null;
+    }
+
+    const lastState = simulationStates.states.slice(-1)[0];
+
+    if (lastState.updates.length === 0) {
+      return null;
+    }
+
+    return lastState.updates.slice(-1)[0].timestamp;
+  });
+
   // MARK: Constructor
   constructor(
     private readonly injector: Injector,
@@ -213,7 +239,6 @@ export class VisualizationService {
       }
 
       if (!isFetching) {
-        console.log(simulationStates.states.length);
         this.getMissingSimulationStates(
           simulation.id,
           wantedVisualizationTime,
@@ -227,11 +252,6 @@ export class VisualizationService {
         wantedVisualizationTime < firstUpdateTime ||
           wantedVisualizationTime > lastUpdateTime,
       );
-    });
-
-    effect(() => {
-      const isLoading = this._isLoadingSignal();
-      console.log('isLoading', isLoading);
     });
   }
 

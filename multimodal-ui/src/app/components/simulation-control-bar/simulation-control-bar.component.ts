@@ -87,6 +87,14 @@ export class SimulationControlBarComponent {
     return this.visualizationService.wantedVisualizationTimeSignal;
   }
 
+  get firstLoadedTimeSignal(): Signal<number | null> {
+    return this.visualizationService.firstLoadedTimeSignal;
+  }
+
+  get lastLoadedTimeSignal(): Signal<number | null> {
+    return this.visualizationService.lastLoadedTimeSignal;
+  }
+
   // MARK: Handlers
   toggleVisualizationPause(wasPaused: boolean): void {
     if (wasPaused) {

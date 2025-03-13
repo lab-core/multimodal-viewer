@@ -980,14 +980,13 @@ class SimulationVisualizationDataManager:
         missing_states = []
         missing_updates = {}
 
-        last_state_order_in_client = index
+        last_state_index_in_client = -1
 
         while (
             index < len(sorted_states)
             and len(missing_states) + len(state_orders_to_keep)
             < SimulationVisualizationDataManager.__MAX_STATES_IN_CLIENT
         ):
-            last_state_order_in_client = index
             order, state_timestamp = sorted_states[index]
 
             # If the client already has the state, skip it
@@ -997,8 +996,9 @@ class SimulationVisualizationDataManager:
                 <= index
                 <= first_state_with_greater_timestamp_than_last_update_index
             ):
-                index += 1
+                last_state_index_in_client = index
                 state_orders_to_keep.append(order)
+                index += 1
                 continue
 
             # Don't add states if the max number of states is reached
@@ -1030,15 +1030,22 @@ class SimulationVisualizationDataManager:
 
                     missing_updates[order] = current_state_updates
 
+                    last_state_index_in_client = index
+
             index += 1
 
+        client_has_last_state = last_state_index_in_client == len(sorted_states) - 1
+        client_has_max_states = (
+            len(missing_states) + len(state_orders_to_keep)
+            >= SimulationVisualizationDataManager.__MAX_STATES_IN_CLIENT
+        )
+
         has_following_states = (
-            (
-                len(missing_states) + len(state_orders_to_keep)
-                < SimulationVisualizationDataManager.__MAX_STATES_IN_CLIENT
-            )
+            is_simulation_complete
+            and not client_has_last_state
+            and not client_has_max_states
             or not is_simulation_complete
-            and last_state_order_in_client == len(sorted_states) - 1
+            and (client_has_last_state or not client_has_max_states)
         )
         return (
             missing_states,

@@ -5,6 +5,8 @@
 @let simulationEndTime = simulationEndTimeSignal();
 @let visualizationMaxTime = visualizationMaxTimeSignal();
 @let visualizationTime = wantedVisualizationTimeSignal();
+@let firstLoadedTime = firstLoadedTimeSignal();
+@let lastLoadedTime = lastLoadedTimeSignal();
 
 @let isInitialized = isInitializedSignal();
 
@@ -76,7 +78,8 @@
         {{ visualizationTime | simulationTime }}
       </div>
 
-      <div class="flex-1 slider">
+      <div class="flex-1 sliders">
+        <!-- Main control slider -->
         <mat-slider
           discrete
           [displayWith]="
@@ -91,6 +94,31 @@
             (valueChange)="onSliderChange($event)"
           />
         </mat-slider>
+
+        <!-- Loaded parts of the simulation -->
+        @if (firstLoadedTime !== null && lastLoadedTime !== null) {
+          <mat-slider
+            class="loaded"
+            disabled
+            [min]="simulationStartTime"
+            [max]="simulationEndTime"
+          >
+            <input matSliderStartThumb [value]="firstLoadedTime" />
+            <input matSliderEndThumb [value]="lastLoadedTime" />
+          </mat-slider>
+        }
+
+        @if (simulation.simulationTime !== null) {
+          <!-- Simulation time -->
+          <mat-slider
+            class="simulation disable-pointer-events"
+            disabled
+            [min]="simulationStartTime"
+            [max]="simulationEndTime"
+          >
+            <input matSliderThumb [value]="simulation.simulationTime" />
+          </mat-slider>
+        }
       </div>
 
       @if (simulation.status === "running" || simulation.status === "paused") {

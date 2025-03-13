@@ -89,18 +89,6 @@ export class SimulationService {
             )
             .filter((state) => state !== null);
 
-          // const currentStateOrders = states.states
-          //   .map((state) => state.order)
-          //   .sort((a, b) => a - b);
-          // const missingStateOrders = missingStates
-          //   .map((state) => state.order)
-          //   .sort((a, b) => a - b);
-          // console.log(
-          //   currentStateOrders,
-          //   missingStateOrders,
-          //   stateOrdersToKeep,
-          //   hasFollowingStates,
-          // );
           return this.mergeStates(
             states.states,
             missingStates,
@@ -194,14 +182,6 @@ export class SimulationService {
     polylinesVersion: number,
   ) {
     this._isFetchingSignal.set(true);
-
-    console.log('Getting missing simulation states: ', {
-      simulationId,
-      visualizationTime,
-      firstUpdateTime,
-      lastUpdateTime,
-      polylinesVersion,
-    });
 
     this.communicationService.emit(
       'get-missing-simulation-states',
@@ -724,7 +704,6 @@ export class SimulationService {
     const start = Date.now();
     const clonedState = structuredClone(state);
     const end = Date.now();
-    console.log('Cloning time: ', end - start);
 
     const sortedUpdates = clonedState.updates.sort((a, b) => a.order - b.order);
 
