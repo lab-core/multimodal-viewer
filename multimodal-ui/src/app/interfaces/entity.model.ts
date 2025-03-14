@@ -1,16 +1,12 @@
 import { Sprite } from 'pixi.js';
-import { Vehicle } from './simulation.model';
 
-export interface Entity {
+export interface Entity<T> {
   sprite: Sprite;
   requestedRotation: number;
-}
-
-export interface VehicleEntity extends Entity {
-  data: Vehicle;
+  data: T;
 }
 
 // Maybe will change (VehicleEntity extends Sprite?)
-export interface EntityOwner extends Sprite {
-  entity: VehicleEntity;
+export interface EntityOwner<T> extends Sprite {
+  entity: T;
 }

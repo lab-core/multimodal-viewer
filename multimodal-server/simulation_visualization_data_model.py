@@ -4,7 +4,8 @@ import os
 from enum import Enum
 
 from filelock import FileLock
-from multimodalsim.simulator.request import Trip
+from multimodalsim.simulator.environment import Environment
+from multimodalsim.simulator.request import Leg, Trip
 from multimodalsim.simulator.stop import Stop
 from multimodalsim.simulator.vehicle import Route, Vehicle
 from multimodalsim.state_machine.status import PassengerStatus, VehicleStatus
@@ -91,25 +92,163 @@ class Serializable:
         raise NotImplementedError()
 
 
+# MARK: Leg
+class VisualizedLeg(Serializable):
+    assigned_vehicle_id: str | None
+    boarding_stop_index: int | None
+    alighting_stop_index: int | None
+    boarding_time: float | None
+    alighting_time: float | None
+
+    def __init__(
+        self,
+        assigned_vehicle_id: str | None,
+        boarding_stop_index: int | None,
+        alighting_stop_index: int | None,
+        boarding_time: float | None,
+        alighting_time: float | None,
+    ) -> None:
+        self.assigned_vehicle_id = assigned_vehicle_id
+        self.boarding_stop_index = boarding_stop_index
+        self.alighting_stop_index = alighting_stop_index
+        self.boarding_time = boarding_time
+        self.alighting_time = alighting_time
+
+    @classmethod
+    def from_leg_environment_and_trip(
+        cls, leg: Leg, environment: Environment, trip: Trip
+    ) -> "VisualizedLeg":
+        boarding_stop_index = None
+        alighting_stop_index = None
+
+        route = (
+            environment.get_route_by_vehicle_id(leg.assigned_vehicle.id)
+            if leg.assigned_vehicle is not None
+            else None
+        )
+
+        if route is not None:
+            all_stops = route.previous_stops
+            if route.current_stop is not None:
+                all_stops.append(route.current_stop)
+            all_stops += route.next_stops
+
+            for i, stop in enumerate(all_stops):
+                if boarding_stop_index is None and trip in (
+                    stop.passengers_to_board
+                    + stop.boarding_passengers
+                    + stop.boarded_passengers
+                ):
+                    boarding_stop_index = i
+                    break
+
+            for i, stop in enumerate(all_stops):
+                if alighting_stop_index is None and trip in (
+                    stop.passengers_to_alight
+                    + stop.alighting_passengers
+                    + stop.alighted_passengers
+                ):
+                    alighting_stop_index = i
+                    break
+
+        return cls(
+            leg.assigned_vehicle.id if leg.assigned_vehicle is not None else None,
+            boarding_stop_index,
+            alighting_stop_index,
+            leg.boarding_time,
+            leg.alighting_time,
+        )
+
+    def serialize(self) -> dict:
+        serialized = {}
+
+        if self.assigned_vehicle_id is not None:
+            serialized["assignedVehicleId"] = self.assigned_vehicle_id
+
+        if self.boarding_stop_index is not None:
+            serialized["boardingStopIndex"] = self.boarding_stop_index
+
+        if self.alighting_stop_index is not None:
+            serialized["alightingStopIndex"] = self.alighting_stop_index
+
+        if self.boarding_time is not None:
+            serialized["boardingTime"] = self.boarding_time
+
+        if self.alighting_time is not None:
+            serialized["alightingTime"] = self.alighting_time
+
+        return serialized
+
+    @staticmethod
+    def deserialize(data: str) -> "VisualizedLeg":
+        if isinstance(data, str):
+            data = json.loads(data.replace("'", '"'))
+
+        assigned_vehicle_id = data.get("assignedVehicleId", None)
+        boarding_stop_index = data.get("boardingStopIndex", None)
+        alighting_stop_index = data.get("alightingStopIndex", None)
+        boarding_time = data.get("boardingTime", None)
+        alighting_time = data.get("alightingTime", None)
+
+        return VisualizedLeg(
+            assigned_vehicle_id,
+            boarding_stop_index,
+            alighting_stop_index,
+            boarding_time,
+            alighting_time,
+        )
+
+
 # MARK: Passenger
 class VisualizedPassenger(Serializable):
     passenger_id: str
     name: str | None
     status: PassengerStatus
 
+    previous_legs: list[VisualizedLeg]
+    current_leg: VisualizedLeg | None
+    next_legs: list[VisualizedLeg]
+
     def __init__(
         self,
         passenger_id: str,
         name: str | None,
         status: PassengerStatus,
+        previous_legs: list[VisualizedLeg],
+        current_leg: VisualizedLeg | None,
+        next_legs: list[VisualizedLeg],
     ) -> None:
         self.passenger_id = passenger_id
         self.name = name
         self.status = status
 
+        self.previous_legs = previous_legs
+        self.current_leg = current_leg
+        self.next_legs = next_legs
+
     @classmethod
-    def from_trip(cls, trip: Trip) -> "VisualizedPassenger":
-        return cls(trip.id, trip.name, trip.status)
+    def from_trip_and_environment(
+        cls, trip: Trip, environment: Environment
+    ) -> "VisualizedPassenger":
+        previous_legs = [
+            VisualizedLeg.from_leg_environment_and_trip(leg, environment, trip)
+            for leg in trip.previous_legs
+        ]
+        current_leg = (
+            VisualizedLeg.from_leg_environment_and_trip(
+                trip.current_leg, environment, trip
+            )
+            if trip.current_leg is not None
+            else None
+        )
+        next_legs = [
+            VisualizedLeg.from_leg_environment_and_trip(leg, environment, trip)
+            for leg in trip.next_legs
+        ]
+
+        return cls(
+            trip.id, trip.name, trip.status, previous_legs, current_leg, next_legs
+        )
 
     def serialize(self) -> dict:
         serialized = {
@@ -120,6 +259,13 @@ class VisualizedPassenger(Serializable):
         if self.name is not None:
             serialized["name"] = self.name
 
+        serialized["previousLegs"] = [leg.serialize() for leg in self.previous_legs]
+
+        if self.current_leg is not None:
+            serialized["currentLeg"] = self.current_leg.serialize()
+
+        serialized["nextLegs"] = [leg.serialize() for leg in self.next_legs]
+
         return serialized
 
     @staticmethod
@@ -127,13 +273,32 @@ class VisualizedPassenger(Serializable):
         if isinstance(data, str):
             data = json.loads(data.replace("'", '"'))
 
-        if "id" not in data or "status" not in data:
+        if (
+            "id" not in data
+            or "status" not in data
+            or "previousLegs" not in data
+            or "nextLegs" not in data
+        ):
             raise ValueError("Invalid data for VisualizedPassenger")
 
         passenger_id = str(data["id"])
         name = data.get("name", None)
         status = convert_string_to_passenger_status(data["status"])
-        return VisualizedPassenger(passenger_id, name, status)
+
+        previous_legs = [
+            VisualizedLeg.deserialize(leg_data) for leg_data in data["previousLegs"]
+        ]
+        next_legs = [
+            VisualizedLeg.deserialize(leg_data) for leg_data in data["nextLegs"]
+        ]
+
+        current_leg = data.get("currentLeg", None)
+        if current_leg is not None:
+            current_leg = VisualizedLeg.deserialize(current_leg)
+
+        return VisualizedPassenger(
+            passenger_id, name, status, previous_legs, current_leg, next_legs
+        )
 
 
 # MARK: Stop
@@ -351,6 +516,7 @@ class UpdateType(Enum):
     CREATE_PASSENGER = "createPassenger"
     CREATE_VEHICLE = "createVehicle"
     UPDATE_PASSENGER_STATUS = "updatePassengerStatus"
+    UPDATE_PASSENGER_LEGS = "updatePassengerLegs"
     UPDATE_VEHICLE_STATUS = "updateVehicleStatus"
     UPDATE_VEHICLE_STOPS = "updateVehicleStops"
 
@@ -383,6 +549,81 @@ class PassengerStatusUpdate(Serializable):
         passenger_id = str(data["id"])
         status = convert_string_to_passenger_status(data["status"])
         return PassengerStatusUpdate(passenger_id, status)
+
+
+class PassengerLegsUpdate(Serializable):
+    passenger_id: str
+    previous_legs: list[VisualizedLeg]
+    current_leg: VisualizedLeg | None
+    next_legs: list[VisualizedLeg]
+
+    def __init__(
+        self,
+        passenger_id: str,
+        previous_legs: list[VisualizedLeg],
+        current_leg: VisualizedLeg | None,
+        next_legs: list[VisualizedLeg],
+    ) -> None:
+        self.passenger_id = passenger_id
+        self.previous_legs = previous_legs
+        self.current_leg = current_leg
+        self.next_legs = next_legs
+
+    @classmethod
+    def from_trip_and_environment(
+        cls, trip: Trip, environment: Environment
+    ) -> "PassengerLegsUpdate":
+        previous_legs = [
+            VisualizedLeg.from_leg_environment_and_trip(leg, environment, trip)
+            for leg in trip.previous_legs
+        ]
+        current_leg = (
+            VisualizedLeg.from_leg_environment_and_trip(
+                trip.current_leg, environment, trip
+            )
+            if trip.current_leg is not None
+            else None
+        )
+        next_legs = [
+            VisualizedLeg.from_leg_environment_and_trip(leg, environment, trip)
+            for leg in trip.next_legs
+        ]
+
+        return cls(trip.id, previous_legs, current_leg, next_legs)
+
+    def serialize(self) -> dict:
+        serialized = {
+            "id": self.passenger_id,
+            "previousLegs": [leg.serialize() for leg in self.previous_legs],
+            "nextLegs": [leg.serialize() for leg in self.next_legs],
+        }
+
+        if self.current_leg is not None:
+            serialized["currentLeg"] = self.current_leg.serialize()
+
+        return serialized
+
+    @staticmethod
+    def deserialize(data: str) -> "PassengerLegsUpdate":
+        if isinstance(data, str):
+            data = json.loads(data.replace("'", '"'))
+
+        if "id" not in data or "previousLegs" not in data or "nextLegs" not in data:
+            raise ValueError("Invalid data for PassengerLegsUpdate")
+
+        passenger_id = str(data["id"])
+        previous_legs = [
+            VisualizedLeg.deserialize(leg_data) for leg_data in data["previousLegs"]
+        ]
+        next_legs = [
+            VisualizedLeg.deserialize(leg_data) for leg_data in data["nextLegs"]
+        ]
+
+        current_leg = data.get("currentLeg", None)
+        if current_leg is not None:
+            current_leg = VisualizedLeg.deserialize(current_leg)
+
+        return PassengerLegsUpdate(passenger_id, previous_legs, current_leg, next_legs)
 
 
 class VehicleStatusUpdate(Serializable):
@@ -531,6 +772,8 @@ class Update(Serializable):
             update_data = VisualizedVehicle.deserialize(update_data)
         elif update_type == UpdateType.UPDATE_PASSENGER_STATUS:
             update_data = PassengerStatusUpdate.deserialize(update_data)
+        elif update_type == UpdateType.UPDATE_PASSENGER_LEGS:
+            update_data = PassengerLegsUpdate.deserialize(update_data)
         elif update_type == UpdateType.UPDATE_VEHICLE_STATUS:
             update_data = VehicleStatusUpdate.deserialize(update_data)
         elif update_type == UpdateType.UPDATE_VEHICLE_STOPS:

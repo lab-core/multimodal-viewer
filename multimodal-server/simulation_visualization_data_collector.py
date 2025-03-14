@@ -35,6 +35,7 @@ from multimodalsim.simulator.vehicle_event import (
 )
 from server_utils import STATE_SAVE_STEP
 from simulation_visualization_data_model import (
+    PassengerLegsUpdate,
     PassengerStatusUpdate,
     SimulationInformation,
     SimulationVisualizationDataManager,
@@ -44,7 +45,6 @@ from simulation_visualization_data_model import (
     VehicleStopsUpdate,
     VisualizedEnvironment,
     VisualizedPassenger,
-    VisualizedStop,
     VisualizedVehicle,
 )
 from socketio import Client
@@ -59,6 +59,9 @@ class SimulationVisualizationDataCollector(DataCollector):
     simulation_information: SimulationInformation
     current_save_file_path: str
     max_time: float | None
+
+    passenger_assignment_event_queue: list[PassengerAssignment]
+    vehicle_notification_event_queue: list[VehicleNotification]
 
     def __init__(
         self, simulation_id: str, data: str, sio: Client, max_time: float | None
@@ -75,6 +78,9 @@ class SimulationVisualizationDataCollector(DataCollector):
         self.current_save_file_path = None
 
         self.max_time = max_time
+
+        self.passenger_assignment_event_queue = []
+        self.vehicle_notification_event_queue = []
 
     # MARK: +- Collect
     def collect(
@@ -169,6 +175,14 @@ class SimulationVisualizationDataCollector(DataCollector):
                 update.data.passenger_id
             )
             passenger.status = update.data.status
+        elif update.type == UpdateType.UPDATE_PASSENGER_LEGS:
+            passenger = self.visualized_environment.get_passenger(
+                update.data.passenger_id
+            )
+            legs_update: PassengerLegsUpdate = update.data
+            passenger.previous_legs = legs_update.previous_legs
+            passenger.next_legs = legs_update.next_legs
+            passenger.current_leg = legs_update.current_leg
         elif update.type == UpdateType.UPDATE_VEHICLE_STATUS:
             vehicle = self.visualized_environment.get_vehicle(update.data.vehicle_id)
             vehicle.status = update.data.status
@@ -185,6 +199,60 @@ class SimulationVisualizationDataCollector(DataCollector):
 
         self.update_counter += 1
 
+    def flush(self, environment) -> None:
+        for event in self.passenger_assignment_event_queue:
+            self.add_update(
+                Update(
+                    UpdateType.UPDATE_PASSENGER_STATUS,
+                    PassengerStatusUpdate.from_trip(
+                        event.state_machine.owner,
+                    ),
+                    event.time,
+                ),
+                environment,
+            )
+            self.add_update(
+                Update(
+                    UpdateType.UPDATE_PASSENGER_LEGS,
+                    PassengerLegsUpdate.from_trip_and_environment(
+                        event.state_machine.owner, environment
+                    ),
+                    event.time,
+                ),
+                environment,
+            )
+
+        polylines_version_updated = False
+
+        for event in self.vehicle_notification_event_queue:
+            vehicle = event._VehicleNotification__vehicle
+            route = event._VehicleNotification__route
+            existing_vehicle = self.visualized_environment.get_vehicle(vehicle.id)
+            if vehicle.polylines != existing_vehicle.polylines:
+                existing_vehicle.polylines = vehicle.polylines
+                SimulationVisualizationDataManager.set_polylines(
+                    self.simulation_id, existing_vehicle
+                )
+                polylines_version_updated = True
+
+            self.add_update(
+                Update(
+                    UpdateType.UPDATE_VEHICLE_STOPS,
+                    VehicleStopsUpdate.from_vehicle_and_route(vehicle, route),
+                    event.time,
+                ),
+                environment,
+            )
+
+        if self.sio.connected and polylines_version_updated:
+            self.sio.emit(
+                "simulation-update-polylines-version",
+                self.simulation_id,
+            )
+
+        self.passenger_assignment_event_queue = []
+        self.vehicle_notification_event_queue = []
+
     # MARK: +- Process Event
     def process_event(self, event: Event, environment: Environment) -> str:
         # Optimize
@@ -199,12 +267,14 @@ class SimulationVisualizationDataCollector(DataCollector):
 
         # EnvironmentIdle
         elif isinstance(event, EnvironmentIdle):
-            # Do nothing ?
+            self.flush(environment)
             return f"{event.time} TODO EnvironmentIdle"
 
         # PassengerRelease
         elif isinstance(event, PassengerRelease):
-            passenger = VisualizedPassenger.from_trip(event.trip)
+            passenger = VisualizedPassenger.from_trip_and_environment(
+                event.trip, environment
+            )
             self.add_update(
                 Update(
                     UpdateType.CREATE_PASSENGER,
@@ -217,16 +287,7 @@ class SimulationVisualizationDataCollector(DataCollector):
 
         # PassengerAssignment
         elif isinstance(event, PassengerAssignment):
-            self.add_update(
-                Update(
-                    UpdateType.UPDATE_PASSENGER_STATUS,
-                    PassengerStatusUpdate.from_trip(
-                        event.state_machine.owner,
-                    ),
-                    event.time,
-                ),
-                environment,
-            )
+            self.passenger_assignment_event_queue.append(event)
             return f"{event.time} TODO PassengerAssignment"
 
         # PassengerReady
@@ -255,6 +316,16 @@ class SimulationVisualizationDataCollector(DataCollector):
                 ),
                 environment,
             )
+            self.add_update(
+                Update(
+                    UpdateType.UPDATE_PASSENGER_LEGS,
+                    PassengerLegsUpdate.from_trip_and_environment(
+                        event.state_machine.owner, environment
+                    ),
+                    event.time,
+                ),
+                environment,
+            )
             return f"{event.time} TODO PassengerToBoard"
 
         # PassengerAlighting
@@ -264,6 +335,16 @@ class SimulationVisualizationDataCollector(DataCollector):
                     UpdateType.UPDATE_PASSENGER_STATUS,
                     PassengerStatusUpdate.from_trip(
                         event.state_machine.owner,
+                    ),
+                    event.time,
+                ),
+                environment,
+            )
+            self.add_update(
+                Update(
+                    UpdateType.UPDATE_PASSENGER_LEGS,
+                    PassengerLegsUpdate.from_trip_and_environment(
+                        event.state_machine.owner, environment
                     ),
                     event.time,
                 ),
@@ -381,28 +462,7 @@ class SimulationVisualizationDataCollector(DataCollector):
 
         # VehicleNotification
         elif isinstance(event, VehicleNotification):
-            vehicle = event._VehicleNotification__vehicle
-            route = event._VehicleNotification__route
-            existing_vehicle = self.visualized_environment.get_vehicle(vehicle.id)
-            if vehicle.polylines != existing_vehicle.polylines:
-                existing_vehicle.polylines = vehicle.polylines
-                SimulationVisualizationDataManager.set_polylines(
-                    self.simulation_id, existing_vehicle
-                )
-                if self.sio.connected:
-                    self.sio.emit(
-                        "simulation-update-polylines-version",
-                        self.simulation_id,
-                    )
-
-            self.add_update(
-                Update(
-                    UpdateType.UPDATE_VEHICLE_STOPS,
-                    VehicleStopsUpdate.from_vehicle_and_route(vehicle, route),
-                    event.time,
-                ),
-                environment,
-            )
+            self.vehicle_notification_event_queue.append(event)
             return f"{event.time} TODO VehicleNotification"
 
         # VehicleBoarded
