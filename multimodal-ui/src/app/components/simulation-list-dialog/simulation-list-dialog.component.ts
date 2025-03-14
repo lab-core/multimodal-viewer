@@ -237,7 +237,13 @@ export class SimulationListDialogComponent {
     });
   }
 
-  deleteSimulation(simulationId: string): void {
+  async deleteSimulation(simulationId: string, simulationName: string) {
+    const isConfirmed = await this.confirmDeletion(simulationName)
+
+    if (!isConfirmed) {
+      return;
+    }
+    
     const folderContents = 'simulation';
     this.httpService.deleteFolder(folderContents, simulationId).subscribe({
       next: (response: { message?: string; error?: string }) => {
@@ -252,5 +258,21 @@ export class SimulationListDialogComponent {
         console.error('HTTP error during deletion:', err);
       },
     });
+  }
+
+  async confirmDeletion(simulationName: string) {
+    return await firstValueFrom(
+      this.dialogService
+      .openInformationDialog({
+        title: 'Deleting Saved Simulation',
+        message:
+            `Are you sure you want to delete the simulation "${simulationName}"? This action cannot be undone.`,
+          type: 'warning',
+          confirmButtonOverride: null,
+          cancelButtonOverride: null,
+          canCancel: true,
+        })
+        .afterClosed(),
+      );
   }
 }
