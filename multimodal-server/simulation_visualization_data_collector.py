@@ -453,10 +453,6 @@ class SimulationVisualizationVisualizer(Visualizer):
                 self.simulation_id, self.data_collector.simulation_information
             )
 
-            # Notify the server that the simulation has ended
-            if self.sio.connected:
-                self.sio.emit("simulation-end", self.simulation_id)
-
 
 # MARK: Environment Observer
 class SimulationVisualizationEnvironmentObserver(EnvironmentObserver):
