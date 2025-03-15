@@ -5,8 +5,7 @@
 @let simulationEndTime = simulationEndTimeSignal();
 @let visualizationMaxTime = visualizationMaxTimeSignal();
 @let visualizationTime = wantedVisualizationTimeSignal();
-@let firstLoadedTime = firstLoadedTimeSignal();
-@let lastLoadedTime = lastLoadedTimeSignal();
+@let simulationStates = simulationStatesSignal();
 
 @let isInitialized = isInitializedSignal();
 
@@ -96,15 +95,24 @@
         </mat-slider>
 
         <!-- Loaded parts of the simulation -->
-        @if (firstLoadedTime !== null && lastLoadedTime !== null) {
+        @if (
+          simulationStates.firstContinuousState !== null &&
+          simulationStates.lastContinuousState !== null
+        ) {
           <mat-slider
             class="loaded"
             disabled
             [min]="simulationStartTime"
             [max]="simulationEndTime"
           >
-            <input matSliderStartThumb [value]="firstLoadedTime" />
-            <input matSliderEndThumb [value]="lastLoadedTime" />
+            <input
+              matSliderStartThumb
+              [value]="simulationStates.firstContinuousState.timestamp"
+            />
+            <input
+              matSliderEndThumb
+              [value]="simulationStates.lastContinuousState.timestamp"
+            />
           </mat-slider>
         }
 

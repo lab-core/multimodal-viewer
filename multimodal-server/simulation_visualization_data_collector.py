@@ -100,46 +100,11 @@ class SimulationVisualizationDataCollector(DataCollector):
         update.order = self.update_counter
         self.visualized_environment.order = self.update_counter
 
-        # Save the state of the simulation every SAVE_STATE_STEP events before applying the update
-        if self.update_counter % STATE_SAVE_STEP == 0:
-            self.current_save_file_path = SimulationVisualizationDataManager.save_state(
-                self.simulation_id, self.visualized_environment
-            )
-
-        if update.type == UpdateType.CREATE_PASSENGER:
-            self.visualized_environment.add_passenger(update.data)
-        elif update.type == UpdateType.CREATE_VEHICLE:
-            self.visualized_environment.add_vehicle(update.data)
-            data: VisualizedVehicle = update.data
-            if data.polylines is not None:
-                SimulationVisualizationDataManager.set_polylines(
-                    self.simulation_id, data
-                )
-                if self.sio.connected:
-                    self.sio.emit(
-                        "simulation-update-polylines-version",
-                        self.simulation_id,
-                    )
-        elif update.type == UpdateType.UPDATE_PASSENGER_STATUS:
-            passenger = self.visualized_environment.get_passenger(
-                update.data.passenger_id
-            )
-            passenger.status = update.data.status
-        elif update.type == UpdateType.UPDATE_VEHICLE_STATUS:
-            vehicle = self.visualized_environment.get_vehicle(update.data.vehicle_id)
-            vehicle.status = update.data.status
-        elif update.type == UpdateType.UPDATE_VEHICLE_STOPS:
-            vehicle = self.visualized_environment.get_vehicle(update.data.vehicle_id)
-            stops_update: VehicleStopsUpdate = update.data
-            vehicle.previous_stops = stops_update.previous_stops
-            vehicle.next_stops = stops_update.next_stops
-            vehicle.current_stop = stops_update.current_stop
-
         if self.update_counter == 0:
             # Add the simulation start time to the simulation information
             self.simulation_information.simulation_start_time = update.timestamp
 
-            #           # Save the simulation information
+            # Save the simulation information
             SimulationVisualizationDataManager.set_simulation_information(
                 self.simulation_id, self.simulation_information
             )
@@ -178,6 +143,41 @@ class SimulationVisualizationDataCollector(DataCollector):
                     (self.simulation_id, estimated_end_time),
                 )
             self.visualized_environment.estimated_end_time = estimated_end_time
+
+        # Save the state of the simulation every SAVE_STATE_STEP events before applying the update
+        if self.update_counter % STATE_SAVE_STEP == 0:
+            self.current_save_file_path = SimulationVisualizationDataManager.save_state(
+                self.simulation_id, self.visualized_environment
+            )
+
+        if update.type == UpdateType.CREATE_PASSENGER:
+            self.visualized_environment.add_passenger(update.data)
+        elif update.type == UpdateType.CREATE_VEHICLE:
+            self.visualized_environment.add_vehicle(update.data)
+            data: VisualizedVehicle = update.data
+            if data.polylines is not None:
+                SimulationVisualizationDataManager.set_polylines(
+                    self.simulation_id, data
+                )
+                if self.sio.connected:
+                    self.sio.emit(
+                        "simulation-update-polylines-version",
+                        self.simulation_id,
+                    )
+        elif update.type == UpdateType.UPDATE_PASSENGER_STATUS:
+            passenger = self.visualized_environment.get_passenger(
+                update.data.passenger_id
+            )
+            passenger.status = update.data.status
+        elif update.type == UpdateType.UPDATE_VEHICLE_STATUS:
+            vehicle = self.visualized_environment.get_vehicle(update.data.vehicle_id)
+            vehicle.status = update.data.status
+        elif update.type == UpdateType.UPDATE_VEHICLE_STOPS:
+            vehicle = self.visualized_environment.get_vehicle(update.data.vehicle_id)
+            stops_update: VehicleStopsUpdate = update.data
+            vehicle.previous_stops = stops_update.previous_stops
+            vehicle.next_stops = stops_update.next_stops
+            vehicle.current_stop = stops_update.current_stop
 
         SimulationVisualizationDataManager.save_update(
             self.current_save_file_path, update

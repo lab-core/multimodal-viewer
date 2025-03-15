@@ -40,7 +40,13 @@ export class SimulationService {
     signal(null);
 
   private readonly _simulationStatesSignal: WritableSignal<SimulationStates> =
-    signal({ states: [], hasFollowingStates: true });
+    signal({
+      states: [],
+      shouldRequestMoreStates: true,
+      firstContinuousState: null,
+      lastContinuousState: null,
+      currentState: null,
+    });
 
   private readonly _simulationPolylinesSignal: WritableSignal<AllPolylines | null> =
     signal(null);
@@ -67,16 +73,19 @@ export class SimulationService {
       'missing-simulation-states',
       (
         rawMissingStates,
-        missingUpdates,
+        rawMissingUpdates,
         stateOrdersToKeep,
-        hasFollowingStates,
+        shouldRequestMoreStates,
+        firstContinuousStateOrder,
+        lastContinuousStateOrder,
+        currentStateOrder,
       ) => {
         this._simulationStatesSignal.update((states) => {
           const parsedMissingStates = (rawMissingStates as string[]).map(
             (rawState) => JSON.parse(rawState) as RawSimulationState,
           );
           const parsedMissingUpdates = Object.entries(
-            missingUpdates as Record<string, string[]>,
+            rawMissingUpdates as Record<string, string[]>,
           ).reduce(
             (acc, [order, rawUpdates]) => {
               acc[parseInt(order)] = rawUpdates.map(
@@ -96,7 +105,10 @@ export class SimulationService {
             states.states,
             missingStates,
             stateOrdersToKeep as number[],
-            !!hasFollowingStates,
+            !!shouldRequestMoreStates,
+            firstContinuousStateOrder as number,
+            lastContinuousStateOrder as number,
+            currentStateOrder as number,
           );
         });
 
@@ -126,7 +138,10 @@ export class SimulationService {
 
     this._simulationStatesSignal.set({
       states: [],
-      hasFollowingStates: true,
+      shouldRequestMoreStates: true,
+      firstContinuousState: null,
+      lastContinuousState: null,
+      currentState: null,
     });
 
     this._simulationPolylinesSignal.set(null);
@@ -184,8 +199,7 @@ export class SimulationService {
   getMissingSimulationStates(
     simulationId: string,
     visualizationTime: number,
-    firstUpdateTime: number,
-    lastUpdateTime: number,
+    allStateOrders: number[],
   ) {
     this._isFetchingStatesSignal.set(true);
 
@@ -193,8 +207,7 @@ export class SimulationService {
       'get-missing-simulation-states',
       simulationId,
       visualizationTime,
-      firstUpdateTime,
-      lastUpdateTime,
+      allStateOrders,
     );
   }
 
@@ -823,7 +836,10 @@ export class SimulationService {
     states: SimulationState[],
     missingStates: SimulationState[],
     stateOrdersToKeep: number[],
-    hasFollowingStates: boolean,
+    shouldRequestMoreStates: boolean,
+    firstContinuousStateOrder: number,
+    lastContinuousStateOrder: number,
+    currentStateOrder: number,
   ): SimulationStates {
     for (const state of states) {
       if (stateOrdersToKeep.includes(state.order)) {
@@ -831,9 +847,101 @@ export class SimulationService {
       }
     }
 
+    const sortedStates = missingStates
+      .sort((a, b) => a.order - b.order)
+      .map((state) => ({
+        ...state,
+        updates: state.updates.sort((a, b) => a.order - b.order),
+      }));
+
+    const firstStateIndex = sortedStates.findIndex(
+      (state) => state.order === firstContinuousStateOrder,
+    );
+    const lastStateIndex = sortedStates.findIndex(
+      (state) => state.order === lastContinuousStateOrder,
+    );
+
+    const currentStateIndex = sortedStates.findIndex(
+      (state) => state.order === currentStateOrder,
+    );
+
+    const defaultReturnValue = {
+      states: sortedStates,
+      shouldRequestMoreStates,
+      firstContinuousState: null,
+      lastContinuousState: null,
+      currentState: null,
+    };
+
+    if (firstStateIndex === -1) {
+      console.error(
+        'First continuous state not found: ',
+        firstContinuousStateOrder,
+      );
+      return defaultReturnValue;
+    }
+    if (lastStateIndex === -1) {
+      console.error(
+        'Last continuous state not found: ',
+        lastContinuousStateOrder,
+      );
+      return defaultReturnValue;
+    }
+    if (currentStateIndex === -1) {
+      console.error('Current state not found: ', currentStateOrder);
+      return defaultReturnValue;
+    }
+    if (
+      currentStateIndex > lastStateIndex ||
+      currentStateIndex < firstStateIndex
+    ) {
+      console.error(
+        'Current state out of bounds: ',
+        currentStateIndex,
+        firstStateIndex,
+        lastStateIndex,
+      );
+      return defaultReturnValue;
+    }
+
+    const firstState = sortedStates[firstStateIndex];
+    const lastState = sortedStates[lastStateIndex];
+
+    const firstContinuousState = {
+      timestamp: firstState.timestamp,
+      order: firstState.order,
+      index: firstStateIndex,
+    };
+
+    const lastContinuousUpdate = lastState.updates.slice(-1)[0];
+
+    const lastContinuousState = {
+      timestamp: lastContinuousUpdate?.timestamp ?? lastState.timestamp,
+      order: lastContinuousUpdate?.order ?? lastState.order,
+      index: lastStateIndex,
+    };
+
+    const currentState = sortedStates[currentStateIndex];
+
+    const startTimestamp = currentState.timestamp;
+
+    let endTimestamp: number;
+    if (currentStateIndex + 1 <= lastStateIndex) {
+      endTimestamp = sortedStates[currentStateIndex + 1].timestamp;
+    } else {
+      endTimestamp =
+        currentState.updates.slice(-1)[0]?.timestamp ?? currentState.timestamp;
+    }
+
     return {
-      states: missingStates.sort((a, b) => a.order - b.order),
-      hasFollowingStates,
+      states: sortedStates,
+      shouldRequestMoreStates,
+      firstContinuousState,
+      lastContinuousState,
+      currentState: {
+        startTimestamp,
+        endTimestamp,
+      },
     };
   }
 }

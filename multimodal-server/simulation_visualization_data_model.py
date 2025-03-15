@@ -691,8 +691,13 @@ class SimulationVisualizationDataManager:
     __STATES_ORDER_MINIMUM_LENGTH = 8
     __STATES_TIMESTAMP_MINIMUM_LENGTH = 8
 
+    # Only send a maximum of 10 states at once
     __MAX_STATES_AT_ONCE = 10
-    __MAX_STATES_IN_CLIENT = 100
+
+    # The client keeps a maximum of 150 states in memory
+    # The current one, the previous 49, and the next 100
+    __MAX_STATES_IN_CLIENT_BEFORE_NECESSARY = 49
+    __MAX_STATES_IN_CLIENT_AFTER_NECESSARY = 100
 
     # MARK: +- Format
     @staticmethod
@@ -897,8 +902,7 @@ class SimulationVisualizationDataManager:
     def get_missing_states(
         simulation_id: str,
         visualization_time: float,
-        first_update_time: float,
-        last_update_time: float,
+        loaded_state_orders: list[int],
         is_simulation_complete: bool,
     ) -> tuple[list[str], dict[list[str]], list[int], bool]:
         sorted_states = SimulationVisualizationDataManager.get_sorted_states(
@@ -908,100 +912,74 @@ class SimulationVisualizationDataManager:
         if len(sorted_states) == 0:
             return [], [], []
 
-        client_has_states = first_update_time != -1 and last_update_time != -1
-
-        first_state_with_greater_timestamp_than_visualization_index = None
-        first_state_with_greater_timestamp_than_first_update_index = None
-        first_state_with_greater_timestamp_than_last_update_index = None
+        necessary_state_index = None
 
         for index, (order, state_timestamp) in enumerate(sorted_states):
-            if (
-                first_state_with_greater_timestamp_than_visualization_index is None
-                and state_timestamp > visualization_time
-            ):
-                first_state_with_greater_timestamp_than_visualization_index = index
-            if client_has_states:
-                if (
-                    first_state_with_greater_timestamp_than_first_update_index is None
-                    and state_timestamp > first_update_time
-                ):
-                    first_state_with_greater_timestamp_than_first_update_index = index
-                if (
-                    first_state_with_greater_timestamp_than_last_update_index is None
-                    and state_timestamp > last_update_time
-                ):
-                    first_state_with_greater_timestamp_than_last_update_index = index
-            if (
-                first_state_with_greater_timestamp_than_visualization_index is not None
-                and first_state_with_greater_timestamp_than_last_update_index
-                is not None
-            ):
+            if necessary_state_index is None and state_timestamp > visualization_time:
+                necessary_state_index = index
                 break
 
-        if first_state_with_greater_timestamp_than_visualization_index is None:
+        if necessary_state_index is None:
             # If the visualization time is after the last state then
             # The last state is necessary
-            first_state_with_greater_timestamp_than_visualization_index = (
-                len(sorted_states) - 1
-            )
+            necessary_state_index = len(sorted_states) - 1
         else:
             # Else we need the state before the first state with greater timestamp
-            first_state_with_greater_timestamp_than_visualization_index -= 1
-
-        # The same goes for the first update time
-        if client_has_states:
-            if first_state_with_greater_timestamp_than_first_update_index is None:
-                first_state_with_greater_timestamp_than_first_update_index = (
-                    len(sorted_states) - 1
-                )
-            else:
-                first_state_with_greater_timestamp_than_first_update_index -= 1
-
-        # And for the last update time
-        if client_has_states:
-            if first_state_with_greater_timestamp_than_last_update_index is None:
-                first_state_with_greater_timestamp_than_last_update_index = (
-                    len(sorted_states) - 1
-                )
-            else:
-                first_state_with_greater_timestamp_than_last_update_index -= 1
+            necessary_state_index -= 1
 
         # Handle negative indexes
-        first_state_with_greater_timestamp_than_visualization_index = max(
-            0, first_state_with_greater_timestamp_than_visualization_index
-        )
-        if client_has_states:
-            first_state_with_greater_timestamp_than_first_update_index = max(
-                0, first_state_with_greater_timestamp_than_first_update_index
-            )
-            first_state_with_greater_timestamp_than_last_update_index = max(
-                0, first_state_with_greater_timestamp_than_last_update_index
-            )
+        necessary_state_index = max(0, necessary_state_index)
 
-        index = first_state_with_greater_timestamp_than_visualization_index
         state_orders_to_keep = []
         missing_states = []
         missing_updates = {}
 
         last_state_index_in_client = -1
+        all_state_indexes_in_client = []
 
-        while (
-            index < len(sorted_states)
-            and len(missing_states) + len(state_orders_to_keep)
-            < SimulationVisualizationDataManager.__MAX_STATES_IN_CLIENT
-        ):
+        # We want to load the necessary state first, followed by
+        # the __MAX_STATES_IN_CLIENT_AFTER_NECESSARY next states and
+        # then the __MAX_STATES_IN_CLIENT_BEFORE_NECESSARY previous states
+        indexes_to_load = (
+            [necessary_state_index]
+            + [
+                next_state_index
+                for next_state_index in range(
+                    necessary_state_index + 1,
+                    min(
+                        necessary_state_index
+                        + SimulationVisualizationDataManager.__MAX_STATES_IN_CLIENT_AFTER_NECESSARY
+                        + 1,
+                        len(sorted_states),
+                    ),
+                )
+            ]
+            + [
+                previous_state_index
+                for previous_state_index in range(
+                    necessary_state_index - 1,
+                    max(
+                        necessary_state_index
+                        - SimulationVisualizationDataManager.__MAX_STATES_IN_CLIENT_BEFORE_NECESSARY
+                        - 1,
+                        -1,
+                    ),
+                    -1,
+                )
+            ]
+        )
+
+        for index in indexes_to_load:
             order, state_timestamp = sorted_states[index]
 
             # If the client already has the state, skip it
-            if (
-                client_has_states
-                and first_state_with_greater_timestamp_than_first_update_index
-                <= index
-                <= first_state_with_greater_timestamp_than_last_update_index
-            ):
-                last_state_index_in_client = index
+            if order in loaded_state_orders:
                 state_orders_to_keep.append(order)
-                index += 1
+
+                all_state_indexes_in_client.append(index)
+                if index > last_state_index_in_client:
+                    last_state_index_in_client = index
+
                 continue
 
             # Don't add states if the max number of states is reached
@@ -1010,7 +988,6 @@ class SimulationVisualizationDataManager:
                 len(missing_states)
                 >= SimulationVisualizationDataManager.__MAX_STATES_AT_ONCE
             ):
-                index += 1
                 continue
 
             state_file_path = (
@@ -1033,28 +1010,59 @@ class SimulationVisualizationDataManager:
 
                     missing_updates[order] = current_state_updates
 
-                    last_state_index_in_client = index
-
-            index += 1
+                    all_state_indexes_in_client.append(index)
+                    if index > last_state_index_in_client:
+                        last_state_index_in_client = index
 
         client_has_last_state = last_state_index_in_client == len(sorted_states) - 1
-        client_has_max_states = (
-            len(missing_states) + len(state_orders_to_keep)
-            >= SimulationVisualizationDataManager.__MAX_STATES_IN_CLIENT
+        client_has_max_states = len(missing_states) + len(state_orders_to_keep) >= len(
+            indexes_to_load
         )
 
-        has_following_states = (
+        should_request_more_states = (
             is_simulation_complete
             and not client_has_last_state
             and not client_has_max_states
             or not is_simulation_complete
             and (client_has_last_state or not client_has_max_states)
         )
+
+        first_continuous_state_index = necessary_state_index
+        last_continuous_state_index = necessary_state_index
+
+        all_state_indexes_in_client.sort()
+
+        necessary_state_index_index = all_state_indexes_in_client.index(
+            necessary_state_index
+        )
+
+        for index in range(necessary_state_index_index - 1, -1, -1):
+            if all_state_indexes_in_client[index] == first_continuous_state_index - 1:
+                first_continuous_state_index -= 1
+            else:
+                break
+
+        for index in range(
+            necessary_state_index_index + 1, len(all_state_indexes_in_client)
+        ):
+            if all_state_indexes_in_client[index] == last_continuous_state_index + 1:
+                last_continuous_state_index += 1
+            else:
+                break
+
+        first_continuous_state_order = sorted_states[first_continuous_state_index][0]
+        last_continuous_state_order = sorted_states[last_continuous_state_index][0]
+
+        necessary_state_order = sorted_states[necessary_state_index][0]
+
         return (
             missing_states,
             missing_updates,
             state_orders_to_keep,
-            has_following_states,
+            should_request_more_states,
+            first_continuous_state_order,
+            last_continuous_state_order,
+            necessary_state_order,
         )
 
     # MARK: +- Polylines

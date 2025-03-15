@@ -144,32 +144,6 @@ export class VisualizationService {
 
   private readonly _isLoadingSignal: WritableSignal<boolean> = signal(true);
 
-  readonly firstLoadedTimeSignal: Signal<number | null> = computed(() => {
-    const simulationStates = this.simulationService.simulationStatesSignal();
-
-    if (simulationStates.states.length === 0) {
-      return null;
-    }
-
-    return simulationStates.states[0].timestamp;
-  });
-
-  readonly lastLoadedTimeSignal: Signal<number | null> = computed(() => {
-    const simulationStates = this.simulationService.simulationStatesSignal();
-
-    if (simulationStates.states.length === 0) {
-      return null;
-    }
-
-    const lastState = simulationStates.states.slice(-1)[0];
-
-    if (lastState.updates.length === 0) {
-      return null;
-    }
-
-    return lastState.updates.slice(-1)[0].timestamp;
-  });
-
   // MARK: Constructor
   constructor(
     private readonly injector: Injector,
@@ -199,44 +173,26 @@ export class VisualizationService {
       const simulationStates = this.simulationService.simulationStatesSignal();
       const isFetching = this.simulationService.isFetchingStatesSignal();
 
-      // Find first and last update time
-      let firstUpdateTime = -1;
-      let lastUpdateTime = -1;
+      const isCurrentStateAvailable =
+        simulationStates.firstContinuousState !== null &&
+        simulationStates.lastContinuousState !== null &&
+        simulationStates.firstContinuousState.timestamp !== null &&
+        simulationStates.lastContinuousState.timestamp !== null &&
+        wantedVisualizationTime >=
+          simulationStates.firstContinuousState.timestamp &&
+        wantedVisualizationTime <=
+          simulationStates.lastContinuousState.timestamp;
 
-      if (simulationStates.states.length > 0) {
-        firstUpdateTime = simulationStates.states[0].timestamp;
-
-        if (
-          simulationStates.states[simulationStates.states.length - 1].updates
-            .length > 0
-        ) {
-          lastUpdateTime = simulationStates.states
-            .slice(-1)[0]
-            .updates.slice(-1)[0].timestamp;
-        } else if (
-          simulationStates.states.length > 1 &&
-          simulationStates.states[simulationStates.states.length - 2].updates
-            .length > 0
-        ) {
-          lastUpdateTime = simulationStates.states
-            .slice(-2)[0]
-            .updates.slice(-1)[0].timestamp;
-        }
-      }
-
-      const isFirstStateUseless =
-        simulationStates.states.length > 1 &&
-        simulationStates.states[1].updates.length > 0 &&
-        simulationStates.states[1].updates[0].timestamp <=
-          wantedVisualizationTime;
+      const hasCurrentStateShifted =
+        simulationStates.currentState === null ||
+        wantedVisualizationTime <
+          simulationStates.currentState.startTimestamp ||
+        wantedVisualizationTime > simulationStates.currentState.endTimestamp;
 
       if (
-        firstUpdateTime !== -1 &&
-        lastUpdateTime !== -1 &&
-        wantedVisualizationTime >= firstUpdateTime &&
-        wantedVisualizationTime <= lastUpdateTime &&
-        !simulationStates.hasFollowingStates &&
-        !isFirstStateUseless
+        isCurrentStateAvailable &&
+        !simulationStates.shouldRequestMoreStates &&
+        !hasCurrentStateShifted
       ) {
         this._isLoadingSignal.set(false);
         return;
@@ -246,14 +202,17 @@ export class VisualizationService {
         this.getMissingSimulationStates(
           simulation.id,
           wantedVisualizationTime,
-          firstUpdateTime,
-          lastUpdateTime,
+          simulationStates.states.map((state) => state.order),
         );
       }
 
       this._isLoadingSignal.set(
-        wantedVisualizationTime < firstUpdateTime ||
-          wantedVisualizationTime > lastUpdateTime,
+        simulationStates.firstContinuousState === null ||
+          simulationStates.lastContinuousState === null ||
+          wantedVisualizationTime <
+            simulationStates.firstContinuousState.timestamp ||
+          wantedVisualizationTime >
+            simulationStates.lastContinuousState.timestamp,
       );
     });
 
@@ -378,8 +337,7 @@ export class VisualizationService {
   private getMissingSimulationStates(
     simulationId: string,
     wantedVisualizationTime: number,
-    firstUpdateTime: number,
-    lastUpdateTime: number,
+    allStateOrders: number[],
   ) {
     if (this.fetchStatesTimeout !== null) {
       clearTimeout(this.fetchStatesTimeout);
@@ -396,8 +354,7 @@ export class VisualizationService {
         this.simulationService.getMissingSimulationStates(
           simulationId,
           wantedVisualizationTime,
-          firstUpdateTime,
-          lastUpdateTime,
+          allStateOrders,
         );
       }, this.MIN_STATES_DEBOUNCE_TIME - timeSinceLastDebounce) as unknown as number;
       return;
@@ -407,8 +364,7 @@ export class VisualizationService {
     this.simulationService.getMissingSimulationStates(
       simulationId,
       wantedVisualizationTime,
-      firstUpdateTime,
-      lastUpdateTime,
+      allStateOrders,
     );
   }
 

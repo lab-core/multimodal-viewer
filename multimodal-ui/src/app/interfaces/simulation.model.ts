@@ -274,8 +274,58 @@ export interface SimulationState extends SimulationEnvironment {
 }
 
 export interface SimulationStates {
+  /**
+   * All loaded states
+   */
   states: SimulationState[];
-  hasFollowingStates: boolean;
+
+  /**
+   * If true, the client will continue to request more states
+   * even if the necessary state for the visualization is loaded.
+   */
+  shouldRequestMoreStates: boolean;
+
+  /**
+   * Since the loaded states are not guaranteed to be continuous,
+   * we need to keep track of where the continuous states start and end.
+   *
+   * This contains the informations of the first valid state in the continuous states.
+   */
+  firstContinuousState: {
+    timestamp: number;
+    order: number;
+    index: number;
+  } | null;
+
+  /**
+   * Since the loaded states are not guaranteed to be continuous,
+   * we need to keep track of where the continuous states start and end.
+   *
+   * This contains the informations of the last valid state in the continuous states.
+   *
+   * Be aware that the timestamp and order here may not be the ones of the last state in
+   * the continuous states but the ones of the last update of this state.
+   */
+  lastContinuousState: {
+    timestamp: number;
+    order: number;
+    index: number;
+  } | null;
+
+  /**
+   * Information about the bounds of the current state to know if it changes.
+   *
+   * When the visualization time is greater than `endTimestamp` or
+   * lower than `startTimestamp`, we need to request new states.
+   */
+  currentState: {
+    startTimestamp: number;
+
+    /**
+     * This is actually the start of the next state if it exists, otherwise it is the end of the current state.
+     */
+    endTimestamp: number;
+  } | null;
 }
 
 export const STATE_SAVE_STEP = 500;

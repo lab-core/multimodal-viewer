@@ -404,8 +404,7 @@ class SimulationManager:
         self,
         simulation_id: str,
         visualization_time: float,
-        first_update_time: float,
-        last_update_time: float,
+        loaded_state_orders: list[int],
     ) -> None:
         if simulation_id not in self.simulations:
             log(
@@ -422,12 +421,14 @@ class SimulationManager:
                 missing_states,
                 missing_updates,
                 state_orders_to_keep,
-                has_following_states,
+                should_request_more_states,
+                first_continuous_state_order,
+                last_continuous_state_order,
+                necessary_state_order,
             ) = SimulationVisualizationDataManager.get_missing_states(
                 simulation_id,
                 visualization_time,
-                first_update_time,
-                last_update_time,
+                loaded_state_orders,
                 simulation.status not in RUNNING_SIMULATION_STATUSES,
             )
 
@@ -437,7 +438,10 @@ class SimulationManager:
                     missing_states,
                     missing_updates,
                     state_orders_to_keep,
-                    has_following_states,
+                    should_request_more_states,
+                    first_continuous_state_order,
+                    last_continuous_state_order,
+                    necessary_state_order,
                 ),
                 to=get_session_id(),
             )

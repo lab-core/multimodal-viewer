@@ -11,9 +11,13 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSliderModule } from '@angular/material/slider';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Simulation } from '../../interfaces/simulation.model';
+import {
+  Simulation,
+  SimulationStates,
+} from '../../interfaces/simulation.model';
 import { SimulationTimePipe } from '../../pipes/simulation-time.pipe';
 import { AnimationService } from '../../services/animation.service';
+import { SimulationService } from '../../services/simulation.service';
 import { VisualizationService } from '../../services/visualization.service';
 
 @Component({
@@ -60,6 +64,7 @@ export class SimulationControlBarComponent {
   constructor(
     private readonly visualizationService: VisualizationService,
     private readonly animationService: AnimationService,
+    private readonly simulationService: SimulationService,
   ) {}
 
   // MARK: Getters
@@ -87,12 +92,8 @@ export class SimulationControlBarComponent {
     return this.visualizationService.wantedVisualizationTimeSignal;
   }
 
-  get firstLoadedTimeSignal(): Signal<number | null> {
-    return this.visualizationService.firstLoadedTimeSignal;
-  }
-
-  get lastLoadedTimeSignal(): Signal<number | null> {
-    return this.visualizationService.lastLoadedTimeSignal;
+  get simulationStatesSignal(): Signal<SimulationStates> {
+    return this.simulationService.simulationStatesSignal;
   }
 
   // MARK: Handlers
