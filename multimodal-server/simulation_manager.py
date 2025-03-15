@@ -1,4 +1,3 @@
-import datetime
 import inspect
 import logging
 import multiprocessing
@@ -6,17 +5,16 @@ import multiprocessing
 from flask_socketio import emit
 from server_utils import (
     CLIENT_ROOM,
+    RUNNING_SIMULATION_STATUSES,
     SAVE_VERSION,
     SIMULATION_SAVE_FILE_SEPARATOR,
     SimulationStatus,
+    build_simulation_id,
     get_session_id,
     log,
 )
 from simulation import run_simulation
-from simulation_visualization_data_model import (
-    SimulationInformation,
-    SimulationVisualizationDataManager,
-)
+from simulation_visualization_data_model import SimulationVisualizationDataManager
 
 
 class SimulationHandler:
@@ -72,13 +70,7 @@ class SimulationManager:
     def start_simulation(
         self, name: str, data: str, response_event: str, max_time: float | None
     ) -> SimulationHandler:
-        # Get the current time
-        start_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S%f")
-        # Remove microseconds
-        start_time = start_time[:-3]
-
-        # Start time first to sort easily
-        simulation_id = f"{start_time}{SIMULATION_SAVE_FILE_SEPARATOR}{name}"
+        simulation_id, start_time = build_simulation_id(name)
 
         simulation_process = multiprocessing.Process(
             target=run_simulation, args=(simulation_id, data, max_time)
@@ -135,23 +127,6 @@ class SimulationManager:
         simulation.status = SimulationStatus.STOPPING
 
         emit("stop-simulation", to=simulation.socket_id)
-
-    def on_simulation_end(self, simulation_id: str):
-        if simulation_id not in self.simulations:
-            log(
-                f"{__file__} {inspect.currentframe().f_lineno}: Simulation {simulation_id} not found",
-                "server",
-                logging.ERROR,
-            )
-            return
-
-        simulation = self.simulations[simulation_id]
-
-        simulation.status = SimulationStatus.COMPLETED
-
-        emit("can-disconnect", to=simulation.socket_id)
-
-        self.emit_simulations()
 
     def pause_simulation(self, simulation_id):
         if simulation_id not in self.simulations:
@@ -247,9 +222,22 @@ class SimulationManager:
 
         simulation_id = matching_simulation_ids[0]
 
+        # Get the simulation information from the save file
+        simulation_information = (
+            SimulationVisualizationDataManager.get_simulation_information(simulation_id)
+        )
+
         simulation = self.simulations[simulation_id]
 
-        simulation.status = SimulationStatus.LOST
+        if simulation.status in RUNNING_SIMULATION_STATUSES:
+            if simulation_information.simulation_end_time is None:
+                # The simulation has been lost
+                simulation.status = SimulationStatus.LOST
+            else:
+                # The simulation has been completed
+                simulation.status = SimulationStatus.COMPLETED
+
+        simulation.socket_id = None
 
         self.emit_simulations()
 
@@ -288,28 +276,47 @@ class SimulationManager:
     def on_simulation_identification(
         self,
         simulation_id,
+        data,
+        simulation_start_time,
         simulation_time,
         simulation_estimated_end_time,
+        max_time,
         status,
         socket_id,
     ):
-        # For now, we only identify simulations that are lost
-        if (
-            simulation_id not in self.simulations
-            or self.simulations[simulation_id].status != SimulationStatus.LOST
-        ):
-            return
 
         log(
             f"Identifying simulation {simulation_id}",
             "simulation",
         )
 
-        simulation = self.simulations[simulation_id]
+        start_time, name = simulation_id.split(SIMULATION_SAVE_FILE_SEPARATOR)
 
-        simulation.status = SimulationStatus[status]
+        if simulation_id in self.simulations:
+            simulation = self.simulations[simulation_id]
+        else:
+            start_time, name = simulation_id.split(SIMULATION_SAVE_FILE_SEPARATOR)
+
+            simulation = SimulationHandler(
+                simulation_id,
+                name,
+                start_time,
+                data,
+                SimulationStatus(status),
+                max_time,
+                None,
+            )
+
+            self.simulations[simulation_id] = simulation
+
+        simulation.name = name
+        simulation.start_time = start_time
+        simulation.data = data
+        simulation.simulation_start_time = simulation_start_time
         simulation.simulation_time = simulation_time
         simulation.simulation_estimated_end_time = simulation_estimated_end_time
+        simulation.max_time = max_time
+        simulation.status = SimulationStatus(status)
         simulation.socket_id = socket_id
 
         self.emit_simulations()

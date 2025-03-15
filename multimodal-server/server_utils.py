@@ -1,4 +1,7 @@
+import datetime
 import logging
+import os
+import threading
 from enum import Enum
 
 from flask import request
@@ -32,8 +35,38 @@ class SimulationStatus(Enum):
     FUTURE = "future"
 
 
+RUNNING_SIMULATION_STATUSES = [
+    SimulationStatus.STARTING,
+    SimulationStatus.RUNNING,
+    SimulationStatus.PAUSED,
+    SimulationStatus.STOPPING,
+    SimulationStatus.LOST,
+]
+
+
 def get_session_id():
     return request.sid
+
+
+def build_simulation_id(name: str) -> tuple[str, str]:
+    # Get the current time
+    start_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S%f")
+    # Remove microseconds
+    start_time = start_time[:-3]
+
+    # Start time first to sort easily
+    simulation_id = f"{start_time}{SIMULATION_SAVE_FILE_SEPARATOR}{name}"
+    return simulation_id, start_time
+
+
+def get_available_data():
+    current_dir = os.path.dirname(os.path.realpath(__file__))
+    data_dir = os.path.join(current_dir, "..", "data")
+
+    if not os.path.exists(data_dir):
+        return []
+
+    return os.listdir(data_dir)
 
 
 def log(message: str, auth_type: str, level=logging.INFO, should_emit=True) -> None:
@@ -49,3 +82,30 @@ def log(message: str, auth_type: str, level=logging.INFO, should_emit=True) -> N
                 f"{level} [{auth_type}] {get_session_id()} {message}",
                 to=CLIENT_ROOM,
             )
+
+
+def verify_simulation_name(name: str | None) -> str | None:
+    if name is None:
+        return "Name is required"
+    elif len(name) < 3:
+        return "Name must be at least 3 characters"
+    elif len(name) > 50:
+        return "Name must be at most 50 characters"
+    elif name.count(SIMULATION_SAVE_FILE_SEPARATOR) > 0:
+        return "Name must not contain three consecutive dashes"
+    elif any(char in name for char in ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]):
+        return 'The name muse not contain characters that might affect the file system (e.g. /, \, :, *, ?, ", <, >, |)'
+    return None
+
+
+def set_event_on_input(action: str, key: str, event: threading.Event) -> None:
+    try:
+        user_input = ""
+        while user_input != key:
+            user_input = input(f"Press {key} to {action}: ")
+
+    except EOFError:
+        pass
+
+    print(f"Received {key}: {action}")
+    event.set()

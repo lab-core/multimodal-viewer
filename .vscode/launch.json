@@ -5,22 +5,30 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Python Debugger: Current File",
+      "name": "Server Python Debugger",
       "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/multimodal-server/server.py",
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/multimodal-server"
+      // "justMyCode": false
     },
     {
-      "name": "[Windows] Python Debugger",
+      "name": "Simulation Python Debugger",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/multimodal-server/server.py",
+      "program": "${workspaceFolder}/multimodal-server/simulation.py",
       "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/multimodal-server",
-      "justMyCode": false,
-      "python": "${workspaceFolder}/venv/Scripts/python"
+      "cwd": "${workspaceFolder}/multimodal-server"
+      // "justMyCode": false,
+      // "args": [
+      //   "--name",
+      //   "launch",
+      //   "--data",
+      //   "instance_very_small_16",
+      //   "--max-time",
+      //   "60000"
+      // ]
     }
   ]
 }
