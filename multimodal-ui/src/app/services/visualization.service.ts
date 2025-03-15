@@ -112,20 +112,24 @@ export class VisualizationService {
         return this.visualizationEnvironment;
       }
 
-      const firstUpdateTime = simulationStates.states[0].timestamp;
-      const lastUpdateTime = simulationStates.states
-        .slice(-1)[0]
-        .updates.slice(-1)[0].timestamp;
-
       if (
-        wantedVisualizationTime < firstUpdateTime ||
-        wantedVisualizationTime > lastUpdateTime
+        simulationStates.firstContinuousState === null ||
+        simulationStates.lastContinuousState === null ||
+        simulationStates.currentState === null
       ) {
         return this.visualizationEnvironment;
       }
 
-      // The wanted state should always be the first
-      const state = simulationStates.states[0];
+      // Get last state with a timestamp less than or equal to the wanted visualization time
+      let state = simulationStates.states[0];
+      // eslint-disable-next-line @typescript-eslint/prefer-for-of
+      for (let i = 0; i < simulationStates.states.length; i++) {
+        if (simulationStates.states[i].timestamp <= wantedVisualizationTime) {
+          state = simulationStates.states[i];
+        } else {
+          break;
+        }
+      }
 
       const polylines = this.simulationService.simulationPolylinesSignal();
 
@@ -196,6 +200,14 @@ export class VisualizationService {
       ) {
         this._isLoadingSignal.set(false);
         return;
+      }
+
+      const allStateOrders: number[] = simulationStates.states.map(
+        (state) => state.order,
+      );
+      // Remove last state if shouldRequestMoreStates is true because it could be incomplete
+      if (simulationStates.shouldRequestMoreStates) {
+        allStateOrders.pop();
       }
 
       if (!isFetching) {

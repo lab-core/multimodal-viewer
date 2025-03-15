@@ -904,13 +904,13 @@ class SimulationVisualizationDataManager:
         visualization_time: float,
         loaded_state_orders: list[int],
         is_simulation_complete: bool,
-    ) -> tuple[list[str], dict[list[str]], list[int], bool]:
+    ) -> tuple[list[str], dict[list[str]], list[int], bool, int, int, int]:
         sorted_states = SimulationVisualizationDataManager.get_sorted_states(
             simulation_id
         )
 
         if len(sorted_states) == 0:
-            return [], [], []
+            return ([], {}, [], False, 0, 0, 0)
 
         necessary_state_index = None
 
