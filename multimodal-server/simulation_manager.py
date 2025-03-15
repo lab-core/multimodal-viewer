@@ -353,6 +353,7 @@ class SimulationManager:
 
             serialized_simulations.append(serialized_simulation)
 
+        
         emit(
             "simulations",
             serialized_simulations,
@@ -434,9 +435,25 @@ class SimulationManager:
             SimulationVisualizationDataManager.get_all_saved_simulation_ids()
         )
 
+        for simulation_id, _ in list(self.simulations.items()):
+            if (
+                simulation_id not in all_simulation_ids
+                and self.simulations[simulation_id].status
+                not in [
+                    SimulationStatus.RUNNING,
+                    SimulationStatus.PAUSED,
+                    SimulationStatus.STOPPING,
+                    SimulationStatus.STARTING,
+                    SimulationStatus.LOST,
+                ]
+            ):
+                del self.simulations[simulation_id]
+
         for simulation_id in all_simulation_ids:
             # Non valid save files might throw an exception
             self.query_simulation(simulation_id)
+
+        
 
     def query_simulation(self, simulation_id) -> None:
         if simulation_id in self.simulations and self.simulations[

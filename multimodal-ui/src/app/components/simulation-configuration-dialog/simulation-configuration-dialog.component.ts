@@ -277,7 +277,7 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
       next: (response: { message?: string; error?: string }) => {
         if (response.message) {
           console.log(response.message);
-          this.dataService.removeSimulation(simulationId);
+          // this.dataService.removeSimulation(simulationId);
         } else if (response.error) {
           console.error('Failed to delete the data folder:', response.error);
         }

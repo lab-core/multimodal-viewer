@@ -249,10 +249,10 @@ export class SimulationListDialogComponent {
       next: (response: { message?: string; error?: string }) => {
         if (response.message) {
           console.log(response.message);
-          this.dataService.removeSimulation(simulationId);
         } else if (response.error) {
           console.error('Failed to delete simulation:', response.error);
         }
+        this.communicationService.emit('get-simulations');
       },
       error: (err) => {
         console.error('HTTP error during deletion:', err);
