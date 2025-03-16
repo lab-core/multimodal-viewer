@@ -399,7 +399,7 @@ export class VisualizationService {
         }
       }
 
-      return {
+      const animatedSimulationEnvironment: AnimatedSimulationEnvironment = {
         ...simulationEnvironment,
         passengers: displayedPassenger,
         vehicles: displayedVehicle,
@@ -410,6 +410,8 @@ export class VisualizationService {
           endTimestamp: simulationStates.lastContinuousState.timestamp,
         },
       };
+
+      return animatedSimulationEnvironment;
     });
 
   private readonly _isLoadingSignal: WritableSignal<boolean> = signal(true);
@@ -716,6 +718,8 @@ export class VisualizationService {
         break;
       }
 
+      currentTimestamp = Math.max(leg.assignedTime, currentTimestamp);
+
       if (leg.assignedTime >= endTimestamp) {
         break;
       }
@@ -752,7 +756,7 @@ export class VisualizationService {
         break;
       }
 
-      if (leg.boardingTime === null || leg.boardingTime >= startTimestamp) {
+      if (leg.boardingTime === null || leg.boardingTime >= currentTimestamp) {
         const polyline =
           vehicle.polylines[Math.max(leg.boardingStopIndex - 1, 0)];
 
@@ -917,6 +921,8 @@ export class VisualizationService {
       (a, b) => a.startTimestamp - b.startTimestamp,
     );
 
+    const previousAnimationData = structuredClone(allSortedAnimationData);
+
     // Set status according to updates
     for (const animationData of allSortedAnimationData) {
       animationData.status =
@@ -932,7 +938,7 @@ export class VisualizationService {
     for (const statusUpdate of statusUpdates) {
       while (
         currentIndex < allSortedAnimationData.length &&
-        (allSortedAnimationData[currentIndex].startTimestamp >
+        (allSortedAnimationData[currentIndex].endTimestamp <
           statusUpdate.timestamp ||
           (currentIndex + 1 < allSortedAnimationData.length &&
             allSortedAnimationData[currentIndex].startTimestamp ===
@@ -946,6 +952,10 @@ export class VisualizationService {
       }
 
       const currentAnimationData = allSortedAnimationData[currentIndex];
+
+      if (currentAnimationData.startTimestamp > statusUpdate.timestamp) {
+        continue;
+      }
 
       if (currentAnimationData.startTimestamp === statusUpdate.timestamp) {
         currentAnimationData.status = statusUpdate.status;
@@ -974,6 +984,10 @@ export class VisualizationService {
           i + 1,
           allSortedAnimationData[i + 1],
           passenger,
+          previousAnimationData,
+          statusUpdates,
+          startTimestamp,
+          endTimestamp,
         );
       }
     }
@@ -1195,6 +1209,8 @@ export class VisualizationService {
       (a, b) => a.startTimestamp - b.startTimestamp,
     );
 
+    const previousAnimationData = structuredClone(allSortedAnimationData);
+
     // Set status according to updates
     for (const animationData of allSortedAnimationData) {
       animationData.status =
@@ -1210,7 +1226,7 @@ export class VisualizationService {
     for (const statusUpdate of statusUpdates) {
       while (
         currentIndex < allSortedAnimationData.length &&
-        (allSortedAnimationData[currentIndex].startTimestamp >
+        (allSortedAnimationData[currentIndex].endTimestamp <
           statusUpdate.timestamp ||
           (currentIndex + 1 < allSortedAnimationData.length &&
             allSortedAnimationData[currentIndex].startTimestamp ===
@@ -1224,6 +1240,10 @@ export class VisualizationService {
       }
 
       const currentAnimationData = allSortedAnimationData[currentIndex];
+
+      if (currentAnimationData.startTimestamp > statusUpdate.timestamp) {
+        continue;
+      }
 
       if (currentAnimationData.startTimestamp === statusUpdate.timestamp) {
         currentAnimationData.status = statusUpdate.status;
@@ -1252,6 +1272,10 @@ export class VisualizationService {
           i + 1,
           allSortedAnimationData[i + 1],
           vehicle,
+          previousAnimationData,
+          statusUpdates,
+          startTimestamp,
+          endTimestamp,
         );
       }
     }

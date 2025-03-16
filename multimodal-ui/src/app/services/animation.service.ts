@@ -123,7 +123,8 @@ export class AnimationService {
       this.startTimestamp === null ||
       this.endTimestamp === null ||
       visualizationTime < this.startTimestamp ||
-      visualizationTime > this.endTimestamp
+      visualizationTime > this.endTimestamp ||
+      this.pause
     ) {
       this.animationVisualizationTime = visualizationTime;
     }
@@ -174,6 +175,12 @@ export class AnimationService {
   clearAnimations() {
     this.container.removeChildren();
     this.vehicles = [];
+    this.vehicleEntitiesByVehicleId = {};
+    this.passengersEntities = [];
+    this.selectedVehiclePolyline.clear();
+    this._selectedVehicleSignal.set(null);
+    this.previousVehiclesEntities = [];
+    this.previousPassengerEntities = [];
   }
 
   setPause(pause: boolean) {
@@ -219,6 +226,7 @@ export class AnimationService {
 
     if (allEntitiesY.length == 0 || allEntitiesX.length == 0) {
       console.warn('No entities to center map on');
+      return;
     }
 
     const minimumLatitude = Math.min(...allEntitiesY);
@@ -261,11 +269,12 @@ export class AnimationService {
           data.endTimestamp >= this.animationVisualizationTime,
       );
 
+      // Vehicle has no animation data
+      // This can happen if the vehicle is not in the environment yet
       if (!animationData) {
         vehicle.sprite.visible = false;
         continue;
       }
-      vehicle.sprite.visible = true;
 
       switch (animationData.status) {
         case 'alighting':
@@ -288,6 +297,7 @@ export class AnimationService {
       if (
         (animationData as StaticVehicleAnimationData).position !== undefined
       ) {
+        vehicle.sprite.visible = true;
         const staticVehicleAnimationData =
           animationData as StaticVehicleAnimationData;
         point = this.utils.latLngToLayerPoint([
@@ -301,6 +311,7 @@ export class AnimationService {
       } else if (
         (animationData as DynamicVehicleAnimationData).polyline !== undefined
       ) {
+        vehicle.sprite.visible = true;
         const dynamicVehicleAnimationData =
           animationData as DynamicVehicleAnimationData;
         const [lineNo, lineProgress] = this.getLineNoAndProgress(
@@ -318,10 +329,11 @@ export class AnimationService {
         lineIndex = lineNo;
       } else {
         // Vehicle has an error
-        vehicle.sprite.tint = this.SATURATED_RED;
+        vehicle.sprite.visible = false;
       }
 
       if (
+        vehicle.sprite.visible &&
         this._selectedVehicleSignal()?.id == vehicle.data.id &&
         polylineIndex !== null &&
         lineIndex !== null &&
@@ -343,6 +355,8 @@ export class AnimationService {
           data.endTimestamp >= this.animationVisualizationTime,
       );
 
+      // Passenger has no animation data
+      // This can happen if the passenger is not in the environment yet
       if (!animationData) {
         passenger.sprite.visible = false;
         continue;
@@ -476,6 +490,9 @@ export class AnimationService {
     lineNo: number,
     interpolatedPoint: L.Point,
   ) {
+    const selectedVehicle = this._selectedVehicleSignal();
+    if (!selectedVehicle) return;
+
     const BASE_LINE_WIDTH = 4;
     const MIN_WIDTH = 0.04; // By testing out values
     const ALPHA = 0.9;
@@ -486,9 +503,7 @@ export class AnimationService {
     graphics.clear();
     graphics.lineStyle(width, this.KELLY_GREEN, ALPHA);
 
-    const polylines = Object.values(
-      this._selectedVehicleSignal()?.polylines ?? {},
-    );
+    const polylines = Object.values(selectedVehicle.polylines ?? {});
     if (polylines.length == 0) return;
 
     const polyline = polylines[0].polyline;
@@ -584,8 +599,6 @@ export class AnimationService {
   }
 
   private updateAnimationTime() {
-    if (this.startTimestamp == null || this.endTimestamp == null) return;
-
     const deltaSec = (this.speed * this.ticker.deltaMS) / 1000;
     this.animationVisualizationTime += deltaSec;
     this.lastVisualisationTime += deltaSec;
@@ -597,11 +610,6 @@ export class AnimationService {
       this.animationVisualizationTime +=
         desyncDiff * (1 - Math.exp(-5 * deltaSec));
     }
-
-    this.animationVisualizationTime = Math.max(
-      Math.min(this.animationVisualizationTime, this.endTimestamp),
-      this.startTimestamp,
-    );
   }
 
   // Called once when Pixi layer is added.
@@ -625,14 +633,14 @@ export class AnimationService {
   private onRedraw(event: L.LeafletEvent) {
     if (this.startTimestamp == null || this.endTimestamp == null) return;
 
+    if (!this.pause) this.updateAnimationTime();
+
     if (
       this.animationVisualizationTime < this.startTimestamp ||
       this.animationVisualizationTime > this.endTimestamp
     ) {
       return;
     }
-
-    if (!this.pause) this.updateAnimationTime();
 
     this.setVehiclePositions();
     this.setPassengerPositions();

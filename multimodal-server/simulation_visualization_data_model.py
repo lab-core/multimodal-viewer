@@ -1273,7 +1273,10 @@ class SimulationVisualizationDataManager:
             order, state_timestamp = sorted_states[index]
 
             # If the client already has the state, skip it
-            if order in loaded_state_orders:
+            # unless the simulation is not complete and the state is the last one
+            if order in loaded_state_orders and (
+                is_simulation_complete or index < len(sorted_states) - 1
+            ):
                 state_orders_to_keep.append(order)
 
                 all_state_indexes_in_client.append(index)
