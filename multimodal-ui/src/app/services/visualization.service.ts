@@ -16,6 +16,7 @@ import {
   AnyPassengerAnimationData,
   AnyVehicleAnimationData,
   displayed,
+  DynamicPassengerAnimationData,
   DynamicVehicleAnimationData,
   Passenger,
   PassengerStatus,
@@ -318,6 +319,48 @@ export class VisualizationService {
         animatedVehicles[vehicle.id] = animatedVehicle;
       }
 
+      // Find if each vehicle is displayed
+      const displayedVehicle: Record<string, displayed<Vehicle>> = {};
+
+      for (const vehicle of Object.values(simulationEnvironment.vehicles)) {
+        const animatedVehicle = animatedVehicles[vehicle.id];
+
+        if (animatedVehicle.animationData.length === 0) {
+          displayedVehicle[vehicle.id] = {
+            ...vehicle,
+            notDisplayedReason: 'Vehicle has no animation data',
+          };
+          continue;
+        }
+
+        const currentAnimationData = animatedVehicle.animationData.find(
+          (animationData) =>
+            animationData.startTimestamp <= simulationEnvironment.timestamp &&
+            animationData.endTimestamp >= simulationEnvironment.timestamp,
+        );
+
+        if (currentAnimationData === undefined) {
+          displayedVehicle[vehicle.id] = {
+            ...vehicle,
+            notDisplayedReason: 'Vehicle animation data not found',
+          };
+          continue;
+        }
+
+        if (currentAnimationData.notDisplayedReason !== null) {
+          displayedVehicle[vehicle.id] = {
+            ...vehicle,
+            notDisplayedReason: currentAnimationData.notDisplayedReason,
+          };
+          continue;
+        }
+
+        displayedVehicle[vehicle.id] = {
+          ...vehicle,
+          notDisplayedReason: null,
+        };
+      }
+
       // Find if each passenger is displayed
       const displayedPassenger: Record<string, displayed<Passenger>> = {};
       for (const passenger of Object.values(simulationEnvironment.passengers)) {
@@ -360,43 +403,37 @@ export class VisualizationService {
           };
           continue;
         }
-      }
 
-      // Find if each vehicle is displayed
-      const displayedVehicle: Record<string, displayed<Vehicle>> = {};
+        if (
+          (currentAnimationData as DynamicPassengerAnimationData).vehicleId !==
+          undefined
+        ) {
+          const dynamicAnimationData =
+            currentAnimationData as DynamicPassengerAnimationData;
 
-      for (const vehicle of Object.values(simulationEnvironment.vehicles)) {
-        const animatedVehicle = animatedVehicles[vehicle.id];
+          const vehicle = displayedVehicle[dynamicAnimationData.vehicleId];
 
-        if (animatedVehicle.animationData.length === 0) {
-          displayedVehicle[vehicle.id] = {
-            ...vehicle,
-            notDisplayedReason: 'Vehicle has no animation data',
+          if (vehicle === undefined) {
+            displayedPassenger[passenger.id] = {
+              ...passenger,
+              notDisplayedReason: 'Vehicle not found',
           };
           continue;
         }
 
-        const currentAnimationData = animatedVehicle.animationData.find(
-          (animationData) =>
-            animationData.startTimestamp <= simulationEnvironment.timestamp &&
-            animationData.endTimestamp >= simulationEnvironment.timestamp,
-        );
-
-        if (currentAnimationData === undefined) {
-          displayedVehicle[vehicle.id] = {
-            ...vehicle,
-            notDisplayedReason: 'Vehicle animation data not found',
+          if (vehicle.notDisplayedReason !== null) {
+            displayedPassenger[passenger.id] = {
+              ...passenger,
+              notDisplayedReason: 'Vehicle not displayed',
           };
           continue;
         }
-
-        if (currentAnimationData.notDisplayedReason !== null) {
-          displayedVehicle[vehicle.id] = {
-            ...vehicle,
-            notDisplayedReason: currentAnimationData.notDisplayedReason,
-          };
-          continue;
         }
+
+        displayedPassenger[passenger.id] = {
+          ...passenger,
+          notDisplayedReason: null,
+          };
       }
 
       const animatedSimulationEnvironment: AnimatedSimulationEnvironment = {
