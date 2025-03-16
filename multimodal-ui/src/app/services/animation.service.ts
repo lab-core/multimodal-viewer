@@ -361,7 +361,6 @@ export class AnimationService {
         passenger.sprite.visible = false;
         continue;
       }
-      passenger.sprite.visible = true;
 
       switch (animationData.status) {
         case 'release':
@@ -384,6 +383,7 @@ export class AnimationService {
       if (
         (animationData as StaticPassengerAnimationData).position !== undefined
       ) {
+        passenger.sprite.visible = true;
         const staticVehicleAnimationData =
           animationData as StaticVehicleAnimationData;
         const point = this.utils.latLngToLayerPoint([
@@ -395,6 +395,7 @@ export class AnimationService {
       } else if (
         (animationData as DynamicPassengerAnimationData).vehicleId !== undefined
       ) {
+        passenger.sprite.visible = true;
         const dynamicPassengerAnimationData =
           animationData as DynamicPassengerAnimationData;
         const vehicleEntity =
@@ -408,7 +409,7 @@ export class AnimationService {
         }
       } else {
         // Passenger has an error
-        passenger.sprite.tint = this.SATURATED_RED;
+        passenger.sprite.visible = false;
       }
     }
   }
@@ -626,6 +627,9 @@ export class AnimationService {
   private onZoomEnd(event: L.LeafletEvent) {
     const invScale = 1 / this.utils.getScale();
     this.vehicles.forEach((entity) => {
+      entity.sprite.scale.set(invScale);
+    });
+    this.passengersEntities.forEach((entity) => {
       entity.sprite.scale.set(invScale);
     });
   }
