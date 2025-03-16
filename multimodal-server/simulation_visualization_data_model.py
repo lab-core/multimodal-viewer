@@ -684,12 +684,20 @@ class SimulationVisualizationDataManager:
     __SAVED_SIMULATIONS_DIRECTORY_NAME = "saved_simulations"
     __SIMULATION_INFORMATION_FILE_NAME = "simulation_information.json"
     __STATES_DIRECTORY_NAME = "states"
+    __POLYLINES_DIRECTORY_NAME = "polylines"
+    __POLYLINES_VERSION_FILE_NAME = "version"
+    __POLYLINES_BY_VEHICLE_ID_DIRECTORY_NAME = "by_vehicle_id"
 
     __STATES_ORDER_MINIMUM_LENGTH = 8
     __STATES_TIMESTAMP_MINIMUM_LENGTH = 8
 
-    __MINIMUM_STATES_BEFORE = 2
-    __MINIMUM_STATES_AFTER = 2
+    # Only send a maximum of 10 states at once
+    __MAX_STATES_AT_ONCE = 10
+
+    # The client keeps a maximum of 150 states in memory
+    # The current one, the previous 49, and the next 100
+    __MAX_STATES_IN_CLIENT_BEFORE_NECESSARY = 49
+    __MAX_STATES_IN_CLIENT_AFTER_NECESSARY = 100
 
     # MARK: +- Format
     @staticmethod
@@ -892,53 +900,94 @@ class SimulationVisualizationDataManager:
 
     @staticmethod
     def get_missing_states(
-        simulation_id: str, first_order: int, last_order: int, visualization_time: float
-    ) -> tuple[list[str], list[int], dict[list[str]]]:
+        simulation_id: str,
+        visualization_time: float,
+        loaded_state_orders: list[int],
+        is_simulation_complete: bool,
+    ) -> tuple[list[str], dict[list[str]], list[int], bool, int, int, int]:
         sorted_states = SimulationVisualizationDataManager.get_sorted_states(
             simulation_id
         )
 
         if len(sorted_states) == 0:
-            return [], [], []
+            return ([], {}, [], False, 0, 0, 0)
 
-        last_state_with_lower_timestamp_index = None
-        first_state_with_greater_timestamp_index = None
+        necessary_state_index = None
 
         for index, (order, state_timestamp) in enumerate(sorted_states):
-            if state_timestamp < visualization_time:
-                last_state_with_lower_or_equal_timestamp_index = index
-            elif state_timestamp > visualization_time:
-                first_state_with_greater_timestamp_index = index
+            if necessary_state_index is None and state_timestamp > visualization_time:
+                necessary_state_index = index
                 break
 
-        if first_state_with_greater_timestamp_index is None:
-            first_state_with_greater_timestamp_index = len(sorted_states)
-
-        if last_state_with_lower_timestamp_index is None:
-            first_state_index = 0
+        if necessary_state_index is None:
+            # If the visualization time is after the last state then
+            # The last state is necessary
+            necessary_state_index = len(sorted_states) - 1
         else:
-            first_state_index = last_state_with_lower_timestamp_index + 1
+            # Else we need the state before the first state with greater timestamp
+            necessary_state_index -= 1
 
-        last_state_index = first_state_with_greater_timestamp_index - 1
+        # Handle negative indexes
+        necessary_state_index = max(0, necessary_state_index)
 
-        first_state_index = max(
-            0,
-            first_state_index
-            - SimulationVisualizationDataManager.__MINIMUM_STATES_BEFORE,
-        )
-        last_state_index = min(
-            len(sorted_states) - 1,
-            last_state_index
-            + SimulationVisualizationDataManager.__MINIMUM_STATES_AFTER,
-        )
-
+        state_orders_to_keep = []
         missing_states = []
         missing_updates = {}
-        state_orders_to_keep = []
-        for index in range(first_state_index, last_state_index + 1):
+
+        last_state_index_in_client = -1
+        all_state_indexes_in_client = []
+
+        # We want to load the necessary state first, followed by
+        # the __MAX_STATES_IN_CLIENT_AFTER_NECESSARY next states and
+        # then the __MAX_STATES_IN_CLIENT_BEFORE_NECESSARY previous states
+        indexes_to_load = (
+            [necessary_state_index]
+            + [
+                next_state_index
+                for next_state_index in range(
+                    necessary_state_index + 1,
+                    min(
+                        necessary_state_index
+                        + SimulationVisualizationDataManager.__MAX_STATES_IN_CLIENT_AFTER_NECESSARY
+                        + 1,
+                        len(sorted_states),
+                    ),
+                )
+            ]
+            + [
+                previous_state_index
+                for previous_state_index in range(
+                    necessary_state_index - 1,
+                    max(
+                        necessary_state_index
+                        - SimulationVisualizationDataManager.__MAX_STATES_IN_CLIENT_BEFORE_NECESSARY
+                        - 1,
+                        -1,
+                    ),
+                    -1,
+                )
+            ]
+        )
+
+        for index in indexes_to_load:
             order, state_timestamp = sorted_states[index]
-            if first_order <= order <= last_order and index != len(sorted_states) - 1:
+
+            # If the client already has the state, skip it
+            if order in loaded_state_orders:
                 state_orders_to_keep.append(order)
+
+                all_state_indexes_in_client.append(index)
+                if index > last_state_index_in_client:
+                    last_state_index_in_client = index
+
+                continue
+
+            # Don't add states if the max number of states is reached
+            # but continue the loop to know which states need to be kept
+            if (
+                len(missing_states)
+                >= SimulationVisualizationDataManager.__MAX_STATES_AT_ONCE
+            ):
                 continue
 
             state_file_path = (
@@ -961,9 +1010,66 @@ class SimulationVisualizationDataManager:
 
                     missing_updates[order] = current_state_updates
 
-        return missing_states, state_orders_to_keep, missing_updates
+                    all_state_indexes_in_client.append(index)
+                    if index > last_state_index_in_client:
+                        last_state_index_in_client = index
+
+        client_has_last_state = last_state_index_in_client == len(sorted_states) - 1
+        client_has_max_states = len(missing_states) + len(state_orders_to_keep) >= len(
+            indexes_to_load
+        )
+
+        should_request_more_states = (
+            is_simulation_complete
+            and not client_has_last_state
+            and not client_has_max_states
+            or not is_simulation_complete
+            and (client_has_last_state or not client_has_max_states)
+        )
+
+        first_continuous_state_index = necessary_state_index
+        last_continuous_state_index = necessary_state_index
+
+        all_state_indexes_in_client.sort()
+
+        necessary_state_index_index = all_state_indexes_in_client.index(
+            necessary_state_index
+        )
+
+        for index in range(necessary_state_index_index - 1, -1, -1):
+            if all_state_indexes_in_client[index] == first_continuous_state_index - 1:
+                first_continuous_state_index -= 1
+            else:
+                break
+
+        for index in range(
+            necessary_state_index_index + 1, len(all_state_indexes_in_client)
+        ):
+            if all_state_indexes_in_client[index] == last_continuous_state_index + 1:
+                last_continuous_state_index += 1
+            else:
+                break
+
+        first_continuous_state_order = sorted_states[first_continuous_state_index][0]
+        last_continuous_state_order = sorted_states[last_continuous_state_index][0]
+
+        necessary_state_order = sorted_states[necessary_state_index][0]
+
+        return (
+            missing_states,
+            missing_updates,
+            state_orders_to_keep,
+            should_request_more_states,
+            first_continuous_state_order,
+            last_continuous_state_order,
+            necessary_state_order,
+        )
 
     # MARK: +- Polylines
+    @staticmethod
+    def get_saved_simulation_polylines_lock(simulation_id: str) -> FileLock:
+        return FileLock(f"{simulation_id}.lock")
+
     @staticmethod
     def get_saved_simulation_polylines_directory_path(simulation_id: str) -> str:
         simulation_directory_path = (
@@ -971,7 +1077,7 @@ class SimulationVisualizationDataManager:
                 simulation_id
             )
         )
-        directory_path = f"{simulation_directory_path}/polylines"
+        directory_path = f"{simulation_directory_path}/{SimulationVisualizationDataManager.__POLYLINES_DIRECTORY_NAME}"
 
         if not os.path.exists(directory_path):
             os.makedirs(directory_path)
@@ -979,10 +1085,71 @@ class SimulationVisualizationDataManager:
         return directory_path
 
     @staticmethod
+    def get_saved_simulation_polylines_version_file_path(simulation_id: str) -> str:
+        directory_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_directory_path(
+            simulation_id
+        )
+        file_path = f"{directory_path}/{SimulationVisualizationDataManager.__POLYLINES_VERSION_FILE_NAME}"
+
+        if not os.path.exists(file_path):
+            with open(file_path, "w") as file:
+                file.write(str(0))
+
+        return file_path
+
+    @staticmethod
+    def set_polylines_version(simulation_id: str, version: int) -> None:
+        """
+        Should always be called in a lock.
+        """
+        file_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_version_file_path(
+            simulation_id
+        )
+
+        with open(file_path, "w") as file:
+            file.write(str(version))
+
+    @staticmethod
+    def get_polylines_version(simulation_id: str) -> int:
+        """
+        Should always be called in a lock.
+        """
+        file_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_version_file_path(
+            simulation_id
+        )
+
+        with open(file_path, "r") as file:
+            return int(file.read())
+
+    @staticmethod
+    def get_polylines_version_with_lock(simulation_id: str) -> int:
+        lock = SimulationVisualizationDataManager.get_saved_simulation_polylines_lock(
+            simulation_id
+        )
+        with lock:
+            return SimulationVisualizationDataManager.get_polylines_version(
+                simulation_id
+            )
+
+    @staticmethod
+    def get_saved_simulation_polylines_by_vehicle_id_directory_path(
+        simulation_id: str,
+    ) -> str:
+        directory_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_directory_path(
+            simulation_id
+        )
+        polylines_by_vehicle_id_directory_path = f"{directory_path}/{SimulationVisualizationDataManager.__POLYLINES_BY_VEHICLE_ID_DIRECTORY_NAME}"
+
+        if not os.path.exists(polylines_by_vehicle_id_directory_path):
+            os.makedirs(polylines_by_vehicle_id_directory_path)
+
+        return polylines_by_vehicle_id_directory_path
+
+    @staticmethod
     def get_saved_simulation_polylines_file_path(
         simulation_id: str, vehicle_id: str
     ) -> str:
-        directory_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_directory_path(
+        directory_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_by_vehicle_id_directory_path(
             simulation_id
         )
         file_path = f"{directory_path}/{vehicle_id}.json"
@@ -994,8 +1161,8 @@ class SimulationVisualizationDataManager:
         return file_path
 
     @staticmethod
-    def get_saved_simulation_all_polylines_file_path(simulation_id: str) -> list[str]:
-        directory_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_directory_path(
+    def get_saved_simulation_all_polylines_file_paths(simulation_id: str) -> list[str]:
+        directory_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_by_vehicle_id_directory_path(
             simulation_id
         )
         return [f"{directory_path}/{file}" for file in os.listdir(directory_path)]
@@ -1010,9 +1177,20 @@ class SimulationVisualizationDataManager:
 
         # This lock file is the same for all vehicles to prevent reading and writing two
         # different vehicles at the same time.
-        lock = FileLock(f"{simulation_id}.lock")
+        lock = SimulationVisualizationDataManager.get_saved_simulation_polylines_lock(
+            simulation_id
+        )
 
         with lock:
+            # Increment the version to notify the client that the polylines have changed
+            version = SimulationVisualizationDataManager.get_polylines_version(
+                simulation_id
+            )
+            version += 1
+            SimulationVisualizationDataManager.set_polylines_version(
+                simulation_id, version
+            )
+
             with open(file_path, "w") as file:
                 SimulationVisualizationDataManager.__format_json_readable(
                     vehicle.polylines, file
@@ -1021,23 +1199,31 @@ class SimulationVisualizationDataManager:
     @staticmethod
     def get_polylines(
         simulation_id: str,
-    ) -> dict[str, str]:
+    ) -> tuple[dict[str, str], int]:
         """
-        Get all polylines as unparsed JSON strings by vehicle ID.
+        Get all polylines as unparsed JSON strings by vehicle ID, and the version of the polylines.
         """
 
         polylines = {}
 
-        lock = FileLock(f"{simulation_id}.lock")
-
-        all_polylines_file_paths = SimulationVisualizationDataManager.get_saved_simulation_all_polylines_file_path(
+        lock = SimulationVisualizationDataManager.get_saved_simulation_polylines_lock(
             simulation_id
         )
 
+        all_polylines_file_paths = SimulationVisualizationDataManager.get_saved_simulation_all_polylines_file_paths(
+            simulation_id
+        )
+
+        version = 0
+
         with lock:
+            version = SimulationVisualizationDataManager.get_polylines_version(
+                simulation_id
+            )
+
             for file_path in all_polylines_file_paths:
                 with open(file_path, "r") as file:
                     vehicle_id = file_path.split("/")[-1].split(".")[0]
                     polylines[vehicle_id] = file.read()
 
-        return polylines
+        return polylines, version

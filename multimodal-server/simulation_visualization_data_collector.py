@@ -100,6 +100,50 @@ class SimulationVisualizationDataCollector(DataCollector):
         update.order = self.update_counter
         self.visualized_environment.order = self.update_counter
 
+        if self.update_counter == 0:
+            # Add the simulation start time to the simulation information
+            self.simulation_information.simulation_start_time = update.timestamp
+
+            # Save the simulation information
+            SimulationVisualizationDataManager.set_simulation_information(
+                self.simulation_id, self.simulation_information
+            )
+
+            # Notify the server that the simulation has started and send the simulation start time
+            if self.sio.connected:
+                self.sio.emit(
+                    "simulation-start", (self.simulation_id, update.timestamp)
+                )
+
+        if self.visualized_environment.timestamp != update.timestamp:
+            # Notify the server that the simulation time has been updated
+            if self.sio.connected:
+                self.sio.emit(
+                    "simulation-update-time",
+                    (
+                        self.simulation_id,
+                        update.timestamp,
+                    ),
+                )
+            self.visualized_environment.timestamp = update.timestamp
+
+        estimated_end_time = min(
+            environment.estimated_end_time,
+            (
+                self.max_time
+                if self.max_time is not None
+                else environment.estimated_end_time
+            ),
+        )
+        if estimated_end_time != self.visualized_environment.estimated_end_time:
+            # Notify the server that the simulation estimated end time has been updated
+            if self.sio.connected:
+                self.sio.emit(
+                    "simulation-update-estimated-end-time",
+                    (self.simulation_id, estimated_end_time),
+                )
+            self.visualized_environment.estimated_end_time = estimated_end_time
+
         # Save the state of the simulation every SAVE_STATE_STEP events before applying the update
         if self.update_counter % STATE_SAVE_STEP == 0:
             self.current_save_file_path = SimulationVisualizationDataManager.save_state(
@@ -115,6 +159,11 @@ class SimulationVisualizationDataCollector(DataCollector):
                 SimulationVisualizationDataManager.set_polylines(
                     self.simulation_id, data
                 )
+                if self.sio.connected:
+                    self.sio.emit(
+                        "simulation-update-polylines-version",
+                        self.simulation_id,
+                    )
         elif update.type == UpdateType.UPDATE_PASSENGER_STATUS:
             passenger = self.visualized_environment.get_passenger(
                 update.data.passenger_id
@@ -129,49 +178,6 @@ class SimulationVisualizationDataCollector(DataCollector):
             vehicle.previous_stops = stops_update.previous_stops
             vehicle.next_stops = stops_update.next_stops
             vehicle.current_stop = stops_update.current_stop
-
-        if self.update_counter == 0:
-            # Add the simulation start time to the simulation information
-            self.simulation_information.simulation_start_time = update.timestamp
-
-            #           # Save the simulation information
-            SimulationVisualizationDataManager.set_simulation_information(
-                self.simulation_id, self.simulation_information
-            )
-
-            # Notify the server that the simulation has started and send the simulation start time
-            if self.sio.connected:
-                self.sio.emit(
-                    "simulation-start", (self.simulation_id, update.timestamp)
-                )
-
-        if self.sio.connected:
-            if self.visualized_environment.timestamp != update.timestamp:
-                # Notify the server that the simulation time has been updated
-                self.sio.emit(
-                    "simulation-update-time",
-                    (
-                        self.simulation_id,
-                        update.timestamp,
-                    ),
-                )
-                self.visualized_environment.timestamp = update.timestamp
-
-            estimated_end_time = min(
-                environment.estimated_end_time,
-                (
-                    self.max_time
-                    if self.max_time is not None
-                    else environment.estimated_end_time
-                ),
-            )
-            if estimated_end_time != self.visualized_environment.estimated_end_time:
-                # Notify the server that the simulation estimated end time has been updated
-                self.sio.emit(
-                    "simulation-update-estimated-end-time",
-                    (self.simulation_id, estimated_end_time),
-                )
-                self.visualized_environment.estimated_end_time = estimated_end_time
 
         SimulationVisualizationDataManager.save_update(
             self.current_save_file_path, update
@@ -383,6 +389,11 @@ class SimulationVisualizationDataCollector(DataCollector):
                 SimulationVisualizationDataManager.set_polylines(
                     self.simulation_id, existing_vehicle
                 )
+                if self.sio.connected:
+                    self.sio.emit(
+                        "simulation-update-polylines-version",
+                        self.simulation_id,
+                    )
 
             self.add_update(
                 Update(
@@ -452,6 +463,10 @@ class SimulationVisualizationVisualizer(Visualizer):
             SimulationVisualizationDataManager.set_simulation_information(
                 self.simulation_id, self.data_collector.simulation_information
             )
+
+            # Notify the server that the simulation has ended
+            if self.sio.connected:
+                self.sio.emit("simulation-end", self.simulation_id)
 
 
 # MARK: Environment Observer

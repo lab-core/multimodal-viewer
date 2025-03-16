@@ -78,15 +78,20 @@ def run_server():
 
     @socketio.on("get-missing-simulation-states")
     def on_client_get_missing_simulation_states(
-        simulation_id, first_state_order, last_state_order, visualization_time
+        simulation_id, visualization_time, loaded_state_orders
     ):
         log(
-            f"getting missing simulation states for {simulation_id} with orders {first_state_order} and {last_state_order} at time {visualization_time}",
+            f"getting missing simulation states for {simulation_id} with visualization time {visualization_time} and {len(loaded_state_orders)} loaded state orders ",
             "client",
         )
         simulation_manager.emit_missing_simulation_states(
-            simulation_id, first_state_order, last_state_order, visualization_time
+            simulation_id, visualization_time, loaded_state_orders
         )
+
+    @socketio.on("get-polylines")
+    def on_client_get_polylines(simulation_id):
+        log(f"getting polylines for {simulation_id}", "client")
+        simulation_manager.emit_simulation_polylines(simulation_id)
 
     @socketio.on("edit-simulation-configuration")
     def on_client_edit_simulation_configuration(simulation_id, max_time):
@@ -176,6 +181,12 @@ def run_server():
         simulation_manager.on_simulation_update_estimated_end_time(
             simulation_id, estimated_end_time
         )
+
+    @socketio.on("simulation-update-polylines-version")
+    def on_simulation_update_polylines_version(simulation_id):
+        log(f"simulation  {simulation_id} polylines version updated", "simulation")
+
+        simulation_manager.on_simulation_update_polylines_version(simulation_id)
 
     @socketio.on("simulation-identification")
     def on_simulation_identification(
