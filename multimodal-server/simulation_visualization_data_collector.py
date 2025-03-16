@@ -211,11 +211,14 @@ class SimulationVisualizationDataCollector(DataCollector):
                 ),
                 environment,
             )
+            previous_passenger = self.visualized_environment.get_passenger(
+                event.state_machine.owner.id
+            )
             self.add_update(
                 Update(
                     UpdateType.UPDATE_PASSENGER_LEGS,
-                    PassengerLegsUpdate.from_trip_and_environment(
-                        event.state_machine.owner, environment
+                    PassengerLegsUpdate.from_trip_environment_and_previous_passenger(
+                        event.state_machine.owner, environment, previous_passenger
                     ),
                     event.time,
                 ),
@@ -316,11 +319,14 @@ class SimulationVisualizationDataCollector(DataCollector):
                 ),
                 environment,
             )
+            previous_passenger = self.visualized_environment.get_passenger(
+                event.state_machine.owner.id
+            )
             self.add_update(
                 Update(
                     UpdateType.UPDATE_PASSENGER_LEGS,
-                    PassengerLegsUpdate.from_trip_and_environment(
-                        event.state_machine.owner, environment
+                    PassengerLegsUpdate.from_trip_environment_and_previous_passenger(
+                        event.state_machine.owner, environment, previous_passenger
                     ),
                     event.time,
                 ),
@@ -340,11 +346,14 @@ class SimulationVisualizationDataCollector(DataCollector):
                 ),
                 environment,
             )
+            previous_passenger = self.visualized_environment.get_passenger(
+                event.state_machine.owner.id
+            )
             self.add_update(
                 Update(
                     UpdateType.UPDATE_PASSENGER_LEGS,
-                    PassengerLegsUpdate.from_trip_and_environment(
-                        event.state_machine.owner, environment
+                    PassengerLegsUpdate.from_trip_environment_and_previous_passenger(
+                        event.state_machine.owner, environment, previous_passenger
                     ),
                     event.time,
                 ),

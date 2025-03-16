@@ -99,6 +99,7 @@ class VisualizedLeg(Serializable):
     alighting_stop_index: int | None
     boarding_time: float | None
     alighting_time: float | None
+    assigned_time: float | None
 
     def __init__(
         self,
@@ -107,16 +108,22 @@ class VisualizedLeg(Serializable):
         alighting_stop_index: int | None,
         boarding_time: float | None,
         alighting_time: float | None,
+        assigned_time: float | None,
     ) -> None:
         self.assigned_vehicle_id = assigned_vehicle_id
         self.boarding_stop_index = boarding_stop_index
         self.alighting_stop_index = alighting_stop_index
         self.boarding_time = boarding_time
         self.alighting_time = alighting_time
+        self.assigned_time = assigned_time
 
     @classmethod
     def from_leg_environment_and_trip(
-        cls, leg: Leg, environment: Environment, trip: Trip
+        cls,
+        leg: Leg,
+        environment: Environment,
+        trip: Trip,
+        previous_leg: Leg | None = None,
     ) -> "VisualizedLeg":
         boarding_stop_index = None
         alighting_stop_index = None
@@ -151,12 +158,24 @@ class VisualizedLeg(Serializable):
                     alighting_stop_index = i
                     break
 
+        assigned_vehicle_id = (
+            leg.assigned_vehicle.id if leg.assigned_vehicle is not None else None
+        )
+
+        assigned_time = None
+        if assigned_vehicle_id is not None:
+            if previous_leg is not None and previous_leg.assigned_time is not None:
+                assigned_time = previous_leg.assigned_time
+            else:
+                assigned_time = environment.current_time
+
         return cls(
-            leg.assigned_vehicle.id if leg.assigned_vehicle is not None else None,
+            assigned_vehicle_id,
             boarding_stop_index,
             alighting_stop_index,
             leg.boarding_time,
             leg.alighting_time,
+            assigned_time,
         )
 
     def serialize(self) -> dict:
@@ -176,6 +195,8 @@ class VisualizedLeg(Serializable):
 
         if self.alighting_time is not None:
             serialized["alightingTime"] = self.alighting_time
+        if self.assigned_time is not None:
+            serialized["assignedTime"] = self.assigned_time
 
         return serialized
 
@@ -189,6 +210,7 @@ class VisualizedLeg(Serializable):
         alighting_stop_index = data.get("alightingStopIndex", None)
         boarding_time = data.get("boardingTime", None)
         alighting_time = data.get("alightingTime", None)
+        assigned_time = data.get("assignedTime", None)
 
         return VisualizedLeg(
             assigned_vehicle_id,
@@ -196,6 +218,7 @@ class VisualizedLeg(Serializable):
             alighting_stop_index,
             boarding_time,
             alighting_time,
+            assigned_time,
         )
 
 
@@ -570,24 +593,58 @@ class PassengerLegsUpdate(Serializable):
         self.next_legs = next_legs
 
     @classmethod
-    def from_trip_and_environment(
-        cls, trip: Trip, environment: Environment
+    def from_trip_environment_and_previous_passenger(
+        cls,
+        trip: Trip,
+        environment: Environment,
+        previous_passenger: VisualizedPassenger,
     ) -> "PassengerLegsUpdate":
-        previous_legs = [
-            VisualizedLeg.from_leg_environment_and_trip(leg, environment, trip)
-            for leg in trip.previous_legs
-        ]
+        all_previous_legs = (
+            previous_passenger.previous_legs
+            + (
+                [previous_passenger.current_leg]
+                if previous_passenger.current_leg is not None
+                else []
+            )
+            + previous_passenger.next_legs
+        )
+        current_index = 0
+
+        previous_legs = []
+        for leg in trip.previous_legs:
+            previous_leg = None
+            if current_index < len(all_previous_legs):
+                previous_leg = all_previous_legs[current_index]
+                current_index += 1
+            previous_legs.append(
+                VisualizedLeg.from_leg_environment_and_trip(
+                    leg, environment, trip, previous_leg
+                )
+            )
+
+        previous_leg = None
+        if trip.current_leg is not None and current_index < len(all_previous_legs):
+            previous_leg = all_previous_legs[current_index]
+            current_index += 1
         current_leg = (
             VisualizedLeg.from_leg_environment_and_trip(
-                trip.current_leg, environment, trip
+                trip.current_leg, environment, trip, previous_leg
             )
             if trip.current_leg is not None
             else None
         )
-        next_legs = [
-            VisualizedLeg.from_leg_environment_and_trip(leg, environment, trip)
-            for leg in trip.next_legs
-        ]
+
+        next_legs = []
+        for leg in trip.next_legs:
+            next_leg = None
+            if current_index < len(all_previous_legs):
+                next_leg = all_previous_legs[current_index]
+                current_index += 1
+            next_legs.append(
+                VisualizedLeg.from_leg_environment_and_trip(
+                    leg, environment, trip, next_leg
+                )
+            )
 
         return cls(trip.id, previous_legs, current_leg, next_legs)
 

@@ -49,17 +49,23 @@
           <mat-icon>skip_next</mat-icon>
         </button>
       } @else {
+        @let canIncreaseSpeed = canIncreaseSpeedSignal();
+        @let canDecreaseSpeed = canDecreaseSpeedSignal();
+        @let speed = speedSignal();
         <button
           mat-icon-button
-          disabled
+          [disabled]="!canDecreaseSpeed"
           [matTooltip]="'Slow down the simulation'"
+          (click)="decreaseSpeed()"
         >
           <mat-icon>fast_rewind</mat-icon>
         </button>
+        <div class="speed">x{{ speed }}</div>
         <button
           mat-icon-button
-          disabled
+          [disabled]="!canIncreaseSpeed"
           [matTooltip]="'Speed up the simulation'"
+          (click)="increaseSpeed()"
         >
           <mat-icon>fast_forward</mat-icon>
         </button>

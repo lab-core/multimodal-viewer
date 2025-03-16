@@ -143,6 +143,7 @@ export interface Leg {
   alightingStopIndex: number | null;
   boardingTime: number | null;
   alightingTime: number | null;
+  assignedTime: number | null;
 }
 
 export interface Passenger {
@@ -263,6 +264,71 @@ export type AnySimulationUpdate = SimulationUpdate<
   keyof SimulationUpdateTypeMap
 >;
 
+export type displayed<T> = T & {
+  /**
+   * If the object is not displayed, this field contains the reason why
+   * it is not displayed.
+   *
+   * If the object is displayed, this field is null.
+   */
+  notDisplayedReason: string | null;
+};
+
+export interface AnimationData {
+  startTimestamp: number;
+  endTimestamp: number;
+  notDisplayedReason: string | null;
+}
+
+export interface PassengerAnimationData extends AnimationData {
+  status: PassengerStatus;
+}
+
+export interface StaticPassengerAnimationData extends PassengerAnimationData {
+  position: { latitude: number; longitude: number };
+}
+
+export interface DynamicPassengerAnimationData extends PassengerAnimationData {
+  vehicleId: string;
+}
+
+export type AnyPassengerAnimationData =
+  | StaticPassengerAnimationData
+  | DynamicPassengerAnimationData
+  | PassengerAnimationData; // For not displayed passengers
+
+export interface VehicleAnimationData extends AnimationData {
+  status: VehicleStatus;
+}
+
+export interface StaticVehicleAnimationData extends VehicleAnimationData {
+  position: { latitude: number; longitude: number };
+
+  /**
+   * Index of the polyline on which the vehicle is.
+   * If the vehicle is at a stop, it is considered at the end of the polyline.
+   */
+  polylineIndex: number;
+}
+
+export interface DynamicVehicleAnimationData extends VehicleAnimationData {
+  polyline: Polyline;
+  polylineIndex: number;
+}
+
+export type AnyVehicleAnimationData =
+  | StaticVehicleAnimationData
+  | DynamicVehicleAnimationData
+  | VehicleAnimationData; // For not displayed vehicles
+
+export interface AnimatedPassenger extends Passenger {
+  animationData: AnyPassengerAnimationData[];
+}
+
+export interface AnimatedVehicle extends Vehicle {
+  animationData: AnyVehicleAnimationData[];
+}
+
 /**
  * Snapshot of the simulation environment at a given time
  */
@@ -279,6 +345,21 @@ export interface SimulationEnvironment {
    * The order of the last update before the snapshot
    */
   order: number;
+}
+
+export interface AnimatedSimulationEnvironment extends SimulationEnvironment {
+  passengers: Record<string, displayed<Passenger>>;
+  vehicles: Record<string, displayed<Vehicle>>;
+
+  /**
+   * A data structure to speed up the animation
+   */
+  animationData: {
+    passengers: Record<string, AnimatedPassenger>;
+    vehicles: Record<string, AnimatedVehicle>;
+    startTimestamp: number;
+    endTimestamp: number;
+  };
 }
 
 export interface RawSimulationEnvironment
