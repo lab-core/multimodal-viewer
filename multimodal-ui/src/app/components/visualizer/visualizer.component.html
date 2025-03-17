@@ -12,12 +12,33 @@
 @if (isInitializedSignal() && simulation !== null) {
   <!-- MARK: Search Bar
   -->
-  <mat-form-field class="search-bar enable-pointer-events">
-    <input matInput />
-    <!-- TODO Search -->
-    <mat-label>Search in the simulation</mat-label>
-    <mat-icon matSuffix>search</mat-icon>
-  </mat-form-field>
+  @let filteredEntitySearchData = filteredEntitySearchDataSignal();
+  @let searchValue = searchValueSignal();
+  <form>
+    <mat-form-field class="search-bar enable-pointer-events">
+      <input matInput [matAutocomplete]="auto" [formControl]="searchControl" />
+      <!-- TODO Search -->
+      <mat-label>Search in the simulation</mat-label>
+      @if (searchValue !== null && searchValue !== "") {
+        <button mat-icon-button matSuffix type="button" (click)="clearSearch()">
+          <mat-icon>close</mat-icon>
+        </button>
+      } @else {
+        <mat-icon matSuffix>search</mat-icon>
+      }
+      <mat-autocomplete
+        #auto="matAutocomplete"
+        requireSelection
+        [displayWith]="entitySearchDisplayFunction"
+      >
+        @for (entity of filteredEntitySearchData; track entity.displayedValue) {
+          <mat-option [value]="entity">
+            {{ entity.displayedValue }}
+          </mat-option>
+        }
+      </mat-autocomplete>
+    </mat-form-field>
+  </form>
 
   <!-- MARK: Information Panel
     -->
