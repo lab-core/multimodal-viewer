@@ -1,8 +1,13 @@
 @let simulation = simulationSignal();
-@let numberOfPassengersByStatus = numberOfPassengersByStatusSignal();
-@let numberOfVehiclesByStatus = numberOfVehiclesByStatusSignal();
-@let totalNumberOfPassengers = totalNumberOfPassengersSignal();
-@let totalNumberOfVehicles = totalNumberOfVehiclesSignal();
+@let displayedVehicles = displayedVehiclesSignal();
+@let displayedPassengers = displayedPassengersSignal();
+@let numberOfPassengersByStatus = numberOfDisplayedPassengersByStatusSignal();
+@let numberOfVehiclesByStatus = numberOfDisplayedVehiclesByStatusSignal();
+@let totalNumberOfPassengers = displayedPassengers.length;
+@let totalNumberOfVehicles = displayedVehicles.length;
+
+@let selectedPassenger = selectedPassengerSignal();
+@let selectedVehicle = selectedVehicleSignal();
 
 @if (isInitializedSignal() && simulation !== null) {
   <!-- MARK: Search Bar
@@ -22,14 +27,8 @@
       <mat-card-content class="flex-1">
         <mat-card-title>Simulation: {{ simulation.name }}</mat-card-title>
         <mat-card-subtitle>Source: {{ simulation.data }}</mat-card-subtitle>
-        <mat-card-subtitle>
-          Current simulation time:
-          {{ simulation.simulationTime ?? "null" }}
-        </mat-card-subtitle>
-        <mat-card-subtitle>
-          Max simulation time:
-          {{ simulation.configuration.maxTime ?? "null" }}
-        </mat-card-subtitle>
+
+        <mat-card-title>Displayed Entities</mat-card-title>
         <mat-card-subtitle>
           Passengers ({{ totalNumberOfPassengers }})
         </mat-card-subtitle>
@@ -53,6 +52,117 @@
             <span>{{ statusAndCount.status }}: {{ statusAndCount.count }}</span>
           }
         </div>
+
+        @if (selectedPassenger !== null) {
+          @let selectedPassengerVehicle = selectedPassengerVehicleSignal();
+          <mat-card-title>Selected Passenger</mat-card-title>
+          <div class="flex-column">
+            <span>Id: {{ selectedPassenger.id }}</span>
+            <span>Name: {{ selectedPassenger.name }}</span>
+            <span>Status: {{ selectedPassenger.status }}</span>
+            @if (selectedPassenger.notDisplayedReason !== null) {
+              <div>
+                <span>Not displayed: </span>
+                <span class="light">{{
+                  selectedPassenger.notDisplayedReason
+                }}</span>
+              </div>
+            }
+            @if (selectedPassengerVehicle !== null) {
+              <span
+                tabindex="0"
+                class="clickable"
+                [matTooltip]="'Click to select the vehicle'"
+                (click)="selectVehicle(selectedPassengerVehicle.id)"
+                (keydown.enter)="selectVehicle(selectedPassengerVehicle.id)"
+                >Vehicle: {{ selectedPassengerVehicle.id }}</span
+              >
+            }
+          </div>
+        }
+
+        @if (selectedVehicle !== null) {
+          @let selectedVehiclePassengers = selectedVehiclePassengersSignal();
+          <mat-card-title>Selected Vehicle</mat-card-title>
+          <div class="flex-column">
+            <span>Id: {{ selectedVehicle.id }}</span>
+            @if (selectedVehicle.mode !== null) {
+              <span>Mode: {{ selectedVehicle.mode }}</span>
+            }
+            <span>Status: {{ selectedVehicle.status }}</span>
+            @if (selectedVehicle.notDisplayedReason !== null) {
+              <div>
+                <span>Not displayed: </span>
+                <span class="light">{{
+                  selectedVehicle.notDisplayedReason
+                }}</span>
+              </div>
+            }
+            @if (selectedVehiclePassengers.length > 0) {
+              <span>Passengers:</span>
+            }
+            @for (passenger of selectedVehiclePassengers; track passenger.id) {
+              <span
+                tabindex="0"
+                class="clickable"
+                [matTooltip]="'Click to select the passenger'"
+                (click)="selectPassenger(passenger.id)"
+                (keydown.enter)="selectPassenger(passenger.id)"
+                >{{ passenger.id }}</span
+              >
+            }
+          </div>
+        }
+
+        <mat-card-title>Not Displayed Entities</mat-card-title>
+
+        <mat-accordion>
+          @let notDisplayedPassengers = notDisplayedPassengersSignal();
+          <mat-expansion-panel>
+            <mat-expansion-panel-header>
+              <mat-panel-title>
+                Passengers ({{ notDisplayedPassengers.length }})
+              </mat-panel-title>
+            </mat-expansion-panel-header>
+            <div class="flex-column gap-0-5-rem">
+              @for (passenger of notDisplayedPassengers; track passenger.id) {
+                <div
+                  tabindex="0"
+                  class="clickable"
+                  [matTooltip]="'Click to select the passenger'"
+                  (click)="selectPassenger(passenger.id)"
+                  (keydown.enter)="selectPassenger(passenger.id)"
+                >
+                  <span>{{ passenger.id }}</span>
+                  <span class="light">{{ passenger.notDisplayedReason }}</span>
+                </div>
+              }
+            </div>
+          </mat-expansion-panel>
+
+          @let notDisplayedVehicles = notDisplayedVehiclesSignal();
+          <mat-expansion-panel>
+            <mat-expansion-panel-header>
+              <mat-panel-title>
+                Vehicles ({{ notDisplayedVehicles.length }})
+              </mat-panel-title>
+            </mat-expansion-panel-header>
+            <div class="flex-column gap-0-5-rem">
+              @for (vehicle of notDisplayedVehicles; track vehicle.id) {
+                <div
+                  tabindex="0"
+                  class="clickable"
+                  [matTooltip]="'Click to select the vehicle'"
+                  (click)="selectVehicle(vehicle.id)"
+                  (keydown.enter)="selectVehicle(vehicle.id)"
+                >
+                  <span>{{ vehicle.id }}</span>
+                  <span class="light"> {{ vehicle.notDisplayedReason }}</span>
+                </div>
+              }
+            </div>
+          </mat-expansion-panel>
+        </mat-accordion>
       </mat-card-content>
       <mat-card-actions align="end">
         <button mat-button (click)="hideInformationPanel()">Hide</button>

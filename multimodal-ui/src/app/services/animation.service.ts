@@ -1,4 +1,10 @@
-import { Injectable, Signal, signal, WritableSignal } from '@angular/core';
+import {
+  computed,
+  Injectable,
+  Signal,
+  signal,
+  WritableSignal,
+} from '@angular/core';
 import * as L from 'leaflet';
 import 'leaflet-pixi-overlay';
 import * as PIXI from 'pixi.js';
@@ -7,12 +13,10 @@ import {
   AnimatedPassenger,
   AnimatedSimulationEnvironment,
   AnimatedVehicle,
-  DynamicPassengerAnimationData,
   DynamicVehicleAnimationData,
   Passenger,
   Polyline,
   Polylines,
-  SimulationEnvironment,
   StaticPassengerAnimationData,
   StaticVehicleAnimationData,
   Vehicle,
@@ -22,8 +26,25 @@ import {
   providedIn: 'root',
 })
 export class AnimationService {
-  private readonly _selectedVehicleSignal: WritableSignal<Vehicle | null> =
+  private readonly _selectedVehicleIdSignal: WritableSignal<string | null> =
     signal(null);
+
+  private readonly _selectedPassengerIdSignal: WritableSignal<string | null> =
+    signal(null);
+
+  get selectedVehicleIdSignal(): Signal<string | null> {
+    return this._selectedVehicleIdSignal;
+  }
+
+  get selectedPassengerIdSignal(): Signal<string | null> {
+    return this._selectedPassengerIdSignal;
+  }
+
+  readonly hasSelectedEntitySignal: Signal<boolean> = computed(
+    () =>
+      this._selectedVehicleIdSignal() !== null ||
+      this._selectedPassengerIdSignal() !== null,
+  );
 
   private readonly MIN_LERPABLE_DESYNC_DIFF = 1.5;
   private readonly MAX_LERPABLE_DESYNC_DIFF = 900;
@@ -44,6 +65,10 @@ export class AnimationService {
   private vehicleEntitiesByVehicleId: Record<string, Entity<AnimatedVehicle>> =
     {};
   private passengersEntities: Entity<AnimatedPassenger>[] = [];
+  private passengerEntitiesByPassengerId: Record<
+    string,
+    Entity<AnimatedPassenger>
+  > = {};
   private container = new PIXI.Container();
 
   private startTimestamp: number | null = null;
@@ -52,7 +77,7 @@ export class AnimationService {
   private lastScale = 0;
   private utils!: L.PixiOverlayUtils;
 
-  private selectedVehiclePolyline: PIXI.Graphics = new PIXI.Graphics();
+  private selectedEntityPolyline: PIXI.Graphics = new PIXI.Graphics();
 
   // Variable that are alive for a single frame (could probably improve)
   private frame_onEntityPointerDownCalled = false;
@@ -62,45 +87,64 @@ export class AnimationService {
   private previousPassengerEntities: Entity<AnimatedPassenger>[] = [];
 
   private speed = 1;
+  private readonly _shouldFollowEntitySignal: WritableSignal<boolean> =
+    signal(false);
 
-  get selectedVehicleSignal(): Signal<Vehicle | null> {
-    return this._selectedVehicleSignal;
+  get shouldFollowEntitySignal(): Signal<boolean> {
+    return this._shouldFollowEntitySignal;
   }
 
   synchronizeEnvironment(simulationEnvironment: AnimatedSimulationEnvironment) {
-    this.selectedVehiclePolyline.clear();
+    this.selectedEntityPolyline.clear();
     this.container.removeChildren();
-    this.container.addChild(this.selectedVehiclePolyline);
+    this.container.addChild(this.selectedEntityPolyline);
     this.previousVehiclesEntities = this.vehicles;
     this.previousPassengerEntities = this.passengersEntities;
     this.vehicles = [];
     this.vehicleEntitiesByVehicleId = {};
     this.passengersEntities = [];
+    this.passengerEntitiesByPassengerId = {};
 
     let isSelectedVehicleInEnvironment = false;
 
     this.startTimestamp = simulationEnvironment.animationData.startTimestamp;
     this.endTimestamp = simulationEnvironment.animationData.endTimestamp;
 
+    const selectedVehicleId = this._selectedVehicleIdSignal();
+    const selectedPassengerId = this._selectedPassengerIdSignal();
+
     for (const vehicle of Object.values(
       simulationEnvironment.animationData.vehicles,
     )) {
-      if (vehicle.id == this._selectedVehicleSignal()?.id)
-        isSelectedVehicleInEnvironment = true;
       this.addVehicle(vehicle);
+      if (selectedVehicleId !== null && vehicle.id == selectedVehicleId) {
+        isSelectedVehicleInEnvironment = true;
+      }
     }
 
-    if (this._selectedVehicleSignal() && !isSelectedVehicleInEnvironment) {
-      this._selectedVehicleSignal.set(null);
+    if (selectedVehicleId !== null && !isSelectedVehicleInEnvironment) {
+      this.unselectVehicle();
       console.warn(
         'The vehicle you selected is not in the environment anymore. It has been deselected.',
       );
     }
 
+    let isSelectedPassengerInEnvironment = false;
+
     for (const passenger of Object.values(
       simulationEnvironment.animationData.passengers,
     )) {
       this.addPassenger(passenger);
+      if (selectedPassengerId !== null && passenger.id == selectedPassengerId) {
+        isSelectedPassengerInEnvironment = true;
+      }
+    }
+
+    if (selectedPassengerId !== null && !isSelectedPassengerInEnvironment) {
+      this.unselectPassenger();
+      console.warn(
+        'The passenger you selected is not in the environment anymore. It has been deselected.',
+      );
     }
 
     this.previousVehiclesEntities = this.vehicles;
@@ -108,11 +152,11 @@ export class AnimationService {
   }
 
   synchronizeTime(
-    simulationEnvironment: SimulationEnvironment,
+    animatedSimulationEnvironment: AnimatedSimulationEnvironment,
     visualizationTime: number,
   ) {
     // Don't sync if we don't have the right state
-    if (simulationEnvironment.timestamp != visualizationTime) {
+    if (animatedSimulationEnvironment.timestamp != visualizationTime) {
       console.warn(
         "Animation not synced: simulation timestamp doesn't match visualisation time",
       );
@@ -131,14 +175,14 @@ export class AnimationService {
     this.lastVisualisationTime = visualizationTime;
   }
 
-  private addVehicle(vehicle: AnimatedVehicle, type = 'sample-bus') {
+  private addVehicle(vehicle: AnimatedVehicle, type = 'sample-bus'): void {
     const sprite = PIXI.Sprite.from(`images/${type}.png`) as EntityOwner<
       Entity<Vehicle>
     >;
     sprite.anchor.set(0.5, 0.5);
     sprite.scale.set(1 / this.utils.getScale());
     sprite.interactive = true;
-    sprite.on('pointerdown', (e) => this.onEntityPointerdown(e));
+    sprite.on('pointerdown', (e) => this.onClickOnVehicle(e));
 
     const entity: Entity<AnimatedVehicle> = {
       data: vehicle,
@@ -153,12 +197,14 @@ export class AnimationService {
     this.vehicleEntitiesByVehicleId[vehicle.id] = entity;
   }
 
-  private addPassenger(passenger: AnimatedPassenger) {
+  private addPassenger(passenger: AnimatedPassenger): void {
     const sprite = PIXI.Sprite.from('images/sample-walk.png') as EntityOwner<
       Entity<Passenger>
     >;
     sprite.anchor.set(0.5, 0.5);
     sprite.scale.set(1 / this.utils.getScale());
+    sprite.interactive = true;
+    sprite.on('pointerdown', (e) => this.onClickOnPassenger(e));
 
     const entity: Entity<AnimatedPassenger> = {
       data: passenger,
@@ -169,6 +215,8 @@ export class AnimationService {
 
     this.container.addChild(sprite);
     this.passengersEntities.push(entity);
+
+    this.passengerEntitiesByPassengerId[passenger.id] = entity;
   }
 
   clearAnimations() {
@@ -176,8 +224,9 @@ export class AnimationService {
     this.vehicles = [];
     this.vehicleEntitiesByVehicleId = {};
     this.passengersEntities = [];
-    this.selectedVehiclePolyline.clear();
-    this._selectedVehicleSignal.set(null);
+    this.passengerEntitiesByPassengerId = {};
+    this.unselectEntity();
+    this.removePolylines();
     this.previousVehiclesEntities = [];
     this.previousPassengerEntities = [];
   }
@@ -306,7 +355,12 @@ export class AnimationService {
         vehicle.sprite.x = point.x;
         vehicle.sprite.y = point.y;
         polylineIndex = Math.max(staticVehicleAnimationData.polylineIndex, 0);
-        lineIndex = staticVehicleAnimationData.polylineIndex === 0 ? 0 : -1;
+        lineIndex =
+          staticVehicleAnimationData.polylineIndex === -1
+            ? 0
+            : (vehicle.data.polylines?.[
+                staticVehicleAnimationData.polylineIndex
+              ]?.polyline.length ?? 0) - 1;
       } else if (
         (animationData as DynamicVehicleAnimationData).polyline !== undefined
       ) {
@@ -331,13 +385,16 @@ export class AnimationService {
         vehicle.sprite.visible = false;
       }
 
+      const selectedVehicleId = this._selectedVehicleIdSignal();
       if (
         vehicle.sprite.visible &&
-        this._selectedVehicleSignal()?.id == vehicle.data.id &&
+        selectedVehicleId !== null &&
+        selectedVehicleId === vehicle.data.id &&
         polylineIndex !== null &&
         lineIndex !== null &&
         point !== null
       ) {
+        this.frame_pointToFollow = this.utils.layerPointToLatLng(point);
         this.redrawPolyline(polylineIndex, lineIndex, point);
       }
     }
@@ -383,24 +440,18 @@ export class AnimationService {
         (animationData as StaticPassengerAnimationData).position !== undefined
       ) {
         passenger.sprite.visible = true;
-        const staticVehicleAnimationData =
-          animationData as StaticVehicleAnimationData;
+        const staticPassengerAnimationData =
+          animationData as StaticPassengerAnimationData;
         const point = this.utils.latLngToLayerPoint([
-          staticVehicleAnimationData.position.latitude,
-          staticVehicleAnimationData.position.longitude,
+          staticPassengerAnimationData.position.latitude,
+          staticPassengerAnimationData.position.longitude,
         ]);
         passenger.sprite.x = point.x;
         passenger.sprite.y = point.y;
-      } else if (
-        (animationData as DynamicPassengerAnimationData).vehicleId !== undefined
-      ) {
+      } else if (animationData.vehicleId !== null) {
         passenger.sprite.visible = true;
-        const dynamicPassengerAnimationData =
-          animationData as DynamicPassengerAnimationData;
         const vehicleEntity =
-          this.vehicleEntitiesByVehicleId[
-            dynamicPassengerAnimationData.vehicleId
-          ];
+          this.vehicleEntitiesByVehicleId[animationData.vehicleId];
         if (vehicleEntity) {
           passenger.sprite.visible = vehicleEntity.sprite.visible;
           passenger.sprite.x = vehicleEntity.sprite.x;
@@ -409,6 +460,17 @@ export class AnimationService {
       } else {
         // Passenger has an error
         passenger.sprite.visible = false;
+      }
+
+      const selectedPassengerId = this._selectedPassengerIdSignal();
+      if (
+        passenger.sprite.visible &&
+        selectedPassengerId !== null &&
+        selectedPassengerId === passenger.data.id
+      ) {
+        this.frame_pointToFollow = this.utils.layerPointToLatLng(
+          new L.Point(passenger.sprite.x, passenger.sprite.y),
+        );
       }
     }
   }
@@ -490,8 +552,11 @@ export class AnimationService {
     lineNo: number,
     interpolatedPoint: L.Point,
   ) {
-    const selectedVehicle = this._selectedVehicleSignal();
-    if (!selectedVehicle) return;
+    const selectedVehicleId = this._selectedVehicleIdSignal();
+    if (selectedVehicleId === null) return;
+
+    const selectedVehicle = this.vehicleEntitiesByVehicleId[selectedVehicleId];
+    if (selectedVehicle === undefined) return;
 
     const BASE_LINE_WIDTH = 4;
     const MIN_WIDTH = 0.04; // By testing out values
@@ -499,11 +564,11 @@ export class AnimationService {
 
     const width = Math.max(BASE_LINE_WIDTH / this.utils?.getScale(), MIN_WIDTH);
 
-    const graphics = this.selectedVehiclePolyline;
+    const graphics = this.selectedEntityPolyline;
     graphics.clear();
     graphics.lineStyle(width, this.KELLY_GREEN, ALPHA);
 
-    const polylines = Object.values(selectedVehicle.polylines ?? {});
+    const polylines = Object.values(selectedVehicle.data.polylines ?? {});
     if (polylines.length == 0) return;
 
     const polyline = polylines[0].polyline;
@@ -610,7 +675,7 @@ export class AnimationService {
     const absDesyncDiff = Math.abs(desyncDiff);
     if (absDesyncDiff > this.MIN_LERPABLE_DESYNC_DIFF * this.speed) {
       this.animationVisualizationTime +=
-        desyncDiff * (1 - Math.exp(-5 * deltaSec));
+        desyncDiff * (1 - Math.exp(-5 * absDesyncDiff));
     }
   }
 
@@ -655,28 +720,64 @@ export class AnimationService {
   private onClick(event: L.LeafletMouseEvent) {
     if (!this.frame_onEntityPointerDownCalled) {
       this.unselectVehicle();
+      this.unselectPassenger();
     }
     this.frame_onEntityPointerDownCalled = false;
   }
 
-  private onEntityPointerdown(event: PIXI.FederatedPointerEvent) {
-    const sprite = event.target as EntityOwner<Entity<Vehicle>>;
+  private onClickOnVehicle(event: PIXI.FederatedPointerEvent) {
+    const sprite = event.target as EntityOwner<Entity<AnimatedVehicle>>;
     if (!sprite) return;
 
     const entity = sprite.entity;
     if (!entity) return;
 
-    this.selectVehicle(entity.data);
+    this.selectVehicle(entity.data.id);
     this.frame_onEntityPointerDownCalled = true;
   }
 
-  private selectVehicle(vehicle: Vehicle) {
-    this._selectedVehicleSignal.set(vehicle);
+  private onClickOnPassenger(event: PIXI.FederatedPointerEvent) {
+    const sprite = event.target as EntityOwner<Entity<AnimatedPassenger>>;
+    if (!sprite) return;
+
+    const entity = sprite.entity;
+    if (!entity) return;
+
+    this.selectPassenger(entity.data.id);
+    this.frame_onEntityPointerDownCalled = true;
+  }
+
+  private selectVehicle(vehicleId: string) {
+    this.unselectPassenger();
+    this._selectedVehicleIdSignal.set(vehicleId);
+  }
+
+  private selectPassenger(passengerId: string) {
+    this.unselectVehicle();
+    this._selectedPassengerIdSignal.set(passengerId);
   }
 
   private unselectVehicle() {
-    this._selectedVehicleSignal.set(null);
-    this.selectedVehiclePolyline.clear();
+    this._selectedVehicleIdSignal.set(null);
+    this.selectedEntityPolyline.clear();
+  }
+
+  private unselectPassenger() {
+    this._selectedPassengerIdSignal.set(null);
+    this.selectedEntityPolyline.clear();
+  }
+
+  selectEntity(entityId: string, type: 'vehicle' | 'passenger') {
+    if (type == 'vehicle') {
+      this.selectVehicle(entityId);
+    } else if (type == 'passenger') {
+      this.selectPassenger(entityId);
+    }
+  }
+
+  unselectEntity() {
+    this.unselectVehicle();
+    this.unselectPassenger();
   }
 
   addPixiOverlay(map: L.Map) {
@@ -704,7 +805,7 @@ export class AnimationService {
     this.ticker.add((delta) => {
       pixiLayer.redraw({ type: 'redraw', delta: delta } as L.LeafletEvent);
 
-      if (this.frame_pointToFollow)
+      if (this.frame_pointToFollow && this._shouldFollowEntitySignal())
         this.utils.getMap().setView(this.frame_pointToFollow);
       this.frame_pointToFollow = null;
     });
@@ -742,5 +843,11 @@ export class AnimationService {
 
   setSpeed(speed: number) {
     this.speed = speed;
+  }
+
+  toggleShouldFollowEntity() {
+    this._shouldFollowEntitySignal.update(
+      (shouldFollowEntity) => !shouldFollowEntity,
+    );
   }
 }
