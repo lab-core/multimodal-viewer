@@ -1,6 +1,7 @@
 import { Injectable, Signal, signal, WritableSignal } from '@angular/core';
 import * as L from 'leaflet';
 import 'leaflet-pixi-overlay';
+import { pixiOverlay } from 'leaflet'
 import * as PIXI from 'pixi.js';
 import { EntityOwner, VehicleEntity } from '../interfaces/entity.model';
 import {
@@ -535,7 +536,7 @@ export class AnimationService {
       this.onClick(event);
     });
     const pixiLayer = (() => {
-      return L.pixiOverlay(
+      return pixiOverlay(
         (utils, event) => {
           this.utils = utils;
           if (event.type === 'add') this.onAdd(utils);
