@@ -8,9 +8,6 @@ services:
       dockerfile: Dockerfile.frontend
     ports:
       - "80:80"
-    # volumes:
-      # - ./multimodal-ui:/app/visualizer
-      # - /app/visualizer/node_modules
     networks:
       - multimodal-network
     depends_on:
