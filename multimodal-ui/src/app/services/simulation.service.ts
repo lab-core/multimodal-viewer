@@ -7,9 +7,12 @@ import {
 } from '@angular/core';
 import { decode } from 'polyline';
 import {
+  AllPolylines,
   AnySimulationUpdate,
+  Leg,
   Passenger,
   PASSENGER_STATUSES,
+  PassengerLegsUpdate,
   PassengerStatusUpdate,
   Polylines,
   RawPolylines,
@@ -19,6 +22,7 @@ import {
   SIMULATION_UPDATE_TYPES,
   SimulationEnvironment,
   SimulationState,
+  SimulationStates,
   Stop,
   Vehicle,
   VEHICLE_STATUSES,
@@ -37,12 +41,22 @@ export class SimulationService {
   private readonly _activeSimulationIdSignal: WritableSignal<string | null> =
     signal(null);
 
-  private readonly _simulationStatesSignal: WritableSignal<SimulationState[]> =
-    signal([]);
+  private readonly _simulationStatesSignal: WritableSignal<SimulationStates> =
+    signal({
+      states: [],
+      shouldRequestMoreStates: true,
+      firstContinuousState: null,
+      lastContinuousState: null,
+      currentState: null,
+    });
 
-  private readonly _simulationPolylinesSignal: WritableSignal<
-    Record<string, Polylines>
-  > = signal({});
+  private readonly _simulationPolylinesSignal: WritableSignal<AllPolylines | null> =
+    signal(null);
+
+  private readonly _isFetchingStatesSignal: WritableSignal<boolean> =
+    signal(false);
+  private readonly _isFetchingPolylinesSignal: WritableSignal<boolean> =
+    signal(false);
 
   // MARK: Constructor
   constructor(
@@ -59,13 +73,21 @@ export class SimulationService {
 
     this.communicationService.on(
       'missing-simulation-states',
-      (rawMissingStates, stateOrdersToKeep, missingUpdates) => {
+      (
+        rawMissingStates,
+        rawMissingUpdates,
+        stateOrdersToKeep,
+        shouldRequestMoreStates,
+        firstContinuousStateOrder,
+        lastContinuousStateOrder,
+        currentStateOrder,
+      ) => {
         this._simulationStatesSignal.update((states) => {
           const parsedMissingStates = (rawMissingStates as string[]).map(
             (rawState) => JSON.parse(rawState) as RawSimulationState,
           );
           const parsedMissingUpdates = Object.entries(
-            missingUpdates as Record<string, string[]>,
+            rawMissingUpdates as Record<string, string[]>,
           ).reduce(
             (acc, [order, rawUpdates]) => {
               acc[parseInt(order)] = rawUpdates.map(
@@ -82,21 +104,30 @@ export class SimulationService {
             .filter((state) => state !== null);
 
           return this.mergeStates(
-            states,
+            states.states,
             missingStates,
             stateOrdersToKeep as number[],
+            !!shouldRequestMoreStates,
+            firstContinuousStateOrder as number,
+            lastContinuousStateOrder as number,
+            currentStateOrder as number,
           );
         });
+
+        this._isFetchingStatesSignal.set(false);
       },
     );
 
     this.communicationService.on(
       `polylines-${simulationId}`,
-      (polylinesByVehicleId) => {
+      (polylinesByVehicleId, version) => {
+        this._isFetchingPolylinesSignal.set(false);
+
         this._simulationPolylinesSignal.set(
           this.extractPolylines(
             polylinesByVehicleId as unknown as Record<string, string>,
-          ) ?? {},
+            version as number,
+          ) ?? null,
         );
       },
     );
@@ -107,9 +138,18 @@ export class SimulationService {
 
     this._activeSimulationIdSignal.set(null);
 
-    this._simulationStatesSignal.set([]);
+    this._simulationStatesSignal.set({
+      states: [],
+      shouldRequestMoreStates: true,
+      firstContinuousState: null,
+      lastContinuousState: null,
+      currentState: null,
+    });
 
-    this._simulationPolylinesSignal.set({});
+    this._simulationPolylinesSignal.set(null);
+
+    this._isFetchingStatesSignal.set(false);
+    this._isFetchingPolylinesSignal.set(false);
 
     this.communicationService.removeAllListeners('missing-simulation-states');
 
@@ -156,6 +196,27 @@ export class SimulationService {
       simulationId,
       maxTime,
     );
+  }
+
+  getMissingSimulationStates(
+    simulationId: string,
+    visualizationTime: number,
+    allStateOrders: number[],
+  ) {
+    this._isFetchingStatesSignal.set(true);
+
+    this.communicationService.emit(
+      'get-missing-simulation-states',
+      simulationId,
+      visualizationTime,
+      allStateOrders,
+    );
+  }
+
+  getPolylines(simulationId: string) {
+    this._isFetchingPolylinesSignal.set(true);
+
+    this.communicationService.emit('get-polylines', simulationId);
   }
 
   // MARK: Data extraction
@@ -209,6 +270,16 @@ export class SimulationService {
           );
           if (passengerStatusUpdate) {
             return { type, order, timestamp, data: passengerStatusUpdate };
+          }
+        }
+        return null;
+      case 'updatePassengerLegs':
+        {
+          const passengerLegsUpdate = this.extractPassengerLegsUpdate(
+            data as PassengerLegsUpdate,
+          );
+          if (passengerLegsUpdate) {
+            return { type, order, timestamp, data: passengerLegsUpdate };
           }
         }
         return null;
@@ -271,7 +342,59 @@ export class SimulationService {
       return null;
     }
 
-    return { id, name, status };
+    if (!Array.isArray(data.previousLegs)) {
+      console.error('Passenger previous legs not found: ', data.previousLegs);
+      return null;
+    }
+
+    const previousLegs = data.previousLegs.map((leg) => this.extractLeg(leg));
+    if (!previousLegs.every((leg) => leg !== null)) {
+      console.error('Passenger previous legs invalid: ', previousLegs);
+      return null;
+    }
+
+    if (!Array.isArray(data.nextLegs)) {
+      console.error('Passenger next legs not found: ', data.nextLegs);
+      return null;
+    }
+
+    const currentLeg =
+      data.currentLeg !== undefined ? this.extractLeg(data.currentLeg!) : null;
+    if (data.currentLeg !== undefined && currentLeg === null) {
+      console.error('Passenger current leg invalid: ', data.currentLeg);
+      return null;
+    }
+
+    const nextLegs = data.nextLegs.map((leg) => this.extractLeg(leg));
+    if (!nextLegs.every((leg) => leg !== null)) {
+      console.error('Passenger next legs invalid: ', nextLegs);
+      return null;
+    }
+
+    return { id, name, status, previousLegs, currentLeg, nextLegs };
+  }
+
+  private extractLeg(data: Leg): Leg | null {
+    // TODO Uncomment for debugging
+    // console.debug('Extracting leg: ', data);
+
+    const assignedVehicleId = data.assignedVehicleId ?? null;
+
+    const boardingStopIndex = data.boardingStopIndex ?? null;
+
+    const alightingStopIndex = data.alightingStopIndex ?? null;
+
+    const boardingTime = data.boardingTime ?? null;
+
+    const alightingTime = data.alightingTime ?? null;
+
+    return {
+      assignedVehicleId,
+      boardingStopIndex,
+      alightingStopIndex,
+      boardingTime,
+      alightingTime,
+    };
   }
 
   private extractPassengerStatusUpdate(
@@ -297,6 +420,50 @@ export class SimulationService {
     }
 
     return { id, status };
+  }
+
+  private extractPassengerLegsUpdate(
+    data: PassengerLegsUpdate,
+  ): PassengerLegsUpdate | null {
+    // TODO Uncomment for debugging
+    // console.debug('Extracting passenger legs update: ', data);
+
+    const id = data.id;
+    if (!id) {
+      console.error('Passenger ID not found: ', id);
+      return null;
+    }
+
+    if (!Array.isArray(data.previousLegs)) {
+      console.error('Passenger previous legs not found: ', data.previousLegs);
+      return null;
+    }
+
+    const previousLegs = data.previousLegs.map((leg) => this.extractLeg(leg));
+    if (!previousLegs.every((leg) => leg !== null)) {
+      console.error('Passenger previous legs invalid: ', previousLegs);
+      return null;
+    }
+
+    const currentLeg =
+      data.currentLeg !== undefined ? this.extractLeg(data.currentLeg!) : null;
+    if (data.currentLeg !== undefined && currentLeg === null) {
+      console.error('Passenger current leg invalid: ', data.currentLeg);
+      return null;
+    }
+
+    if (!Array.isArray(data.nextLegs)) {
+      console.error('Passenger next legs not found: ', data.nextLegs);
+      return null;
+    }
+
+    const nextLegs = data.nextLegs.map((leg) => this.extractLeg(leg));
+    if (!nextLegs.every((leg) => leg !== null)) {
+      console.error('Passenger next legs invalid: ', nextLegs);
+      return null;
+    }
+
+    return { id, previousLegs, currentLeg, nextLegs };
   }
 
   private extractVehicle(data: Vehicle): Vehicle | null {
@@ -538,7 +705,8 @@ export class SimulationService {
 
   private extractPolylines(
     rawPolylinesByVehicleId: Record<string, string>,
-  ): Record<string, Polylines> | null {
+    version: number,
+  ): AllPolylines | null {
     const parsedPolylinesByVehicleId = Object.entries(
       rawPolylinesByVehicleId,
     ).reduce(
@@ -554,8 +722,13 @@ export class SimulationService {
       return null;
     }
 
+    if (typeof version !== 'number') {
+      console.error('Polylines version not found: ', version);
+      return null;
+    }
+
     if (Object.keys(parsedPolylinesByVehicleId).length === 0) {
-      return {};
+      return { version, polylinesByVehicleId: {} };
     }
 
     const polylinesByVehicleId: Record<string, Polylines> = {};
@@ -642,16 +815,24 @@ export class SimulationService {
       polylinesByVehicleId[vehicleId] = polylines;
     }
 
-    return polylinesByVehicleId;
+    return { version, polylinesByVehicleId };
   }
 
   // MARK: Build environment
-  get simulationStatesSignal(): Signal<SimulationState[]> {
+  get simulationStatesSignal(): Signal<SimulationStates> {
     return this._simulationStatesSignal;
   }
 
-  get simulationPolylinesSignal(): Signal<Record<string, Polylines>> {
+  get simulationPolylinesSignal(): Signal<AllPolylines | null> {
     return this._simulationPolylinesSignal;
+  }
+
+  get isFetchingStatesSignal(): Signal<boolean> {
+    return this._isFetchingStatesSignal;
+  }
+
+  get isFetchingPolylinesSignal(): Signal<boolean> {
+    return this._isFetchingPolylinesSignal;
   }
 
   /**
@@ -662,7 +843,9 @@ export class SimulationService {
     polylinesByVehicleId: Record<string, Polylines>,
     visualizationTime: number,
   ): SimulationEnvironment {
-    const sortedUpdates = state.updates.sort((a, b) => a.order - b.order);
+    const clonedState = structuredClone(state);
+
+    const sortedUpdates = clonedState.updates.sort((a, b) => a.order - b.order);
 
     let lastUpdate: AnySimulationUpdate | null = null;
 
@@ -671,12 +854,12 @@ export class SimulationService {
         break;
       }
 
-      this.applyUpdate(update, state);
+      this.applyUpdate(update, clonedState);
 
       lastUpdate = update;
     }
 
-    for (const [vehicleId, vehicle] of Object.entries(state.vehicles)) {
+    for (const [vehicleId, vehicle] of Object.entries(clonedState.vehicles)) {
       const polylines = polylinesByVehicleId[vehicleId];
       if (!polylines) {
         console.error('Polyline not found for vehicle: ', vehicleId, polylines);
@@ -687,11 +870,11 @@ export class SimulationService {
     }
 
     if (lastUpdate) {
-      state.order = lastUpdate.order;
-      state.timestamp = lastUpdate.timestamp;
+      clonedState.order = lastUpdate.order;
+      clonedState.timestamp = lastUpdate.timestamp;
     }
 
-    return state;
+    return clonedState;
   }
 
   private applyUpdate(
@@ -761,18 +944,112 @@ export class SimulationService {
     states: SimulationState[],
     missingStates: SimulationState[],
     stateOrdersToKeep: number[],
-  ): SimulationState[] {
-    if (missingStates.length === 0) {
-      return states;
-    }
-
-    // Add states to keep
+    shouldRequestMoreStates: boolean,
+    firstContinuousStateOrder: number,
+    lastContinuousStateOrder: number,
+    currentStateOrder: number,
+  ): SimulationStates {
     for (const state of states) {
       if (stateOrdersToKeep.includes(state.order)) {
         missingStates.push(state);
       }
     }
 
-    return missingStates;
+    const sortedStates = missingStates
+      .sort((a, b) => a.order - b.order)
+      .map((state) => ({
+        ...state,
+        updates: state.updates.sort((a, b) => a.order - b.order),
+      }));
+
+    const firstStateIndex = sortedStates.findIndex(
+      (state) => state.order === firstContinuousStateOrder,
+    );
+    const lastStateIndex = sortedStates.findIndex(
+      (state) => state.order === lastContinuousStateOrder,
+    );
+
+    const currentStateIndex = sortedStates.findIndex(
+      (state) => state.order === currentStateOrder,
+    );
+
+    const defaultReturnValue = {
+      states: sortedStates,
+      shouldRequestMoreStates,
+      firstContinuousState: null,
+      lastContinuousState: null,
+      currentState: null,
+    };
+
+    if (firstStateIndex === -1) {
+      console.error(
+        'First continuous state not found: ',
+        firstContinuousStateOrder,
+      );
+      return defaultReturnValue;
+    }
+    if (lastStateIndex === -1) {
+      console.error(
+        'Last continuous state not found: ',
+        lastContinuousStateOrder,
+      );
+      return defaultReturnValue;
+    }
+    if (currentStateIndex === -1) {
+      console.error('Current state not found: ', currentStateOrder);
+      return defaultReturnValue;
+    }
+    if (
+      currentStateIndex > lastStateIndex ||
+      currentStateIndex < firstStateIndex
+    ) {
+      console.error(
+        'Current state out of bounds: ',
+        currentStateIndex,
+        firstStateIndex,
+        lastStateIndex,
+      );
+      return defaultReturnValue;
+    }
+
+    const firstState = sortedStates[firstStateIndex];
+    const lastState = sortedStates[lastStateIndex];
+
+    const firstContinuousState = {
+      timestamp: firstState.timestamp,
+      order: firstState.order,
+      index: firstStateIndex,
+    };
+
+    const lastContinuousUpdate = lastState.updates.slice(-1)[0];
+
+    const lastContinuousState = {
+      timestamp: lastContinuousUpdate?.timestamp ?? lastState.timestamp,
+      order: lastContinuousUpdate?.order ?? lastState.order,
+      index: lastStateIndex,
+    };
+
+    const currentState = sortedStates[currentStateIndex];
+
+    const startTimestamp = currentState.timestamp;
+
+    let endTimestamp: number;
+    if (currentStateIndex + 1 <= lastStateIndex) {
+      endTimestamp = sortedStates[currentStateIndex + 1].timestamp;
+    } else {
+      endTimestamp =
+        currentState.updates.slice(-1)[0]?.timestamp ?? currentState.timestamp;
+    }
+
+    return {
+      states: sortedStates,
+      shouldRequestMoreStates,
+      firstContinuousState,
+      lastContinuousState,
+      currentState: {
+        startTimestamp,
+        endTimestamp,
+      },
+    };
   }
 }

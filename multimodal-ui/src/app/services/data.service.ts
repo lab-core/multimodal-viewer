@@ -127,6 +127,7 @@ export class DataService {
             configuration: {
               maxTime: null,
             },
+            polylinesVersion: -1,
           };
         }
 
@@ -199,6 +200,8 @@ export class DataService {
 
         const maxTime = rawSimulation.configuration?.maxTime ?? null;
 
+        const polylinesVersion = rawSimulation.polylinesVersion ?? -1;
+
         return {
           id,
           name,
@@ -214,6 +217,7 @@ export class DataService {
           configuration: {
             maxTime,
           },
+          polylinesVersion,
         };
       })
       .filter((simulation) => !!simulation);

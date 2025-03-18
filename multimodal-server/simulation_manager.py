@@ -34,6 +34,8 @@ class SimulationHandler:
 
     max_time: float | None
 
+    polylines_version: int | None
+
     def __init__(
         self,
         simulation_id: str,
@@ -59,6 +61,8 @@ class SimulationHandler:
         self.simulation_estimated_end_time = None
 
         self.max_time = max_time
+
+        self.polylines_version = None
 
 
 class SimulationManager:
@@ -273,6 +277,25 @@ class SimulationManager:
 
         self.emit_simulations()
 
+    def on_simulation_update_polylines_version(self, simulation_id):
+        if simulation_id not in self.simulations:
+            log(
+                f"{__file__} {inspect.currentframe().f_lineno}: Simulation {simulation_id} not found",
+                "server",
+                logging.ERROR,
+            )
+            return
+
+        simulation = self.simulations[simulation_id]
+
+        simulation.polylines_version = (
+            SimulationVisualizationDataManager.get_polylines_version_with_lock(
+                simulation_id
+            )
+        )
+
+        self.emit_simulations()
+
     def on_simulation_identification(
         self,
         simulation_id,
@@ -319,6 +342,12 @@ class SimulationManager:
         simulation.status = SimulationStatus(status)
         simulation.socket_id = socket_id
 
+        simulation.polylines_version = (
+            SimulationVisualizationDataManager.get_polylines_version_with_lock(
+                simulation_id
+            )
+        )
+
         self.emit_simulations()
 
     def emit_simulations(self):
@@ -358,6 +387,9 @@ class SimulationManager:
                     "maxTime": simulation.max_time
                 }
 
+            if simulation.polylines_version is not None:
+                serialized_simulation["polylinesVersion"] = simulation.polylines_version
+
             serialized_simulations.append(serialized_simulation)
 
         
@@ -372,9 +404,8 @@ class SimulationManager:
     def emit_missing_simulation_states(
         self,
         simulation_id: str,
-        first_state_order: float,
-        last_state_order: float,
         visualization_time: float,
+        loaded_state_orders: list[int],
     ) -> None:
         if simulation_id not in self.simulations:
             log(
@@ -387,20 +418,32 @@ class SimulationManager:
         simulation = self.simulations[simulation_id]
 
         try:
-            (missing_states, state_orders_to_keep, missing_updates) = (
-                SimulationVisualizationDataManager.get_missing_states(
-                    simulation_id,
-                    first_state_order,
-                    last_state_order,
-                    visualization_time,
-                )
+            (
+                missing_states,
+                missing_updates,
+                state_orders_to_keep,
+                should_request_more_states,
+                first_continuous_state_order,
+                last_continuous_state_order,
+                necessary_state_order,
+            ) = SimulationVisualizationDataManager.get_missing_states(
+                simulation_id,
+                visualization_time,
+                loaded_state_orders,
+                simulation.status not in RUNNING_SIMULATION_STATUSES,
             )
-
-            self.emit_simulation_polylines(simulation_id)
 
             emit(
                 "missing-simulation-states",
-                (missing_states, state_orders_to_keep, missing_updates),
+                (
+                    missing_states,
+                    missing_updates,
+                    state_orders_to_keep,
+                    should_request_more_states,
+                    first_continuous_state_order,
+                    last_continuous_state_order,
+                    necessary_state_order,
+                ),
                 to=get_session_id(),
             )
 
@@ -433,9 +476,11 @@ class SimulationManager:
             )
             return
 
-        polylines = SimulationVisualizationDataManager.get_polylines(simulation_id)
+        polylines, version = SimulationVisualizationDataManager.get_polylines(
+            simulation_id
+        )
 
-        emit(f"polylines-{simulation_id}", polylines, to=CLIENT_ROOM)
+        emit(f"polylines-{simulation_id}", (polylines, version), to=CLIENT_ROOM)
 
     def query_simulations(self):
         all_simulation_ids = (
@@ -488,6 +533,13 @@ class SimulationManager:
                     )
                 )
 
+                # Get the version of the polylines
+                polylines_version = (
+                    SimulationVisualizationDataManager.get_polylines_version_with_lock(
+                        simulation_id
+                    )
+                )
+
                 # Verify the version of the save file
                 version = simulation_information.version
 
@@ -526,6 +578,8 @@ class SimulationManager:
                 simulation.simulation_end_time = (
                     simulation_information.simulation_end_time
                 )
+
+                simulation.polylines_version = polylines_version
 
                 if simulation_information.simulation_end_time is None:
                     # The simulation is not running but the end time is not set

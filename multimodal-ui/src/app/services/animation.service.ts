@@ -2,8 +2,9 @@ import { Injectable, Signal, signal, WritableSignal } from '@angular/core';
 import * as L from 'leaflet';
 import 'leaflet-pixi-overlay';
 import * as PIXI from 'pixi.js';
-import { EntityOwner, VehicleEntity } from '../interfaces/entity.model';
+import { Entity, EntityOwner } from '../interfaces/entity.model';
 import {
+  Passenger,
   Polyline,
   Polylines,
   SimulationEnvironment,
@@ -33,7 +34,9 @@ export class AnimationService {
   private lastVisualisationTime = 0;
 
   private ticker: PIXI.Ticker = new PIXI.Ticker();
-  private vehicles: VehicleEntity[] = [];
+  private vehicles: Entity<Vehicle>[] = [];
+  private vehicleEntitiesByVehicleId: Record<string, Entity<Vehicle>> = {};
+  private passengersEntities: Entity<Passenger>[] = [];
   private container = new PIXI.Container();
 
   private lastScale = 0;
@@ -50,12 +53,12 @@ export class AnimationService {
   }
 
   synchronizeEnvironment(simulationEnvironment: SimulationEnvironment) {
-    console.log('[Simulation Environment]', simulationEnvironment);
-
     this.selectedVehiclePolyline.clear();
     this.container.removeChildren();
     this.container.addChild(this.selectedVehiclePolyline);
     this.vehicles = [];
+    this.vehicleEntitiesByVehicleId = {};
+    this.passengersEntities = [];
 
     let isSelectedVehicleInEnvironment = false;
 
@@ -70,6 +73,10 @@ export class AnimationService {
       console.warn(
         'The vehicle you selected is not in the environment anymore. It has been deselected.',
       );
+    }
+
+    for (const passenger of Object.values(simulationEnvironment.passengers)) {
+      this.addPassenger(passenger);
     }
   }
 
@@ -109,13 +116,15 @@ export class AnimationService {
       return;
     }
 
-    const sprite = PIXI.Sprite.from(`images/${type}.png`) as EntityOwner;
+    const sprite = PIXI.Sprite.from(`images/${type}.png`) as EntityOwner<
+      Entity<Vehicle>
+    >;
     sprite.anchor.set(0.5, 0.5);
     sprite.scale.set(1 / this.utils.getScale());
     sprite.interactive = true;
     sprite.on('pointerdown', (e) => this.onEntityPointerdown(e));
 
-    const entity: VehicleEntity = {
+    const entity: Entity<Vehicle> = {
       data: vehicle,
       sprite,
       requestedRotation: 0,
@@ -124,6 +133,26 @@ export class AnimationService {
 
     this.container.addChild(sprite);
     this.vehicles.push(entity);
+
+    this.vehicleEntitiesByVehicleId[vehicle.id] = entity;
+  }
+
+  private addPassenger(passenger: Passenger) {
+    const sprite = PIXI.Sprite.from('images/sample-walk.png') as EntityOwner<
+      Entity<Passenger>
+    >;
+    sprite.anchor.set(0.5, 0.5);
+    sprite.scale.set(1 / this.utils.getScale());
+
+    const entity: Entity<Passenger> = {
+      data: passenger,
+      sprite,
+      requestedRotation: 0,
+    };
+    sprite.entity = entity;
+
+    this.container.addChild(sprite);
+    this.passengersEntities.push(entity);
   }
 
   clearAnimations() {
@@ -176,7 +205,6 @@ export class AnimationService {
 
     this.utils.getMap().flyToBounds(new L.LatLngBounds(southWest, northEast));
   }
-
   private setVehiclePositions() {
     // eslint-disable-next-line @typescript-eslint/prefer-for-of
     for (let index = 0; index < this.vehicles.length; ++index) {
@@ -237,6 +265,147 @@ export class AnimationService {
           this.utils.layerPointToLatLng(interpolatedPosition);
         this.redrawPolyline(polylineNo, lineNo, interpolatedPosition);
       }
+    }
+  }
+
+  private setPassengerPositions() {
+    // eslint-disable-next-line @typescript-eslint/prefer-for-of
+    for (let index = 0; index < this.passengersEntities.length; ++index) {
+      const passengerEntity = this.passengersEntities[index];
+      const passenger = passengerEntity.data;
+
+      const currentLeg = passenger.currentLeg ?? passenger.nextLegs[0] ?? null;
+
+      if (!currentLeg || currentLeg.assignedVehicleId == null) {
+        continue;
+      }
+
+      const assignedVehicleEntity =
+        this.vehicleEntitiesByVehicleId[currentLeg.assignedVehicleId];
+
+      if (!assignedVehicleEntity) {
+        continue;
+      }
+
+      const assignedVehicle = assignedVehicleEntity?.data;
+
+      if (!assignedVehicle.polylines) {
+        // console.error(
+        //   `Vehicle ${assignedVehicle.id} has no polyline.`,
+        //   assignedVehicle,
+        // );
+        continue;
+      }
+
+      const polylines = Object.values(assignedVehicle.polylines);
+
+      // Place passenger at the alighting stop if alighting time is reached
+      if (
+        currentLeg.alightingTime !== null &&
+        currentLeg.alightingTime > this.animationVisualizationTime
+      ) {
+        if (currentLeg.alightingStopIndex === null) {
+          continue;
+        }
+
+        let position: {
+          latitude: number;
+          longitude: number;
+        };
+
+        if (currentLeg.alightingStopIndex > polylines.length) {
+          console.error(
+            `Alighting stop index is out of bounds for vehicle ${assignedVehicle.id} : ${currentLeg.alightingStopIndex} is greater than the length of `,
+            polylines,
+          );
+          continue;
+        } else if (currentLeg.alightingStopIndex === polylines.length) {
+          const polyline = polylines[polylines.length - 1];
+          if (polyline.polyline.length === 0) {
+            console.error(
+              `Polyline for vehicle ${assignedVehicle.id} is empty.`,
+            );
+            continue;
+          }
+
+          position = polyline.polyline.slice(-1)[0];
+        } else {
+          const polyline = polylines[currentLeg.alightingStopIndex];
+          if (polyline.polyline.length === 0) {
+            console.error(
+              `Polyline for vehicle ${assignedVehicle.id} is empty.`,
+            );
+            continue;
+          }
+
+          position = polyline.polyline.slice(-1)[0];
+        }
+
+        const point = this.utils.latLngToLayerPoint([
+          position.latitude,
+          position.longitude,
+        ]);
+
+        passengerEntity.sprite.x = point.x;
+        passengerEntity.sprite.y = point.y;
+        continue;
+      }
+
+      // Place passenger at the boarding stop if boarding time is not reached
+      if (
+        currentLeg.boardingTime === null ||
+        currentLeg.boardingTime > this.animationVisualizationTime
+      ) {
+        if (currentLeg.boardingStopIndex === null) {
+          continue;
+        }
+
+        let position: {
+          latitude: number;
+          longitude: number;
+        };
+
+        if (currentLeg.boardingStopIndex >= polylines.length) {
+          console.error(
+            `Boarding stop index is out of bounds for vehicle ${assignedVehicle.id} : ${currentLeg.boardingStopIndex} is greater than the length of `,
+            polylines,
+          );
+          continue;
+        } else if (currentLeg.boardingStopIndex === polylines.length) {
+          const polyline = polylines[polylines.length - 1];
+          if (polyline.polyline.length === 0) {
+            console.error(
+              `Polyline for vehicle ${assignedVehicle.id} is empty.`,
+            );
+            continue;
+          }
+
+          position = polyline.polyline[0];
+        } else {
+          const polyline = polylines[currentLeg.boardingStopIndex];
+          if (polyline.polyline.length === 0) {
+            console.error(
+              `Polyline for vehicle ${assignedVehicle.id} is empty.`,
+            );
+            continue;
+          }
+
+          position = polyline.polyline[0];
+        }
+
+        const point = this.utils.latLngToLayerPoint([
+          position.latitude,
+          position.longitude,
+        ]);
+
+        passengerEntity.sprite.x = point.x;
+        passengerEntity.sprite.y = point.y;
+        continue;
+      }
+
+      // Place passenger on the vehicle
+      passengerEntity.sprite.x = assignedVehicleEntity.sprite.x;
+      passengerEntity.sprite.y = assignedVehicleEntity.sprite.y;
     }
   }
 
@@ -306,7 +475,7 @@ export class AnimationService {
   }
 
   private applyInterpolation(
-    vehicleEntity: VehicleEntity,
+    vehicleEntity: Entity<Vehicle>,
     polyline: Polyline,
     polylineNo: number,
     lineNo: number,
@@ -499,6 +668,7 @@ export class AnimationService {
   private onRedraw(event: L.LeafletEvent) {
     if (!this.pause) this.updateAnimationTime();
     this.setVehiclePositions();
+    this.setPassengerPositions();
   }
 
   // onClick is called after onEntityPointerdown
@@ -510,7 +680,7 @@ export class AnimationService {
   }
 
   private onEntityPointerdown(event: PIXI.FederatedPointerEvent) {
-    const sprite = event.target as EntityOwner;
+    const sprite = event.target as EntityOwner<Entity<Vehicle>>;
     if (!sprite) return;
 
     const entity = sprite.entity;
@@ -518,7 +688,6 @@ export class AnimationService {
 
     this.selectVehicle(entity.data);
     this.frame_onEntityPointerDownCalled = true;
-    console.log('Vehicle selected:', this._selectedVehicleSignal());
   }
 
   private selectVehicle(vehicle: Vehicle) {

@@ -108,6 +108,11 @@ export interface Simulation {
    * Current configuration of the simulation
    */
   configuration: SimulationConfiguration;
+
+  /**
+   * Version of the polylines
+   */
+  polylinesVersion: number;
 }
 
 export interface SimulationConfiguration {
@@ -132,14 +137,33 @@ export const PASSENGER_STATUSES: PassengerStatus[] = [
   'complete',
 ];
 
+export interface Leg {
+  assignedVehicleId: string | null;
+  boardingStopIndex: number | null;
+  alightingStopIndex: number | null;
+  boardingTime: number | null;
+  alightingTime: number | null;
+}
+
 export interface Passenger {
   id: string;
   name: string | null;
   status: PassengerStatus;
+  previousLegs: Leg[];
+  currentLeg: Leg | null;
+  nextLegs: Leg[];
 }
+
 export interface PassengerStatusUpdate {
   id: string;
   status: PassengerStatus;
+}
+
+export interface PassengerLegsUpdate {
+  id: string;
+  previousLegs: Leg[];
+  currentLeg: Leg | null;
+  nextLegs: Leg[];
 }
 
 export type VehicleStatus =
@@ -167,6 +191,11 @@ export interface Polyline {
 }
 
 export type Polylines = Record<string, Polyline>;
+
+export interface AllPolylines {
+  version: number;
+  polylinesByVehicleId: Record<string, Polylines>;
+}
 
 export interface Stop {
   arrivalTime: number;
@@ -200,6 +229,7 @@ export interface VehicleStopsUpdate {
 export type SimulationUpdateType =
   | 'createPassenger'
   | 'updatePassengerStatus'
+  | 'updatePassengerLegs'
   | 'createVehicle'
   | 'updateVehicleStatus'
   | 'updateVehicleStops';
@@ -207,6 +237,7 @@ export type SimulationUpdateType =
 export const SIMULATION_UPDATE_TYPES: SimulationUpdateType[] = [
   'createPassenger',
   'updatePassengerStatus',
+  'updatePassengerLegs',
   'createVehicle',
   'updateVehicleStatus',
   'updateVehicleStops',
@@ -215,6 +246,7 @@ export const SIMULATION_UPDATE_TYPES: SimulationUpdateType[] = [
 export interface SimulationUpdateTypeMap {
   createPassenger: Passenger;
   updatePassengerStatus: PassengerStatusUpdate;
+  updatePassengerLegs: PassengerLegsUpdate;
   createVehicle: Vehicle;
   updateVehicleStatus: VehicleStatusUpdate;
   updateVehicleStops: VehicleStopsUpdate;
@@ -261,6 +293,61 @@ export interface RawSimulationState extends RawSimulationEnvironment {
 
 export interface SimulationState extends SimulationEnvironment {
   updates: AnySimulationUpdate[];
+}
+
+export interface SimulationStates {
+  /**
+   * All loaded states
+   */
+  states: SimulationState[];
+
+  /**
+   * If true, the client will continue to request more states
+   * even if the necessary state for the visualization is loaded.
+   */
+  shouldRequestMoreStates: boolean;
+
+  /**
+   * Since the loaded states are not guaranteed to be continuous,
+   * we need to keep track of where the continuous states start and end.
+   *
+   * This contains the informations of the first valid state in the continuous states.
+   */
+  firstContinuousState: {
+    timestamp: number;
+    order: number;
+    index: number;
+  } | null;
+
+  /**
+   * Since the loaded states are not guaranteed to be continuous,
+   * we need to keep track of where the continuous states start and end.
+   *
+   * This contains the informations of the last valid state in the continuous states.
+   *
+   * Be aware that the timestamp and order here may not be the ones of the last state in
+   * the continuous states but the ones of the last update of this state.
+   */
+  lastContinuousState: {
+    timestamp: number;
+    order: number;
+    index: number;
+  } | null;
+
+  /**
+   * Information about the bounds of the current state to know if it changes.
+   *
+   * When the visualization time is greater than `endTimestamp` or
+   * lower than `startTimestamp`, we need to request new states.
+   */
+  currentState: {
+    startTimestamp: number;
+
+    /**
+     * This is actually the start of the next state if it exists, otherwise it is the end of the current state.
+     */
+    endTimestamp: number;
+  } | null;
 }
 
 export const STATE_SAVE_STEP = 500;

@@ -21,14 +21,7 @@
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/multimodal-server"
       // "justMyCode": false,
-      // "args": [
-      //   "--name",
-      //   "launch",
-      //   "--data",
-      //   "instance_very_small_16",
-      //   "--max-time",
-      //   "60000"
-      // ]
+      // "args": ["--name", "launch_large", "--data", "instance_07"]
     }
   ]
 }
