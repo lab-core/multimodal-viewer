@@ -3,6 +3,8 @@ import sys
 import threading
 
 from multimodalsim.simulator.simulator import Simulator
+from multimodalsim.statistics.data_analyzer import FixedLineDataAnalyzer
+from multimodalsim.observer.data_collector import DataContainer, StandardDataCollector
 from server_utils import (
     HOST,
     PORT,
@@ -28,9 +30,12 @@ def run_simulation(
 
     status = SimulationStatus.STARTING
 
+    data_container = DataContainer()
     environment_observer = SimulationVisualizationEnvironmentObserver(
-        simulation_id, data, sio, max_time
+        simulation_id, data, sio, max_time, FixedLineDataAnalyzer(data_container), StandardDataCollector(data_container)
     )
+
+
 
     @sio.on("pause-simulation")
     def pauseSimulator():
