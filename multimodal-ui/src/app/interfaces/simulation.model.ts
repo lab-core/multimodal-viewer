@@ -137,14 +137,33 @@ export const PASSENGER_STATUSES: PassengerStatus[] = [
   'complete',
 ];
 
+export interface Leg {
+  assignedVehicleId: string | null;
+  boardingStopIndex: number | null;
+  alightingStopIndex: number | null;
+  boardingTime: number | null;
+  alightingTime: number | null;
+}
+
 export interface Passenger {
   id: string;
   name: string | null;
   status: PassengerStatus;
+  previousLegs: Leg[];
+  currentLeg: Leg | null;
+  nextLegs: Leg[];
 }
+
 export interface PassengerStatusUpdate {
   id: string;
   status: PassengerStatus;
+}
+
+export interface PassengerLegsUpdate {
+  id: string;
+  previousLegs: Leg[];
+  currentLeg: Leg | null;
+  nextLegs: Leg[];
 }
 
 export type VehicleStatus =
@@ -210,6 +229,7 @@ export interface VehicleStopsUpdate {
 export type SimulationUpdateType =
   | 'createPassenger'
   | 'updatePassengerStatus'
+  | 'updatePassengerLegs'
   | 'createVehicle'
   | 'updateVehicleStatus'
   | 'updateVehicleStops';
@@ -217,6 +237,7 @@ export type SimulationUpdateType =
 export const SIMULATION_UPDATE_TYPES: SimulationUpdateType[] = [
   'createPassenger',
   'updatePassengerStatus',
+  'updatePassengerLegs',
   'createVehicle',
   'updateVehicleStatus',
   'updateVehicleStops',
@@ -225,6 +246,7 @@ export const SIMULATION_UPDATE_TYPES: SimulationUpdateType[] = [
 export interface SimulationUpdateTypeMap {
   createPassenger: Passenger;
   updatePassengerStatus: PassengerStatusUpdate;
+  updatePassengerLegs: PassengerLegsUpdate;
   createVehicle: Vehicle;
   updateVehicleStatus: VehicleStatusUpdate;
   updateVehicleStops: VehicleStopsUpdate;
