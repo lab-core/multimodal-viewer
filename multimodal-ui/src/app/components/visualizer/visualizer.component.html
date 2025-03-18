@@ -28,7 +28,6 @@
       }
       <mat-autocomplete
         #auto="matAutocomplete"
-        requireSelection
         [displayWith]="entitySearchDisplayFunction"
       >
         @for (entity of filteredEntitySearchData; track entity.displayedValue) {
