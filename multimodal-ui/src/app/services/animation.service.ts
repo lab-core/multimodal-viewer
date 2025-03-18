@@ -343,7 +343,10 @@ export class AnimationService {
       let polylineIndex: number | null = null;
       let lineIndex: number | null = null;
       let point: L.Point | null = null;
-      if (
+      if (animationData.notDisplayedReason !== null) {
+        // Vehicle has an error
+        vehicle.sprite.visible = false;
+      } else if (
         (animationData as StaticVehicleAnimationData).position !== undefined
       ) {
         vehicle.sprite.visible = true;
@@ -382,7 +385,7 @@ export class AnimationService {
         polylineIndex = dynamicVehicleAnimationData.polylineIndex;
         lineIndex = lineNo;
       } else {
-        // Vehicle has an error
+        // Vehicle has an unknown error
         vehicle.sprite.visible = false;
       }
 
@@ -437,7 +440,10 @@ export class AnimationService {
           break;
       }
 
-      if (
+      if (animationData.notDisplayedReason !== null) {
+        // Passenger has an error
+        passenger.sprite.visible = false;
+      } else if (
         (animationData as StaticPassengerAnimationData).position !== undefined
       ) {
         passenger.sprite.visible = true;
@@ -459,7 +465,7 @@ export class AnimationService {
           passenger.sprite.y = vehicleEntity.sprite.y;
         }
       } else {
-        // Passenger has an error
+        // Passenger has an unknown error
         passenger.sprite.visible = false;
       }
 
