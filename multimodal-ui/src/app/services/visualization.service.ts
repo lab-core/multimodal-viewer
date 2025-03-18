@@ -15,7 +15,8 @@ import {
   AnimatedVehicle,
   AnyPassengerAnimationData,
   AnyVehicleAnimationData,
-  displayed,
+  DisplayedPassenger,
+  DisplayedVehicle,
   DynamicPassengerAnimationData,
   DynamicVehicleAnimationData,
   Passenger,
@@ -108,7 +109,13 @@ export class VisualizationService {
         return this.wantedVisualizationTime;
       }
 
-      return Math.min(visualizationMaxTime, this.wantedVisualizationTime + 1);
+      return Math.min(
+        visualizationMaxTime,
+        Math.max(
+          this.wantedVisualizationTime + 1 * Math.sign(this.speed),
+          simulationStartTime,
+        ),
+      );
     });
 
   // MARK: +- Visualization Environment
@@ -320,14 +327,15 @@ export class VisualizationService {
       }
 
       // Find if each vehicle is displayed
-      const displayedVehicle: Record<string, displayed<Vehicle>> = {};
+      const displayedVehicles: Record<string, DisplayedVehicle> = {};
 
       for (const vehicle of Object.values(simulationEnvironment.vehicles)) {
         const animatedVehicle = animatedVehicles[vehicle.id];
 
         if (animatedVehicle.animationData.length === 0) {
-          displayedVehicle[vehicle.id] = {
+          displayedVehicles[vehicle.id] = {
             ...vehicle,
+            passengers: [],
             notDisplayedReason: 'Vehicle has no animation data',
           };
           continue;
@@ -340,43 +348,48 @@ export class VisualizationService {
         );
 
         if (currentAnimationData === undefined) {
-          displayedVehicle[vehicle.id] = {
+          displayedVehicles[vehicle.id] = {
             ...vehicle,
+            passengers: [],
             notDisplayedReason: 'Vehicle animation data not found',
           };
           continue;
         }
 
         if (currentAnimationData.notDisplayedReason !== null) {
-          displayedVehicle[vehicle.id] = {
+          displayedVehicles[vehicle.id] = {
             ...vehicle,
+            passengers: [],
             notDisplayedReason: currentAnimationData.notDisplayedReason,
           };
           continue;
         }
 
-        displayedVehicle[vehicle.id] = {
+        displayedVehicles[vehicle.id] = {
           ...vehicle,
+          passengers: [],
           notDisplayedReason: null,
         };
       }
 
       // Find if each passenger is displayed
-      const displayedPassenger: Record<string, displayed<Passenger>> = {};
+      const displayedPassengers: Record<string, DisplayedPassenger> = {};
       for (const passenger of Object.values(simulationEnvironment.passengers)) {
         const animatedPassenger = animatedPassengers[passenger.id];
 
         if (animatedPassenger === undefined) {
-          displayedPassenger[passenger.id] = {
+          displayedPassengers[passenger.id] = {
             ...passenger,
+            vehicleId: null,
             notDisplayedReason: 'Passenger not found',
           };
           continue;
         }
 
         if (animatedPassenger.animationData.length === 0) {
-          displayedPassenger[passenger.id] = {
+          displayedPassengers[passenger.id] = {
             ...passenger,
+            vehicleId: null,
             notDisplayedReason: 'Passenger has no animation data',
           };
           continue;
@@ -389,57 +402,67 @@ export class VisualizationService {
         );
 
         if (currentAnimationData === undefined) {
-          displayedPassenger[passenger.id] = {
+          displayedPassengers[passenger.id] = {
             ...passenger,
+            vehicleId: null,
             notDisplayedReason: 'Passenger animation data not found',
           };
           continue;
         }
 
         if (currentAnimationData.notDisplayedReason !== null) {
-          displayedPassenger[passenger.id] = {
+          displayedPassengers[passenger.id] = {
             ...passenger,
+            vehicleId: currentAnimationData.vehicleId,
             notDisplayedReason: currentAnimationData.notDisplayedReason,
           };
           continue;
         }
 
         if (
-          (currentAnimationData as DynamicPassengerAnimationData).vehicleId !==
-          undefined
+          currentAnimationData.vehicleId !== null &&
+          (currentAnimationData as StaticPassengerAnimationData).position ===
+            undefined
         ) {
           const dynamicAnimationData =
             currentAnimationData as DynamicPassengerAnimationData;
 
-          const vehicle = displayedVehicle[dynamicAnimationData.vehicleId];
+          const vehicle = displayedVehicles[dynamicAnimationData.vehicleId];
 
           if (vehicle === undefined) {
-            displayedPassenger[passenger.id] = {
+            displayedPassengers[passenger.id] = {
               ...passenger,
+              vehicleId: currentAnimationData.vehicleId,
               notDisplayedReason: 'Vehicle not found',
             };
+            currentAnimationData.notDisplayedReason = 'Vehicle not found';
             continue;
           }
 
+          vehicle.passengers.push(passenger.id);
+
           if (vehicle.notDisplayedReason !== null) {
-            displayedPassenger[passenger.id] = {
+            displayedPassengers[passenger.id] = {
               ...passenger,
+              vehicleId: currentAnimationData.vehicleId,
               notDisplayedReason: 'Vehicle not displayed',
             };
+            currentAnimationData.notDisplayedReason = 'Vehicle not displayed';
             continue;
           }
         }
 
-        displayedPassenger[passenger.id] = {
+        displayedPassengers[passenger.id] = {
           ...passenger,
+          vehicleId: currentAnimationData.vehicleId,
           notDisplayedReason: null,
         };
       }
 
       const animatedSimulationEnvironment: AnimatedSimulationEnvironment = {
         ...simulationEnvironment,
-        passengers: displayedPassenger,
-        vehicles: displayedVehicle,
+        passengers: displayedPassengers,
+        vehicles: displayedVehicles,
         animationData: {
           passengers: animatedPassengers,
           vehicles: animatedVehicles,
@@ -650,9 +673,12 @@ export class VisualizationService {
       this.tickSignal.update((tick) => tick + 1);
     });
 
-    this.timeout = setTimeout(() => {
-      this.updateTick();
-    }, 1000 / this.speed) as unknown as number;
+    this.timeout = setTimeout(
+      () => {
+        this.updateTick();
+      },
+      1000 / Math.abs(this.speed),
+    ) as unknown as number;
   }
 
   private getMissingSimulationStates(
@@ -733,6 +759,7 @@ export class VisualizationService {
         status: passenger.status,
         startTimestamp: startTimestamp,
         endTimestamp: endTimestamp,
+        vehicleId: null,
         notDisplayedReason: 'Passenger has no legs',
       });
     }
@@ -747,6 +774,7 @@ export class VisualizationService {
           status: passenger.status,
           startTimestamp: currentTimestamp,
           endTimestamp: endTimestamp,
+          vehicleId: null,
           notDisplayedReason: 'Leg has no assigned vehicle',
         });
         break;
@@ -765,6 +793,7 @@ export class VisualizationService {
           status: passenger.status,
           startTimestamp: currentTimestamp,
           endTimestamp: endTimestamp,
+          vehicleId: leg.assignedVehicleId,
           notDisplayedReason: 'Vehicle not found',
         });
         break;
@@ -775,6 +804,7 @@ export class VisualizationService {
           status: passenger.status,
           startTimestamp: currentTimestamp,
           endTimestamp: endTimestamp,
+          vehicleId: leg.assignedVehicleId,
           notDisplayedReason: 'Vehicle has no polylines',
         });
         break;
@@ -785,6 +815,7 @@ export class VisualizationService {
           status: passenger.status,
           startTimestamp: currentTimestamp,
           endTimestamp: endTimestamp,
+          vehicleId: leg.assignedVehicleId,
           notDisplayedReason: 'Leg has no boarding stop',
         });
         break;
@@ -802,6 +833,7 @@ export class VisualizationService {
               leg.boardingTime ?? endTimestamp,
               endTimestamp,
             ),
+            vehicleId: leg.assignedVehicleId,
             notDisplayedReason: 'Vehicle has no polyline for boarding stop',
           });
           continue;
@@ -815,6 +847,7 @@ export class VisualizationService {
               leg.boardingTime ?? endTimestamp,
               endTimestamp,
             ),
+            vehicleId: leg.assignedVehicleId,
             notDisplayedReason:
               'Vehicle has an empty polyline for boarding stop',
           });
@@ -834,6 +867,7 @@ export class VisualizationService {
             endTimestamp,
           ),
           position: position,
+          vehicleId: leg.assignedVehicleId,
           notDisplayedReason: null,
         });
 
@@ -875,6 +909,7 @@ export class VisualizationService {
           startTimestamp: Math.max(leg.alightingTime, currentTimestamp),
           endTimestamp: Math.min(leg.alightingTime, endTimestamp),
           notDisplayedReason: 'Leg has no alighting stop',
+          vehicleId: leg.assignedVehicleId,
         });
         break;
       }
@@ -887,6 +922,7 @@ export class VisualizationService {
           startTimestamp: Math.max(leg.alightingTime, currentTimestamp),
           endTimestamp: Math.min(leg.alightingTime, endTimestamp),
           notDisplayedReason: 'Vehicle has no polyline for alighting stop',
+          vehicleId: leg.assignedVehicleId,
         });
         break;
       }
@@ -898,6 +934,7 @@ export class VisualizationService {
           endTimestamp: Math.min(leg.alightingTime, endTimestamp),
           notDisplayedReason:
             'Vehicle has an empty polyline for alighting stop',
+          vehicleId: leg.assignedVehicleId,
         });
         break;
       }
@@ -913,6 +950,7 @@ export class VisualizationService {
         ),
         position: position,
         notDisplayedReason: null,
+        vehicleId: leg.assignedVehicleId,
       });
 
       currentTimestamp = Math.min(
@@ -941,6 +979,7 @@ export class VisualizationService {
           startTimestamp: currentData.endTimestamp,
           endTimestamp: nextData.startTimestamp,
           notDisplayedReason: 'Passenger has no position',
+          vehicleId: currentData.vehicleId,
         };
 
         if (position !== null) {

@@ -71,3 +71,21 @@
   top: 1rem;
   left: 1rem;
 }
+
+.clickable {
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.32);
+  }
+}
+
+.light {
+  font-weight: 300;
+}
+
+mat-card-title:not(:first-child) {
+  margin-block-start: 1rem;
+}

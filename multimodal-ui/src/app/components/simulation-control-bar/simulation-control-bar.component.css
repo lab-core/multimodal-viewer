@@ -11,7 +11,7 @@
   /* 20rem is the width of the information panel */
   /* 1rem for the gaps */
   width: calc(100% - 2 * (44px + 1rem));
-  max-width: 1000px;
+  max-width: 1200px;
 
   ::ng-deep .mat-mdc-card-content {
     padding: 0.5rem !important;
@@ -58,4 +58,8 @@
 .speed {
   text-align: center;
   min-width: 3rem;
+}
+
+.active {
+  background-color: var(--active-button-color);
 }

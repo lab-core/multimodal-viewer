@@ -274,6 +274,20 @@ export type displayed<T> = T & {
   notDisplayedReason: string | null;
 };
 
+export interface DisplayedPassenger extends displayed<Passenger> {
+  /**
+   * The vehicle id assigned to the passenger
+   */
+  vehicleId: string | null;
+}
+
+export interface DisplayedVehicle extends displayed<Vehicle> {
+  /**
+   * The id of all passengers on board
+   */
+  passengers: string[];
+}
+
 export interface AnimationData {
   startTimestamp: number;
   endTimestamp: number;
@@ -281,6 +295,7 @@ export interface AnimationData {
 }
 
 export interface PassengerAnimationData extends AnimationData {
+  vehicleId: string | null;
   status: PassengerStatus;
 }
 
@@ -348,8 +363,8 @@ export interface SimulationEnvironment {
 }
 
 export interface AnimatedSimulationEnvironment extends SimulationEnvironment {
-  passengers: Record<string, displayed<Passenger>>;
-  vehicles: Record<string, displayed<Vehicle>>;
+  passengers: Record<string, DisplayedPassenger>;
+  vehicles: Record<string, DisplayedVehicle>;
 
   /**
    * A data structure to speed up the animation
