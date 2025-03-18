@@ -166,8 +166,9 @@ export class AnimationService {
     if (
       this.startTimestamp === null ||
       this.endTimestamp === null ||
-      visualizationTime < this.startTimestamp ||
-      visualizationTime > this.endTimestamp
+      this.animationVisualizationTime < this.startTimestamp ||
+      this.animationVisualizationTime > this.endTimestamp ||
+      this.pause
     ) {
       this.animationVisualizationTime = visualizationTime;
     }
@@ -675,7 +676,7 @@ export class AnimationService {
     const absDesyncDiff = Math.abs(desyncDiff);
     if (absDesyncDiff > this.MIN_LERPABLE_DESYNC_DIFF * this.speed) {
       this.animationVisualizationTime +=
-        desyncDiff * (1 - Math.exp(-5 * absDesyncDiff));
+        desyncDiff * (1 - Math.exp(-5 * Math.abs(deltaSec)));
     }
   }
 
@@ -710,7 +711,11 @@ export class AnimationService {
       return;
     }
 
-    this.updateAnimationTime();
+    if (this.pause) {
+      this.animationVisualizationTime = this.lastVisualisationTime;
+    } else {
+      this.updateAnimationTime();
+    }
 
     this.setVehiclePositions();
     this.setPassengerPositions();
