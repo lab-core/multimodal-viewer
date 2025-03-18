@@ -1,10 +1,11 @@
+import os
 import logging
 from enum import Enum
 
 from flask import request
 from flask_socketio import emit
 
-HOST = "0.0.0.0"
+HOST = os.getenv("SERVER_HOST", "127.0.0.1")
 PORT = 5000
 
 CLIENT_ROOM = "client"

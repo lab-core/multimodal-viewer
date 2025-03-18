@@ -27,6 +27,8 @@ services:
       - ./data:/app/data
     networks:
       - multimodal-network
+    environment:
+      - SERVER_HOST=0.0.0.0
 
 networks:
   multimodal-network:
