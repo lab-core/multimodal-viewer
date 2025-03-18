@@ -420,8 +420,9 @@ export class VisualizationService {
         }
 
         if (
-          (currentAnimationData as DynamicPassengerAnimationData).vehicleId !==
-          undefined
+          currentAnimationData.vehicleId !== null &&
+          (currentAnimationData as StaticPassengerAnimationData).position ===
+            undefined
         ) {
           const dynamicAnimationData =
             currentAnimationData as DynamicPassengerAnimationData;
@@ -434,6 +435,7 @@ export class VisualizationService {
               vehicleId: currentAnimationData.vehicleId,
               notDisplayedReason: 'Vehicle not found',
             };
+            currentAnimationData.notDisplayedReason = 'Vehicle not found';
             continue;
           }
 
@@ -445,6 +447,7 @@ export class VisualizationService {
               vehicleId: currentAnimationData.vehicleId,
               notDisplayedReason: 'Vehicle not displayed',
             };
+            currentAnimationData.notDisplayedReason = 'Vehicle not displayed';
             continue;
           }
         }

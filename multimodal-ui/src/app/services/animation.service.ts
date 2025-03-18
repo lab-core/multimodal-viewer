@@ -671,16 +671,15 @@ export class AnimationService {
   }
 
   private updateAnimationTime() {
-    const deltaSec = (this.speed * this.ticker.deltaMS) / 1000;
+    const deltaSec = this.ticker.deltaMS / 1000;
     if (!this.pause) {
-      this.animationVisualizationTime += deltaSec;
-      this.lastVisualisationTime += deltaSec;
+      this.animationVisualizationTime += deltaSec * this.speed;
+      this.lastVisualisationTime += deltaSec * this.speed;
     }
 
     const desyncDiff =
       this.lastVisualisationTime - this.animationVisualizationTime;
-    const absDesyncDiff = Math.abs(desyncDiff);
-    if (absDesyncDiff > this.MIN_LERPABLE_DESYNC_DIFF * this.speed) {
+    if (Math.abs(desyncDiff) > this.MIN_LERPABLE_DESYNC_DIFF * this.speed) {
       this.animationVisualizationTime +=
         desyncDiff * (1 - Math.exp(-5 * Math.abs(deltaSec)));
     }
