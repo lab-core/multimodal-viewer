@@ -123,8 +123,7 @@ export class AnimationService {
       this.startTimestamp === null ||
       this.endTimestamp === null ||
       visualizationTime < this.startTimestamp ||
-      visualizationTime > this.endTimestamp ||
-      this.pause
+      visualizationTime > this.endTimestamp
     ) {
       this.animationVisualizationTime = visualizationTime;
     }
@@ -601,8 +600,10 @@ export class AnimationService {
 
   private updateAnimationTime() {
     const deltaSec = (this.speed * this.ticker.deltaMS) / 1000;
-    this.animationVisualizationTime += deltaSec;
-    this.lastVisualisationTime += deltaSec;
+    if (!this.pause) {
+      this.animationVisualizationTime += deltaSec;
+      this.lastVisualisationTime += deltaSec;
+    }
 
     const desyncDiff =
       this.lastVisualisationTime - this.animationVisualizationTime;
@@ -637,14 +638,14 @@ export class AnimationService {
   private onRedraw(event: L.LeafletEvent) {
     if (this.startTimestamp == null || this.endTimestamp == null) return;
 
-    if (!this.pause) this.updateAnimationTime();
-
     if (
       this.animationVisualizationTime < this.startTimestamp ||
       this.animationVisualizationTime > this.endTimestamp
     ) {
       return;
     }
+
+    this.updateAnimationTime();
 
     this.setVehiclePositions();
     this.setPassengerPositions();

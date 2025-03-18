@@ -417,23 +417,23 @@ export class VisualizationService {
             displayedPassenger[passenger.id] = {
               ...passenger,
               notDisplayedReason: 'Vehicle not found',
-          };
-          continue;
-        }
+            };
+            continue;
+          }
 
           if (vehicle.notDisplayedReason !== null) {
             displayedPassenger[passenger.id] = {
               ...passenger,
               notDisplayedReason: 'Vehicle not displayed',
-          };
-          continue;
-        }
+            };
+            continue;
+          }
         }
 
         displayedPassenger[passenger.id] = {
           ...passenger,
           notDisplayedReason: null,
-          };
+        };
       }
 
       const animatedSimulationEnvironment: AnimatedSimulationEnvironment = {
@@ -460,9 +460,6 @@ export class VisualizationService {
     private readonly simulationService: SimulationService,
   ) {
     effect(() => {
-      this.animatedSimulationEnvironmentSignal();
-    });
-    effect(() => {
       const wantedVisualizationTime = this._wantedVisualizationTimeSignal();
       this.wantedVisualizationTime = wantedVisualizationTime;
     });
@@ -471,8 +468,8 @@ export class VisualizationService {
       const simulation = this.simulationService.activeSimulationSignal();
 
       if (simulation === null) {
-        return;
         this._isLoadingSignal.set(true);
+        return;
       }
 
       const wantedVisualizationTime = this._wantedVisualizationTimeSignal();
