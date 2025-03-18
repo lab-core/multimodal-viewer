@@ -87,10 +87,13 @@ export class VisualizerComponent implements OnDestroy {
     });
 
     effect(() => {
-      const visualizationEnvironment = this.visualizationEnvironmentSignal();
-      if (visualizationEnvironment == null) return;
+      const animatedSimulationEnvironment =
+        this.visualizationService.animatedSimulationEnvironmentSignal();
+      if (animatedSimulationEnvironment == null) return;
 
-      this.animationService.synchronizeEnvironment(visualizationEnvironment);
+      this.animationService.synchronizeEnvironment(
+        animatedSimulationEnvironment,
+      );
     });
 
     effect(() => {

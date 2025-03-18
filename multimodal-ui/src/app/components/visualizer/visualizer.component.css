@@ -56,6 +56,8 @@
 }
 
 .information-panel {
+  overflow: auto;
+
   position: absolute;
   /* 4rem for the control bar and 1rem for the gaps */
   bottom: calc(1rem + 4rem + 1rem);

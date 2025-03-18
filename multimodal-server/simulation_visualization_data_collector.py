@@ -59,6 +59,7 @@ class SimulationVisualizationDataCollector(DataCollector):
     simulation_information: SimulationInformation
     current_save_file_path: str
     max_time: float | None
+    last_queued_event_time: float
 
     passenger_assignment_event_queue: list[PassengerAssignment]
     vehicle_notification_event_queue: list[VehicleNotification]
@@ -81,6 +82,7 @@ class SimulationVisualizationDataCollector(DataCollector):
 
         self.passenger_assignment_event_queue = []
         self.vehicle_notification_event_queue = []
+        self.last_queued_event_time = 0
 
     # MARK: +- Collect
     def collect(
@@ -211,11 +213,14 @@ class SimulationVisualizationDataCollector(DataCollector):
                 ),
                 environment,
             )
+            previous_passenger = self.visualized_environment.get_passenger(
+                event.state_machine.owner.id
+            )
             self.add_update(
                 Update(
                     UpdateType.UPDATE_PASSENGER_LEGS,
-                    PassengerLegsUpdate.from_trip_and_environment(
-                        event.state_machine.owner, environment
+                    PassengerLegsUpdate.from_trip_environment_and_previous_passenger(
+                        event.state_machine.owner, environment, previous_passenger
                     ),
                     event.time,
                 ),
@@ -253,8 +258,19 @@ class SimulationVisualizationDataCollector(DataCollector):
         self.passenger_assignment_event_queue = []
         self.vehicle_notification_event_queue = []
 
+    @property
+    def hasToFlush(self) -> bool:
+        return (
+            len(self.passenger_assignment_event_queue) > 0
+            or len(self.vehicle_notification_event_queue) > 0
+        )
+
     # MARK: +- Process Event
     def process_event(self, event: Event, environment: Environment) -> str:
+        # In case that a queued event is not linked to EnvironmentIdle
+        if self.hasToFlush and event.time > self.last_queued_event_time:
+            self.flush(environment)
+
         # Optimize
         if isinstance(event, Optimize):
             # Do nothing ?
@@ -288,6 +304,7 @@ class SimulationVisualizationDataCollector(DataCollector):
         # PassengerAssignment
         elif isinstance(event, PassengerAssignment):
             self.passenger_assignment_event_queue.append(event)
+            self.last_queued_event_time = event.time
             return f"{event.time} TODO PassengerAssignment"
 
         # PassengerReady
@@ -316,11 +333,14 @@ class SimulationVisualizationDataCollector(DataCollector):
                 ),
                 environment,
             )
+            previous_passenger = self.visualized_environment.get_passenger(
+                event.state_machine.owner.id
+            )
             self.add_update(
                 Update(
                     UpdateType.UPDATE_PASSENGER_LEGS,
-                    PassengerLegsUpdate.from_trip_and_environment(
-                        event.state_machine.owner, environment
+                    PassengerLegsUpdate.from_trip_environment_and_previous_passenger(
+                        event.state_machine.owner, environment, previous_passenger
                     ),
                     event.time,
                 ),
@@ -340,11 +360,14 @@ class SimulationVisualizationDataCollector(DataCollector):
                 ),
                 environment,
             )
+            previous_passenger = self.visualized_environment.get_passenger(
+                event.state_machine.owner.id
+            )
             self.add_update(
                 Update(
                     UpdateType.UPDATE_PASSENGER_LEGS,
-                    PassengerLegsUpdate.from_trip_and_environment(
-                        event.state_machine.owner, environment
+                    PassengerLegsUpdate.from_trip_environment_and_previous_passenger(
+                        event.state_machine.owner, environment, previous_passenger
                     ),
                     event.time,
                 ),
@@ -463,6 +486,7 @@ class SimulationVisualizationDataCollector(DataCollector):
         # VehicleNotification
         elif isinstance(event, VehicleNotification):
             self.vehicle_notification_event_queue.append(event)
+            self.last_queued_event_time = event.time
             return f"{event.time} TODO VehicleNotification"
 
         # VehicleBoarded
