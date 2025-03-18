@@ -1,12 +1,18 @@
 import logging
-import os
 import time
 
 from flask import Flask
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from http_routes import http_routes
-from server_utils import CLIENT_ROOM, HOST, PORT, get_session_id, log
+from server_utils import (
+    CLIENT_ROOM,
+    HOST,
+    PORT,
+    get_available_data,
+    get_session_id,
+    log,
+)
 from simulation_manager import SimulationManager
 
 
@@ -23,13 +29,6 @@ def run_server():
     sockets_types_by_session_id = dict()
 
     simulation_manager = SimulationManager()
-
-    # Define the data directory
-    current_dir = os.path.dirname(os.path.realpath(__file__))
-    data_dir = os.path.join(current_dir, "..", "data")
-
-    # Ensure the data directory exists
-    os.makedirs(data_dir, exist_ok=True)
 
     # MARK: Main events
     @socketio.on("connect")
@@ -81,21 +80,24 @@ def run_server():
     @socketio.on("get-available-data")
     def on_client_get_data():
         log("getting available data", "client")
-        current_dir = os.path.dirname(os.path.realpath(__file__))
-        data_dir = os.path.join(current_dir, "..", "data")
-        emit("available-data", os.listdir(data_dir), to=CLIENT_ROOM)
+        emit("available-data", get_available_data(), to=CLIENT_ROOM)
 
     @socketio.on("get-missing-simulation-states")
     def on_client_get_missing_simulation_states(
-        simulation_id, first_state_order, last_state_order, visualization_time
+        simulation_id, visualization_time, loaded_state_orders
     ):
         log(
-            f"getting missing simulation states for {simulation_id} with orders {first_state_order} and {last_state_order} at time {visualization_time}",
+            f"getting missing simulation states for {simulation_id} with visualization time {visualization_time} and {len(loaded_state_orders)} loaded state orders ",
             "client",
         )
         simulation_manager.emit_missing_simulation_states(
-            simulation_id, first_state_order, last_state_order, visualization_time
+            simulation_id, visualization_time, loaded_state_orders
         )
+
+    @socketio.on("get-polylines")
+    def on_client_get_polylines(simulation_id):
+        log(f"getting polylines for {simulation_id}", "client")
+        simulation_manager.emit_simulation_polylines(simulation_id)
 
     @socketio.on("edit-simulation-configuration")
     def on_client_edit_simulation_configuration(simulation_id, max_time):
@@ -131,11 +133,6 @@ def run_server():
             simulation_id, get_session_id(), simulation_start_time
         )
 
-    @socketio.on("simulation-end")
-    def on_simulation_end(simulation_id):
-        log(f"simulation {simulation_id} ended", "simulation")
-        simulation_manager.on_simulation_end(simulation_id)
-
     @socketio.on("simulation-pause")
     def on_simulation_pause(simulation_id):
         log(f"simulation {simulation_id} paused", "simulation")
@@ -170,17 +167,35 @@ def run_server():
             simulation_id, estimated_end_time
         )
 
+    @socketio.on("simulation-update-polylines-version")
+    def on_simulation_update_polylines_version(simulation_id):
+        log(f"simulation  {simulation_id} polylines version updated", "simulation")
+
+        simulation_manager.on_simulation_update_polylines_version(simulation_id)
+
     @socketio.on("simulation-identification")
     def on_simulation_identification(
-        simulation_id, timestamp, estimated_end_time, status
+        simulation_id,
+        data,
+        simulation_start_time,
+        timestamp,
+        estimated_end_time,
+        max_time,
+        status,
     ):
         log(
-            f"simulation  {simulation_id} identified with timestamp {timestamp}, estimated end time {estimated_end_time} and status {status}",
+            f"simulation  {simulation_id} identified with data {data}, simulation start time {simulation_start_time}, timestamp {timestamp}, estimated end time {estimated_end_time}, max time {max_time} and status {status}",
             "simulation",
-            logging.DEBUG,
         )
         simulation_manager.on_simulation_identification(
-            simulation_id, timestamp, estimated_end_time, status, get_session_id()
+            simulation_id,
+            data,
+            simulation_start_time,
+            timestamp,
+            estimated_end_time,
+            max_time,
+            status,
+            get_session_id(),
         )
 
     logging.basicConfig(level=logging.DEBUG)

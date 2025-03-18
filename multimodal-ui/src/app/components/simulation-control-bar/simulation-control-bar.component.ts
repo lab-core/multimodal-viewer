@@ -1,19 +1,26 @@
 import {
   Component,
   computed,
+  effect,
   input,
   InputSignal,
   output,
+  signal,
   Signal,
+  WritableSignal,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSliderModule } from '@angular/material/slider';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Simulation } from '../../interfaces/simulation.model';
+import {
+  Simulation,
+  SimulationStates,
+} from '../../interfaces/simulation.model';
 import { SimulationTimePipe } from '../../pipes/simulation-time.pipe';
 import { AnimationService } from '../../services/animation.service';
+import { SimulationService } from '../../services/simulation.service';
 import { VisualizationService } from '../../services/visualization.service';
 
 @Component({
@@ -33,6 +40,22 @@ export class SimulationControlBarComponent {
   // MARK: Properties
   readonly isSimulationPausedSignal: Signal<boolean> = computed(
     () => this.simulationInputSignal().status === 'paused',
+  );
+  readonly MIN_SPEED_POWER = -2;
+  readonly MAX_SPEED_POWER = 7;
+
+  readonly speedPowerSignal: WritableSignal<number> = signal(0);
+
+  readonly canIncreaseSpeedSignal: Signal<boolean> = computed(
+    () => this.speedPowerSignal() < this.MAX_SPEED_POWER,
+  );
+
+  readonly canDecreaseSpeedSignal: Signal<boolean> = computed(
+    () => this.speedPowerSignal() > this.MIN_SPEED_POWER,
+  );
+
+  readonly speedSignal: Signal<number> = computed(() =>
+    Math.pow(2, this.speedPowerSignal()),
   );
 
   // MARK: Inputs
@@ -60,7 +83,14 @@ export class SimulationControlBarComponent {
   constructor(
     private readonly visualizationService: VisualizationService,
     private readonly animationService: AnimationService,
-  ) {}
+    private readonly simulationService: SimulationService,
+  ) {
+    effect(() => {
+      const speed = this.speedSignal();
+      this.visualizationService.setVisualizationSpeed(speed);
+      this.animationService.setSpeed(speed);
+    });
+  }
 
   // MARK: Getters
   get isInitializedSignal(): Signal<boolean> {
@@ -83,8 +113,12 @@ export class SimulationControlBarComponent {
     return this.visualizationService.isVisualizationPausedSignal;
   }
 
-  get visualizationTimeSignal(): Signal<number | null> {
-    return this.visualizationService.visualizationTimeSignal;
+  get wantedVisualizationTimeSignal(): Signal<number | null> {
+    return this.visualizationService.wantedVisualizationTimeSignal;
+  }
+
+  get simulationStatesSignal(): Signal<SimulationStates> {
+    return this.simulationService.simulationStatesSignal;
   }
 
   // MARK: Handlers
@@ -102,6 +136,18 @@ export class SimulationControlBarComponent {
     } else {
       this.pauseSimulationOutput.emit(id);
     }
+  }
+
+  decreaseSpeed(): void {
+    this.speedPowerSignal.update((power) =>
+      Math.max(power - 1, this.MIN_SPEED_POWER),
+    );
+  }
+
+  increaseSpeed(): void {
+    this.speedPowerSignal.update((power) =>
+      Math.min(power + 1, this.MAX_SPEED_POWER),
+    );
   }
 
   centerMap() {

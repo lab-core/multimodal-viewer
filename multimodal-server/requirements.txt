@@ -4,3 +4,4 @@ eventlet==0.39.0
 websocket-client==1.8.0
 filelock==3.17.0
 flask_cors
+questionary==2.1.0

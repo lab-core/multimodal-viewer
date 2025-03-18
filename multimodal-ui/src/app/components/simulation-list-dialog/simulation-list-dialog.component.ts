@@ -222,14 +222,14 @@ export class SimulationListDialogComponent {
       input.click();
     }
 
-  exportSimulation(name: string) {
+  exportSimulation(simulationId: string) {
     const folderContents = 'simulation'
-    this.httpService.exportFolder(folderContents, name).subscribe((response: Blob) => {
+    this.httpService.exportFolder(folderContents, simulationId).subscribe((response: Blob) => {
       const blob = new Blob([response], { type: 'application/zip' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = name + '.zip';
+      a.download = simulationId + '.zip';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -237,20 +237,42 @@ export class SimulationListDialogComponent {
     });
   }
 
-  deleteSimulation(simulationId: string): void {
+  async deleteSimulation(simulationId: string, simulationName: string) {
+    const isConfirmed = await this.confirmDeletion(simulationName)
+
+    if (!isConfirmed) {
+      return;
+    }
+    
     const folderContents = 'simulation';
     this.httpService.deleteFolder(folderContents, simulationId).subscribe({
       next: (response: { message?: string; error?: string }) => {
         if (response.message) {
           console.log(response.message);
-          this.dataService.removeSimulation(simulationId);
         } else if (response.error) {
           console.error('Failed to delete simulation:', response.error);
         }
+        this.communicationService.emit('get-simulations');
       },
       error: (err) => {
         console.error('HTTP error during deletion:', err);
       },
     });
+  }
+
+  async confirmDeletion(simulationName: string) {
+    return await firstValueFrom(
+      this.dialogService
+      .openInformationDialog({
+        title: 'Deleting Saved Simulation',
+        message:
+            `Are you sure you want to delete the simulation "${simulationName}"? This action cannot be undone.`,
+          type: 'warning',
+          confirmButtonOverride: null,
+          cancelButtonOverride: null,
+          canCancel: true,
+        })
+        .afterClosed(),
+      );
   }
 }
