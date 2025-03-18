@@ -1,4 +1,5 @@
 import { Component, Inject, OnDestroy, Signal } from '@angular/core';
+import { HttpService } from '../../services/http.service';
 import {
   AbstractControl,
   FormBuilder,
@@ -9,6 +10,7 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
+import JSZip from 'jszip';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import {
@@ -83,6 +85,7 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
       SimulationConfigurationDialogResult
     >,
     private readonly formBuilder: FormBuilder,
+    private httpService: HttpService,
   ) {
     // Initialize form
     this.nameFormControl = this.formBuilder.control(null, [
@@ -203,7 +206,6 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
         control.value.match(SIMULATION_SAVE_FILE_SEPARATOR)
       ) {
         return { invalidPattern: true };
-
       }
       // Forbid the use of characters that might cause issues with the file system
       else if (
@@ -213,5 +215,76 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
       }}
       return null;
     };
+  }
+  
+  importInputData() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.webkitdirectory = true;
+    input.multiple = true;
+
+    const handleFileChange = async (event: Event) => {
+        const files = (event.target as HTMLInputElement).files;
+        if (!files || files.length === 0) {
+            return;
+        }
+
+        const zip = new JSZip();
+        const baseFolder = files[0].webkitRelativePath.split('/')[0]; 
+
+        for (const file of Array.from(files)) {
+            const relativePath = file.webkitRelativePath.replace(baseFolder + '/', '');
+            zip.file(relativePath, file);
+        }
+
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const contentType = 'input_data'
+        const formData = new FormData();
+        formData.append('file', blob, 'folder.zip');
+
+        this.httpService.importFolder(contentType, baseFolder, formData).subscribe(response => {
+            console.log('Upload successful:', response);
+        });
+    };
+
+    input.addEventListener('change', (event: Event) => {
+        handleFileChange(event).catch(error => {
+            console.error('Error handling file change:', error);
+        });
+    });
+
+    input.click();
+  }
+
+  exportInputData(simulationId: string) {
+    const folderContents = 'input_data'
+    this.httpService.exportFolder(folderContents, simulationId).subscribe((response: Blob) => {
+      const blob = new Blob([response], { type: 'application/zip' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = simulationId + '.zip';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    });
+  }
+
+  deleteInputData(simulationId: string): void {
+    const folderContents = 'input_data';
+    this.httpService.deleteFolder(folderContents, simulationId).subscribe({
+      next: (response: { message?: string; error?: string }) => {
+        if (response.message) {
+          console.log(response.message);
+          // this.dataService.removeSimulation(simulationId);
+        } else if (response.error) {
+          console.error('Failed to delete the data folder:', response.error);
+        }
+      },
+      error: (err) => {
+        console.error('HTTP error during deletion:', err);
+      },
+    });
   }
 }

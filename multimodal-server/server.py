@@ -2,7 +2,9 @@ import logging
 import time
 
 from flask import Flask
+from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
+from http_routes import http_routes
 from server_utils import (
     CLIENT_ROOM,
     HOST,
@@ -16,6 +18,10 @@ from simulation_manager import SimulationManager
 
 def run_server():
     app = Flask(__name__)
+
+    # Register HTTP routes
+    CORS(app)
+    app.register_blueprint(http_routes)
 
     socketio = SocketIO(app, cors_allowed_origins="*")
 
@@ -100,27 +106,6 @@ def run_server():
             "client",
         )
         simulation_manager.edit_simulation_configuration(simulation_id, max_time)
-
-    # TODO Implement or remove
-    # @socketio.on("import-folder")
-    # def on_import_folder(data):
-    #     log("importing folder", folder_name)
-    #     folder_name = data.get("folderName")
-    #     files = data.get("files", [])
-
-    #     if not folder_name or not files:
-    #         return
-    #     # Define the destination folder
-    #     current_dir = os.path.dirname(os.path.realpath(__file__))
-    #     target_dir = os.path.join(current_dir, "..", "data", folder_name)
-
-    #     os.makedirs(target_dir, exist_ok=True)
-
-    #     for file in files:
-    #         file_path = os.path.join(target_dir, file["name"])
-    #         os.makedirs(os.path.dirname(file_path), exist_ok=True)
-    #         with open(file_path, "w", encoding="utf-8") as f:
-    #             f.write(file["content"])
 
     # MARK: Script events
     @socketio.on("terminate")
