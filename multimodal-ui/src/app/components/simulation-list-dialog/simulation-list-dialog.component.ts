@@ -229,7 +229,7 @@ export class SimulationListDialogComponent {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = name + '.zip';
+      a.download = simulationId + '.zip';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

@@ -256,14 +256,14 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     input.click();
   }
 
-  exportInputData(name: string) {
+  exportInputData(simulationId: string) {
     const folderContents = 'input_data'
-    this.httpService.exportFolder(folderContents, name).subscribe((response: Blob) => {
+    this.httpService.exportFolder(folderContents, simulationId).subscribe((response: Blob) => {
       const blob = new Blob([response], { type: 'application/zip' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = name + '.zip';
+      a.download = simulationId + '.zip';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
