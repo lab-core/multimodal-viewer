@@ -48,6 +48,7 @@ from simulation_visualization_data_model import (
     VisualizedPassenger,
     VisualizedStop,
     VisualizedVehicle,
+    StatisticUpdate
 )
 from socketio import Client
 
@@ -106,8 +107,16 @@ class SimulationVisualizationDataCollector(DataCollector):
 
         if self.last_update_stats_time == None or current_event.time >= self.last_update_stats_time + self.delta_time:
             self.last_update_stats_time = current_event.time
+            self.add_update(
+                Update(
+                    UpdateType.UPDATE_STATISTIC,
+                    self.data_analyzer.get_statistics(),
+                ),
+                env,
+            )
             # print(f"Stats: {self.data_analyzer.get_statistics()}")
             # print(f"Time: {self.last_update_stats_time}")
+            # Ajouter une update pour que ca enregistre (comme VehiculeStatusU ou VehiculeStopsU)
 
 
     # MARK: +- Add Update
@@ -193,6 +202,9 @@ class SimulationVisualizationDataCollector(DataCollector):
             vehicle.previous_stops = stops_update.previous_stops
             vehicle.next_stops = stops_update.next_stops
             vehicle.current_stop = stops_update.current_stop
+        elif update.type == UpdateType.UPDATE_STATISTIC:
+            statistic_update: StatisticUpdate = update.data
+            self.visualized_environment.statistic = statistic_update.statistic
 
         SimulationVisualizationDataManager.save_update(
             self.current_save_file_path, update

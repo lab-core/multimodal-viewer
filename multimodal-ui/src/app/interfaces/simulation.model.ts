@@ -207,12 +207,22 @@ export interface VehicleStopsUpdate {
   nextStops: Stop[];
 }
 
+export type Statistic = Record<
+  string,
+  Record<string, Record<string, number>>
+  >;
+
+export interface StatisticUpdate {
+    statistic: Statistic
+  }
+
 export type SimulationUpdateType =
   | 'createPassenger'
   | 'updatePassengerStatus'
   | 'createVehicle'
   | 'updateVehicleStatus'
-  | 'updateVehicleStops';
+  | 'updateVehicleStops'
+  | 'updateStatistic';
 
 export const SIMULATION_UPDATE_TYPES: SimulationUpdateType[] = [
   'createPassenger',
@@ -220,6 +230,7 @@ export const SIMULATION_UPDATE_TYPES: SimulationUpdateType[] = [
   'createVehicle',
   'updateVehicleStatus',
   'updateVehicleStops',
+  'updateStatistic',
 ];
 
 export interface SimulationUpdateTypeMap {
@@ -228,6 +239,7 @@ export interface SimulationUpdateTypeMap {
   createVehicle: Vehicle;
   updateVehicleStatus: VehicleStatusUpdate;
   updateVehicleStops: VehicleStopsUpdate;
+  updateStatistic: StatisticUpdate;
 }
 
 export interface SimulationUpdate<T extends keyof SimulationUpdateTypeMap> {
@@ -247,6 +259,7 @@ export type AnySimulationUpdate = SimulationUpdate<
 export interface SimulationEnvironment {
   passengers: Record<string, Passenger>;
   vehicles: Record<string, Vehicle>;
+  statistic: Record<string, Record<string, Record<string, number>>>;
 
   /**
    * The timestamp of the last update before the snapshot
@@ -263,6 +276,7 @@ export interface RawSimulationEnvironment
   extends Pick<SimulationEnvironment, 'timestamp' | 'order'> {
   passengers: Passenger[];
   vehicles: Vehicle[];
+  statistic: Record<string, Record<string, Record<string, number>>>;
 }
 
 export interface RawSimulationState extends RawSimulationEnvironment {
