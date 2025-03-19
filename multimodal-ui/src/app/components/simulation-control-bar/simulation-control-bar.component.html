@@ -9,6 +9,8 @@
 
 @let isInitialized = isInitializedSignal();
 
+@let shouldFollowEntity = shouldFollowEntitySignal();
+
 @if (
   isInitialized &&
   simulation !== null &&
@@ -18,7 +20,7 @@
   visualizationTime !== null
 ) {
   <mat-card>
-    <mat-card-content class="flex-row align-center">
+    <mat-card-content class="flex-row align-center gap-0-5-rem">
       <button
         mat-icon-button
         [matTooltip]="
@@ -48,22 +50,39 @@
         >
           <mat-icon>skip_next</mat-icon>
         </button>
-      } @else {
-        <button
-          mat-icon-button
-          disabled
-          [matTooltip]="'Slow down the simulation'"
-        >
-          <mat-icon>fast_rewind</mat-icon>
-        </button>
-        <button
-          mat-icon-button
-          disabled
-          [matTooltip]="'Speed up the simulation'"
-        >
-          <mat-icon>fast_forward</mat-icon>
-        </button>
       }
+
+      @let speed = speedSignal();
+      @let canIncreaseSpeed = canIncreaseSpeedSignal();
+      @let canDecreaseSpeed = canDecreaseSpeedSignal();
+      <button
+        mat-icon-button
+        [disabled]="!canDecreaseSpeed"
+        [matTooltip]="'Slow down the simulation'"
+        (click)="decreaseSpeed()"
+      >
+        <mat-icon>fast_rewind</mat-icon>
+      </button>
+      <div class="speed">x{{ speed }}</div>
+      <button
+        mat-icon-button
+        [disabled]="!canIncreaseSpeed"
+        [matTooltip]="'Speed up the simulation'"
+        (click)="increaseSpeed()"
+      >
+        <mat-icon>fast_forward</mat-icon>
+      </button>
+
+      <button
+        mat-icon-button
+        [matTooltip]="
+          speed > 0 ? 'Reverse the simulation' : 'Forward the simulation'
+        "
+        [disabled]="speed === 0"
+        (click)="toggleSimulationDirection()"
+      >
+        <mat-icon>{{ speed > 0 ? "restore" : "update" }}</mat-icon>
+      </button>
 
       <button
         mat-icon-button
@@ -71,6 +90,15 @@
         (click)="centerMap()"
       >
         <mat-icon>my_location</mat-icon>
+      </button>
+
+      <button
+        mat-icon-button
+        [matTooltip]="'Toggle entity follow mode'"
+        [class.active]="shouldFollowEntity"
+        (click)="toggleShouldFollowEntity()"
+      >
+        <mat-icon>moving</mat-icon>
       </button>
 
       <div [matTooltip]="visualizationTime.toString()">

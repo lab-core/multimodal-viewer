@@ -15,6 +15,8 @@ import { MetricsComponent } from './components/metrics/metrics.component';
   styleUrl: './app.component.css',
 })
 export class AppComponent {
-  // Declare the service to ensure it is created
   constructor(private readonly dataService: DataService) {}
+
 }
+
+

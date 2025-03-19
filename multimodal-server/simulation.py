@@ -1,5 +1,4 @@
 import os
-import sys
 import threading
 
 from multimodalsim.simulator.simulator import Simulator
@@ -190,5 +189,5 @@ if __name__ == "__main__":
 
     print("To run a simulation with the same configuration, use the following command:")
     print(
-        f"python --name simulation.py {name} --data {data}{f' --max-time {max_time}' if max_time is not None else ''}"
+        f"python simulation.py  --data {data}{f' --max-time {max_time}' if max_time is not None else ''} --name {name}"
     )

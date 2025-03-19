@@ -9,8 +9,10 @@ import { decode } from 'polyline';
 import {
   AllPolylines,
   AnySimulationUpdate,
+  Leg,
   Passenger,
   PASSENGER_STATUSES,
+  PassengerLegsUpdate,
   PassengerStatusUpdate,
   Polylines,
   RawPolylines,
@@ -272,6 +274,16 @@ export class SimulationService {
           }
         }
         return null;
+      case 'updatePassengerLegs':
+        {
+          const passengerLegsUpdate = this.extractPassengerLegsUpdate(
+            data as PassengerLegsUpdate,
+          );
+          if (passengerLegsUpdate) {
+            return { type, order, timestamp, data: passengerLegsUpdate };
+          }
+        }
+        return null;
 
       case 'createVehicle':
         {
@@ -341,7 +353,62 @@ export class SimulationService {
       return null;
     }
 
-    return { id, name, status };
+    if (!Array.isArray(data.previousLegs)) {
+      console.error('Passenger previous legs not found: ', data.previousLegs);
+      return null;
+    }
+
+    const previousLegs = data.previousLegs.map((leg) => this.extractLeg(leg));
+    if (!previousLegs.every((leg) => leg !== null)) {
+      console.error('Passenger previous legs invalid: ', previousLegs);
+      return null;
+    }
+
+    if (!Array.isArray(data.nextLegs)) {
+      console.error('Passenger next legs not found: ', data.nextLegs);
+      return null;
+    }
+
+    const currentLeg =
+      data.currentLeg !== undefined ? this.extractLeg(data.currentLeg!) : null;
+    if (data.currentLeg !== undefined && currentLeg === null) {
+      console.error('Passenger current leg invalid: ', data.currentLeg);
+      return null;
+    }
+
+    const nextLegs = data.nextLegs.map((leg) => this.extractLeg(leg));
+    if (!nextLegs.every((leg) => leg !== null)) {
+      console.error('Passenger next legs invalid: ', nextLegs);
+      return null;
+    }
+
+    return { id, name, status, previousLegs, currentLeg, nextLegs };
+  }
+
+  private extractLeg(data: Leg): Leg | null {
+    // TODO Uncomment for debugging
+    // console.debug('Extracting leg: ', data);
+
+    const assignedVehicleId = data.assignedVehicleId ?? null;
+
+    const boardingStopIndex = data.boardingStopIndex ?? null;
+
+    const alightingStopIndex = data.alightingStopIndex ?? null;
+
+    const boardingTime = data.boardingTime ?? null;
+
+    const alightingTime = data.alightingTime ?? null;
+
+    const assignedTime = data.assignedTime ?? null;
+
+    return {
+      assignedVehicleId,
+      boardingStopIndex,
+      alightingStopIndex,
+      boardingTime,
+      alightingTime,
+      assignedTime,
+    };
   }
 
   private extractPassengerStatusUpdate(
@@ -367,6 +434,50 @@ export class SimulationService {
     }
 
     return { id, status };
+  }
+
+  private extractPassengerLegsUpdate(
+    data: PassengerLegsUpdate,
+  ): PassengerLegsUpdate | null {
+    // TODO Uncomment for debugging
+    // console.debug('Extracting passenger legs update: ', data);
+
+    const id = data.id;
+    if (!id) {
+      console.error('Passenger ID not found: ', id);
+      return null;
+    }
+
+    if (!Array.isArray(data.previousLegs)) {
+      console.error('Passenger previous legs not found: ', data.previousLegs);
+      return null;
+    }
+
+    const previousLegs = data.previousLegs.map((leg) => this.extractLeg(leg));
+    if (!previousLegs.every((leg) => leg !== null)) {
+      console.error('Passenger previous legs invalid: ', previousLegs);
+      return null;
+    }
+
+    const currentLeg =
+      data.currentLeg !== undefined ? this.extractLeg(data.currentLeg!) : null;
+    if (data.currentLeg !== undefined && currentLeg === null) {
+      console.error('Passenger current leg invalid: ', data.currentLeg);
+      return null;
+    }
+
+    if (!Array.isArray(data.nextLegs)) {
+      console.error('Passenger next legs not found: ', data.nextLegs);
+      return null;
+    }
+
+    const nextLegs = data.nextLegs.map((leg) => this.extractLeg(leg));
+    if (!nextLegs.every((leg) => leg !== null)) {
+      console.error('Passenger next legs invalid: ', nextLegs);
+      return null;
+    }
+
+    return { id, previousLegs, currentLeg, nextLegs };
   }
 
   private extractVehicle(data: Vehicle): Vehicle | null {
@@ -752,9 +863,7 @@ export class SimulationService {
     polylinesByVehicleId: Record<string, Polylines>,
     visualizationTime: number,
   ): SimulationEnvironment {
-    const clonedState = structuredClone(state);
-
-    const sortedUpdates = clonedState.updates.sort((a, b) => a.order - b.order);
+    const sortedUpdates = state.updates.sort((a, b) => a.order - b.order);
 
     let lastUpdate: AnySimulationUpdate | null = null;
 
@@ -763,12 +872,12 @@ export class SimulationService {
         break;
       }
 
-      this.applyUpdate(update, clonedState);
+      this.applyUpdate(update, state);
 
       lastUpdate = update;
     }
 
-    for (const [vehicleId, vehicle] of Object.entries(clonedState.vehicles)) {
+    for (const [vehicleId, vehicle] of Object.entries(state.vehicles)) {
       const polylines = polylinesByVehicleId[vehicleId];
       if (!polylines) {
         console.error('Polyline not found for vehicle: ', vehicleId, polylines);
@@ -779,11 +888,11 @@ export class SimulationService {
     }
 
     if (lastUpdate) {
-      clonedState.order = lastUpdate.order;
-      clonedState.timestamp = lastUpdate.timestamp;
+      state.order = lastUpdate.order;
+      state.timestamp = lastUpdate.timestamp;
     }
 
-    return clonedState;
+    return state;
   }
 
   private applyUpdate(

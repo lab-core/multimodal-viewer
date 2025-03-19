@@ -137,14 +137,34 @@ export const PASSENGER_STATUSES: PassengerStatus[] = [
   'complete',
 ];
 
+export interface Leg {
+  assignedVehicleId: string | null;
+  boardingStopIndex: number | null;
+  alightingStopIndex: number | null;
+  boardingTime: number | null;
+  alightingTime: number | null;
+  assignedTime: number | null;
+}
+
 export interface Passenger {
   id: string;
   name: string | null;
   status: PassengerStatus;
+  previousLegs: Leg[];
+  currentLeg: Leg | null;
+  nextLegs: Leg[];
 }
+
 export interface PassengerStatusUpdate {
   id: string;
   status: PassengerStatus;
+}
+
+export interface PassengerLegsUpdate {
+  id: string;
+  previousLegs: Leg[];
+  currentLeg: Leg | null;
+  nextLegs: Leg[];
 }
 
 export type VehicleStatus =
@@ -219,6 +239,7 @@ export interface StatisticUpdate {
 export type SimulationUpdateType =
   | 'createPassenger'
   | 'updatePassengerStatus'
+  | 'updatePassengerLegs'
   | 'createVehicle'
   | 'updateVehicleStatus'
   | 'updateVehicleStops'
@@ -227,6 +248,7 @@ export type SimulationUpdateType =
 export const SIMULATION_UPDATE_TYPES: SimulationUpdateType[] = [
   'createPassenger',
   'updatePassengerStatus',
+  'updatePassengerLegs',
   'createVehicle',
   'updateVehicleStatus',
   'updateVehicleStops',
@@ -236,6 +258,7 @@ export const SIMULATION_UPDATE_TYPES: SimulationUpdateType[] = [
 export interface SimulationUpdateTypeMap {
   createPassenger: Passenger;
   updatePassengerStatus: PassengerStatusUpdate;
+  updatePassengerLegs: PassengerLegsUpdate;
   createVehicle: Vehicle;
   updateVehicleStatus: VehicleStatusUpdate;
   updateVehicleStops: VehicleStopsUpdate;
@@ -252,6 +275,86 @@ export interface SimulationUpdate<T extends keyof SimulationUpdateTypeMap> {
 export type AnySimulationUpdate = SimulationUpdate<
   keyof SimulationUpdateTypeMap
 >;
+
+export type displayed<T> = T & {
+  /**
+   * If the object is not displayed, this field contains the reason why
+   * it is not displayed.
+   *
+   * If the object is displayed, this field is null.
+   */
+  notDisplayedReason: string | null;
+};
+
+export interface DisplayedPassenger extends displayed<Passenger> {
+  /**
+   * The vehicle id assigned to the passenger
+   */
+  vehicleId: string | null;
+}
+
+export interface DisplayedVehicle extends displayed<Vehicle> {
+  /**
+   * The id of all passengers on board
+   */
+  passengers: string[];
+}
+
+export interface AnimationData {
+  startTimestamp: number;
+  endTimestamp: number;
+  notDisplayedReason: string | null;
+}
+
+export interface PassengerAnimationData extends AnimationData {
+  vehicleId: string | null;
+  status: PassengerStatus;
+}
+
+export interface StaticPassengerAnimationData extends PassengerAnimationData {
+  position: { latitude: number; longitude: number };
+}
+
+export interface DynamicPassengerAnimationData extends PassengerAnimationData {
+  vehicleId: string;
+}
+
+export type AnyPassengerAnimationData =
+  | StaticPassengerAnimationData
+  | DynamicPassengerAnimationData
+  | PassengerAnimationData; // For not displayed passengers
+
+export interface VehicleAnimationData extends AnimationData {
+  status: VehicleStatus;
+}
+
+export interface StaticVehicleAnimationData extends VehicleAnimationData {
+  position: { latitude: number; longitude: number };
+
+  /**
+   * Index of the polyline on which the vehicle is.
+   * If the vehicle is at a stop, it is considered at the end of the polyline.
+   */
+  polylineIndex: number;
+}
+
+export interface DynamicVehicleAnimationData extends VehicleAnimationData {
+  polyline: Polyline;
+  polylineIndex: number;
+}
+
+export type AnyVehicleAnimationData =
+  | StaticVehicleAnimationData
+  | DynamicVehicleAnimationData
+  | VehicleAnimationData; // For not displayed vehicles
+
+export interface AnimatedPassenger extends Passenger {
+  animationData: AnyPassengerAnimationData[];
+}
+
+export interface AnimatedVehicle extends Vehicle {
+  animationData: AnyVehicleAnimationData[];
+}
 
 /**
  * Snapshot of the simulation environment at a given time
@@ -270,6 +373,21 @@ export interface SimulationEnvironment {
    * The order of the last update before the snapshot
    */
   order: number;
+}
+
+export interface AnimatedSimulationEnvironment extends SimulationEnvironment {
+  passengers: Record<string, DisplayedPassenger>;
+  vehicles: Record<string, DisplayedVehicle>;
+
+  /**
+   * A data structure to speed up the animation
+   */
+  animationData: {
+    passengers: Record<string, AnimatedPassenger>;
+    vehicles: Record<string, AnimatedVehicle>;
+    startTimestamp: number;
+    endTimestamp: number;
+  };
 }
 
 export interface RawSimulationEnvironment

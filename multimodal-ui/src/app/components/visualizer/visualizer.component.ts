@@ -1,16 +1,29 @@
-import { Component, computed, effect, OnDestroy, Signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  OnDestroy,
+  signal,
+  Signal,
+  WritableSignal,
+} from '@angular/core';
+import { FormBuilder, FormControl, ReactiveFormsModule } from '@angular/forms';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialogRef } from '@angular/material/dialog';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import {
+  DisplayedPassenger,
+  DisplayedVehicle,
   Simulation,
-  SimulationEnvironment,
   SimulationStatus,
 } from '../../interfaces/simulation.model';
 import { AnimationService } from '../../services/animation.service';
@@ -25,6 +38,13 @@ import { SimulationControlBarComponent } from '../simulation-control-bar/simulat
 
 export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 
+export interface EntitySearch {
+  id: string;
+  displayedValue: string;
+  type: 'passenger' | 'vehicle';
+  entity: DisplayedPassenger | DisplayedVehicle;
+}
+
 @Component({
   selector: 'app-visualizer',
   imports: [
@@ -35,6 +55,10 @@ export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
     MatIconModule,
     MatInputModule,
     MatChipsModule,
+    MatTooltipModule,
+    MatExpansionModule,
+    MatAutocompleteModule,
+    ReactiveFormsModule,
   ],
   providers: [VisualizationService],
   templateUrl: './visualizer.component.html',
@@ -63,6 +87,250 @@ export class VisualizerComponent implements OnDestroy {
     },
   );
 
+  readonly displayedPassengersSignal: Signal<DisplayedPassenger[]> = computed(
+    () => {
+      const environment =
+        this.visualizationService.animatedSimulationEnvironmentSignal();
+
+      if (environment === null) {
+        return [];
+      }
+
+      return Object.values(environment.passengers).filter(
+        (passenger) => passenger.notDisplayedReason === null,
+      );
+    },
+  );
+
+  readonly displayedVehiclesSignal: Signal<DisplayedVehicle[]> = computed(
+    () => {
+      const environment =
+        this.visualizationService.animatedSimulationEnvironmentSignal();
+
+      if (environment === null) {
+        return [];
+      }
+
+      return Object.values(environment.vehicles).filter(
+        (vehicle) => vehicle.notDisplayedReason === null,
+      );
+    },
+  );
+
+  readonly numberOfDisplayedPassengersByStatusSignal: Signal<
+    {
+      status: string;
+      count: number;
+    }[]
+  > = computed(() => {
+    const environment =
+      this.visualizationService.animatedSimulationEnvironmentSignal();
+    if (environment === null) {
+      return [];
+    }
+
+    const passengers = Object.values(environment.passengers);
+    const counts: Record<string, number> = {};
+
+    for (const passenger of passengers) {
+      const status = passenger.status;
+      if (passenger.notDisplayedReason !== null) {
+        continue;
+      }
+      counts[status] = (counts[status] ?? 0) + 1;
+    }
+
+    return Object.entries(counts).map(([status, count]) => ({
+      status,
+      count,
+    }));
+  });
+
+  readonly numberOfDisplayedVehiclesByStatusSignal: Signal<
+    {
+      status: string;
+      count: number;
+    }[]
+  > = computed(() => {
+    const environment =
+      this.visualizationService.animatedSimulationEnvironmentSignal();
+    if (environment === null) {
+      return [];
+    }
+
+    const vehicles = Object.values(environment.vehicles);
+    const counts: Record<string, number> = {};
+
+    for (const vehicle of vehicles) {
+      const status = vehicle.status;
+      if (vehicle.notDisplayedReason !== null) {
+        continue;
+      }
+      counts[status] = (counts[status] ?? 0) + 1;
+    }
+
+    return Object.entries(counts).map(([status, count]) => ({
+      status,
+      count,
+    }));
+  });
+
+  readonly notDisplayedPassengersSignal: Signal<DisplayedPassenger[]> =
+    computed(() => {
+      const environment =
+        this.visualizationService.animatedSimulationEnvironmentSignal();
+
+      if (environment === null) {
+        return [];
+      }
+
+      return Object.values(environment.passengers).filter(
+        (passenger) => passenger.notDisplayedReason !== null,
+      );
+    });
+
+  readonly notDisplayedVehiclesSignal: Signal<DisplayedVehicle[]> = computed(
+    () => {
+      const environment =
+        this.visualizationService.animatedSimulationEnvironmentSignal();
+
+      if (environment === null) {
+        return [];
+      }
+
+      return Object.values(environment.vehicles).filter(
+        (vehicle) => vehicle.notDisplayedReason !== null,
+      );
+    },
+  );
+
+  readonly selectedPassengerSignal: Signal<DisplayedPassenger | null> =
+    computed(() => {
+      const environment =
+        this.visualizationService.animatedSimulationEnvironmentSignal();
+      const selectedPassengerId = this.selectedPassengerIdSignal();
+
+      if (environment === null || selectedPassengerId === null) {
+        return null;
+      }
+
+      return environment.passengers[selectedPassengerId] ?? null;
+    });
+
+  readonly selectedVehicleSignal: Signal<DisplayedVehicle | null> = computed(
+    () => {
+      const environment =
+        this.visualizationService.animatedSimulationEnvironmentSignal();
+      const selectedVehicleId = this.selectedVehicleIdSignal();
+
+      if (environment === null || selectedVehicleId === null) {
+        return null;
+      }
+
+      return environment.vehicles[selectedVehicleId] ?? null;
+    },
+  );
+
+  readonly selectedPassengerVehicleSignal: Signal<DisplayedVehicle | null> =
+    computed(() => {
+      const selectedPassenger = this.selectedPassengerSignal();
+      const environment =
+        this.visualizationService.animatedSimulationEnvironmentSignal();
+
+      if (
+        selectedPassenger === null ||
+        selectedPassenger.vehicleId === null ||
+        environment === null
+      ) {
+        return null;
+      }
+
+      const selectedVehicle = environment.vehicles[selectedPassenger.vehicleId];
+
+      return selectedVehicle ?? null;
+    });
+
+  readonly selectedVehiclePassengersSignal: Signal<DisplayedPassenger[]> =
+    computed(() => {
+      const selectedVehicle = this.selectedVehicleSignal();
+      const environment =
+        this.visualizationService.animatedSimulationEnvironmentSignal();
+
+      if (selectedVehicle === null || environment === null) {
+        return [];
+      }
+
+      const passengers = Object.values(environment.passengers).filter(
+        (passenger) =>
+          passenger.vehicleId !== null &&
+          selectedVehicle.passengers.includes(passenger.id),
+      );
+
+      return passengers;
+    });
+
+  readonly entitySearchDataSignal: Signal<EntitySearch[]> = computed(() => {
+    const environment =
+      this.visualizationService.animatedSimulationEnvironmentSignal();
+    if (environment === null) {
+      return [];
+    }
+
+    const passengers = Object.values(environment.passengers).map(
+      (passenger) => ({
+        id: passenger.id,
+        displayedValue: `[PASSENGER] ${passenger.id}`,
+        type: 'passenger' as const,
+        entity: passenger,
+      }),
+    );
+
+    const vehicles = Object.values(environment.vehicles).map((vehicle) => ({
+      id: vehicle.id,
+      displayedValue: `[VEHICLE] ${vehicle.id}`,
+      type: 'vehicle' as const,
+      entity: vehicle,
+    }));
+
+    return [...passengers, ...vehicles];
+  });
+
+  readonly searchValueSignal: WritableSignal<string | EntitySearch> =
+    signal('');
+
+  readonly searchControl: FormControl<string | EntitySearch | null>;
+
+  readonly filteredEntitySearchDataSignal: Signal<
+    {
+      id: string;
+      displayedValue: string;
+      type: 'passenger' | 'vehicle';
+      entity: DisplayedPassenger | DisplayedVehicle;
+    }[]
+  > = computed(() => {
+    const searchValue = this.searchValueSignal();
+    const entitySearchData = this.entitySearchDataSignal();
+
+    if (searchValue === '') {
+      return entitySearchData;
+    }
+
+    if (typeof searchValue === 'object') {
+      return [searchValue];
+    }
+
+    return entitySearchData.filter((entity) =>
+      entity.displayedValue.toLowerCase().includes(searchValue.toLowerCase()),
+    );
+  });
+
+  readonly entitySearchDisplayFunction = (entity: {
+    id: string;
+    displayedValue: string;
+    type: 'passenger' | 'vehicle';
+    entity: DisplayedPassenger | DisplayedVehicle;
+  }) => entity?.displayedValue ?? '';
+
   // MARK: Constructor
   constructor(
     private readonly simulationService: SimulationService,
@@ -73,8 +341,28 @@ export class VisualizerComponent implements OnDestroy {
     private readonly animationService: AnimationService,
     private readonly loadingService: LoadingService,
     private readonly visualizationService: VisualizationService,
+    private readonly formBuilder: FormBuilder,
   ) {
+    this.searchControl = this.formBuilder.control('');
+    this.searchControl.valueChanges.subscribe((value) => {
+      this.searchValueSignal.set(value ?? '');
+      console.log(value);
+    });
     this.simulationSignal = this.simulationService.activeSimulationSignal;
+
+    effect(() => {
+      const searchValue = this.searchValueSignal();
+
+      if (searchValue === null || typeof searchValue === 'string') {
+        return;
+      }
+
+      if (searchValue.type === 'passenger') {
+        this.selectPassenger(searchValue.id);
+      } else if (searchValue.type === 'vehicle') {
+        this.selectVehicle(searchValue.id);
+      }
+    });
 
     // MARK: Effects
     effect(() => {
@@ -87,20 +375,26 @@ export class VisualizerComponent implements OnDestroy {
     });
 
     effect(() => {
-      const visualizationEnvironment = this.visualizationEnvironmentSignal();
-      if (visualizationEnvironment == null) return;
+      const animatedSimulationEnvironment =
+        this.visualizationService.animatedSimulationEnvironmentSignal();
+      if (animatedSimulationEnvironment == null) return;
 
-      this.animationService.synchronizeEnvironment(visualizationEnvironment);
+      this.animationService.synchronizeEnvironment(
+        animatedSimulationEnvironment,
+      );
     });
 
     effect(() => {
-      const visualizationEnvironment = this.visualizationEnvironmentSignal();
+      const animatedSimulationEnvironment =
+        this.visualizationService.animatedSimulationEnvironmentSignal();
       const visualizationTime =
         this.visualizationService.wantedVisualizationTimeSignal();
-      if (visualizationEnvironment == null || visualizationTime == null) return;
+
+      if (animatedSimulationEnvironment == null || visualizationTime == null)
+        return;
 
       this.animationService.synchronizeTime(
-        visualizationEnvironment,
+        animatedSimulationEnvironment,
         visualizationTime,
       );
     });
@@ -326,76 +620,12 @@ export class VisualizerComponent implements OnDestroy {
     return this.visualizationService.isInitializedSignal;
   }
 
-  get visualizationEnvironmentSignal(): Signal<SimulationEnvironment | null> {
-    return this.visualizationService.visualizationEnvironmentSignal;
+  get selectedVehicleIdSignal(): Signal<string | null> {
+    return this.animationService.selectedVehicleIdSignal;
   }
 
-  get numberOfPassengersByStatusSignal(): Signal<
-    {
-      status: string;
-      count: number;
-    }[]
-  > {
-    return computed(() => {
-      const environment = this.visualizationEnvironmentSignal();
-      if (!environment) {
-        return [];
-      }
-
-      const passengers = environment.passengers;
-      const counts: Record<string, number> = {};
-
-      for (const passenger of Object.values(passengers)) {
-        const status = passenger.status;
-        counts[status] = (counts[status] ?? 0) + 1;
-      }
-
-      return Object.entries(counts).map(([status, count]) => ({
-        status,
-        count,
-      }));
-    });
-  }
-
-  get numberOfVehiclesByStatusSignal(): Signal<
-    {
-      status: string;
-      count: number;
-    }[]
-  > {
-    return computed(() => {
-      const environment = this.visualizationEnvironmentSignal();
-      if (!environment) {
-        return [];
-      }
-
-      const vehicles = environment.vehicles;
-      const counts: Record<string, number> = {};
-
-      for (const vehicle of Object.values(vehicles)) {
-        const status = vehicle.status;
-        counts[status] = (counts[status] ?? 0) + 1;
-      }
-
-      return Object.entries(counts).map(([status, count]) => ({
-        status,
-        count,
-      }));
-    });
-  }
-
-  get totalNumberOfPassengersSignal(): Signal<number> {
-    return computed(() => {
-      const counts = this.numberOfPassengersByStatusSignal();
-      return counts.reduce((acc, { count }) => acc + count, 0);
-    });
-  }
-
-  get totalNumberOfVehiclesSignal(): Signal<number> {
-    return computed(() => {
-      const counts = this.numberOfVehiclesByStatusSignal();
-      return counts.reduce((acc, { count }) => acc + count, 0);
-    });
+  get selectedPassengerIdSignal(): Signal<string | null> {
+    return this.animationService.selectedPassengerIdSignal;
   }
 
   // MARK: Handlers
@@ -405,6 +635,18 @@ export class VisualizerComponent implements OnDestroy {
 
   showInformationPanel() {
     this.userInterfaceService.showInformationPanel();
+  }
+
+  selectPassenger(id: string) {
+    this.animationService.selectEntity(id, 'passenger');
+  }
+
+  selectVehicle(id: string) {
+    this.animationService.selectEntity(id, 'vehicle');
+  }
+
+  clearSearch() {
+    this.searchControl.setValue(null);
   }
 
   pauseSimulation(id: string) {
