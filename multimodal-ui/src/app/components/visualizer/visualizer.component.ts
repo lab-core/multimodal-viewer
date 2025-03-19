@@ -10,6 +10,7 @@ import {
 import { FormBuilder, FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialogRef } from '@angular/material/dialog';
@@ -18,6 +19,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatTabsModule } from '@angular/material/tabs';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import {
@@ -35,6 +37,7 @@ import { UserInterfaceService } from '../../services/user-interface.service';
 import { VisualizationService } from '../../services/visualization.service';
 import { InformationDialogComponent } from '../information-dialog/information-dialog.component';
 import { SimulationControlBarComponent } from '../simulation-control-bar/simulation-control-bar.component';
+import { MapLayersComponent } from '../map-layers/map-layers.component';
 
 export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 
@@ -49,6 +52,7 @@ export interface EntitySearch {
   selector: 'app-visualizer',
   imports: [
     SimulationControlBarComponent,
+    MapLayersComponent,
     MatCardModule,
     MatButtonModule,
     MatFormFieldModule,
@@ -56,9 +60,11 @@ export interface EntitySearch {
     MatInputModule,
     MatChipsModule,
     MatTooltipModule,
-    MatExpansionModule,
     MatAutocompleteModule,
     ReactiveFormsModule,
+    MatExpansionModule,
+    MatButtonToggleModule,
+    MatTabsModule,
   ],
   providers: [VisualizationService],
   templateUrl: './visualizer.component.html',
@@ -295,6 +301,11 @@ export class VisualizerComponent implements OnDestroy {
     return [...passengers, ...vehicles];
   });
 
+  readonly tabControl: FormControl<string | null>;
+  showSearch = false;
+  showFilter = false;
+  showLayers = false;
+
   readonly searchValueSignal: WritableSignal<string | EntitySearch> =
     signal('');
 
@@ -343,6 +354,17 @@ export class VisualizerComponent implements OnDestroy {
     private readonly visualizationService: VisualizationService,
     private readonly formBuilder: FormBuilder,
   ) {
+    this.tabControl = new FormControl('');
+    this.tabControl.valueChanges.subscribe((value) => {
+      this.showSearch = false;
+      this.showFilter = false;
+      this.showLayers = false;
+      if (value === 'search') this.showSearch = true;
+      else if (value === 'filter') this.showFilter = true;
+      else if (value === 'layers') this.showLayers = true;
+    });
+    this.tabControl.setValue('search');
+
     this.searchControl = this.formBuilder.control('');
     this.searchControl.valueChanges.subscribe((value) => {
       this.searchValueSignal.set(value ?? '');
