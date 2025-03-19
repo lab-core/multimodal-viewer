@@ -1,10 +1,11 @@
 <mat-card appearance="outlined">
     <mat-card-content>
-        <form>
-            <mat-form-field>
-                <input matInput />
-            </mat-form-field>
-        </form>
-        Layers [TODO]
+        <p>Map Layer:</p>
+        <mat-chip-listbox class="mat-mdc-chip-set-stacked" aria-label="Map Layers">
+            @for (layer of mapLayers(); track $index) {
+            <mat-chip-option [selected]="selectedIndex() === $index" (click)="setMapTile($index)">{{ layer.name
+                }}</mat-chip-option>
+            }
+        </mat-chip-listbox>
     </mat-card-content>
 </mat-card>

@@ -363,7 +363,7 @@ export class VisualizerComponent implements OnDestroy {
       else if (value === 'filter') this.showFilter = true;
       else if (value === 'layers') this.showLayers = true;
     });
-    this.tabControl.setValue('search');
+    this.tabControl.setValue('layers');
 
     this.searchControl = this.formBuilder.control('');
     this.searchControl.valueChanges.subscribe((value) => {

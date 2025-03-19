@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
 
 import { LeafletModule } from '@bluehalo/ngx-leaflet';
-import { latLng, Map, tileLayer } from 'leaflet';
+import { latLng, Map, TileLayer, tileLayer } from 'leaflet';
 import { AnimationService } from '../../services/animation.service';
 import { MapService } from '../../services/map.service';
 
@@ -15,25 +15,27 @@ export class MapComponent {
   animationService: AnimationService = inject(AnimationService);
 
   options = {
-    layers: [
-      tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        noWrap: true,
-        minZoom: 3,
-        maxZoom: 18,
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      }),
-    ],
+    layers: [],
 
     // Montreal
     zoom: 12,
     center: latLng(45.523066, -73.652687),
   };
 
-  constructor(private readonly mapService: MapService) {}
+  constructor(private readonly mapService: MapService) {
+    // const mapLayer = mapService.mapLayers()[0];
+    // const tile = tileLayer(mapLayer.url, {
+    //   noWrap: true,
+    //   minZoom: 3,
+    //   maxZoom: 18,
+    //   attribution: mapLayer.attribution,
+    // });
+  }
 
   onMapReady(map: Map) {
     this.mapService.map = map;
+    this.mapService.setTileLayer(0);
+
     map.attributionControl.setPosition('bottomleft');
     map.zoomControl.setPosition('bottomright');
     this.animationService.addPixiOverlay(map);
