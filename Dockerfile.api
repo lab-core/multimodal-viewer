@@ -1,0 +1,36 @@
+# Use an official Python runtime as a parent image
+FROM python:3.11-slim
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Install Git (needed for cloning the repository)
+RUN apt-get update && apt-get install -y git
+
+# Clone the repository (including submodules)
+RUN git clone --recurse-submodules https://github.com/RTOpt/multimodal-simulator.git /app/multimodal-simulator
+
+# Copy the server 
+COPY multimodal-server /app/multimodal-server
+
+# Upgrade pip
+RUN pip install --upgrade pip
+
+# Install simulator dependencies
+WORKDIR /app/multimodal-simulator
+RUN git checkout develop-visualizer
+RUN git pull origin develop-visualizer
+
+WORKDIR /app/multimodal-simulator/python
+RUN pip install -r requirements.txt
+RUN python setup.py install
+
+# Install server requirements
+WORKDIR /app/multimodal-server
+RUN pip install -r requirements.txt
+
+# Make port 5000 available to the world outside this container
+EXPOSE 5000
+
+# Run server.py when the container launches
+CMD ["python", "server.py"]

@@ -1,0 +1,6 @@
+multimodal-server/saved_logs
+multimodal-server/__pycache__
+**/node_modules
+**/dist
+**/.vscode
+**/.angular
