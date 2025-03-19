@@ -110,7 +110,8 @@ class SimulationVisualizationDataCollector(DataCollector):
             self.add_update(
                 Update(
                     UpdateType.UPDATE_STATISTIC,
-                    self.data_analyzer.get_statistics(),
+                    StatisticUpdate(self.data_analyzer.get_statistics()),
+                    current_event.time
                 ),
                 env,
             )

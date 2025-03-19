@@ -284,6 +284,40 @@ export class VisualizerComponent implements OnDestroy {
   }
 
   // MARK: Getters
+  get statisticSignal(): Signal<
+    Record<string, Record<string, Record<string, number>>>
+  > {
+    return computed(() => {
+      const environment = this.visualizationEnvironmentSignal();
+      if (!environment) {
+        return {};
+      }
+      return environment.statistic;
+    });
+  }
+
+  get statisticTitleSignal(): Signal<string[]> {
+    return computed(() => {
+      const statistic = this.statisticSignal();
+      const statisticTitle = [];
+      for (const key in statistic) {
+        statisticTitle.push(key);
+      }
+      return statisticTitle;
+    });
+  }
+
+  get statisticModeSignal(): Signal<string[]> {
+    return computed(() => {
+      const statistic = this.statisticSignal();
+      const statisticTitle = [];
+      for (const key in statistic) {
+        statisticTitle.push(key);
+      }
+      return statisticTitle;
+    });
+  }
+
   get shouldShowInformationPanelSignal(): Signal<boolean> {
     return this.userInterfaceService.shouldShowInformationPanelSignal;
   }
@@ -425,5 +459,25 @@ export class VisualizerComponent implements OnDestroy {
 
   async leaveVisualization() {
     await this.router.navigate(['home']);
+  }
+
+  capitalize(str: string): string {
+    if (!str) return str; // Handle empty strings
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  keys(record: Record<string, any>): string[] {
+    return Object.keys(record);
+  }
+
+  formatNumber(num: number): string {
+    const formatter = new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+      useGrouping: true,
+    });
+
+    return formatter.format(num).replace(/,/g, ' ')
   }
 }

@@ -1,36 +1,55 @@
 @let simulation = simulationSignal();
-@let numberOfPassengersByStatus = numberOfPassengersByStatusSignal();
+@let statistic = statisticSignal();
+<!-- @let numberOfPassengersByStatus = numberOfPassengersByStatusSignal();
 @let numberOfVehiclesByStatus = numberOfVehiclesByStatusSignal();
 @let totalNumberOfPassengers = totalNumberOfPassengersSignal();
-@let totalNumberOfVehicles = totalNumberOfVehiclesSignal();
+@let totalNumberOfVehicles = totalNumberOfVehiclesSignal(); -->
 
 @if (isInitializedSignal() && simulation !== null) {
-  <!-- MARK: Search Bar
+<!-- MARK: Search Bar
   -->
-  <mat-form-field class="search-bar enable-pointer-events">
-    <input matInput />
-    <!-- TODO Search -->
-    <mat-label>Search in the simulation</mat-label>
-    <mat-icon matSuffix>search</mat-icon>
-  </mat-form-field>
+<mat-form-field class="search-bar enable-pointer-events">
+  <input matInput />
+  <!-- TODO Search -->
+  <mat-label>Search in the simulation</mat-label>
+  <mat-icon matSuffix>search</mat-icon>
+</mat-form-field>
 
-  <!-- MARK: Information Panel
+<!-- MARK: Information Panel
     -->
-  @if (shouldShowInformationPanelSignal()) {
-    <!-- TODO Fill panel -->
-    <mat-card class="flex-column information-panel enable-pointer-events">
-      <mat-card-content class="flex-1">
-        <mat-card-title>Simulation: {{ simulation.name }}</mat-card-title>
-        <mat-card-subtitle>Source: {{ simulation.data }}</mat-card-subtitle>
-        <mat-card-subtitle>
-          Current simulation time:
-          {{ simulation.simulationTime ?? "null" }}
-        </mat-card-subtitle>
-        <mat-card-subtitle>
-          Max simulation time:
-          {{ simulation.configuration.maxTime ?? "null" }}
-        </mat-card-subtitle>
-        <mat-card-subtitle>
+@if (shouldShowInformationPanelSignal()) {
+<!-- TODO Fill panel -->
+<mat-card class="flex-column information-panel enable-pointer-events">
+  <mat-card-content class="flex-1">
+    <mat-card-title>Simulation: {{ simulation.name }}</mat-card-title>
+    <mat-card-subtitle>Source: {{ simulation.data }}</mat-card-subtitle>
+    <mat-card-subtitle>
+      Current simulation time:
+      {{ simulation.simulationTime ?? "null" }}
+    </mat-card-subtitle>
+    <mat-card-subtitle>
+      Max simulation time:
+      {{ simulation.configuration.maxTime ?? "null" }}
+    </mat-card-subtitle>
+    <mat-card-title class="top-indent">
+      Statistics
+    </mat-card-title>
+    <div class="scrollable-container">
+      @for (statisticTitle of keys(statistic); track statisticTitle; let titleIdx = $index) {
+      <div class="flex-column statistic-title" [class]="{'top-indent': titleIdx !== 0}">{{capitalize(statisticTitle)}}
+      </div>
+      @for(mode of keys(statistic[statisticTitle]); track mode; let modeIdx = $index){
+      <div class="flex-column" [class]="{'top-indent': modeIdx !== 0}">
+        <span class="indent">{{capitalize(mode)}}</span>
+        @for(statisticName of keys(statistic[statisticTitle][mode]); track statisticName){
+        <span class="double-indent">{{statisticName}} :
+          {{formatNumber(statistic[statisticTitle][mode][statisticName])}}</span>
+        }
+      </div>
+      }
+      }
+    </div>
+    <!-- <mat-card-subtitle>
           Passengers ({{ totalNumberOfPassengers }})
         </mat-card-subtitle>
         <div class="flex-column">
@@ -52,31 +71,22 @@
           ) {
             <span>{{ statusAndCount.status }}: {{ statusAndCount.count }}</span>
           }
-        </div>
-      </mat-card-content>
-      <mat-card-actions align="end">
-        <button mat-button (click)="hideInformationPanel()">Hide</button>
-      </mat-card-actions>
-    </mat-card>
-  } @else {
-    <button
-      mat-fab
-      class="enable-pointer-events show-information-panel-button"
-      (click)="showInformationPanel()"
-    >
-      <mat-icon>info</mat-icon>
-    </button>
-  }
+        </div> -->
+  </mat-card-content>
+  <mat-card-actions align="end">
+    <button mat-button (click)="hideInformationPanel()">Hide</button>
+  </mat-card-actions>
+</mat-card>
+} @else {
+<button mat-fab class="enable-pointer-events show-information-panel-button" (click)="showInformationPanel()">
+  <mat-icon>info</mat-icon>
+</button>
+}
 
-  <!-- MARK: Control Bar
+<!-- MARK: Control Bar
 -->
-  <app-simulation-control-bar
-    class="enable-pointer-events"
-    [simulation]="simulation"
-    (pauseSimulation)="pauseSimulation($event)"
-    (resumeSimulation)="resumeSimulation($event)"
-    (stopSimulation)="stopSimulation($event)"
-    (editSimulationConfiguration)="editSimulationConfiguration($event)"
-    (leaveVisualization)="leaveVisualization()"
-  ></app-simulation-control-bar>
+<app-simulation-control-bar class="enable-pointer-events" [simulation]="simulation"
+  (pauseSimulation)="pauseSimulation($event)" (resumeSimulation)="resumeSimulation($event)"
+  (stopSimulation)="stopSimulation($event)" (editSimulationConfiguration)="editSimulationConfiguration($event)"
+  (leaveVisualization)="leaveVisualization()"></app-simulation-control-bar>
 }

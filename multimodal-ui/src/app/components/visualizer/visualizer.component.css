@@ -61,11 +61,32 @@
   bottom: calc(1rem + 4rem + 1rem);
   left: 1rem;
   top: 1rem;
-  width: 20rem;
+  width: 24rem;
 }
 
 .show-information-panel-button {
   position: absolute;
   top: 1rem;
   left: 1rem;
+}
+
+.statistic-title {
+  font-size: 17px;
+  font-weight: bold;
+}
+
+.indent {
+  padding-left: 1em;
+}
+
+.double-indent {
+  padding-left: 2em;
+}
+
+.top-indent {
+  padding-top: 1rem !important;
+}
+
+.scrollable-container {
+  overflow-y: auto;
 }
