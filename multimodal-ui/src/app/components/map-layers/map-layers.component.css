@@ -1,0 +1,26 @@
+.title{
+    font: var(--mat-sys-body-medium);
+    margin: 0px;
+}
+
+.chip-list {
+    max-width: 100%;
+    width: 300px;
+    margin-bottom: 10px;
+}
+
+/* Don't allow chip overflow */
+.chip-list div {
+    max-width: 100%;
+    overflow: hidden;
+}
+
+/* Make all chips take the whole width */
+.mat-mdc-chip-set .mdc-evolution-chip {
+    width: 100%;
+}
+
+/* Don't make text overflow */
+.mat-mdc-standard-chip {
+    overflow: hidden;
+}
