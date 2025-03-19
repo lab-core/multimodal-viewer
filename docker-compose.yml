@@ -7,7 +7,7 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
     ports:
-      - "80:80"
+      - "4200:80"
     networks:
       - multimodal-network
     depends_on:
