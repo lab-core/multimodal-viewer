@@ -1,0 +1,14 @@
+<mat-card appearance="outlined">
+    <mat-card-content>
+        <p class="title">Map Tile Providers:</p>
+        <mat-chip-listbox class="chip-list" aria-label="Map Layers">
+            @for (layer of mapTiles(); track $index) {
+            <mat-chip-option [selected]="selectedIndex() === $index" (click)="setMapTile($index)">{{ layer.name
+                }}</mat-chip-option>
+            }
+        </mat-chip-listbox>
+        <div class="btn-container">
+            <button mat-button (click)="addMapTile()">Add Map Tile</button>
+        </div>
+    </mat-card-content>
+</mat-card>

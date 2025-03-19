@@ -1,6 +1,6 @@
 import { Injectable, Signal, signal, WritableSignal } from '@angular/core';
 import { Map, tileLayer } from 'leaflet';
-import { MapLayer } from '../interfaces/map.model';
+import { MapLayer as MapTileData } from '../interfaces/map.model';
 
 @Injectable({
   providedIn: 'root',
@@ -12,49 +12,42 @@ export class MapService {
 
   map: Map | null = null;
 
-  private _lastTile: MapLayer | null = null;
+  private _lastTile: MapTileData | null = null;
 
   private _selectedIndex: WritableSignal<number> = signal(0);
   get selectedIndex(): Signal<number> {
     return this._selectedIndex;
   }
 
-  private _mapLayers: WritableSignal<MapLayer[]> = signal([]);
-  get mapLayers(): Signal<MapLayer[]> {
-    return this._mapLayers;
+  private _mapTiles: WritableSignal<MapTileData[]> = signal([]);
+  get mapTiles(): Signal<MapTileData[]> {
+    return this._mapTiles;
   }
 
   constructor() {
-    this._mapLayers.update((mapLayers) => {
-      mapLayers.push({
-        name: 'OpenSteetMaps',
-        tile: tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          noWrap: this.noWrap,
-          minZoom: this.minZoom,
-          maxZoom: this.maxZoom,
-          attribution:
-            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        }),
-      });
+    // Sample map tile providers
 
-      mapLayers.push({
-        name: 'Stamen Toner Lite (free tier)',
-        tile: tileLayer(
-          'https://tiles.stadiamaps.com/tiles/stamen_toner_lite/{z}/{x}/{y}{r}.png',
-          {
-            noWrap: this.noWrap,
-            minZoom: this.minZoom,
-            maxZoom: this.maxZoom,
-            attribution:
-              '&copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a hr&copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/about" target="_blank">OpenStreetMap</a> contributorsef="https://stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/about" target="_blank">OpenStreetMap</a> contributors',
-          },
-        ),
-      });
-      return mapLayers;
+    this.addMapTile(
+      'OSM',
+      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    );
+
+    this.addMapTile(
+      'Stamen Toner Lite (free tier)',
+      'https://tiles.stadiamaps.com/tiles/stamen_toner_lite/{z}/{x}/{y}{r}.png',
+      '&copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a hr&copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/about" target="_blank">OpenStreetMap</a> contributorsef="https://stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/about" target="_blank">OpenStreetMap</a> contributors',
+    );
+  }
+
+  addMapTile(name: string, url: string, attribution: string | null) {
+    this._mapTiles.update((mapTiles) => {
+      mapTiles.push(this.createTileLayer(name, url, attribution));
+      return mapTiles;
     });
   }
 
-  setTileLayer(index: number) {
+  setMapTile(index: number) {
     if (this.map == null) return;
 
     if (this._lastTile != null) {
@@ -63,9 +56,25 @@ export class MapService {
 
     this._selectedIndex.set(index);
 
-    const mapLayer = this._mapLayers()[index];
+    const mapLayer = this._mapTiles()[index];
     this._lastTile = mapLayer;
 
     mapLayer.tile.addTo(this.map);
+  }
+
+  private createTileLayer(
+    name: string,
+    url: string,
+    attribution: string | null,
+  ): MapTileData {
+    return {
+      name,
+      tile: tileLayer(url, {
+        noWrap: this.noWrap,
+        minZoom: this.minZoom,
+        maxZoom: this.maxZoom,
+        attribution: attribution ?? undefined,
+      }),
+    };
   }
 }

@@ -1,0 +1,42 @@
+<h2 mat-dialog-title>Add Map Tile Provider</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="formGroup">
+    <div>
+      <section class="flex-column gap-1-rem">
+        <p>Please provide a name and a URL to the map tile provider.</p>
+        <p>You may optionnaly add an attribution to credit the provider.</p>
+        <mat-form-field [subscriptSizing]="'dynamic'">
+          <input matInput formControlName="name" placeholder="Ex. OpenSteetMaps" />
+          <mat-label>Name</mat-label>
+          @if (nameFormControl.hasError("required")) {
+          <mat-error>Name is required</mat-error>
+          } @else if (nameFormControl.hasError("minlength")) {
+          <mat-error>Name must be at least 3 characters long</mat-error>
+          } @else if (nameFormControl.hasError("maxlength")) {
+          <mat-error>Name must be at most 30 characters long</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field [subscriptSizing]="'dynamic'">
+          <input matInput formControlName="url" placeholder="Ex. https://tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <mat-label>Map Tile Provider URL</mat-label>
+        </mat-form-field>
+
+        <mat-form-field [subscriptSizing]="'dynamic'">
+          <input matInput formControlName="attribution"
+            placeholder='Ex. &copy; <a href="https://www.example.org/">Example</a> contributors' />
+          <mat-label>Attribution (optional)</mat-label>
+        </mat-form-field>
+      </section>
+    </div>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions>
+  <button mat-button mat-dialog-close>Cancel</button>
+
+  <button mat-button (click)="onAdd()">
+    Add
+  </button>
+</mat-dialog-actions>

@@ -1,11 +1,11 @@
 .title{
     font: var(--mat-sys-body-medium);
-    margin: 0px;
+    margin-top: 0px;
 }
 
 .chip-list {
     max-width: 100%;
-    width: 300px;
+    width: 250px;
     margin-bottom: 10px;
 }
 
@@ -23,4 +23,9 @@
 /* Don't make text overflow */
 .mat-mdc-standard-chip {
     overflow: hidden;
+}
+
+.btn-container {
+    display: flex;
+    flex-direction: column;
 }

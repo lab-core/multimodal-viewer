@@ -15,6 +15,11 @@ import {
   SimulationListDialogData,
   SimulationListDialogResult,
 } from '../components/simulation-list-dialog/simulation-list-dialog.component';
+import {
+  AddMapTileDialogComponent,
+  AddMapTileDialogData,
+  AddMapTileDialogResult,
+} from '../components/add-map-tile-dialog/add-map-tile-dialog.component';
 
 @Injectable({
   providedIn: 'root',
@@ -74,6 +79,24 @@ export class DialogService {
       maxWidth: '80vw',
       maxHeight: '80vh',
       width: '500px',
+    });
+  }
+
+  openAddMapTileDialog(): MatDialogRef<
+    AddMapTileDialogComponent,
+    AddMapTileDialogResult
+  > {
+    return this.matDialog.open<
+      AddMapTileDialogComponent,
+      AddMapTileDialogData,
+      AddMapTileDialogResult
+    >(AddMapTileDialogComponent, {
+      data: null,
+      disableClose: true,
+      autoFocus: false,
+      maxWidth: '80vw',
+      maxHeight: '80vh',
+      minWidth: '600px',
     });
   }
 }

@@ -37,7 +37,7 @@ import { UserInterfaceService } from '../../services/user-interface.service';
 import { VisualizationService } from '../../services/visualization.service';
 import { InformationDialogComponent } from '../information-dialog/information-dialog.component';
 import { SimulationControlBarComponent } from '../simulation-control-bar/simulation-control-bar.component';
-import { MapLayersComponent } from '../map-layers/map-layers.component';
+import { MapLayersComponent } from '../map-tiles/map-tiles.component';
 
 export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 
