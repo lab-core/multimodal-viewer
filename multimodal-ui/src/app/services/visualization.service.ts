@@ -582,15 +582,18 @@ export class VisualizationService {
   // MARK: Local Storage
   private initializeAutoSave(): void {
     window.addEventListener('beforeunload', () => {
-      this.saveWantedVisualizationTime();
+      this.saveLocalStorageData();
     });
   }
 
-  private saveWantedVisualizationTime(): void {
+  private saveLocalStorageData(): void {
     const wantedVisualizationTime = this._wantedVisualizationTimeSignal();
+    const isVisualizationPaused = this._isVisualizationPausedSignal();
+
     if (wantedVisualizationTime !== null) {
       localStorage.setItem('wantedVisualizationTime', wantedVisualizationTime.toString());
     }
+    localStorage.setItem('isVisualizationPaused', JSON.stringify(isVisualizationPaused));
   }
 
   private initializeAutoLoad(): void {
@@ -601,6 +604,8 @@ export class VisualizationService {
 
   private loadWantedVisualizationTime(): void {
     const savedWantedVisualizationTime = localStorage.getItem('wantedVisualizationTime');
+    const savedIsVisualizationPaused = localStorage.getItem('isVisualizationPaused');
+
     if (savedWantedVisualizationTime) {
       const time = parseFloat(savedWantedVisualizationTime);
       if (!isNaN(time)) {
@@ -608,10 +613,16 @@ export class VisualizationService {
         this.visualizationTimeOverrideSignal.set(time);
       }
     }
+
+    if (savedIsVisualizationPaused !== null) {
+      const isPaused = JSON.parse(savedIsVisualizationPaused) as boolean;
+      this._isVisualizationPausedSignal.set(isPaused);
+    }
   }
 
   public clearLocalStorage(): void {
     localStorage.removeItem('wantedVisualizationTime');
+    localStorage.removeItem('isVisualizationPaused');
   }
 
   // MARK: Lifecycle
