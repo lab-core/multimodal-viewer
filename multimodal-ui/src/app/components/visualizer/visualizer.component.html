@@ -23,10 +23,10 @@
 </div>
 
 <!-- MARK: Search Bar -->
-<form class="fade" [class.fade-show]="showSearch" [class.enable-pointer-events]="showSearch">
+<form class="tab-content fade search-bar" [class.fade-show]="showSearch" [class.enable-pointer-events]="showSearch">
   @let filteredEntitySearchData = filteredEntitySearchDataSignal();
   @let searchValue = searchValueSignal();
-  <mat-form-field class="tab-content search-bar enable-pointer-events">
+  <mat-form-field class="search-form">
     <input matInput [matAutocomplete]="auto" [formControl]="searchControl" />
     <!-- TODO Search -->
     <mat-label>Search in the simulation</mat-label>
