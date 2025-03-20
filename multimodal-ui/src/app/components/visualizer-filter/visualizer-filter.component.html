@@ -1,0 +1,25 @@
+<mat-card appearance="outlined">
+    <mat-card-content>
+        <p class="title">Filters</p>
+        <section class="content">
+            @let vehicle = "vehicle";
+            @let passenger = "passenger";
+            @let filterService = visualizationFilterService;
+            <mat-checkbox [checked]="!filters().has(passenger)"
+                (click)="filterService.toggleFilter(vehicle)">Passengers</mat-checkbox>
+            <mat-checkbox [checked]="!filters().has(vehicle)"
+                (click)="filterService.toggleFilter(vehicle)">Vehicles</mat-checkbox>
+            <ul>
+                @for (mode of vehicleModes(); track mode) {
+                <li>
+                    <mat-checkbox [checked]="!filters().has(mode)" [disabled]="filters().has(vehicle)"
+                        (click)="filterService.toggleFilter(mode)">
+                        {{ mode }}
+                    </mat-checkbox>
+                </li>
+                }
+            </ul>
+        </section>
+
+    </mat-card-content>
+</mat-card>

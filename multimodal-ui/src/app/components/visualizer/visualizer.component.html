@@ -47,12 +47,9 @@
   </mat-form-field>
 </form>
 
-<!-- MARK: Filter TODO (would be nice in a component maybe) -->
-<div class="tab-content fade" [class.fade-show]="showFilter" [class.enable-pointer-events]="showFilter">
-  <mat-card appearance="outlined">
-    <mat-card-content>Filters [TODO]</mat-card-content>
-  </mat-card>
-</div>
+<!-- MARK: Filter -->
+<app-visualizer-filter class="tab-content fade" [class.fade-show]="showFilter"
+  [class.enable-pointer-events]="showFilter"></app-visualizer-filter>
 
 <!-- MARK: Map Tiles -->
 <app-map-tiles class="tab-content fade" [class.fade-show]="showLayers"
