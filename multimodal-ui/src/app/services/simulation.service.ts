@@ -29,7 +29,6 @@ import {
   VehicleStatusUpdate,
   VehicleStopsUpdate,
 } from '../interfaces/simulation.model';
-import { AnimationService } from './animation.service';
 import { CommunicationService } from './communication.service';
 import { DataService } from './data.service';
 
@@ -62,7 +61,6 @@ export class SimulationService {
   constructor(
     private readonly dataService: DataService,
     private readonly communicationService: CommunicationService,
-    private readonly animationService: AnimationService,
   ) {}
 
   // MARK: Active simulation

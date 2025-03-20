@@ -7,7 +7,6 @@ import { MatButtonModule } from '@angular/material/button';
 @Component({
   selector: 'app-visualizer-filter',
   imports: [MatCardModule, MatCheckboxModule, MatButtonModule],
-  providers: [VisualizationFilterService],
   templateUrl: './visualizer-filter.component.html',
   styleUrl: './visualizer-filter.component.css',
 })

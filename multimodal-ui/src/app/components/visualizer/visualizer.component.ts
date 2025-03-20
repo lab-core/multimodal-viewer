@@ -38,6 +38,8 @@ import { VisualizationService } from '../../services/visualization.service';
 import { InformationDialogComponent } from '../information-dialog/information-dialog.component';
 import { SimulationControlBarComponent } from '../simulation-control-bar/simulation-control-bar.component';
 import { MapLayersComponent } from '../map-tiles/map-tiles.component';
+import { VisualizerFilterComponent } from '../visualizer-filter/visualizer-filter.component';
+import { VisualizationFilterService } from '../../services/visualization-filter.service';
 
 export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 
@@ -52,6 +54,7 @@ export interface EntitySearch {
   selector: 'app-visualizer',
   imports: [
     SimulationControlBarComponent,
+    VisualizerFilterComponent,
     MapLayersComponent,
     MatCardModule,
     MatButtonModule,
@@ -66,7 +69,7 @@ export interface EntitySearch {
     MatButtonToggleModule,
     MatTabsModule,
   ],
-  providers: [VisualizationService],
+  providers: [VisualizationService, VisualizationFilterService],
   templateUrl: './visualizer.component.html',
   styleUrl: './visualizer.component.css',
 })
@@ -363,7 +366,7 @@ export class VisualizerComponent implements OnDestroy {
       else if (value === 'filter') this.showFilter = true;
       else if (value === 'layers') this.showLayers = true;
     });
-    this.tabControl.setValue('search');
+    this.tabControl.setValue('filter');
 
     this.searchControl = this.formBuilder.control('');
     this.searchControl.valueChanges.subscribe((value) => {

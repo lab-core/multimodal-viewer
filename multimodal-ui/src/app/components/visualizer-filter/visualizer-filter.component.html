@@ -6,7 +6,7 @@
             @let passenger = "passenger";
             @let filterService = visualizationFilterService;
             <mat-checkbox [checked]="!filters().has(passenger)"
-                (click)="filterService.toggleFilter(vehicle)">Passengers</mat-checkbox>
+                (click)="filterService.toggleFilter(passenger)">Passengers</mat-checkbox>
             <mat-checkbox [checked]="!filters().has(vehicle)"
                 (click)="filterService.toggleFilter(vehicle)">Vehicles</mat-checkbox>
             <ul>

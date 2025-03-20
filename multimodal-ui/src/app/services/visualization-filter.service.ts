@@ -7,6 +7,7 @@ import {
   WritableSignal,
 } from '@angular/core';
 import { VisualizationService } from './visualization.service';
+import { AnimationService } from './animation.service';
 
 @Injectable()
 export class VisualizationFilterService {
@@ -22,10 +23,21 @@ export class VisualizationFilterService {
     return this._vehicleModes;
   }
 
-  constructor(readonly visualizationService: VisualizationService) {
+  constructor(
+    readonly visualizationService: VisualizationService,
+    readonly animationService: AnimationService,
+  ) {
     effect(() => {
       this.effectUpdateVehicleModeFilters();
     });
+
+    effect(() => {
+      this.effectOnFilterChanged();
+    });
+  }
+
+  private effectOnFilterChanged() {
+    this.animationService.setFilters(this._filters());
   }
 
   private effectUpdateVehicleModeFilters() {

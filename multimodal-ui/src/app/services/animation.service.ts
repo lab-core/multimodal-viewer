@@ -7,7 +7,7 @@ import {
 } from '@angular/core';
 import * as L from 'leaflet';
 import 'leaflet-pixi-overlay';
-import { pixiOverlay } from 'leaflet'
+import { pixiOverlay } from 'leaflet';
 import * as PIXI from 'pixi.js';
 import { Entity, EntityOwner } from '../interfaces/entity.model';
 import {
@@ -86,6 +86,8 @@ export class AnimationService {
 
   private previousVehiclesEntities: Entity<AnimatedVehicle>[] = [];
   private previousPassengerEntities: Entity<AnimatedPassenger>[] = [];
+
+  private filters: Set<string> = new Set<string>();
 
   private speed = 1;
   private readonly _shouldFollowEntitySignal: WritableSignal<boolean> =
@@ -237,6 +239,10 @@ export class AnimationService {
     this.pause = pause;
   }
 
+  setFilters(filters: Set<string>) {
+    this.filters = filters;
+  }
+
   centerMap() {
     if (this.vehicles.length == 0) return;
 
@@ -306,6 +312,19 @@ export class AnimationService {
     );
 
     this.utils.getMap().flyToBounds(new L.LatLngBounds(southWest, northEast));
+  }
+
+  private filterEntities() {
+    const filters = this.filters;
+
+    const showVehicle = !filters.has('vehicle');
+    for (const vehicle of this.vehicles)
+      vehicle.sprite.visible =
+        showVehicle && !filters.has(vehicle.data.mode ?? 'unknown');
+
+    const showPassenger = !filters.has('passenger');
+    for (const passenger of this.passengersEntities)
+      passenger.sprite.visible = showPassenger;
   }
 
   private setVehiclePositions() {
@@ -725,6 +744,7 @@ export class AnimationService {
 
     this.setVehiclePositions();
     this.setPassengerPositions();
+    this.filterEntities();
   }
 
   // onClick is called after onEntityPointerdown
