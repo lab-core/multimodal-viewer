@@ -15,7 +15,9 @@ export class MapComponent implements OnDestroy {
 
   // Retrieve saved zoom and position from localStorage
   savedZoom = localStorage.getItem('mapZoom') ? parseInt(localStorage.getItem('mapZoom')!, 10) : 12;
-  savedCenter: LatLngExpression = this.getSavedCenter();
+  savedCenter: LatLngExpression = localStorage.getItem('mapCenter')
+    ? JSON.parse(localStorage.getItem('mapCenter')!) as [number, number]
+    : latLng(45.523066, -73.652687); // Montreal as Default
 
   options = {
     layers: [
@@ -67,27 +69,5 @@ export class MapComponent implements OnDestroy {
       localStorage.setItem('mapZoom', currentZoom.toString());
       localStorage.setItem('mapCenter', JSON.stringify([currentCenter.lat, currentCenter.lng]));
     }
-  }
-
-  private getSavedCenter(): LatLngExpression {
-    const savedCenter = localStorage.getItem('mapCenter');
-    if (savedCenter) {
-      try {
-        const parsedCenter = JSON.parse(savedCenter) as [number, number];
-        // Validate that the parsed center is a valid LatLngExpression (an array of two numbers)
-        if (
-          Array.isArray(parsedCenter) &&
-          parsedCenter.length === 2 &&
-          typeof parsedCenter[0] === 'number' &&
-          typeof parsedCenter[1] === 'number'
-        ) {
-          return parsedCenter; // Safe to cast as LatLngExpression
-        }
-      } catch (e) {
-        console.error('Failed to parse saved map center:', e);
-      }
-    }
-    // Default center to Montreal
-    return latLng(45.523066, -73.652687);
   }
 }
