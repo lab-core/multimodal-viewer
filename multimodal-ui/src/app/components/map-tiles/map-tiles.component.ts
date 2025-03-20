@@ -6,7 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatChipsModule } from '@angular/material/chips';
 import { MapService } from '../../services/map.service';
-import { MapLayer as MapTile } from '../../interfaces/map.model';
+import { MapTile as MapTile } from '../../interfaces/map.model';
 import { DialogService } from '../../services/dialog.service';
 import { firstValueFrom } from 'rxjs';
 
@@ -25,18 +25,18 @@ import { firstValueFrom } from 'rxjs';
 })
 export class MapLayersComponent {
   mapTiles: Signal<MapTile[]>;
-  selectedIndex: Signal<number>;
+  selectedMapTile: Signal<MapTile | null>;
 
   constructor(
     readonly mapService: MapService,
     readonly dialogService: DialogService,
   ) {
     this.mapTiles = mapService.mapTiles;
-    this.selectedIndex = mapService.selectedIndex;
+    this.selectedMapTile = mapService.selectedMapTile;
   }
 
-  setMapTile(index: number) {
-    this.mapService.setMapTile(index);
+  setMapTile(tile: MapTile) {
+    this.mapService.selectMapTile(tile);
   }
 
   async addMapTile() {

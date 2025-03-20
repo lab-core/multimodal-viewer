@@ -1,80 +1,166 @@
-import { Injectable, Signal, signal, WritableSignal } from '@angular/core';
-import { Map, tileLayer } from 'leaflet';
-import { MapLayer as MapTileData } from '../interfaces/map.model';
+import {
+  computed,
+  effect,
+  Injectable,
+  Signal,
+  signal,
+  WritableSignal,
+} from '@angular/core';
+import { Map, TileLayer, tileLayer } from 'leaflet';
+import { MapTile, MapTileSaveData } from '../interfaces/map.model';
 
 @Injectable({
   providedIn: 'root',
 })
 export class MapService {
+  private readonly KEY_ADDED_TILES: string = 'multimodal.added-tiles';
+  private readonly KEY_SELECTED_TILE_INDEX: string =
+    'multimodal.selected-tile-index';
+
   private readonly noWrap = true;
   private readonly minZoom = 8;
   private readonly maxZoom = 18;
 
   map: Map | null = null;
 
-  private _lastTile: MapTileData | null = null;
+  private _selectedMapTile!: WritableSignal<MapTile>;
+  private _mapTiles: WritableSignal<MapTile[]> = signal([]);
 
-  private _selectedIndex: WritableSignal<number> = signal(0);
-  get selectedIndex(): Signal<number> {
-    return this._selectedIndex;
+  get selectedMapTile(): Signal<MapTile> {
+    return this._selectedMapTile;
   }
 
-  private _mapTiles: WritableSignal<MapTileData[]> = signal([]);
-  get mapTiles(): Signal<MapTileData[]> {
+  get mapTiles(): Signal<MapTile[]> {
     return this._mapTiles;
   }
 
   constructor() {
-    // Sample map tile providers
+    this.loadMapTilesData();
 
-    this.addMapTile(
-      'OSM',
-      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    );
+    effect(() => {
+      this.effectSaveMapTiles();
+    });
 
-    this.addMapTile(
-      'Stamen Toner Lite (free tier)',
-      'https://tiles.stadiamaps.com/tiles/stamen_toner_lite/{z}/{x}/{y}{r}.png',
-      '&copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a hr&copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/about" target="_blank">OpenStreetMap</a> contributorsef="https://stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/about" target="_blank">OpenStreetMap</a> contributors',
-    );
+    effect(() => {
+      this.effecSaveSelectedIndex();
+    });
+  }
+
+  selectMapTile(mapTile: MapTile) {
+    if (this.map == null) return;
+
+    const selectedMapTile = this._selectedMapTile();
+    if (selectedMapTile !== null) {
+      this.map.removeLayer(selectedMapTile.tile);
+    }
+
+    this._selectedMapTile.set(mapTile);
+    mapTile.tile.addTo(this.map);
   }
 
   addMapTile(name: string, url: string, attribution: string | null) {
     this._mapTiles.update((mapTiles) => {
-      mapTiles.push(this.createTileLayer(name, url, attribution));
-      return mapTiles;
+      const newTile = this.createMapTile(name, url, attribution, true);
+      return [...mapTiles, newTile];
     });
   }
 
-  setMapTile(index: number) {
-    if (this.map == null) return;
+  private loadMapTilesData() {
+    // Sample map tile providers
+    const defaultMapTile = [
+      this.createMapTile(
+        'OSM',
+        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        false,
+      ),
+      this.createMapTile(
+        'Stamen Toner Lite (free tier)',
+        'https://tiles.stadiamaps.com/tiles/stamen_toner_lite/{z}/{x}/{y}{r}.png',
+        '&copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a hr&copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/about" target="_blank">OpenStreetMap</a> contributorsef="https://stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/about" target="_blank">OpenStreetMap</a> contributors',
+        false,
+      ),
+    ];
 
-    if (this._lastTile != null) {
-      this.map.removeLayer(this._lastTile.tile);
+    const addedTiles = this.loadSavedMapTiles();
+    const allMapTiles = [...defaultMapTile, ...addedTiles];
+    this._mapTiles.set(allMapTiles);
+
+    const index = parseInt(
+      localStorage.getItem(this.KEY_SELECTED_TILE_INDEX) as string,
+    );
+
+    if (!isNaN(index) || index >= allMapTiles.length) {
+      this._selectedMapTile = signal(allMapTiles[index]);
+    } else {
+      this._selectedMapTile = signal(allMapTiles[0]);
     }
-
-    this._selectedIndex.set(index);
-
-    const mapLayer = this._mapTiles()[index];
-    this._lastTile = mapLayer;
-
-    mapLayer.tile.addTo(this.map);
   }
 
-  private createTileLayer(
+  private loadSavedMapTiles() {
+    const savedMapTilesJson = localStorage.getItem(this.KEY_ADDED_TILES);
+    if (savedMapTilesJson == null) return [];
+
+    const savedMapTiles = JSON.parse(savedMapTilesJson) as MapTileSaveData[];
+    const mapTiles = [];
+    for (const savedMapTile of savedMapTiles) {
+      mapTiles.push(
+        this.createMapTile(
+          savedMapTile.name,
+          savedMapTile.url,
+          savedMapTile.attribution,
+          true,
+        ),
+      );
+    }
+
+    return mapTiles;
+  }
+
+  private effectSaveMapTiles() {
+    const addedMapTiles = this._mapTiles().filter((tile) => tile.custom);
+    const savedMapTiles: MapTileSaveData[] = addedMapTiles.map((tile) => {
+      return {
+        name: tile.name,
+        url: tile.url,
+        attribution: tile.attribution,
+      };
+    });
+
+    localStorage.setItem(this.KEY_ADDED_TILES, JSON.stringify(savedMapTiles));
+  }
+
+  private effecSaveSelectedIndex() {
+    const selectedTile = this._selectedMapTile();
+    if (selectedTile == null) return;
+
+    const index = this.mapTiles().findIndex((tile) => tile === selectedTile);
+    if (index === -1) return;
+
+    localStorage.setItem(this.KEY_SELECTED_TILE_INDEX, index.toString());
+  }
+
+  private createTileLayer(url: string, attribution: string | null): TileLayer {
+    return tileLayer(url, {
+      noWrap: this.noWrap,
+      minZoom: this.minZoom,
+      maxZoom: this.maxZoom,
+      attribution: attribution ?? undefined,
+    });
+  }
+
+  private createMapTile(
     name: string,
     url: string,
     attribution: string | null,
-  ): MapTileData {
+    custom: boolean,
+  ): MapTile {
     return {
       name,
-      tile: tileLayer(url, {
-        noWrap: this.noWrap,
-        minZoom: this.minZoom,
-        maxZoom: this.maxZoom,
-        attribution: attribution ?? undefined,
-      }),
+      url,
+      attribution,
+      tile: this.createTileLayer(url, attribution),
+      custom,
     };
   }
 }

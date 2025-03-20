@@ -34,7 +34,7 @@ export class MapComponent {
 
   onMapReady(map: Map) {
     this.mapService.map = map;
-    this.mapService.setMapTile(0);
+    this.mapService.selectMapTile(this.mapService.selectedMapTile());
 
     map.attributionControl.setPosition('bottomleft');
     map.zoomControl.setPosition('bottomright');
