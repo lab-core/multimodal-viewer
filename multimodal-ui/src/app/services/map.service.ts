@@ -101,27 +101,29 @@ export class MapService {
   }
 
   private loadMapTilesData() {
-    const savedTiles = this.loadSavedMapTiles();
+    let tiles = this.loadSavedMapTiles();
+    if (tiles.length === 0) {
+      tiles = this.getDefaultTilesData();
+    }
 
     const index = parseInt(
       localStorage.getItem(this.KEY_SELECTED_TILE_INDEX) as string,
     );
 
-    if (!isNaN(index) && index < savedTiles.length) {
-      this._selectedMapTile = signal(savedTiles[index]);
+    if (!isNaN(index) && index < tiles.length) {
+      this._selectedMapTile = signal(tiles[index]);
     } else {
-      this._selectedMapTile = signal(savedTiles[0]);
+      this._selectedMapTile = signal(tiles[0]);
     }
 
-    this._mapTiles.set(savedTiles);
+    this._mapTiles.set(tiles);
   }
 
   private loadSavedMapTiles() {
     const savedMapTilesJson = localStorage.getItem(this.KEY_ADDED_TILES);
-    if (savedMapTilesJson == null) return this.getDefaultTilesData();
+    if (savedMapTilesJson == null) return [];
 
     const savedMapTiles = JSON.parse(savedMapTilesJson) as MapTileSaveData[];
-    if (savedMapTiles.length == 0) return this.getDefaultTilesData();
 
     const mapTiles = [];
     for (const savedMapTile of savedMapTiles) {
