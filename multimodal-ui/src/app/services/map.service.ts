@@ -101,7 +101,6 @@ export class MapService {
   }
 
   private loadMapTilesData() {
-    // Sample map tile providers
     const savedTiles = this.loadSavedMapTiles();
 
     const index = parseInt(
