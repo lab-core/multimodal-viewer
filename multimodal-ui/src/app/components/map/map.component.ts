@@ -1,6 +1,6 @@
 import { Component, inject, OnDestroy } from '@angular/core';
 import { LeafletModule } from '@bluehalo/ngx-leaflet';
-import { latLng, Map, tileLayer } from 'leaflet';
+import { latLng, Map, tileLayer, LatLngExpression } from 'leaflet';
 import { AnimationService } from '../../services/animation.service';
 import { MapService } from '../../services/map.service';
 
@@ -12,7 +12,10 @@ import { MapService } from '../../services/map.service';
 })
 export class MapComponent implements OnDestroy {
   animationService: AnimationService = inject(AnimationService);
+
+  // Retrieve saved zoom and position from localStorage
   savedZoom = localStorage.getItem('mapZoom') ? parseInt(localStorage.getItem('mapZoom')!, 10) : 12;
+  savedCenter: LatLngExpression = this.getSavedCenter();
 
   options = {
     layers: [
@@ -26,17 +29,18 @@ export class MapComponent implements OnDestroy {
     ],
 
     zoom: this.savedZoom,
-    center: latLng(45.523066, -73.652687),
+    center: this.savedCenter,
   };
 
   private map!: Map;
 
   constructor(private readonly mapService: MapService) {
-    window.addEventListener('beforeunload', this.saveZoomBeforeUnload.bind(this));
+    window.addEventListener('beforeunload', this.saveMapState.bind(this));
   }
 
   ngOnDestroy() {
-    window.removeEventListener('beforeunload', this.saveZoomBeforeUnload.bind(this));
+    window.removeEventListener('beforeunload', this.saveMapState.bind(this));
+    this.saveMapState();
   }
 
   onMapReady(map: Map) {
@@ -46,15 +50,44 @@ export class MapComponent implements OnDestroy {
     map.zoomControl.setPosition('bottomright');
     this.animationService.addPixiOverlay(map);
 
+    
     if (this.savedZoom) {
       map.setZoom(this.savedZoom);
     }
+    if (this.savedCenter) {
+      map.setView(this.savedCenter, this.savedZoom);
+    }
   }
 
-  private saveZoomBeforeUnload() {
+  private saveMapState() {
     if (this.map) {
       const currentZoom = this.map.getZoom();
+      const currentCenter = this.map.getCenter();
+
       localStorage.setItem('mapZoom', currentZoom.toString());
+      localStorage.setItem('mapCenter', JSON.stringify([currentCenter.lat, currentCenter.lng]));
     }
+  }
+
+  private getSavedCenter(): LatLngExpression {
+    const savedCenter = localStorage.getItem('mapCenter');
+    if (savedCenter) {
+      try {
+        const parsedCenter = JSON.parse(savedCenter) as [number, number];
+        // Validate that the parsed center is a valid LatLngExpression (an array of two numbers)
+        if (
+          Array.isArray(parsedCenter) &&
+          parsedCenter.length === 2 &&
+          typeof parsedCenter[0] === 'number' &&
+          typeof parsedCenter[1] === 'number'
+        ) {
+          return parsedCenter; // Safe to cast as LatLngExpression
+        }
+      } catch (e) {
+        console.error('Failed to parse saved map center:', e);
+      }
+    }
+    // Default center to Montreal
+    return latLng(45.523066, -73.652687);
   }
 }
