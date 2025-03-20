@@ -554,6 +554,7 @@ export class VisualizationService {
           wantedVisualizationTime >
             simulationStates.lastContinuousState.timestamp,
       );
+      
     });
 
     effect(() => {
@@ -573,6 +574,44 @@ export class VisualizationService {
         this.getPolylines(simulation.id);
       }
     });
+
+    this.initializeAutoSave();
+    this.initializeAutoLoad();
+  }
+
+  // MARK: Local Storage
+  private initializeAutoSave(): void {
+    window.addEventListener('beforeunload', () => {
+      this.saveWantedVisualizationTime();
+    });
+  }
+
+  private saveWantedVisualizationTime(): void {
+    const wantedVisualizationTime = this._wantedVisualizationTimeSignal();
+    if (wantedVisualizationTime !== null) {
+      localStorage.setItem('wantedVisualizationTime', wantedVisualizationTime.toString());
+    }
+  }
+
+  private initializeAutoLoad(): void {
+    window.addEventListener('load', () => {
+      this.loadWantedVisualizationTime();
+    });
+  }
+
+  private loadWantedVisualizationTime(): void {
+    const savedWantedVisualizationTime = localStorage.getItem('wantedVisualizationTime');
+    if (savedWantedVisualizationTime) {
+      const time = parseFloat(savedWantedVisualizationTime);
+      if (!isNaN(time)) {
+        this.wantedVisualizationTime = time;
+        this.visualizationTimeOverrideSignal.set(time);
+      }
+    }
+  }
+
+  public clearLocalStorage(): void {
+    localStorage.removeItem('wantedVisualizationTime');
   }
 
   // MARK: Lifecycle
@@ -609,6 +648,7 @@ export class VisualizationService {
     this._simulationStartTimeSignal.set(null);
     this._simulationEndTimeSignal.set(null);
     this._visualizationMaxTimeSignal.set(null);
+    this.clearLocalStorage();
 
     if (this.timeout !== null) {
       clearTimeout(this.timeout);
