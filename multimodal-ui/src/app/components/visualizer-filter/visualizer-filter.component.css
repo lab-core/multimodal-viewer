@@ -1,19 +1,18 @@
 .title{
-    font: var(--mat-sys-body-large);
+    font: var(--mat-sys-body-medium);
     margin-top: 0px;
     margin-bottom: 10px
 }
 
-.content {
-    display: flex;
-    flex-direction: column;
-}
-mat-checkbox {
-    height: 25px;
+mat-chip-option {
+    margin-bottom: 10px;
+    width: 100%;
+    min-width: 110px;
 }
 
 ul {
     list-style-type: none;
     padding-left: 20px;
-    margin-top: 4px;
+    margin-top: 0px;
+    margin-bottom: 0px;
 }

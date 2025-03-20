@@ -3,10 +3,11 @@ import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { VisualizationFilterService } from '../../services/visualization-filter.service';
 import { MatButtonModule } from '@angular/material/button';
+import { MatChipsModule } from '@angular/material/chips';
 
 @Component({
   selector: 'app-visualizer-filter',
-  imports: [MatCardModule, MatCheckboxModule, MatButtonModule],
+  imports: [MatCardModule, MatCheckboxModule, MatButtonModule, MatChipsModule],
   templateUrl: './visualizer-filter.component.html',
   styleUrl: './visualizer-filter.component.css',
 })
