@@ -39,6 +39,10 @@ export class MapLayersComponent {
     this.mapService.selectMapTile(tile);
   }
 
+  removeMapTile(tile: MapTile) {
+    this.mapService.removeMapTile(tile);
+  }
+
   async addMapTile() {
     const result = await firstValueFrom(
       this.dialogService.openAddMapTileDialog().afterClosed(),

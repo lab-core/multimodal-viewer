@@ -3,7 +3,8 @@
         <p class="title">Map Tile Providers:</p>
         <mat-chip-listbox class="chip-list" aria-label="Map Layers">
             @for (tile of mapTiles(); track tile) {
-            <mat-chip-option [selected]="selectedMapTile() === tile" (click)="setMapTile(tile)">
+            <mat-chip-option [selected]="selectedMapTile() === tile" (removed)="removeMapTile(tile)"
+                (click)="setMapTile(tile)">
                 {{tile.name}}
                 @if (tile.custom) {
                 <button matChipRemove aria-label="'remove template form' + keyword">

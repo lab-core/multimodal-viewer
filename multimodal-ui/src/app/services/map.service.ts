@@ -1,5 +1,4 @@
 import {
-  computed,
   effect,
   Injectable,
   Signal,
@@ -50,7 +49,7 @@ export class MapService {
     if (this.map == null) return;
 
     const selectedMapTile = this._selectedMapTile();
-    if (selectedMapTile !== null) {
+    if (selectedMapTile !== undefined) {
       this.map.removeLayer(selectedMapTile.tile);
     }
 
@@ -63,6 +62,17 @@ export class MapService {
       const newTile = this.createMapTile(name, url, attribution, true);
       return [...mapTiles, newTile];
     });
+  }
+
+  removeMapTile(tile: MapTile) {
+    this._mapTiles.update((mapTiles) => {
+      return mapTiles.filter((mapTile) => mapTile !== tile);
+    });
+
+    // Select first one if current one is deleted
+    if (tile === this._selectedMapTile()) {
+      this.selectMapTile(this._mapTiles()[0]);
+    }
   }
 
   private loadMapTilesData() {
@@ -84,17 +94,18 @@ export class MapService {
 
     const addedTiles = this.loadSavedMapTiles();
     const allMapTiles = [...defaultMapTile, ...addedTiles];
-    this._mapTiles.set(allMapTiles);
 
     const index = parseInt(
       localStorage.getItem(this.KEY_SELECTED_TILE_INDEX) as string,
     );
 
-    if (!isNaN(index) || index >= allMapTiles.length) {
+    if (!isNaN(index) && index < allMapTiles.length) {
       this._selectedMapTile = signal(allMapTiles[index]);
     } else {
       this._selectedMapTile = signal(allMapTiles[0]);
     }
+
+    this._mapTiles.set(allMapTiles);
   }
 
   private loadSavedMapTiles() {

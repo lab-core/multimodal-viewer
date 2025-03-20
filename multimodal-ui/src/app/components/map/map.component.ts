@@ -22,15 +22,7 @@ export class MapComponent {
     center: latLng(45.523066, -73.652687),
   };
 
-  constructor(private readonly mapService: MapService) {
-    // const mapLayer = mapService.mapLayers()[0];
-    // const tile = tileLayer(mapLayer.url, {
-    //   noWrap: true,
-    //   minZoom: 3,
-    //   maxZoom: 18,
-    //   attribution: mapLayer.attribution,
-    // });
-  }
+  constructor(private readonly mapService: MapService) {}
 
   onMapReady(map: Map) {
     this.mapService.map = map;
