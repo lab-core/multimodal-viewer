@@ -22,10 +22,8 @@
   </section>
 </div>
 
-
-
+<!-- MARK: Search Bar -->
 <form class="fade" [class.fade-show]="showSearch" [class.enable-pointer-events]="showSearch">
-  <!-- MARK: Search Bar -->
   @let filteredEntitySearchData = filteredEntitySearchDataSignal();
   @let searchValue = searchValueSignal();
   <mat-form-field class="tab-content search-bar enable-pointer-events">
@@ -49,7 +47,7 @@
   </mat-form-field>
 </form>
 
-<!-- MARK: Filter TODO -->
+<!-- MARK: Filter TODO (would be nice in a component maybe) -->
 <div class="tab-content fade" [class.fade-show]="showFilter" [class.enable-pointer-events]="showFilter">
   <mat-card appearance="outlined">
     <mat-card-content>Filters [TODO]</mat-card-content>

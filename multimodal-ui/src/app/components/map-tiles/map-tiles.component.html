@@ -1,6 +1,6 @@
 <mat-card appearance="outlined">
     <mat-card-content>
-        <p class="title">Map Tile Providers:</p>
+        <p class="title">Map Tile Providers</p>
         <mat-chip-listbox class="chip-list" aria-label="Map Layers">
             @for (tile of mapTiles(); track tile) {
             <mat-chip-option [selected]="selectedMapTile() === tile" (removed)="removeMapTile(tile)"
@@ -16,6 +16,7 @@
         </mat-chip-listbox>
         <div class="btn-container">
             <button mat-button (click)="addMapTile()">Add Map Tile</button>
+            <button mat-button (click)="resetMapTiles()">Reset to Default</button>
         </div>
     </mat-card-content>
 </mat-card>

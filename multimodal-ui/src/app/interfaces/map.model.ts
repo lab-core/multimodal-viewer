@@ -12,4 +12,5 @@ export interface MapTileSaveData {
   name: string;
   url: string;
   attribution: string | null;
+  custom: boolean;
 }

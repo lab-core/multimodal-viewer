@@ -41,7 +41,7 @@ export class MapService {
     });
 
     effect(() => {
-      this.effecSaveSelectedIndex();
+      this.effectUpdateIndex();
     });
   }
 
@@ -68,18 +68,16 @@ export class MapService {
     this._mapTiles.update((mapTiles) => {
       return mapTiles.filter((mapTile) => mapTile !== tile);
     });
-
-    // Select first one if current one is deleted
-    if (tile === this._selectedMapTile()) {
-      this.selectMapTile(this._mapTiles()[0]);
-    }
   }
 
-  private loadMapTilesData() {
-    // Sample map tile providers
+  resetMapTiles() {
+    this._mapTiles.set(this.getDefaultTilesData());
+  }
+
+  private getDefaultTilesData() {
     const defaultMapTile = [
       this.createMapTile(
-        'OSM',
+        'OpenStreetMap Standard',
         'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         false,
@@ -88,31 +86,44 @@ export class MapService {
         'Stamen Toner Lite (free tier)',
         'https://tiles.stadiamaps.com/tiles/stamen_toner_lite/{z}/{x}/{y}{r}.png',
         '&copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a hr&copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/about" target="_blank">OpenStreetMap</a> contributorsef="https://stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/about" target="_blank">OpenStreetMap</a> contributors',
-        false,
+        true,
+      ),
+
+      this.createMapTile(
+        'Stamen Aliade (free tier)',
+        'https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}.png',
+        '&copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a hr&copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/about" target="_blank">OpenStreetMap</a> contributorsef="https://stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/about" target="_blank">OpenStreetMap</a> contributors',
+        true,
       ),
     ];
 
-    const addedTiles = this.loadSavedMapTiles();
-    const allMapTiles = [...defaultMapTile, ...addedTiles];
+    return defaultMapTile;
+  }
+
+  private loadMapTilesData() {
+    // Sample map tile providers
+    const savedTiles = this.loadSavedMapTiles();
 
     const index = parseInt(
       localStorage.getItem(this.KEY_SELECTED_TILE_INDEX) as string,
     );
 
-    if (!isNaN(index) && index < allMapTiles.length) {
-      this._selectedMapTile = signal(allMapTiles[index]);
+    if (!isNaN(index) && index < savedTiles.length) {
+      this._selectedMapTile = signal(savedTiles[index]);
     } else {
-      this._selectedMapTile = signal(allMapTiles[0]);
+      this._selectedMapTile = signal(savedTiles[0]);
     }
 
-    this._mapTiles.set(allMapTiles);
+    this._mapTiles.set(savedTiles);
   }
 
   private loadSavedMapTiles() {
     const savedMapTilesJson = localStorage.getItem(this.KEY_ADDED_TILES);
-    if (savedMapTilesJson == null) return [];
+    if (savedMapTilesJson == null) return this.getDefaultTilesData();
 
     const savedMapTiles = JSON.parse(savedMapTilesJson) as MapTileSaveData[];
+    if (savedMapTiles.length == 0) return this.getDefaultTilesData();
+
     const mapTiles = [];
     for (const savedMapTile of savedMapTiles) {
       mapTiles.push(
@@ -120,7 +131,7 @@ export class MapService {
           savedMapTile.name,
           savedMapTile.url,
           savedMapTile.attribution,
-          true,
+          savedMapTile.custom,
         ),
       );
     }
@@ -129,24 +140,29 @@ export class MapService {
   }
 
   private effectSaveMapTiles() {
-    const addedMapTiles = this._mapTiles().filter((tile) => tile.custom);
+    const addedMapTiles = this._mapTiles();
     const savedMapTiles: MapTileSaveData[] = addedMapTiles.map((tile) => {
       return {
         name: tile.name,
         url: tile.url,
         attribution: tile.attribution,
+        custom: tile.custom,
       };
     });
 
     localStorage.setItem(this.KEY_ADDED_TILES, JSON.stringify(savedMapTiles));
   }
 
-  private effecSaveSelectedIndex() {
+  private effectUpdateIndex() {
     const selectedTile = this._selectedMapTile();
     if (selectedTile == null) return;
 
-    const index = this.mapTiles().findIndex((tile) => tile === selectedTile);
-    if (index === -1) return;
+    const mapTiles = this.mapTiles();
+    const index = mapTiles.findIndex((tile) => tile === selectedTile);
+    if (index === -1) {
+      this.selectMapTile(mapTiles[0]);
+      return;
+    }
 
     localStorage.setItem(this.KEY_SELECTED_TILE_INDEX, index.toString());
   }

@@ -1,6 +1,7 @@
 .title{
     font: var(--mat-sys-body-medium);
     margin-top: 0px;
+    margin-bottom: 10px
 }
 
 .chip-list {
@@ -27,5 +28,6 @@
 
 .btn-container {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    justify-content: center;
 }
