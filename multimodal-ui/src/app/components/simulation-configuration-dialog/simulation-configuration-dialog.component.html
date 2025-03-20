@@ -34,6 +34,8 @@
               formControlName="data"
               (openedChange)="refreshAvailableData()"
             >
+              <mat-option (click)="importInputData()">➕ Import New Folder</mat-option> 
+
               @for (data of availableSimulationDataSignal(); track data) {
                 <mat-option [value]="data">{{ data }}</mat-option>
               }
