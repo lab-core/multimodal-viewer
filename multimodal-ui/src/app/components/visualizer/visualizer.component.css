@@ -63,7 +63,7 @@
   bottom: calc(1rem + 4rem + 1rem);
   left: 1rem;
   top: 1rem;
-  width: 24rem;
+  width: 25rem;
 }
 
 .show-information-panel-button {
@@ -105,8 +105,4 @@ mat-card-title:not(:first-child) {
 
 .top-indent {
   padding-top: 1rem !important;
-}
-
-.scrollable-container {
-  overflow-y: auto;
 }

@@ -582,33 +582,12 @@ export class VisualizerComponent implements OnDestroy {
     Record<string, Record<string, Record<string, number>>>
   > {
     return computed(() => {
-      const environment = this.visualizationEnvironmentSignal();
+      const environment =
+        this.visualizationService.animatedSimulationEnvironmentSignal();
       if (!environment) {
         return {};
       }
       return environment.statistic;
-    });
-  }
-
-  get statisticTitleSignal(): Signal<string[]> {
-    return computed(() => {
-      const statistic = this.statisticSignal();
-      const statisticTitle = [];
-      for (const key in statistic) {
-        statisticTitle.push(key);
-      }
-      return statisticTitle;
-    });
-  }
-
-  get statisticModeSignal(): Signal<string[]> {
-    return computed(() => {
-      const statistic = this.statisticSignal();
-      const statisticTitle = [];
-      for (const key in statistic) {
-        statisticTitle.push(key);
-      }
-      return statisticTitle;
     });
   }
 
