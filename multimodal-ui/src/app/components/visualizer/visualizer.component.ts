@@ -40,6 +40,7 @@ import { SimulationControlBarComponent } from '../simulation-control-bar/simulat
 import { MapLayersComponent } from '../map-tiles/map-tiles.component';
 import { VisualizerFilterComponent } from '../visualizer-filter/visualizer-filter.component';
 import { VisualizationFilterService } from '../../services/visualization-filter.service';
+import { FavoriteEntitiesComponent } from '../favorite-entities/favorite-entities.component';
 
 export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 
@@ -55,6 +56,7 @@ export interface EntitySearch {
   imports: [
     SimulationControlBarComponent,
     VisualizerFilterComponent,
+    FavoriteEntitiesComponent,
     MapLayersComponent,
     MatCardModule,
     MatButtonModule,
@@ -307,6 +309,7 @@ export class VisualizerComponent implements OnDestroy {
   readonly tabControl: FormControl<string | null>;
   showSearch = false;
   showFilter = false;
+  showFavorites = false;
   showLayers = false;
 
   readonly searchValueSignal: WritableSignal<string | EntitySearch> =
@@ -361,12 +364,14 @@ export class VisualizerComponent implements OnDestroy {
     this.tabControl.valueChanges.subscribe((value) => {
       this.showSearch = false;
       this.showFilter = false;
+      this.showFavorites = false;
       this.showLayers = false;
       if (value === 'search') this.showSearch = true;
       else if (value === 'filter') this.showFilter = true;
+      else if (value === 'favorites') this.showFavorites = true;
       else if (value === 'layers') this.showLayers = true;
     });
-    this.tabControl.setValue('filter');
+    this.tabControl.setValue('favorites');
 
     this.searchControl = this.formBuilder.control('');
     this.searchControl.valueChanges.subscribe((value) => {

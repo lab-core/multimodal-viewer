@@ -17,6 +17,7 @@
       [formControl]="tabControl">
       <mat-button-toggle value="search"><mat-icon>search</mat-icon></mat-button-toggle>
       <mat-button-toggle value="filter"><mat-icon>filter_list</mat-icon></mat-button-toggle>
+      <mat-button-toggle value="favorites"><mat-icon>star</mat-icon></mat-button-toggle>
       <mat-button-toggle value="layers"><mat-icon>layers</mat-icon></mat-button-toggle>
     </mat-button-toggle-group>
   </section>
@@ -47,11 +48,14 @@
   </mat-form-field>
 </form>
 
-<!-- MARK: Filter -->
+<!-- MARK: Tab Elements 
+ -->
 <app-visualizer-filter class="tab-content fade" [class.fade-show]="showFilter"
   [class.enable-pointer-events]="showFilter"></app-visualizer-filter>
 
-<!-- MARK: Map Tiles -->
+<app-favorite-entities class="tab-content fade" [class.fade-show]="showFavorites"
+  [class.enable-pointer-events]="showFavorites"></app-favorite-entities>
+
 <app-map-tiles class="tab-content fade" [class.fade-show]="showLayers"
   [class.enable-pointer-events]="showLayers"></app-map-tiles>
 
