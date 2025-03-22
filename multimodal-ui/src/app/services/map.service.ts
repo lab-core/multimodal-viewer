@@ -70,10 +70,6 @@ export class MapService {
     });
   }
 
-  resetMapTiles() {
-    this._mapTiles.set(this.getDefaultTilesData());
-  }
-
   private getDefaultTilesData() {
     const defaultMapTile = [
       this.createMapTile(
@@ -84,7 +80,7 @@ export class MapService {
       ),
       this.createMapTile(
         'Stamen Toner Lite (free tier)',
-        'https://tiles.stadiamaps.com/tiles/stamen_toner_lite/{z}/{x}/{y}{r}.png',
+        'https://tiles.stadiamaps.com/tiles/stamen_toner_lite/{z}/{x}/{y}{r}.{ext}',
         '&copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a hr&copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/about" target="_blank">OpenStreetMap</a> contributorsef="https://stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/about" target="_blank">OpenStreetMap</a> contributors',
         true,
       ),

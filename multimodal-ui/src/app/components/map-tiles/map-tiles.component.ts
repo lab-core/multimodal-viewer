@@ -43,10 +43,6 @@ export class MapLayersComponent {
     this.mapService.removeMapTile(tile);
   }
 
-  resetMapTiles() {
-    this.mapService.resetMapTiles();
-  }
-
   async addMapTile() {
     const result = await firstValueFrom(
       this.dialogService.openAddMapTileDialog().afterClosed(),
