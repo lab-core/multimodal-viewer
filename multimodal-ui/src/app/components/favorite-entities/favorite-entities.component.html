@@ -15,7 +15,8 @@
                     </button>
                 </mat-chip>
                 }
-
+            </div>
+            <div class="content" [class.content-margin]="favPassengerIds().size !== 0">
                 @for (id of favPassengerIds(); track id) {
                 <mat-chip (removed)="toggleFavoritePassenger(id)">
                     <mat-icon matChipAvatar>accessibility</mat-icon><span class="chip-text">{{ id }}</span>
