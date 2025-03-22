@@ -2,7 +2,7 @@ import { Sprite } from 'pixi.js';
 
 export interface Entity<T> {
   sprite: Sprite;
-  requestedRotation: number;
+  show: boolean;
   data: T;
 }
 
