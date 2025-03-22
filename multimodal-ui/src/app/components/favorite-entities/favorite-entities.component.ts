@@ -3,6 +3,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { FavoriteEntitiesService } from '../../services/favorite-entities.service';
+import { AnimationService } from '../../services/animation.service';
 
 @Component({
   selector: 'app-favorite-entities',
@@ -16,6 +17,7 @@ export class FavoriteEntitiesComponent {
 
   constructor(
     private readonly favoriteEntitiesService: FavoriteEntitiesService,
+    private readonly animationService: AnimationService,
   ) {
     this.favVehicleIds = favoriteEntitiesService.favVehicleIds;
     this.favPassengerIds = favoriteEntitiesService.favPassengerIds;
@@ -27,5 +29,13 @@ export class FavoriteEntitiesComponent {
 
   toggleFavoritePassenger(id: string) {
     this.favoriteEntitiesService.toggleFavoritePassenger(id);
+  }
+
+  selectVehicle(id: string) {
+    this.animationService.selectEntity(id, 'vehicle');
+  }
+
+  selectPassenger(id: string) {
+    this.animationService.selectEntity(id, 'passenger');
   }
 }

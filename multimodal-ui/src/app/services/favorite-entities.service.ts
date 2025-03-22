@@ -4,6 +4,9 @@ import { Injectable, Signal, signal, WritableSignal } from '@angular/core';
   providedIn: 'root',
 })
 export class FavoriteEntitiesService {
+  // Arrays to have them sorted
+  // Sets to quickly search
+
   private _favVehicleArray: string[] = [];
   private _favPassengersArray: string[] = [];
 
@@ -16,11 +19,6 @@ export class FavoriteEntitiesService {
 
   get favPassengerIds(): Signal<Set<string>> {
     return this._favPassengers;
-  }
-
-  constructor() {
-    for (let i = 0; i < 9; i++) this._favVehicleArray.push(i.toString());
-    this._favVehicles.set(new Set(this._favVehicleArray));
   }
 
   isFavoriteVehicle(id: string) {

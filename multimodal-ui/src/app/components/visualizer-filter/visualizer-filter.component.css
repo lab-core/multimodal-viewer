@@ -13,11 +13,12 @@ p {
     gap: 10px;
 }
 
+.entity-filters {
+    display: flex;
+    flex-direction: column;
+}
 mat-chip-option {
-    width: 100%;
-    min-width: 110px;
     margin-bottom: 10px;
-
 }
 
 /* Remove margin-bottom for that last chip */
@@ -25,7 +26,11 @@ ul li:last-child mat-chip-option {
     margin-bottom: 0px;
 }
 
+/* Make chips tigher */
 ul {
+    width: fit-content;
+    margin-left: auto; /* Move list of modes to the right */
+
     list-style-type: none;
     padding-left: 20px;
     margin-top: 0px;
@@ -35,4 +40,10 @@ ul {
 .radio-group {
     display: flex;
     flex-direction: column;
+}
+
+/* Shrink radio buttons */
+:host ::ng-deep .mat-mdc-radio-button .mdc-radio {
+    scale: 0.8;
+    padding: 5px;
 }

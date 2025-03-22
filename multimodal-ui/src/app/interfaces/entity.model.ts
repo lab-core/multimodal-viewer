@@ -10,3 +10,5 @@ export interface Entity<T> {
 export interface EntityOwner<T> extends Sprite {
   entity: T;
 }
+
+export type EntityFilterMode = 'all' | 'favorites';

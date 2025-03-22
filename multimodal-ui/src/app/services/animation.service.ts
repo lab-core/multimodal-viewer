@@ -9,7 +9,11 @@ import * as L from 'leaflet';
 import 'leaflet-pixi-overlay';
 import { pixiOverlay } from 'leaflet';
 import * as PIXI from 'pixi.js';
-import { Entity, EntityOwner } from '../interfaces/entity.model';
+import {
+  Entity,
+  EntityFilterMode,
+  EntityOwner,
+} from '../interfaces/entity.model';
 import {
   AnimatedPassenger,
   AnimatedSimulationEnvironment,
@@ -22,6 +26,7 @@ import {
   StaticVehicleAnimationData,
   Vehicle,
 } from '../interfaces/simulation.model';
+import { FavoriteEntitiesService } from './favorite-entities.service';
 
 @Injectable({
   providedIn: 'root',
@@ -87,7 +92,9 @@ export class AnimationService {
   private previousVehiclesEntities: Entity<AnimatedVehicle>[] = [];
   private previousPassengerEntities: Entity<AnimatedPassenger>[] = [];
 
+  // Filters
   private filters: Set<string> = new Set<string>();
+  private filterMode: EntityFilterMode = 'all';
 
   private speed = 1;
   private readonly _shouldFollowEntitySignal: WritableSignal<boolean> =
@@ -96,6 +103,10 @@ export class AnimationService {
   get shouldFollowEntitySignal(): Signal<boolean> {
     return this._shouldFollowEntitySignal;
   }
+
+  constructor(
+    private readonly favoriteEntitiesService: FavoriteEntitiesService,
+  ) {}
 
   synchronizeEnvironment(simulationEnvironment: AnimatedSimulationEnvironment) {
     this.selectedEntityPolyline.clear();
@@ -243,6 +254,10 @@ export class AnimationService {
     this.filters = filters;
   }
 
+  setFilterMode(filterMode: EntityFilterMode) {
+    this.filterMode = filterMode;
+  }
+
   centerMap() {
     if (this.vehicles.length == 0) return;
 
@@ -318,13 +333,23 @@ export class AnimationService {
     const filters = this.filters;
 
     const showVehicle = !filters.has('vehicle');
+    const showPassenger = !filters.has('passenger');
+    const showFavoritesOnly = this.filterMode === 'favorites';
+
     for (const vehicle of this.vehicles)
       vehicle.sprite.visible =
-        showVehicle && !filters.has(vehicle.data.mode ?? 'unknown');
+        showVehicle && // Are vehicles not filtered
+        !filters.has(vehicle.data.mode ?? 'unknown') && // Is bus mode not filtered
+        (!showFavoritesOnly || // Is favorites filter on and is in favorites
+          this.favoriteEntitiesService.favVehicleIds().has(vehicle.data.id));
 
-    const showPassenger = !filters.has('passenger');
     for (const passenger of this.passengersEntities)
-      passenger.sprite.visible = showPassenger;
+      passenger.sprite.visible =
+        showPassenger && // Are passengers not filtered
+        (!showFavoritesOnly || // Is favorites filter on and is in favorites
+          this.favoriteEntitiesService
+            .favPassengerIds()
+            .has(passenger.data.id));
   }
 
   private setVehiclePositions() {

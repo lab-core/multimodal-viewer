@@ -8,7 +8,7 @@
                 <p>You have no favorites.</p>
                 }
                 @for (id of favVehicleIds(); track id) {
-                <mat-chip (removed)="toggleFavoriteVehicle(id)">
+                <mat-chip (click)="selectVehicle(id)" (removed)="toggleFavoriteVehicle(id)">
                     <mat-icon matChipAvatar>directions_car</mat-icon>{{ id }}
                     <button class="remove-btn" matChipRemove>
                         <mat-icon>favorite</mat-icon>
@@ -16,9 +16,9 @@
                 </mat-chip>
                 }
             </div>
-            <div class="content" [class.content-margin]="favPassengerIds().size !== 0">
+            <div class="content" [class.content-margin]="favPassengerIds().size !== 0 && favVehicleIds().size !== 0">
                 @for (id of favPassengerIds(); track id) {
-                <mat-chip (removed)="toggleFavoritePassenger(id)">
+                <mat-chip (click)="selectPassenger(id)" (removed)="toggleFavoritePassenger(id)">
                     <mat-icon matChipAvatar>accessibility</mat-icon><span class="chip-text">{{ id }}</span>
                     <button class="remove-btn" matChipRemove>
                         <mat-icon>favorite</mat-icon>
