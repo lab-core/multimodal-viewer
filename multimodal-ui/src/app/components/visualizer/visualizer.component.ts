@@ -373,7 +373,7 @@ export class VisualizerComponent implements OnDestroy {
       else if (value === 'favorites') this.showFavorites = true;
       else if (value === 'layers') this.showLayers = true;
     });
-    this.tabControl.setValue('favorites');
+    this.tabControl.setValue('search');
 
     this.searchControl = this.formBuilder.control('');
     this.searchControl.valueChanges.subscribe((value) => {

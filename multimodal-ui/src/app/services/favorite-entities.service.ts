@@ -1,4 +1,11 @@
-import { Injectable, Signal, signal, WritableSignal } from '@angular/core';
+import {
+  computed,
+  effect,
+  Injectable,
+  Signal,
+  signal,
+  WritableSignal,
+} from '@angular/core';
 
 @Injectable({
   providedIn: 'root',
@@ -7,53 +14,78 @@ export class FavoriteEntitiesService {
   // Arrays to have them sorted
   // Sets to quickly search
 
-  private _favVehicleArray: string[] = [];
-  private _favPassengersArray: string[] = [];
+  private readonly KEY_FAVORITE_VEHICLES = 'multimodal.favorite-vehicles';
+  private readonly KEY_FAVORITE_PASSENGERS = 'multimodal.favorite-passengers';
 
-  private _favVehicles: WritableSignal<Set<string>> = signal(new Set());
-  private _favPassengers: WritableSignal<Set<string>> = signal(new Set());
+  private _favVehicleArray: WritableSignal<string[]> = signal([]);
+  private _favPassengersArray: WritableSignal<string[]> = signal([]);
 
-  get favVehicleIds(): Signal<Set<string>> {
-    return this._favVehicles;
-  }
+  favVehicleIds: Signal<Set<string>> = computed(
+    () => new Set(this._favVehicleArray()),
+  );
+  favPassengerIds: Signal<Set<string>> = computed(
+    () => new Set(this._favPassengersArray()),
+  );
 
-  get favPassengerIds(): Signal<Set<string>> {
-    return this._favPassengers;
-  }
+  constructor() {
+    this.loadFavoritesFromLocalStorage();
 
-  isFavoriteVehicle(id: string) {
-    return this._favVehicles().has(id);
-  }
-
-  isFavoritePassenger(id: string) {
-    return this._favPassengers().has(id);
+    effect(() => {
+      this.saveFavoritesToLocalStorage();
+    });
   }
 
   toggleFavoriteVehicle(id: string) {
-    // If is in the list
-    if (this._favVehicleArray.find((_id) => _id === id)) {
-      // Remove from list
-      this._favVehicleArray = this._favVehicleArray.filter((_id) => _id !== id);
-    } else {
-      this._favVehicleArray.push(id);
-      this._favVehicleArray.sort();
-    }
-
-    this._favVehicles.set(new Set([...this._favVehicleArray]));
+    this._favVehicleArray.update((favVehicleArray) => {
+      return this.toggleFavoriteEntity(favVehicleArray, id);
+    });
   }
 
   toggleFavoritePassenger(id: string) {
+    this._favPassengersArray.update((favPassengerArray) => {
+      return this.toggleFavoriteEntity(favPassengerArray, id);
+    });
+  }
+
+  toggleFavoriteEntity(entities: string[], id: string) {
     // If is in the list
-    if (this._favPassengersArray.find((_id) => _id === id)) {
+    if (entities.find((_id) => _id === id)) {
       // Remove from list
-      this._favPassengersArray = this._favPassengersArray.filter(
-        (_id) => _id !== id,
-      );
+      entities = entities.filter((_id) => _id !== id);
     } else {
-      this._favPassengersArray.push(id);
-      this._favPassengersArray.sort();
+      entities.push(id);
+      entities.sort();
+    }
+    return [...entities];
+  }
+
+  private loadFavoritesFromLocalStorage() {
+    const favoriteVehiclesJson = localStorage.getItem(
+      this.KEY_FAVORITE_VEHICLES,
+    );
+    if (favoriteVehiclesJson) {
+      this._favVehicleArray.set(JSON.parse(favoriteVehiclesJson) as string[]);
     }
 
-    this._favPassengers.set(new Set([...this._favPassengersArray]));
+    const favoritePassengersJson = localStorage.getItem(
+      this.KEY_FAVORITE_PASSENGERS,
+    );
+    if (favoritePassengersJson) {
+      this._favPassengersArray.set(
+        JSON.parse(favoritePassengersJson) as string[],
+      );
+    }
+  }
+
+  private saveFavoritesToLocalStorage() {
+    localStorage.setItem(
+      this.KEY_FAVORITE_VEHICLES,
+      JSON.stringify(this._favVehicleArray()),
+    );
+
+    localStorage.setItem(
+      this.KEY_FAVORITE_PASSENGERS,
+      JSON.stringify(this._favPassengersArray()),
+    );
   }
 }
