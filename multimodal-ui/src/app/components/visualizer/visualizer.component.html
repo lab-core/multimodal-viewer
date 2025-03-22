@@ -108,6 +108,13 @@
           }}</span>
       </div>
       }
+      <div class="favorite-content">
+        <span>Favorite: </span>         
+        <button mat-icon-button disableRipple (click)="toggleFavoritePassenger(selectedPassenger.id)">
+          @let icon = isFavoritePassenger(selectedPassenger.id) ? 'favorite' : 'favorite_outline';
+          <mat-icon>{{ icon }}</mat-icon>
+        </button>
+      </div>
       @if (selectedPassengerVehicle !== null) {
       <span tabindex="0" class="clickable" [matTooltip]="'Click to select the vehicle'"
         (click)="selectVehicle(selectedPassengerVehicle.id)"
@@ -133,6 +140,13 @@
           }}</span>
       </div>
       }
+      <div class="favorite-content">
+        <span>Favorite: </span>         
+        <button mat-icon-button disableRipple (click)="toggleFavoriteVehicle(selectedVehicle.id)">
+          @let icon = isFavoriteVehicle(selectedVehicle.id) ? 'favorite' : 'favorite_outline';
+          <mat-icon>{{ icon }}</mat-icon>
+        </button>
+      </div>
       @if (selectedVehiclePassengers.length > 0) {
       <span>Passengers:</span>
       }

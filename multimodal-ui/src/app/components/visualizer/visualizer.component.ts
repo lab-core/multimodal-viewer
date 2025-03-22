@@ -41,6 +41,7 @@ import { MapLayersComponent } from '../map-tiles/map-tiles.component';
 import { VisualizerFilterComponent } from '../visualizer-filter/visualizer-filter.component';
 import { VisualizationFilterService } from '../../services/visualization-filter.service';
 import { FavoriteEntitiesComponent } from '../favorite-entities/favorite-entities.component';
+import { FavoriteEntitiesService } from '../../services/favorite-entities.service';
 
 export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 
@@ -358,6 +359,7 @@ export class VisualizerComponent implements OnDestroy {
     private readonly animationService: AnimationService,
     private readonly loadingService: LoadingService,
     private readonly visualizationService: VisualizationService,
+    private readonly favoriteEntitiesService: FavoriteEntitiesService,
     private readonly formBuilder: FormBuilder,
   ) {
     this.tabControl = new FormControl('');
@@ -640,6 +642,24 @@ export class VisualizerComponent implements OnDestroy {
   selectVehicle(id: string) {
     this.animationService.selectEntity(id, 'vehicle');
   }
+
+  /** Favorite Entitites */
+  toggleFavoriteVehicle(id: string) {
+    this.favoriteEntitiesService.toggleFavoriteVehicle(id);
+  }
+
+  toggleFavoritePassenger(id: string) {
+    this.favoriteEntitiesService.toggleFavoritePassenger(id);
+  }
+
+  isFavoriteVehicle(id: string) {
+    return this.favoriteEntitiesService.favVehicleIds().has(id);
+  }
+
+  isFavoritePassenger(id: string) {
+    return this.favoriteEntitiesService.favPassengerIds().has(id);
+  }
+  /** ***************** */
 
   clearSearch() {
     this.searchControl.setValue(null);

@@ -11,8 +11,8 @@ p {
 .container {
     width: 100%;
     max-height: 400px;
-    overflow-x: visible;
-    overflow-y: scroll;
+    overflow: auto;
+    padding-bottom: 10px; /* Fixes scroll-whell always appearing */
 }
 
 .content {

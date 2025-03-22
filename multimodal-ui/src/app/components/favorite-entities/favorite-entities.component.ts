@@ -11,25 +11,21 @@ import { FavoriteEntitiesService } from '../../services/favorite-entities.servic
   styleUrl: './favorite-entities.component.css',
 })
 export class FavoriteEntitiesComponent {
-  favVehicleIds: Signal<string[]>;
-  favPassengerIds: Signal<string[]>;
+  favVehicleIds: Signal<Set<string>>;
+  favPassengerIds: Signal<Set<string>>;
 
-  constructor(readonly favoriteEntitiesService: FavoriteEntitiesService) {
+  constructor(
+    private readonly favoriteEntitiesService: FavoriteEntitiesService,
+  ) {
     this.favVehicleIds = favoriteEntitiesService.favVehicleIds;
     this.favPassengerIds = favoriteEntitiesService.favPassengerIds;
   }
 
-  // selectVehicle(id: string) {
-  // }
-
-  // selectPassenger(id: string) {
-  // }
-
-  unfavVehicle(id: string) {
-    this.favoriteEntitiesService.removeVehicle(id);
+  toggleFavoriteVehicle(id: string) {
+    this.favoriteEntitiesService.toggleFavoriteVehicle(id);
   }
 
-  unfavPassenger(id: string) {
-    this.favoriteEntitiesService.removePassenger(id);
+  toggleFavoritePassenger(id: string) {
+    this.favoriteEntitiesService.toggleFavoritePassenger(id);
   }
 }

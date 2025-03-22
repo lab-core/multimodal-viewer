@@ -4,38 +4,58 @@ import { Injectable, Signal, signal, WritableSignal } from '@angular/core';
   providedIn: 'root',
 })
 export class FavoriteEntitiesService {
-  private _favVehicleIds: WritableSignal<string[]> = signal([]);
-  private _favPassengersIds: WritableSignal<string[]> = signal([]);
+  private _favVehicleArray: string[] = [];
+  private _favPassengersArray: string[] = [];
 
-  get favVehicleIds(): Signal<string[]> {
-    return this._favVehicleIds;
+  private _favVehicles: WritableSignal<Set<string>> = signal(new Set());
+  private _favPassengers: WritableSignal<Set<string>> = signal(new Set());
+
+  get favVehicleIds(): Signal<Set<string>> {
+    return this._favVehicles;
   }
 
-  get favPassengerIds(): Signal<string[]> {
-    return this._favPassengersIds;
+  get favPassengerIds(): Signal<Set<string>> {
+    return this._favPassengers;
   }
 
-  addFavoriteVehicle(id: string) {
-    this._favVehicleIds.update((ids) => {
-      if (ids.find((tid) => tid === id) !== undefined) return ids;
-      return [...ids, id].sort();
-    });
+  constructor() {
+    for (let i = 0; i < 9; i++) this._favVehicleArray.push(i.toString());
+    this._favVehicles.set(new Set(this._favVehicleArray));
   }
 
-  addFavoritePassenger(id: string) {
-    this._favPassengersIds.update((ids) => {
-      if (ids.find((tid) => tid === id) !== undefined) return ids;
-      return [...ids, id].sort();
-    });
+  isFavoriteVehicle(id: string) {
+    return this._favVehicles().has(id);
   }
 
-  removeVehicle(id: string) {
-    this._favVehicleIds.set(this.favVehicleIds().filter((tid) => tid !== id));
+  isFavoritePassenger(id: string) {
+    return this._favPassengers().has(id);
   }
 
-  removePassenger(id: string) {
-    this._favPassengersIds.set(
-      this.favPassengerIds().filter((tid) => tid !== id),
-    );
+  toggleFavoriteVehicle(id: string) {
+    // If is in the list
+    if (this._favVehicleArray.find((_id) => _id === id)) {
+      // Remove from list
+      this._favVehicleArray = this._favVehicleArray.filter((_id) => _id !== id);
+    } else {
+      this._favVehicleArray.push(id);
+      this._favVehicleArray.sort();
+    }
+
+    this._favVehicles.set(new Set([...this._favVehicleArray]));
+  }
+
+  toggleFavoritePassenger(id: string) {
+    // If is in the list
+    if (this._favPassengersArray.find((_id) => _id === id)) {
+      // Remove from list
+      this._favPassengersArray = this._favPassengersArray.filter(
+        (_id) => _id !== id,
+      );
+    } else {
+      this._favPassengersArray.push(id);
+      this._favPassengersArray.sort();
+    }
+
+    this._favPassengers.set(new Set([...this._favPassengersArray]));
   }
 }

@@ -126,3 +126,28 @@
 mat-card-title:not(:first-child) {
   margin-block-start: 1rem;
 }
+
+
+/* Favorites */
+
+.favorite-content {
+  display: flex;
+  align-items: center;
+  height: 20px; /* Squeeze div because icon is too big */
+}
+
+.favorite-content button {
+  scale: 0.8;
+}
+
+/* Favorites icon */
+
+/* Remove label padding */
+:host ::ng-deep .mdc-evolution-chip--with-avatar.mdc-evolution-chip--with-primary-graphic .mdc-evolution-chip__action--primary {
+  padding: 0px;
+}
+
+/* Fix inner-uneven padding */
+:host ::ng-deep .mdc-evolution-chip--with-avatar.mdc-evolution-chip--with-primary-graphic .mdc-evolution-chip__graphic {
+  padding: 4px;
+}
