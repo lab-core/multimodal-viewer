@@ -446,13 +446,18 @@ export class VisualizerComponent implements OnDestroy {
         matDialogRef.close(null);
       }
 
+      this.loadingService.stop();
+
       switch (status) {
         case 'disconnected':
         case 'running':
         case 'paused':
         case 'completed':
-        case 'starting':
         case 'stopping':
+          return;
+
+        case 'starting':
+          this.loadingService.start('Starting simulation...');
           return;
 
         case 'not-found':
