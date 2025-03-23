@@ -126,6 +126,30 @@ mat-card-title:not(:first-child) {
   margin-block-start: 1rem;
 }
 
+.spin {
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.loading {
+  position: absolute;
+  /**
+   * 64px is the height of the control bar
+   * 10px for the gaps
+   */
+  bottom: calc(10px + 64px + 10px);
+  left: 50%;
+  transform: translate(-50%, 0);
+}
+
 /* Favorites */
 
 .favorite-content {

@@ -1,0 +1,76 @@
+@let isSimulationPaused = isSimulationPausedSignal();
+@let simulation = simulationInputSignal();
+
+@let isInitialized = isInitializedSignal();
+
+@if (isInitialized && simulation !== null) {
+  <mat-card>
+    <mat-card-header>
+      <mat-card-subtitle>Simulation Status</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content class="flex-column align-center gap-1-rem">
+      <section>
+        <span [matTooltip]="simulation.simulationTime?.toString() ?? 'unknown'">
+          {{
+            simulation.simulationTime !== null
+              ? (simulation.simulationTime | simulationTime)
+              : "unknown"
+          }}</span
+        >
+      </section>
+
+      <section>
+        <mat-chip
+          [style.color]="
+            'var(--' +
+            getSimulationStatusColor(simulation.status) +
+            '-text-color)'
+          "
+          [style.background-color]="
+            'var(--' +
+            getSimulationStatusColor(simulation.status) +
+            '-background-color)'
+          "
+        >
+          {{ simulation.status }}
+        </mat-chip>
+      </section>
+
+      <section class="flex-row align-cross-start gap-0-5-rem">
+        <button
+          mat-icon-button
+          [matTooltip]="
+            isSimulationPaused
+              ? 'Resume the simulation'
+              : 'Pause the simulation'
+          "
+          [disabled]="
+            simulation.status !== 'running' && simulation.status !== 'paused'
+          "
+          (click)="toggleSimulationPause(isSimulationPaused, simulation.id)"
+        >
+          <mat-icon>{{ isSimulationPaused ? "play_arrow" : "pause" }}</mat-icon>
+        </button>
+
+        <button
+          mat-icon-button
+          [matTooltip]="'Stop the simulation'"
+          [disabled]="
+            simulation.status !== 'running' && simulation.status !== 'paused'
+          "
+          (click)="stopSimulation(simulation.id)"
+        >
+          <mat-icon>stop</mat-icon>
+        </button>
+
+        <button
+          mat-icon-button
+          [matTooltip]="'Configure the simulation'"
+          (click)="editSimulationConfiguration(simulation)"
+        >
+          <mat-icon>settings</mat-icon>
+        </button>
+      </section>
+    </mat-card-content>
+  </mat-card>
+}

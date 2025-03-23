@@ -18,30 +18,32 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import {
   DisplayedPassenger,
   DisplayedVehicle,
+  RUNNING_SIMULATION_STATUSES,
   Simulation,
   SimulationStatus,
 } from '../../interfaces/simulation.model';
 import { AnimationService } from '../../services/animation.service';
 import { CommunicationService } from '../../services/communication.service';
 import { DialogService } from '../../services/dialog.service';
+import { FavoriteEntitiesService } from '../../services/favorite-entities.service';
 import { LoadingService } from '../../services/loading.service';
 import { SimulationService } from '../../services/simulation.service';
 import { UserInterfaceService } from '../../services/user-interface.service';
-import { VisualizationService } from '../../services/visualization.service';
-import { InformationDialogComponent } from '../information-dialog/information-dialog.component';
-import { SimulationControlBarComponent } from '../simulation-control-bar/simulation-control-bar.component';
-import { MapLayersComponent } from '../map-tiles/map-tiles.component';
-import { VisualizerFilterComponent } from '../visualizer-filter/visualizer-filter.component';
 import { VisualizationFilterService } from '../../services/visualization-filter.service';
+import { VisualizationService } from '../../services/visualization.service';
 import { FavoriteEntitiesComponent } from '../favorite-entities/favorite-entities.component';
-import { FavoriteEntitiesService } from '../../services/favorite-entities.service';
+import { InformationDialogComponent } from '../information-dialog/information-dialog.component';
+import { MapLayersComponent } from '../map-tiles/map-tiles.component';
+import { SimulationControlBarComponent } from '../simulation-control-bar/simulation-control-bar.component';
+import { SimulationControlPanelComponent } from '../simulation-control-panel/simulation-control-panel.component';
+import { VisualizerFilterComponent } from '../visualizer-filter/visualizer-filter.component';
 
 export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 
@@ -68,6 +70,7 @@ export interface EntitySearch {
     MatTooltipModule,
     MatAutocompleteModule,
     ReactiveFormsModule,
+    SimulationControlPanelComponent,
     MatExpansionModule,
     MatButtonToggleModule,
     MatTabsModule,
@@ -78,8 +81,6 @@ export interface EntitySearch {
 })
 export class VisualizerComponent implements OnDestroy {
   // MARK: Properties
-  readonly simulationSignal: Signal<Simulation | null>;
-
   private matDialogRef: MatDialogRef<InformationDialogComponent> | null = null;
 
   private readonly visualizerStatusSignal: Signal<VisualizerStatus> = computed(
@@ -342,6 +343,14 @@ export class VisualizerComponent implements OnDestroy {
     );
   });
 
+  readonly isSimulationRunningSignal: Signal<boolean> = computed(() => {
+    const simulation = this.simulationSignal();
+    return (
+      simulation !== null &&
+      RUNNING_SIMULATION_STATUSES.includes(simulation.status)
+    );
+  });
+
   readonly entitySearchDisplayFunction = (entity: {
     id: string;
     displayedValue: string;
@@ -380,8 +389,8 @@ export class VisualizerComponent implements OnDestroy {
       this.searchValueSignal.set(value ?? '');
       console.log(value);
     });
-    this.simulationSignal = this.simulationService.activeSimulationSignal;
 
+    // MARK: Effects
     effect(() => {
       const searchValue = this.searchValueSignal();
 
@@ -393,16 +402,6 @@ export class VisualizerComponent implements OnDestroy {
         this.selectPassenger(searchValue.id);
       } else if (searchValue.type === 'vehicle') {
         this.selectVehicle(searchValue.id);
-      }
-    });
-
-    // MARK: Effects
-    effect(() => {
-      const isLoading = this.visualizationService.isLoadingSignal();
-      if (isLoading) {
-        this.loadingService.start('Loading visualization data...');
-      } else {
-        this.loadingService.stop();
       }
     });
 
@@ -437,6 +436,7 @@ export class VisualizerComponent implements OnDestroy {
       this.animationService.setPause(isVisualizationPausedSignal);
     });
 
+    // Handle the visualization status
     effect(() => {
       const status = this.visualizerStatusSignal();
 
@@ -445,12 +445,14 @@ export class VisualizerComponent implements OnDestroy {
         this.matDialogRef = null;
         matDialogRef.close(null);
       }
-      this.loadingService.stop();
 
       switch (status) {
         case 'disconnected':
         case 'running':
         case 'paused':
+        case 'completed':
+        case 'starting':
+        case 'stopping':
           return;
 
         case 'not-found':
@@ -470,33 +472,6 @@ export class VisualizerComponent implements OnDestroy {
               }
             })
             .catch(console.error);
-          return;
-
-        case 'completed':
-          this.matDialogRef = this.dialogService.openInformationDialog({
-            title: 'Simulation completed',
-            message:
-              'The simulation has been completed. You can continue the visualization or go back to the home page.',
-            type: 'info',
-            confirmButtonOverride: 'Back to home',
-            cancelButtonOverride: 'Stay here',
-            canCancel: true,
-          });
-          void firstValueFrom(this.matDialogRef.afterClosed())
-            .then(async (response) => {
-              if (response) {
-                await this.router.navigate(['home']);
-              }
-            })
-            .catch(console.error);
-          return;
-
-        case 'starting':
-          this.loadingService.start('Starting simulation...');
-          return;
-
-        case 'stopping':
-          this.loadingService.start('Stopping simulation...');
           return;
 
         case 'lost':
@@ -593,14 +568,9 @@ export class VisualizerComponent implements OnDestroy {
           this.visualizationService.init(simulation);
           return;
 
-        case 'disconnected':
-        case 'not-found':
-        case 'corrupted':
-        case 'outdated':
-        case 'future':
+        default:
+          this.visualizationService.destroy();
       }
-
-      this.visualizationService.destroy();
     });
   }
 
@@ -637,6 +607,14 @@ export class VisualizerComponent implements OnDestroy {
 
   get selectedPassengerIdSignal(): Signal<string | null> {
     return this.animationService.selectedPassengerIdSignal;
+  }
+
+  get simulationSignal(): Signal<Simulation | null> {
+    return this.simulationService.activeSimulationSignal;
+  }
+
+  get isLoadingSignal(): Signal<boolean> {
+    return this.visualizationService.isLoadingSignal;
   }
 
   // MARK: Handlers

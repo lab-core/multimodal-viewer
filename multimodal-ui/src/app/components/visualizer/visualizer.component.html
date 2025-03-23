@@ -45,7 +45,6 @@
     @let searchValue = searchValueSignal();
     <mat-form-field class="search-form">
       <input matInput [matAutocomplete]="auto" [formControl]="searchControl" />
-      <!-- TODO Search -->
       <mat-label>Search in the simulation</mat-label>
       @if (searchValue !== null && searchValue !== "") {
         <button mat-icon-button matSuffix type="button" (click)="clearSearch()">
@@ -90,7 +89,6 @@
   <!-- MARK: Information Panel
     -->
   @if (shouldShowInformationPanelSignal()) {
-    <!-- TODO Fill panel -->
     <mat-card class="flex-column information-panel enable-pointer-events">
       <mat-card-content class="flex-1">
         <mat-card-title>Simulation: {{ simulation.name }}</mat-card-title>
@@ -334,14 +332,36 @@
   }
 
   <!-- MARK: Control Bar
--->
+  -->
   <app-simulation-control-bar
     class="enable-pointer-events"
     [simulation]="simulation"
-    (pauseSimulation)="pauseSimulation($event)"
-    (resumeSimulation)="resumeSimulation($event)"
-    (stopSimulation)="stopSimulation($event)"
-    (editSimulationConfiguration)="editSimulationConfiguration($event)"
     (leaveVisualization)="leaveVisualization()"
-  ></app-simulation-control-bar>
+  />
+
+  <!-- MARK: Control Panel
+  -->
+  @let isSimulationRunning = isSimulationRunningSignal();
+  @if (isSimulationRunning) {
+    <app-simulation-control-panel
+      class="enable-pointer-events"
+      [simulation]="simulation"
+      (pauseSimulation)="pauseSimulation($event)"
+      (resumeSimulation)="resumeSimulation($event)"
+      (stopSimulation)="stopSimulation($event)"
+      (editSimulationConfiguration)="editSimulationConfiguration($event)"
+    />
+  }
+}
+
+<!-- MARK: Loading
+-->
+@let isLoading = isLoadingSignal();
+@if (isLoading) {
+  <mat-chip class="loading background-gray text-gray enable-pointer-events">
+    <div class="flex-row align-center gap-0-5-rem">
+      <mat-icon class="spin">autorenew</mat-icon>
+      Loading visualization data...
+    </div>
+  </mat-chip>
 }
