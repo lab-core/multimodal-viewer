@@ -3,16 +3,15 @@ mat-card {
   z-index: 400;
 }
 
-/* Fade animation */
-.fade {
-  opacity: 0;
-  transition: opacity 0.1s ease-in-out;
-}
+.content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 
-.fade-show {
-  opacity: 1;
+  max-width: 200px;
+  margin-right: 10px;
 }
-/* ************** */
 
 .disable-pointer-events {
   pointer-events: none;
@@ -27,19 +26,13 @@ mat-card-content {
   overflow-y: scroll;
 }
 
+.info {
+  margin-bottom: 5px;
+}
+
 /* Make menu padding thin */
 .mat-mdc-card-content {
   padding: 0px !important;
-}
-
-.content {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-
-  max-width: 200px;
-  margin-right: 10px;
 }
 
 /* Don't make text overflow */
@@ -48,3 +41,14 @@ mat-card-content {
 :host ::ng-deep .mat-mdc-standard-chip .mat-mdc-chip-action-label {
   overflow: hidden;
 }
+
+/* Fade animation */
+.fade {
+  opacity: 0;
+  transition: opacity 0.1s ease-in-out;
+}
+
+.fade-show {
+  opacity: 1;
+}
+/* ************** */

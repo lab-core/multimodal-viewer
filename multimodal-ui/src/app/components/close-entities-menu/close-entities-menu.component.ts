@@ -7,7 +7,6 @@ import {
   signal,
   Signal,
   viewChild,
-  WritableSignal,
 } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { AnimationService } from '../../services/animation.service';
@@ -75,8 +74,14 @@ export class CloseEntitiesMenuComponent implements AfterViewInit {
     });
   }
 
-  onVehicleClick() {
+  selectVehicle(id: string) {
     this.show.set(false);
+    this.animationService.selectEntity(id, 'vehicle');
+  }
+
+  selectPassenger(id: string) {
+    this.show.set(false);
+    this.animationService.selectEntity(id, 'passenger');
   }
 
   ngAfterViewInit() {
