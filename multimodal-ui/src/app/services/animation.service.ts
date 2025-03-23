@@ -100,7 +100,6 @@ export class AnimationService {
   private selectedEntityPolyline: PIXI.Graphics = new PIXI.Graphics();
 
   // Variable that are alive for a single frame (could probably improve)
-  private frame_onEntityPointerDownCalled = false;
   private frame_pointToFollow: L.LatLngExpression | null = null;
 
   private previousVehiclesEntities: Entity<AnimatedVehicle>[] = [];
@@ -202,8 +201,6 @@ export class AnimationService {
     >;
     sprite.anchor.set(0.5, 0.5);
     sprite.scale.set(1 / this.utils.getScale());
-    sprite.interactive = true;
-    sprite.on('pointerdown', (e) => this.onClickOnVehicle(e));
 
     const entity: Entity<AnimatedVehicle> = {
       data: vehicle,
@@ -224,8 +221,6 @@ export class AnimationService {
     >;
     sprite.anchor.set(0.5, 0.5);
     sprite.scale.set(1 / this.utils.getScale());
-    sprite.interactive = true;
-    sprite.on('pointerdown', (e) => this.onClickOnPassenger(e));
 
     const entity: Entity<AnimatedPassenger> = {
       data: passenger,
@@ -574,13 +569,15 @@ export class AnimationService {
     return interpolatedPosition;
   }
 
-  private findVisuallyNearEntities(point: PIXI.Point) {
+  private findVisuallyNearEntities(event: L.LeafletMouseEvent) {
     // 20 comes from half the size of the images in pixels
     const minVisualDistance = 20 / this.utils.getScale();
+    const point = this.utils.latLngToLayerPoint(event.latlng);
 
     const nearVehicles = [];
     const nearPassengers = [];
 
+    // Distances for all vehicles
     for (const vehicle of this.vehicles) {
       const distance = this.distanceBetweenPoints(
         point,
@@ -589,6 +586,7 @@ export class AnimationService {
       if (distance <= minVisualDistance) nearVehicles.push(vehicle.data.id);
     }
 
+    // Distances for all passengers
     for (const passenger of this.passengersEntities) {
       const distance = this.distanceBetweenPoints(
         point,
@@ -597,11 +595,32 @@ export class AnimationService {
       if (distance <= minVisualDistance) nearPassengers.push(passenger.data.id);
     }
 
-    this._nearVehiclesSignal.set(nearVehicles);
-    this._nearPassengersSignal.set(nearPassengers);
+    // No entities
+    if (nearVehicles.length + nearPassengers.length === 0) {
+      this.unselectEntity();
+    }
+    // One vehicle
+    else if (nearVehicles.length === 1 && nearPassengers.length === 0) {
+      this.selectVehicle(nearVehicles[0]);
+    }
+    // One passenger
+    else if (nearVehicles.length === 0 && nearPassengers.length === 1) {
+      this.selectPassenger(nearPassengers[0]);
+    }
+    // More than one
+    else {
+      this._clickPositionSignal.set(
+        new PIXI.Point(event.containerPoint.x, event.containerPoint.y),
+      );
+      this._nearVehiclesSignal.set(nearVehicles);
+      this._nearPassengersSignal.set(nearPassengers);
+    }
   }
 
-  private distanceBetweenPoints(pointA: PIXI.Point, pointB: PIXI.Point) {
+  private distanceBetweenPoints(
+    pointA: { x: number; y: number },
+    pointB: { x: number; y: number },
+  ) {
     const dx = pointA.x - pointB.x;
     const dy = pointA.y - pointB.y;
     return Math.sqrt(dx * dx + dy * dy);
@@ -782,39 +801,7 @@ export class AnimationService {
 
   // onClick is called after onEntityPointerdown
   private onClick(event: L.LeafletMouseEvent) {
-    if (!this.frame_onEntityPointerDownCalled) {
-      this.unselectVehicle();
-      this.unselectPassenger();
-    }
-    this.frame_onEntityPointerDownCalled = false;
-  }
-
-  private onClickOnVehicle(event: PIXI.FederatedPointerEvent) {
-    const sprite = event.target as EntityOwner<Entity<AnimatedVehicle>>;
-    if (!sprite) return;
-
-    const entity = sprite.entity;
-    if (!entity) return;
-
-    this._clickPositionSignal.set(new PIXI.Point(event.clientX, event.clientY));
-    this.findVisuallyNearEntities(sprite.position);
-
-    this.selectVehicle(entity.data.id);
-    this.frame_onEntityPointerDownCalled = true;
-  }
-
-  private onClickOnPassenger(event: PIXI.FederatedPointerEvent) {
-    const sprite = event.target as EntityOwner<Entity<AnimatedPassenger>>;
-    if (!sprite) return;
-
-    const entity = sprite.entity;
-    if (!entity) return;
-
-    this._clickPositionSignal.set(new PIXI.Point(event.clientX, event.clientY));
-    this.findVisuallyNearEntities(sprite.position);
-
-    this.selectPassenger(entity.data.id);
-    this.frame_onEntityPointerDownCalled = true;
+    this.findVisuallyNearEntities(event);
   }
 
   private selectVehicle(vehicleId: string) {
