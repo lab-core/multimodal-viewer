@@ -33,12 +33,25 @@ export class AnimationService {
   private readonly _selectedPassengerIdSignal: WritableSignal<string | null> =
     signal(null);
 
+  private readonly _clickPositionSignal: WritableSignal<PIXI.Point> = signal(
+    new PIXI.Point(0, 0),
+  );
+
+  private readonly _nearVehiclesSignal: WritableSignal<Entity<Vehicle>[]> =
+    signal([]);
+  private readonly _nearPassengersSignal: WritableSignal<Entity<Passenger>[]> =
+    signal([]);
+
   get selectedVehicleIdSignal(): Signal<string | null> {
     return this._selectedVehicleIdSignal;
   }
 
   get selectedPassengerIdSignal(): Signal<string | null> {
     return this._selectedPassengerIdSignal;
+  }
+
+  get clickPositionSignal(): Signal<PIXI.Point> {
+    return this._clickPositionSignal;
   }
 
   readonly hasSelectedEntitySignal: Signal<boolean> = computed(
@@ -555,6 +568,37 @@ export class AnimationService {
     return interpolatedPosition;
   }
 
+  private findVisuallyNearEntities(point: PIXI.Point) {
+    // 20 comes from half the size of the images in pixels
+    const minVisualDistance = 20 / this.utils.getScale();
+
+    for (const vehicle of this.vehicles) {
+      const distance = this.distanceBetweenPoints(
+        point,
+        vehicle.sprite.position,
+      );
+      if (distance <= minVisualDistance) {
+        console.log(vehicle.data.id);
+      }
+    }
+
+    for (const passenger of this.passengersEntities) {
+      const distance = this.distanceBetweenPoints(
+        point,
+        passenger.sprite.position,
+      );
+      if (distance <= minVisualDistance) {
+        console.log(passenger.data.id);
+      }
+    }
+  }
+
+  private distanceBetweenPoints(pointA: PIXI.Point, pointB: PIXI.Point) {
+    const dx = pointA.x - pointB.x;
+    const dy = pointA.y - pointB.y;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
   private redrawPolyline(
     polylineNo: number,
     lineNo: number,
@@ -743,6 +787,9 @@ export class AnimationService {
 
     const entity = sprite.entity;
     if (!entity) return;
+
+    this._clickPositionSignal.set(new PIXI.Point(event.clientX, event.clientY));
+    this.findVisuallyNearEntities(sprite.position);
 
     this.selectVehicle(entity.data.id);
     this.frame_onEntityPointerDownCalled = true;

@@ -4,10 +4,11 @@ import { LeafletModule } from '@bluehalo/ngx-leaflet';
 import { latLng, Map, tileLayer } from 'leaflet';
 import { AnimationService } from '../../services/animation.service';
 import { MapService } from '../../services/map.service';
+import { CloseEntitiesMenuComponent } from '../close-entities-menu/close-entities-menu.component';
 
 @Component({
   selector: 'app-map',
-  imports: [LeafletModule],
+  imports: [LeafletModule, CloseEntitiesMenuComponent],
   templateUrl: './map.component.html',
   styleUrl: './map.component.css',
 })
