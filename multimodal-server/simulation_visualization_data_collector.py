@@ -71,7 +71,7 @@ class SimulationVisualizationDataCollector(DataCollector):
     last_update_stats_time: int
 
     def __init__(
-        self, simulation_id: str, data: str, sio: Client, max_time: float | None, data_analyzer: DataAnalyzer
+        self, simulation_id: str, data: str, sio: Client, max_time: float | None, data_analyzer: DataAnalyzer, delta_time: int
     ) -> None:
         self.simulation_id = simulation_id
         self.update_counter = 0
@@ -91,7 +91,7 @@ class SimulationVisualizationDataCollector(DataCollector):
         self.last_queued_event_time = 0
 
         self.data_analyzer = data_analyzer
-        self.delta_time = 10
+        self.delta_time = delta_time
         self.last_update_stats_time = None
 
     # MARK: +- Collect
@@ -582,10 +582,10 @@ class SimulationVisualizationEnvironmentObserver(EnvironmentObserver):
     data_collector: SimulationVisualizationDataCollector
 
     def __init__(
-        self, simulation_id: str, data: str, sio: Client, max_time: float | None, data_analyzer: DataAnalyzer, standard_data_collector: StandardDataCollector
+        self, simulation_id: str, data: str, sio: Client, max_time: float | None, data_analyzer: DataAnalyzer, standard_data_collector: StandardDataCollector, delta_time: int
     ) -> None:
         self.data_collector = SimulationVisualizationDataCollector(
-            simulation_id, data, sio, max_time, data_analyzer
+            simulation_id, data, sio, max_time, data_analyzer, delta_time
         )
         super().__init__(
             visualizers=SimulationVisualizationVisualizer(

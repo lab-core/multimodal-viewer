@@ -31,7 +31,7 @@ def run_simulation(
 
     data_container = DataContainer()
     environment_observer = SimulationVisualizationEnvironmentObserver(
-        simulation_id, data, sio, max_time, FixedLineDataAnalyzer(data_container), StandardDataCollector(data_container)
+        simulation_id, data, sio, max_time, FixedLineDataAnalyzer(data_container), StandardDataCollector(data_container), 10
     )
 
 
