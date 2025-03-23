@@ -123,10 +123,6 @@ class SimulationVisualizationDataCollector(DataCollector):
                 ),
                 env,
             )
-            # print(f"Stats: {self.data_analyzer.get_statistics()}")
-            # print(f"Time: {self.last_update_stats_time}")
-            # Ajouter une update pour que ca enregistre (comme VehiculeStatusU ou VehiculeStopsU)
-
 
     # MARK: +- Add Update
     def add_update(self, update: Update, environment: Environment) -> None:

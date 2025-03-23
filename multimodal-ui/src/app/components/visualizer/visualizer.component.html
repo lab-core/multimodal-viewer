@@ -93,20 +93,6 @@
       }
     </mat-accordion>
 
-    <!-- @for (statisticTitle of keys(statistic); track statisticTitle; let titleIdx = $index) {
-      <div class="flex-column statistic-title" [class]="{'top-indent': titleIdx !== 0}">{{capitalize(statisticTitle)}}
-      </div>
-      @for(mode of keys(statistic[statisticTitle]); track mode; let modeIdx = $index){
-      <div class="flex-column" [class]="{'top-indent': modeIdx !== 0}">
-        <span class="indent">{{capitalize(mode)}}</span>
-        @for(statisticName of keys(statistic[statisticTitle][mode]); track statisticName){
-        <span class="double-indent">{{statisticName}} :
-          {{formatNumber(statistic[statisticTitle][mode][statisticName])}}</span>
-        }
-      </div>
-      }
-      } -->
-
     <!--MARK: Status and count
 -->
     <mat-card-subtitle>
