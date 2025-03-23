@@ -2,10 +2,8 @@ import {
   AfterViewInit,
   Component,
   computed,
-  contentChild,
   effect,
   ElementRef,
-  OnDestroy,
   signal,
   Signal,
   viewChild,
@@ -23,17 +21,13 @@ import { MatIconModule } from '@angular/material/icon';
   templateUrl: './close-entities-menu.component.html',
   styleUrl: './close-entities-menu.component.css',
 })
-export class CloseEntitiesMenuComponent implements AfterViewInit, OnDestroy {
-  private readonly offset = 20;
-  private readonly maxHeightPadding = 100;
-
-  private observer!: ResizeObserver;
+export class CloseEntitiesMenuComponent implements AfterViewInit {
+  private readonly offset = 30;
+  private readonly maxHeightPadding = 150;
 
   private clickPositionSignal: Signal<Point>;
-  private heightSignal: WritableSignal<number> = signal(0);
 
   container = viewChild.required<ElementRef<HTMLDivElement>>('container');
-  content = viewChild.required<ElementRef<HTMLDivElement>>('content'); // To track the height
 
   nearVehicles: Signal<string[]>;
   nearPassengers: Signal<string[]>;
@@ -42,17 +36,30 @@ export class CloseEntitiesMenuComponent implements AfterViewInit, OnDestroy {
 
   top = computed(() => {
     const y = this.clickPositionSignal().y;
-    const height = this.heightSignal();
 
     if (y < window.innerHeight / 2) {
-      return y - this.offset + 'px';
-    } else {
-      return y - height - this.offset + 'px';
-    }
+      return y + 'px';
+    } else return '';
+  });
+
+  bottom = computed(() => {
+    const y = this.clickPositionSignal().y;
+
+    if (y >= window.innerHeight / 2) {
+      return window.innerHeight - y + 'px';
+    } else return '';
   });
 
   left = computed(() => {
     return this.clickPositionSignal().x + this.offset + 'px';
+  });
+
+  maxHeight = computed(() => {
+    const y = this.clickPositionSignal().y;
+
+    if (y < window.innerHeight / 2)
+      return window.innerHeight - y - this.maxHeightPadding + 'px';
+    else return y - this.maxHeightPadding + 'px';
   });
 
   constructor(private readonly animationService: AnimationService) {
@@ -76,18 +83,5 @@ export class CloseEntitiesMenuComponent implements AfterViewInit, OnDestroy {
     this.container()?.nativeElement.addEventListener('blur', () => {
       this.show.set(false);
     });
-
-    // Watch element for height changes
-    this.observer = new ResizeObserver((entries) => {
-      entries.forEach((entry) => {
-        this.heightSignal.set(entry.contentRect.height);
-      });
-    });
-    this.observer.observe(this.content()?.nativeElement);
-  }
-
-  ngOnDestroy(): void {
-    if (this.observer && this.content())
-      this.observer.unobserve(this.content().nativeElement);
   }
 }
