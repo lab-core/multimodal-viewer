@@ -9,14 +9,34 @@
       <mat-card-subtitle>Simulation Status</mat-card-subtitle>
     </mat-card-header>
     <mat-card-content class="flex-column align-center gap-1-rem">
-      <section>
-        <span [matTooltip]="simulation.simulationTime?.toString() ?? 'unknown'">
-          {{
-            simulation.simulationTime !== null
-              ? (simulation.simulationTime | simulationTime)
-              : "unknown"
-          }}</span
-        >
+      <section class="flex-column align-cross-start gap-0-5-rem">
+        <div>
+          <span>Current :&nbsp;</span>
+          <span
+            [matTooltip]="simulation.simulationTime?.toString() ?? 'unknown'"
+          >
+            {{
+              simulation.simulationTime !== null
+                ? (simulation.simulationTime | simulationTime)
+                : "unknown"
+            }}</span
+          >
+        </div>
+
+        <div>
+          <span>Estimated end :&nbsp;</span>
+          <span
+            [matTooltip]="
+              simulation.simulationEstimatedEndTime?.toString() ?? 'unknown'
+            "
+          >
+            {{
+              simulation.simulationEstimatedEndTime !== null
+                ? (simulation.simulationEstimatedEndTime | simulationTime)
+                : "unknown"
+            }}
+          </span>
+        </div>
       </section>
 
       <section>
