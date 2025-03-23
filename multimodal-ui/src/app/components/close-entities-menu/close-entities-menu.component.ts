@@ -25,6 +25,7 @@ export class CloseEntitiesMenuComponent implements AfterViewInit {
   private readonly maxHeightPadding = 150;
 
   private clickPositionSignal: Signal<Point>;
+  private selectedEntity = false; // Avoid triggering mouseout event if user selected an entity
 
   container = viewChild.required<ElementRef<HTMLDivElement>>('container');
 
@@ -69,19 +70,35 @@ export class CloseEntitiesMenuComponent implements AfterViewInit {
     // Show menu when click position triggered
     effect(() => {
       this.clickPositionSignal(); // Trigger but don't use
+      this.selectedEntity = false;
       this.show.set(true);
       this.container()?.nativeElement.focus();
     });
   }
 
-  selectVehicle(id: string) {
+  onClickVehicle(id: string) {
+    this.selectedEntity = true;
     this.show.set(false);
     this.animationService.selectEntity(id, 'vehicle');
   }
 
-  selectPassenger(id: string) {
+  onClickPassenger(id: string) {
+    this.selectedEntity = true;
     this.show.set(false);
     this.animationService.selectEntity(id, 'passenger');
+  }
+
+  selectVehicle(id: string) {
+    this.animationService.selectEntity(id, 'vehicle');
+  }
+
+  selectPassenger(id: string) {
+    this.animationService.selectEntity(id, 'passenger');
+  }
+
+  unselectEntity() {
+    if (this.selectedEntity) return;
+    this.animationService.unselectEntity();
   }
 
   ngAfterViewInit() {

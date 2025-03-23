@@ -6,12 +6,12 @@
             <mat-card-content class="card-content" [style.max-height]="maxHeight()">
                 <div class="content">
                     @for (id of nearVehicles(); track id) {
-                    <mat-chip (click)="selectVehicle(id)">
+                    <mat-chip (click)="onClickVehicle(id)" (mouseenter)="selectVehicle(id)" (mouseleave)="unselectEntity()">
                         <mat-icon matChipAvatar>directions_car</mat-icon>{{ id }}
                     </mat-chip>
                     }
                     @for (id of nearPassengers(); track id) {
-                        <mat-chip (click)="selectPassenger(id)">
+                        <mat-chip (click)="onClickPassenger(id)" (mouseenter)="selectPassenger(id)" (mouseleave)="unselectEntity()">
                             <mat-icon matChipAvatar>accessibility</mat-icon>{{ id }}
                         </mat-chip>
                     }

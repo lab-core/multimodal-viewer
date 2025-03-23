@@ -9,6 +9,7 @@ import * as L from 'leaflet';
 import { pixiOverlay } from 'leaflet';
 import 'leaflet-pixi-overlay';
 import * as PIXI from 'pixi.js';
+import { OutlineFilter } from 'pixi-filters';
 import { Entity, EntityOwner } from '../interfaces/entity.model';
 import {
   AnimatedPassenger,
@@ -138,6 +139,7 @@ export class AnimationService {
       this.addVehicle(vehicle);
       if (selectedVehicleId !== null && vehicle.id == selectedVehicleId) {
         isSelectedVehicleInEnvironment = true;
+        this.hightlightEntityId(vehicle.id, 'vehicle');
       }
     }
 
@@ -156,6 +158,7 @@ export class AnimationService {
       this.addPassenger(passenger);
       if (selectedPassengerId !== null && passenger.id == selectedPassengerId) {
         isSelectedPassengerInEnvironment = true;
+        this.hightlightEntityId(passenger.id, 'passenger');
       }
     }
 
@@ -806,22 +809,52 @@ export class AnimationService {
 
   private selectVehicle(vehicleId: string) {
     this.unselectPassenger();
+    this.hightlightEntityId(vehicleId, 'vehicle');
     this._selectedVehicleIdSignal.set(vehicleId);
   }
 
   private selectPassenger(passengerId: string) {
     this.unselectVehicle();
+    this.hightlightEntityId(passengerId, 'passenger');
     this._selectedPassengerIdSignal.set(passengerId);
   }
 
   private unselectVehicle() {
+    this.unhighlightEntityId(this._selectedVehicleIdSignal(), 'vehicle');
     this._selectedVehicleIdSignal.set(null);
     this.selectedEntityPolyline.clear();
   }
 
   private unselectPassenger() {
+    this.unhighlightEntityId(this._selectedPassengerIdSignal(), 'passenger');
     this._selectedPassengerIdSignal.set(null);
     this.selectedEntityPolyline.clear();
+  }
+
+  private hightlightEntityId(entityId: string, type: 'vehicle' | 'passenger') {
+    const entitiesById =
+      type === 'vehicle'
+        ? this.vehicleEntitiesByVehicleId
+        : this.passengerEntitiesByPassengerId;
+    const entity = entitiesById[entityId];
+    if (entity)
+      entity.sprite.filters = [
+        new OutlineFilter(1, 0xffffff),
+        new OutlineFilter(2, 0xffff00),
+      ];
+  }
+
+  private unhighlightEntityId(
+    entityId: string | null,
+    type: 'vehicle' | 'passenger',
+  ) {
+    if (!entityId) return;
+    const entitiesById =
+      type === 'vehicle'
+        ? this.vehicleEntitiesByVehicleId
+        : this.passengerEntitiesByPassengerId;
+    const entity = entitiesById[entityId];
+    if (entity) entity.sprite.filters = null;
   }
 
   selectEntity(entityId: string, type: 'vehicle' | 'passenger') {
