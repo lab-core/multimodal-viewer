@@ -5,30 +5,50 @@ import {
   contentChild,
   effect,
   ElementRef,
+  OnDestroy,
   signal,
   Signal,
   viewChild,
+  WritableSignal,
 } from '@angular/core';
-import { MatCard, MatCardModule } from '@angular/material/card';
+import { MatCardModule } from '@angular/material/card';
 import { AnimationService } from '../../services/animation.service';
 import { Point } from 'pixi.js';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-close-entities-menu',
-  imports: [MatCardModule],
+  imports: [MatCardModule, MatChipsModule, MatIconModule],
   templateUrl: './close-entities-menu.component.html',
   styleUrl: './close-entities-menu.component.css',
 })
-export class CloseEntitiesMenuComponent implements AfterViewInit {
-  menu = viewChild.required<ElementRef<HTMLDivElement>>('container');
+export class CloseEntitiesMenuComponent implements AfterViewInit, OnDestroy {
+  private readonly offset = 20;
+  private readonly maxHeightPadding = 100;
 
-  private readonly offset = 5;
+  private observer!: ResizeObserver;
+
   private clickPositionSignal: Signal<Point>;
+  private heightSignal: WritableSignal<number> = signal(0);
 
-  visibility = signal('hidden');
+  container = viewChild.required<ElementRef<HTMLDivElement>>('container');
+  content = viewChild.required<ElementRef<HTMLDivElement>>('content'); // To track the height
+
+  nearVehicles: Signal<string[]>;
+  nearPassengers: Signal<string[]>;
+
+  show = signal(false);
 
   top = computed(() => {
-    return this.clickPositionSignal().y + this.offset + 'px';
+    const y = this.clickPositionSignal().y;
+    const height = this.heightSignal();
+
+    if (y < window.innerHeight / 2) {
+      return y - this.offset + 'px';
+    } else {
+      return y - height - this.offset + 'px';
+    }
   });
 
   left = computed(() => {
@@ -37,17 +57,37 @@ export class CloseEntitiesMenuComponent implements AfterViewInit {
 
   constructor(private readonly animationService: AnimationService) {
     this.clickPositionSignal = animationService.clickPositionSignal;
+    this.nearVehicles = animationService.nearVehiclesSignal;
+    this.nearPassengers = animationService.nearPassengersSignal;
 
+    // Show menu when click position triggered
     effect(() => {
-      console.log(this.clickPositionSignal());
-      this.visibility.set('visible');
-      this.menu()?.nativeElement.focus();
+      this.clickPositionSignal(); // Trigger but don't use
+      this.show.set(true);
+      this.container()?.nativeElement.focus();
     });
   }
 
+  onVehicleClick() {
+    this.show.set(false);
+  }
+
   ngAfterViewInit() {
-    this.menu()?.nativeElement.addEventListener('blur', () => {
-      this.visibility.set('hidden');
+    this.container()?.nativeElement.addEventListener('blur', () => {
+      this.show.set(false);
     });
+
+    // Watch element for height changes
+    this.observer = new ResizeObserver((entries) => {
+      entries.forEach((entry) => {
+        this.heightSignal.set(entry.contentRect.height);
+      });
+    });
+    this.observer.observe(this.content()?.nativeElement);
+  }
+
+  ngOnDestroy(): void {
+    if (this.observer && this.content())
+      this.observer.unobserve(this.content().nativeElement);
   }
 }

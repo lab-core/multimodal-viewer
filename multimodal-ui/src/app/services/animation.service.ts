@@ -37,10 +37,16 @@ export class AnimationService {
     new PIXI.Point(0, 0),
   );
 
-  private readonly _nearVehiclesSignal: WritableSignal<Entity<Vehicle>[]> =
-    signal([]);
-  private readonly _nearPassengersSignal: WritableSignal<Entity<Passenger>[]> =
-    signal([]);
+  private readonly _nearVehiclesSignal: WritableSignal<string[]> = signal([]);
+  private readonly _nearPassengersSignal: WritableSignal<string[]> = signal([]);
+
+  get nearVehiclesSignal(): Signal<string[]> {
+    return this._nearVehiclesSignal;
+  }
+
+  get nearPassengersSignal(): Signal<string[]> {
+    return this._nearPassengersSignal;
+  }
 
   get selectedVehicleIdSignal(): Signal<string | null> {
     return this._selectedVehicleIdSignal;
@@ -572,14 +578,15 @@ export class AnimationService {
     // 20 comes from half the size of the images in pixels
     const minVisualDistance = 20 / this.utils.getScale();
 
+    const nearVehicles = [];
+    const nearPassengers = [];
+
     for (const vehicle of this.vehicles) {
       const distance = this.distanceBetweenPoints(
         point,
         vehicle.sprite.position,
       );
-      if (distance <= minVisualDistance) {
-        console.log(vehicle.data.id);
-      }
+      if (distance <= minVisualDistance) nearVehicles.push(vehicle.data.id);
     }
 
     for (const passenger of this.passengersEntities) {
@@ -587,10 +594,11 @@ export class AnimationService {
         point,
         passenger.sprite.position,
       );
-      if (distance <= minVisualDistance) {
-        console.log(passenger.data.id);
-      }
+      if (distance <= minVisualDistance) nearPassengers.push(passenger.data.id);
     }
+
+    this._nearVehiclesSignal.set(nearVehicles);
+    this._nearPassengersSignal.set(nearPassengers);
   }
 
   private distanceBetweenPoints(pointA: PIXI.Point, pointB: PIXI.Point) {
@@ -801,6 +809,9 @@ export class AnimationService {
 
     const entity = sprite.entity;
     if (!entity) return;
+
+    this._clickPositionSignal.set(new PIXI.Point(event.clientX, event.clientY));
+    this.findVisuallyNearEntities(sprite.position);
 
     this.selectPassenger(entity.data.id);
     this.frame_onEntityPointerDownCalled = true;

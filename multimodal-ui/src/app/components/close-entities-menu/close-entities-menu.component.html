@@ -1,9 +1,21 @@
 <!-- The tabindex makes the div focusable -->
 <div #container tabindex='0'>
-    <mat-card [style.top]="top()" [style.left]="left()" [style.visibility]="visibility()">
-        <mat-card-content>
-            <span>close-entities-menu works!</span>
-        </mat-card-content>
+    <mat-card class="fade" [style.top]="top()" [style.left]="left()" [class.fade-show]="show()" [class.disable-pointer-events]="!show()">
+        <div #content >
+            <mat-card-content class="card-content">
+                <div class="content">
+                    @for (id of nearVehicles(); track id) {
+                    <mat-chip (click)="onVehicleClick()">
+                        <mat-icon matChipAvatar>directions_car</mat-icon>{{ id }}
+                    </mat-chip>
+                    }
+                    @for (id of nearPassengers(); track id) {
+                        <mat-chip (click)="onVehicleClick()">
+                            <mat-icon matChipAvatar>accessibility</mat-icon>{{ id }}
+                        </mat-chip>
+                    }
+                </div>
+            </mat-card-content>
+        </div>
     </mat-card>
-    
 </div>
