@@ -27,6 +27,7 @@ export class CloseEntitiesMenuComponent {
   private selectedEntity = false; // Avoid triggering mouseout event if user selected an entity
 
   container = viewChild.required<ElementRef<HTMLDivElement>>('container');
+  cardContent = viewChild.required<ElementRef<HTMLDivElement>>('cardContent');
 
   nearVehicles: Signal<string[]>;
   nearPassengers: Signal<string[]>;
@@ -71,6 +72,7 @@ export class CloseEntitiesMenuComponent {
       this.clickPositionSignal(); // Trigger but don't use
       this.selectedEntity = false;
       this.show.set(true);
+      this.cardContent()?.nativeElement.scroll(0, 0);
       this.container()?.nativeElement.focus();
     });
   }

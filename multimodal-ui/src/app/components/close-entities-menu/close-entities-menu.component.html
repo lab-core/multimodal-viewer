@@ -4,7 +4,7 @@
         [class.fade-show]="show()" [class.disable-pointer-events]="!show()">
         @let nbEntities = nearVehicles().length + nearPassengers().length;
         <span class="info">{{ nbEntities }} entities close</span>
-        <mat-card-content class="card-content" [style.max-height]="maxHeight()">
+        <mat-card-content #cardContent class="card-content" [style.max-height]="maxHeight()">
             <div class="content">
                 @for (id of nearVehicles(); track id) {
                 <mat-chip (click)="onClickVehicle(id)" (mouseenter)="selectVehicle(id)" (mouseleave)="unselectEntity()">
