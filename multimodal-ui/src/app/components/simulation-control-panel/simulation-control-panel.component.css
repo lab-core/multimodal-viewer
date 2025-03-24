@@ -1,0 +1,10 @@
+@import "../../../styles/flex.styles.css";
+@import "../../../styles/color.styles.css";
+
+:host {
+  position: absolute;
+  /* 75px is the height of the zoom buttons */
+  /* 1 rem for the gap */
+  bottom: calc(75px + 1rem);
+  right: 1rem;
+}

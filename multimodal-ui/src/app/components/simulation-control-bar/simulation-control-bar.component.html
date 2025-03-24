@@ -1,4 +1,3 @@
-@let isSimulationPaused = isSimulationPausedSignal();
 @let isVisualizationPaused = isVisualizationPausedSignal();
 @let simulation = simulationInputSignal();
 @let simulationStartTime = simulationStartTimeSignal();
@@ -158,36 +157,6 @@
           </mat-slider>
         }
       </div>
-
-      @if (simulation.status === "running" || simulation.status === "paused") {
-        <button
-          mat-icon-button
-          [matTooltip]="
-            isSimulationPaused
-              ? 'Resume the simulation'
-              : 'Pause the simulation'
-          "
-          (click)="toggleSimulationPause(isSimulationPaused, simulation.id)"
-        >
-          <mat-icon>{{ isSimulationPaused ? "play_arrow" : "pause" }}</mat-icon>
-        </button>
-
-        <button
-          mat-icon-button
-          [matTooltip]="'Stop the simulation'"
-          (click)="stopSimulation(simulation.id)"
-        >
-          <mat-icon>stop</mat-icon>
-        </button>
-      }
-
-      <button
-        mat-icon-button
-        [matTooltip]="'Configure the simulation'"
-        (click)="editSimulationConfiguration(simulation)"
-      >
-        <mat-icon>settings</mat-icon>
-      </button>
 
       <button
         mat-icon-button

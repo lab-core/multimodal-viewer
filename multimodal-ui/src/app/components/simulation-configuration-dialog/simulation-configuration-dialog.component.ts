@@ -1,5 +1,4 @@
 import { Component, Inject, OnDestroy, Signal } from '@angular/core';
-import { HttpService } from '../../services/http.service';
 import {
   AbstractControl,
   FormBuilder,
@@ -10,7 +9,6 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
-import JSZip from 'jszip';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import {
@@ -25,12 +23,14 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import JSZip from 'jszip';
 import { Subject, takeUntil } from 'rxjs';
 import {
   SIMULATION_SAVE_FILE_SEPARATOR,
   SimulationConfiguration,
 } from '../../interfaces/simulation.model';
 import { DataService } from '../../services/data.service';
+import { HttpService } from '../../services/http.service';
 
 export interface SimulationConfigurationDialogData {
   mode: 'start' | 'edit';
@@ -136,7 +136,6 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
         .pipe(takeUntil(this.unsubscribe$))
         .subscribe((value) => {
           if (value) {
-            // TODO Prefill?
             this.enableConfigurationFields();
           } else {
             this.disableConfigurationFields();
@@ -198,25 +197,20 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
 
   private validateName(): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
-      if (
-        typeof control.value === 'string') {
-          // Forbid the use of the simulation save file separator
-          if (
-
-        control.value.match(SIMULATION_SAVE_FILE_SEPARATOR)
-      ) {
-        return { invalidPattern: true };
+      if (typeof control.value === 'string') {
+        // Forbid the use of the simulation save file separator
+        if (control.value.match(SIMULATION_SAVE_FILE_SEPARATOR)) {
+          return { invalidPattern: true };
+        }
+        // Forbid the use of characters that might cause issues with the file system
+        else if (control.value.match(/[<>:"/\\|?*]/)) {
+          return { invalidCharacter: true };
+        }
       }
-      // Forbid the use of characters that might cause issues with the file system
-      else if (
-        control.value.match(/[<>:"/\\|?*]/)
-      ) {
-        return { invalidCharacter: true };
-      }}
       return null;
     };
   }
-  
+
   importInputData() {
     const input = document.createElement('input');
     input.type = 'file';
@@ -224,51 +218,58 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     input.multiple = true;
 
     const handleFileChange = async (event: Event) => {
-        const files = (event.target as HTMLInputElement).files;
-        if (!files || files.length === 0) {
-            return;
-        }
+      const files = (event.target as HTMLInputElement).files;
+      if (!files || files.length === 0) {
+        return;
+      }
 
-        const zip = new JSZip();
-        const baseFolder = files[0].webkitRelativePath.split('/')[0]; 
+      const zip = new JSZip();
+      const baseFolder = files[0].webkitRelativePath.split('/')[0];
 
-        for (const file of Array.from(files)) {
-            const relativePath = file.webkitRelativePath.replace(baseFolder + '/', '');
-            zip.file(relativePath, file);
-        }
+      for (const file of Array.from(files)) {
+        const relativePath = file.webkitRelativePath.replace(
+          baseFolder + '/',
+          '',
+        );
+        zip.file(relativePath, file);
+      }
 
-        const blob = await zip.generateAsync({ type: 'blob' });
-        const contentType = 'input_data'
-        const formData = new FormData();
-        formData.append('file', blob, 'folder.zip');
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const contentType = 'input_data';
+      const formData = new FormData();
+      formData.append('file', blob, 'folder.zip');
 
-        this.httpService.importFolder(contentType, baseFolder, formData).subscribe(response => {
-            console.log('Upload successful:', response);
+      this.httpService
+        .importFolder(contentType, baseFolder, formData)
+        .subscribe((response) => {
+          console.log('Upload successful:', response);
         });
     };
 
     input.addEventListener('change', (event: Event) => {
-        handleFileChange(event).catch(error => {
-            console.error('Error handling file change:', error);
-        });
+      handleFileChange(event).catch((error) => {
+        console.error('Error handling file change:', error);
+      });
     });
 
     input.click();
   }
 
   exportInputData(simulationId: string) {
-    const folderContents = 'input_data'
-    this.httpService.exportFolder(folderContents, simulationId).subscribe((response: Blob) => {
-      const blob = new Blob([response], { type: 'application/zip' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = simulationId + '.zip';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    });
+    const folderContents = 'input_data';
+    this.httpService
+      .exportFolder(folderContents, simulationId)
+      .subscribe((response: Blob) => {
+        const blob = new Blob([response], { type: 'application/zip' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = simulationId + '.zip';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      });
   }
 
   deleteInputData(simulationId: string): void {

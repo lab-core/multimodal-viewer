@@ -1,5 +1,4 @@
 import { DecimalPipe } from '@angular/common';
-import hotkeys from 'hotkeys-js';
 import {
   Component,
   computed,
@@ -18,6 +17,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSliderModule } from '@angular/material/slider';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import hotkeys from 'hotkeys-js';
 import {
   Simulation,
   SimulationStates,
@@ -70,20 +70,8 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
     input.required<Simulation>({ alias: 'simulation' });
 
   // MARK: Outputs
-  readonly pauseSimulationOutput = output<string>({ alias: 'pauseSimulation' });
-
-  readonly resumeSimulationOutput = output<string>({
-    alias: 'resumeSimulation',
-  });
-
-  readonly stopSimulationOutput = output<string>({ alias: 'stopSimulation' });
-
   readonly leaveVisualizationOutput = output<void>({
     alias: 'leaveVisualization',
-  });
-
-  readonly editSimulationConfigurationOutput = output<Simulation>({
-    alias: 'editSimulationConfiguration',
   });
 
   private readonly sliderUpdateSignal: WritableSignal<number> = signal(0);
@@ -216,14 +204,6 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
     }
   }
 
-  toggleSimulationPause(wasPaused: boolean, id: string): void {
-    if (wasPaused) {
-      this.resumeSimulationOutput.emit(id);
-    } else {
-      this.pauseSimulationOutput.emit(id);
-    }
-  }
-
   decreaseSpeed(): void {
     this.speedPowerSignal.update((power) =>
       Math.max(power - 1, this.MIN_SPEED_POWER),
@@ -246,14 +226,6 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
 
   toggleShouldFollowEntity() {
     this.animationService.toggleShouldFollowEntity();
-  }
-
-  stopSimulation(id: string) {
-    this.stopSimulationOutput.emit(id);
-  }
-
-  editSimulationConfiguration(simulation: Simulation) {
-    this.editSimulationConfigurationOutput.emit(simulation);
   }
 
   leaveVisualization(): void {

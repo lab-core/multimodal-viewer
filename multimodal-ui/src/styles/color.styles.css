@@ -48,7 +48,7 @@
 }
 
 .background-gray {
-  background-color: var(--gray-background-color);
+  background-color: var(--gray-background-color) !important;
 }
 
 .text-blue {
