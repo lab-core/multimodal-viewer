@@ -1,5 +1,4 @@
 import {
-  AfterViewInit,
   Component,
   computed,
   effect,
@@ -20,7 +19,7 @@ import { MatIconModule } from '@angular/material/icon';
   templateUrl: './close-entities-menu.component.html',
   styleUrl: './close-entities-menu.component.css',
 })
-export class CloseEntitiesMenuComponent implements AfterViewInit {
+export class CloseEntitiesMenuComponent {
   private readonly offset = 30;
   private readonly maxHeightPadding = 150;
 
@@ -101,9 +100,7 @@ export class CloseEntitiesMenuComponent implements AfterViewInit {
     this.animationService.unselectEntity();
   }
 
-  ngAfterViewInit() {
-    this.container()?.nativeElement.addEventListener('blur', () => {
-      this.show.set(false);
-    });
+  onBlur() {
+    this.show.set(false);
   }
 }
