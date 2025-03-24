@@ -466,6 +466,7 @@ class VisualizedVehicle(Serializable):
 class VisualizedEnvironment(Serializable):
     passengers: dict[str, VisualizedPassenger]
     vehicles: dict[str, VisualizedVehicle]
+    statistic: dict[str, dict[str, dict[str, int]]]
     timestamp: float
     estimated_end_time: float
     order: int
@@ -476,6 +477,7 @@ class VisualizedEnvironment(Serializable):
         self.timestamp = 0
         self.estimated_end_time = 0
         self.order = 0
+        self.statistic = None
 
     def add_passenger(self, passenger: VisualizedPassenger) -> None:
         self.passengers[passenger.passenger_id] = passenger
@@ -501,6 +503,7 @@ class VisualizedEnvironment(Serializable):
             "vehicles": [vehicle.serialize() for vehicle in self.vehicles.values()],
             "timestamp": self.timestamp,
             "estimatedEndTime": self.estimated_end_time,
+            "statistic": self.statistic if self.statistic is not None else {},
             "order": self.order,
         }
 
@@ -514,6 +517,7 @@ class VisualizedEnvironment(Serializable):
             or "vehicles" not in data
             or "timestamp" not in data
             or "estimatedEndTime" not in data
+            or "statistic" not in data
             or "order" not in data
         ):
             raise ValueError("Invalid data for VisualizedEnvironment")
@@ -529,6 +533,7 @@ class VisualizedEnvironment(Serializable):
 
         environment.timestamp = data["timestamp"]
         environment.estimated_end_time = data["estimatedEndTime"]
+        environment.statistic = data["statistic"]
         environment.order = data["order"]
 
         return environment
@@ -542,7 +547,26 @@ class UpdateType(Enum):
     UPDATE_PASSENGER_LEGS = "updatePassengerLegs"
     UPDATE_VEHICLE_STATUS = "updateVehicleStatus"
     UPDATE_VEHICLE_STOPS = "updateVehicleStops"
+    UPDATE_STATISTIC = "updateStatistic"
 
+class StatisticUpdate(Serializable):
+    statistic: dict[str, dict[str, dict[str, int]]]
+
+    def __init__(self, statistic: dict) -> None:
+        self.statistic = statistic
+
+    def serialize(self) -> dict[str, dict[str, dict[str, int]]]:
+        return {"statistic": self.statistic}
+
+    @staticmethod
+    def deserialize(data: str) -> "StatisticUpdate":
+        if isinstance(data, str):
+            data = json.loads(data.replace("'", '"'))
+        
+        if "statistic" not in data:
+            raise ValueError("Invalid data for StatisticUpdate")
+        
+        return StatisticUpdate(data.statistic)
 
 class PassengerStatusUpdate(Serializable):
     passenger_id: str
@@ -835,6 +859,8 @@ class Update(Serializable):
             update_data = VehicleStatusUpdate.deserialize(update_data)
         elif update_type == UpdateType.UPDATE_VEHICLE_STOPS:
             update_data = VehicleStopsUpdate.deserialize(update_data)
+        elif update_type == UpdateType.UPDATE_STATISTIC:
+            update_data = StatisticUpdate.deserialize(update_data)
 
         update = Update(update_type, update_data, timestamp)
         update.order = data["order"]

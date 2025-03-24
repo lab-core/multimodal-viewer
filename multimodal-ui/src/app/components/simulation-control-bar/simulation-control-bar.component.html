@@ -101,7 +101,9 @@
         <mat-icon>moving</mat-icon>
       </button>
 
-      <div [matTooltip]="visualizationTime.toString()">
+      <div
+        [matTooltip]="((visualizationTime | number: '1.0-0') ?? '0').toString()"
+      >
         {{ visualizationTime | simulationTime }}
       </div>
 

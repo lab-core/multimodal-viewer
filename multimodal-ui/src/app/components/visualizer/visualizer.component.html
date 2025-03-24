@@ -95,8 +95,67 @@
       <mat-card-content class="flex-1">
         <mat-card-title>Simulation: {{ simulation.name }}</mat-card-title>
         <mat-card-subtitle>Source: {{ simulation.data }}</mat-card-subtitle>
+        <mat-card-subtitle>
+          Current simulation time:
+          {{ simulation.simulationTime ?? "null" }}
+        </mat-card-subtitle>
+        <mat-card-subtitle>
+          Max simulation time:
+          {{ simulation.configuration.maxTime ?? "null" }}
+        </mat-card-subtitle>
 
-        <mat-card-title>Displayed Entities</mat-card-title>
+        <!--MARK: Statistics
+    -->
+        <mat-card-title class="top-indent"> Statistics </mat-card-title>
+
+        <mat-accordion multi="true">
+          @let statistic = statisticSignal();
+          @for (statisticTitle of keys(statistic); track statisticTitle) {
+            <mat-expansion-panel>
+              <mat-expansion-panel-header>
+                <mat-panel-title>
+                  {{ capitalize(statisticTitle) }}
+                </mat-panel-title>
+              </mat-expansion-panel-header>
+              <div class="flex-column gap-0-5-rem">
+                <mat-accordion multi="true">
+                  @for (mode of keys(statistic[statisticTitle]); track mode) {
+                    <mat-expansion-panel>
+                      <mat-expansion-panel-header>
+                        <mat-panel-title>
+                          {{ capitalize(mode) }}
+                        </mat-panel-title>
+                      </mat-expansion-panel-header>
+                      <div class="flex-column gap-0-5-rem">
+                        @for (
+                          statisticName of keys(
+                            statistic[statisticTitle][mode]
+                          );
+                          track statisticName
+                        ) {
+                          <span style="white-space: normal">
+                            {{ statisticName }} :
+                            <span style="white-space: nowrap">
+                              {{
+                                formatNumber(
+                                  statistic[statisticTitle][mode][statisticName]
+                                )
+                              }}
+                            </span>
+                          </span>
+                        }
+                      </div>
+                      is
+                    </mat-expansion-panel>
+                  }
+                </mat-accordion>
+              </div>
+            </mat-expansion-panel>
+          }
+        </mat-accordion>
+
+        <!--MARK: Status and count
+-->
         <mat-card-subtitle>
           Passengers ({{ totalNumberOfPassengers }})
         </mat-card-subtitle>

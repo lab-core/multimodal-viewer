@@ -23,6 +23,7 @@ import {
   SimulationEnvironment,
   SimulationState,
   SimulationStates,
+  StatisticUpdate,
   Stop,
   Vehicle,
   VEHICLE_STATUSES,
@@ -312,6 +313,16 @@ export class SimulationService {
           }
         }
         return null;
+
+      case 'updateStatistic':
+        {
+          return {
+            type,
+            order,
+            timestamp,
+            data: data as StatisticUpdate,
+          };
+        }
 
       default:
         return null;
@@ -660,13 +671,19 @@ export class SimulationService {
       return null;
     }
 
+    const statistic = data.statistic;
+    if (timestamp === undefined) {
+      console.error('Simulation statistic not found: ', timestamp);
+      return null;
+    }
+
     const order = data.order;
     if (order === undefined) {
       console.error('Simulation environment order not found: ', order);
       return null;
     }
 
-    return { passengers, vehicles, timestamp, order };
+    return { passengers, vehicles, timestamp, statistic, order };
   }
 
   private extractSimulationState(
@@ -934,6 +951,11 @@ export class SimulationService {
           vehicle.previousStops = vehicleStopsUpdate.previousStops;
           vehicle.currentStop = vehicleStopsUpdate.currentStop;
           vehicle.nextStops = vehicleStopsUpdate.nextStops;
+        }
+        break;
+      case 'updateStatistic':
+        {
+          simulationEnvironment.statistic = (update.data as StatisticUpdate).statistic;
         }
         break;
     }
