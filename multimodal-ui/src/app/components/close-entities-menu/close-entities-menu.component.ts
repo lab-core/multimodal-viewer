@@ -69,11 +69,15 @@ export class CloseEntitiesMenuComponent {
 
     // Show menu when click position triggered
     effect(() => {
-      this.clickPositionSignal(); // Trigger but don't use
+      const position = this.clickPositionSignal(); // Trigger but don't use
+      if (position.x === 0 && position.y === 0) {
+        this.show.set(false);
+      } else {
+        this.show.set(true);
+        this.cardContent()?.nativeElement.scroll(0, 0);
+        this.container()?.nativeElement.focus();
+      }
       this.selectedEntity = false;
-      this.show.set(true);
-      this.cardContent()?.nativeElement.scroll(0, 0);
-      this.container()?.nativeElement.focus();
     });
   }
 
