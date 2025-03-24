@@ -10,12 +10,40 @@
 @let selectedVehicle = selectedVehicleSignal();
 
 @if (isInitializedSignal() && simulation !== null) {
-  <!-- MARK: Search Bar
-  -->
-  @let filteredEntitySearchData = filteredEntitySearchDataSignal();
-  @let searchValue = searchValueSignal();
-  <form>
-    <mat-form-field class="search-bar enable-pointer-events">
+  <div class="tabs enable-pointer-events">
+    <section>
+      <mat-button-toggle-group
+        mat-fab
+        hideSingleSelectionIndicator
+        name="tools"
+        aria-label="tools"
+        [formControl]="tabControl"
+      >
+        <mat-button-toggle value="search"
+          ><mat-icon>search</mat-icon></mat-button-toggle
+        >
+        <mat-button-toggle value="filter"
+          ><mat-icon>filter_list</mat-icon></mat-button-toggle
+        >
+        <mat-button-toggle value="favorites"
+          ><mat-icon>star</mat-icon></mat-button-toggle
+        >
+        <mat-button-toggle value="layers"
+          ><mat-icon>layers</mat-icon></mat-button-toggle
+        >
+      </mat-button-toggle-group>
+    </section>
+  </div>
+
+  <!-- MARK: Search Bar -->
+  <form
+    class="tab-content fade search-bar"
+    [class.fade-show]="showSearch"
+    [class.enable-pointer-events]="showSearch"
+  >
+    @let filteredEntitySearchData = filteredEntitySearchDataSignal();
+    @let searchValue = searchValueSignal();
+    <mat-form-field class="search-form">
       <input matInput [matAutocomplete]="auto" [formControl]="searchControl" />
       <!-- TODO Search -->
       <mat-label>Search in the simulation</mat-label>
@@ -39,6 +67,26 @@
     </mat-form-field>
   </form>
 
+  <!-- MARK: Tab Elements 
+ -->
+  <app-visualizer-filter
+    class="tab-content fade"
+    [class.fade-show]="showFilter"
+    [class.enable-pointer-events]="showFilter"
+  ></app-visualizer-filter>
+
+  <app-favorite-entities
+    class="tab-content fade"
+    [class.fade-show]="showFavorites"
+    [class.enable-pointer-events]="showFavorites"
+  ></app-favorite-entities>
+
+  <app-map-tiles
+    class="tab-content fade"
+    [class.fade-show]="showLayers"
+    [class.enable-pointer-events]="showLayers"
+  ></app-map-tiles>
+
   <!-- MARK: Information Panel
     -->
   @if (shouldShowInformationPanelSignal()) {
@@ -47,8 +95,67 @@
       <mat-card-content class="flex-1">
         <mat-card-title>Simulation: {{ simulation.name }}</mat-card-title>
         <mat-card-subtitle>Source: {{ simulation.data }}</mat-card-subtitle>
+        <mat-card-subtitle>
+          Current simulation time:
+          {{ simulation.simulationTime ?? "null" }}
+        </mat-card-subtitle>
+        <mat-card-subtitle>
+          Max simulation time:
+          {{ simulation.configuration.maxTime ?? "null" }}
+        </mat-card-subtitle>
 
-        <mat-card-title>Displayed Entities</mat-card-title>
+        <!--MARK: Statistics
+    -->
+        <mat-card-title class="top-indent"> Statistics </mat-card-title>
+
+        <mat-accordion multi="true">
+          @let statistic = statisticSignal();
+          @for (statisticTitle of keys(statistic); track statisticTitle) {
+            <mat-expansion-panel>
+              <mat-expansion-panel-header>
+                <mat-panel-title>
+                  {{ capitalize(statisticTitle) }}
+                </mat-panel-title>
+              </mat-expansion-panel-header>
+              <div class="flex-column gap-0-5-rem">
+                <mat-accordion multi="true">
+                  @for (mode of keys(statistic[statisticTitle]); track mode) {
+                    <mat-expansion-panel>
+                      <mat-expansion-panel-header>
+                        <mat-panel-title>
+                          {{ capitalize(mode) }}
+                        </mat-panel-title>
+                      </mat-expansion-panel-header>
+                      <div class="flex-column gap-0-5-rem">
+                        @for (
+                          statisticName of keys(
+                            statistic[statisticTitle][mode]
+                          );
+                          track statisticName
+                        ) {
+                          <span style="white-space: normal">
+                            {{ statisticName }} :
+                            <span style="white-space: nowrap">
+                              {{
+                                formatNumber(
+                                  statistic[statisticTitle][mode][statisticName]
+                                )
+                              }}
+                            </span>
+                          </span>
+                        }
+                      </div>
+                      is
+                    </mat-expansion-panel>
+                  }
+                </mat-accordion>
+              </div>
+            </mat-expansion-panel>
+          }
+        </mat-accordion>
+
+        <!--MARK: Status and count
+-->
         <mat-card-subtitle>
           Passengers ({{ totalNumberOfPassengers }})
         </mat-card-subtitle>
@@ -88,6 +195,20 @@
                 }}</span>
               </div>
             }
+            <div class="favorite-content">
+              <span>Favorite: </span>
+              <button
+                mat-icon-button
+                disableRipple
+                (click)="toggleFavoritePassenger(selectedPassenger.id)"
+              >
+                @let icon =
+                  isFavoritePassenger(selectedPassenger.id)
+                    ? "favorite"
+                    : "favorite_outline";
+                <mat-icon>{{ icon }}</mat-icon>
+              </button>
+            </div>
             @if (selectedPassengerVehicle !== null) {
               <span
                 tabindex="0"
@@ -118,6 +239,20 @@
                 }}</span>
               </div>
             }
+            <div class="favorite-content">
+              <span>Favorite: </span>
+              <button
+                mat-icon-button
+                disableRipple
+                (click)="toggleFavoriteVehicle(selectedVehicle.id)"
+              >
+                @let icon =
+                  isFavoriteVehicle(selectedVehicle.id)
+                    ? "favorite"
+                    : "favorite_outline";
+                <mat-icon>{{ icon }}</mat-icon>
+              </button>
+            </div>
             @if (selectedVehiclePassengers.length > 0) {
               <span>Passengers:</span>
             }

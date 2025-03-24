@@ -1,0 +1,46 @@
+<mat-card appearance="outlined">
+  <mat-card-content>
+    <p class="title">Entity Filters</p>
+    <div class="content">
+      <section class="entity-filters">
+        @let vehicle = "vehicle";
+        @let passenger = "passenger";
+        @let filterService = visualizationFilterService;
+        <mat-chip-option
+          [selected]="!filters().has(passenger)"
+          (click)="filterService.toggleFilter(passenger)"
+          >Passengers</mat-chip-option
+        >
+        <mat-chip-option
+          [selected]="!filters().has(vehicle)"
+          (click)="filterService.toggleFilter(vehicle)"
+          >Vehicles</mat-chip-option
+        >
+        <ul>
+          @for (mode of vehicleModes(); track mode) {
+            <li>
+              <mat-chip-option
+                [selected]="!filters().has(mode)"
+                [disabled]="filters().has(vehicle)"
+                (click)="filterService.toggleFilter(mode)"
+              >
+                {{ mode }}
+              </mat-chip-option>
+            </li>
+          }
+        </ul>
+      </section>
+      <mat-divider vertical></mat-divider>
+      <section>
+        <mat-radio-group
+          class="radio-group"
+          aria-label="Select a global filter"
+          (change)="onRadioChange($event)"
+        >
+          <mat-radio-button checked value="all">All</mat-radio-button>
+          <mat-radio-button value="favorites">Favorites</mat-radio-button>
+        </mat-radio-group>
+      </section>
+    </div>
+  </mat-card-content>
+</mat-card>

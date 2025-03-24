@@ -10,6 +10,7 @@ import {
 import { FormBuilder, FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialogRef } from '@angular/material/dialog';
@@ -18,6 +19,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatTabsModule } from '@angular/material/tabs';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import {
@@ -35,6 +37,11 @@ import { UserInterfaceService } from '../../services/user-interface.service';
 import { VisualizationService } from '../../services/visualization.service';
 import { InformationDialogComponent } from '../information-dialog/information-dialog.component';
 import { SimulationControlBarComponent } from '../simulation-control-bar/simulation-control-bar.component';
+import { MapLayersComponent } from '../map-tiles/map-tiles.component';
+import { VisualizerFilterComponent } from '../visualizer-filter/visualizer-filter.component';
+import { VisualizationFilterService } from '../../services/visualization-filter.service';
+import { FavoriteEntitiesComponent } from '../favorite-entities/favorite-entities.component';
+import { FavoriteEntitiesService } from '../../services/favorite-entities.service';
 
 export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 
@@ -49,6 +56,9 @@ export interface EntitySearch {
   selector: 'app-visualizer',
   imports: [
     SimulationControlBarComponent,
+    VisualizerFilterComponent,
+    FavoriteEntitiesComponent,
+    MapLayersComponent,
     MatCardModule,
     MatButtonModule,
     MatFormFieldModule,
@@ -56,11 +66,13 @@ export interface EntitySearch {
     MatInputModule,
     MatChipsModule,
     MatTooltipModule,
-    MatExpansionModule,
     MatAutocompleteModule,
     ReactiveFormsModule,
+    MatExpansionModule,
+    MatButtonToggleModule,
+    MatTabsModule,
   ],
-  providers: [VisualizationService],
+  providers: [VisualizationService, VisualizationFilterService],
   templateUrl: './visualizer.component.html',
   styleUrl: './visualizer.component.css',
 })
@@ -295,6 +307,12 @@ export class VisualizerComponent implements OnDestroy {
     return [...passengers, ...vehicles];
   });
 
+  readonly tabControl: FormControl<string | null>;
+  showSearch = false;
+  showFilter = false;
+  showFavorites = false;
+  showLayers = false;
+
   readonly searchValueSignal: WritableSignal<string | EntitySearch> =
     signal('');
 
@@ -341,8 +359,22 @@ export class VisualizerComponent implements OnDestroy {
     private readonly animationService: AnimationService,
     private readonly loadingService: LoadingService,
     private readonly visualizationService: VisualizationService,
+    private readonly favoriteEntitiesService: FavoriteEntitiesService,
     private readonly formBuilder: FormBuilder,
   ) {
+    this.tabControl = new FormControl('');
+    this.tabControl.valueChanges.subscribe((value) => {
+      this.showSearch = false;
+      this.showFilter = false;
+      this.showFavorites = false;
+      this.showLayers = false;
+      if (value === 'search') this.showSearch = true;
+      else if (value === 'filter') this.showFilter = true;
+      else if (value === 'favorites') this.showFavorites = true;
+      else if (value === 'layers') this.showLayers = true;
+    });
+    this.tabControl.setValue('search');
+
     this.searchControl = this.formBuilder.control('');
     this.searchControl.valueChanges.subscribe((value) => {
       this.searchValueSignal.set(value ?? '');
@@ -578,6 +610,19 @@ export class VisualizerComponent implements OnDestroy {
   }
 
   // MARK: Getters
+  get statisticSignal(): Signal<
+    Record<string, Record<string, Record<string, number>>>
+  > {
+    return computed(() => {
+      const environment =
+        this.visualizationService.animatedSimulationEnvironmentSignal();
+      if (!environment) {
+        return {};
+      }
+      return environment.statistic;
+    });
+  }
+
   get shouldShowInformationPanelSignal(): Signal<boolean> {
     return this.userInterfaceService.shouldShowInformationPanelSignal;
   }
@@ -610,6 +655,24 @@ export class VisualizerComponent implements OnDestroy {
   selectVehicle(id: string) {
     this.animationService.selectEntity(id, 'vehicle');
   }
+
+  /** Favorite Entitites */
+  toggleFavoriteVehicle(id: string) {
+    this.favoriteEntitiesService.toggleFavoriteVehicle(id);
+  }
+
+  toggleFavoritePassenger(id: string) {
+    this.favoriteEntitiesService.toggleFavoritePassenger(id);
+  }
+
+  isFavoriteVehicle(id: string) {
+    return this.favoriteEntitiesService.favVehicleIds().has(id);
+  }
+
+  isFavoritePassenger(id: string) {
+    return this.favoriteEntitiesService.favPassengerIds().has(id);
+  }
+  /** ***************** */
 
   clearSearch() {
     this.searchControl.setValue(null);
@@ -667,5 +730,25 @@ export class VisualizerComponent implements OnDestroy {
 
   async leaveVisualization() {
     await this.router.navigate(['home']);
+  }
+
+  capitalize(str: string): string {
+    if (!str) return str; // Handle empty strings
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  keys(record: Record<string, any>): string[] {
+    return Object.keys(record);
+  }
+
+  formatNumber(num: number): string {
+    const formatter = new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+      useGrouping: true,
+    });
+
+    return formatter.format(num).replace(/,/g, ' ');
   }
 }

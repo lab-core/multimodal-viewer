@@ -10,7 +10,11 @@ import { pixiOverlay } from 'leaflet';
 import 'leaflet-pixi-overlay';
 import * as PIXI from 'pixi.js';
 import { OutlineFilter } from 'pixi-filters';
-import { Entity, EntityOwner } from '../interfaces/entity.model';
+import {
+  Entity,
+  EntityFilterMode,
+  EntityOwner,
+} from '../interfaces/entity.model';
 import {
   AnimatedPassenger,
   AnimatedSimulationEnvironment,
@@ -23,6 +27,7 @@ import {
   StaticVehicleAnimationData,
   Vehicle,
 } from '../interfaces/simulation.model';
+import { FavoriteEntitiesService } from './favorite-entities.service';
 
 @Injectable({
   providedIn: 'root',
@@ -106,6 +111,10 @@ export class AnimationService {
   private previousVehiclesEntities: Entity<AnimatedVehicle>[] = [];
   private previousPassengerEntities: Entity<AnimatedPassenger>[] = [];
 
+  // Filters
+  private filters: Set<string> = new Set<string>();
+  private filterMode: EntityFilterMode = 'all';
+
   private speed = 1;
   private readonly _shouldFollowEntitySignal: WritableSignal<boolean> =
     signal(false);
@@ -113,6 +122,10 @@ export class AnimationService {
   get shouldFollowEntitySignal(): Signal<boolean> {
     return this._shouldFollowEntitySignal;
   }
+
+  constructor(
+    private readonly favoriteEntitiesService: FavoriteEntitiesService,
+  ) {}
 
   synchronizeEnvironment(simulationEnvironment: AnimatedSimulationEnvironment) {
     this.selectedEntityPolyline.clear();
@@ -208,7 +221,7 @@ export class AnimationService {
     const entity: Entity<AnimatedVehicle> = {
       data: vehicle,
       sprite,
-      requestedRotation: 0,
+      show: true,
     };
     sprite.entity = entity;
 
@@ -228,7 +241,7 @@ export class AnimationService {
     const entity: Entity<AnimatedPassenger> = {
       data: passenger,
       sprite,
-      requestedRotation: 0,
+      show: true,
     };
     sprite.entity = entity;
 
@@ -252,6 +265,14 @@ export class AnimationService {
 
   setPause(pause: boolean) {
     this.pause = pause;
+  }
+
+  setFilters(filters: Set<string>) {
+    this.filters = filters;
+  }
+
+  setFilterMode(filterMode: EntityFilterMode) {
+    this.filterMode = filterMode;
   }
 
   centerMap() {
@@ -325,6 +346,31 @@ export class AnimationService {
     this.utils.getMap().flyToBounds(new L.LatLngBounds(southWest, northEast));
   }
 
+  private filterEntities() {
+    const filters = this.filters;
+
+    const showVehicles = !filters.has('vehicle');
+    const showPassengers = !filters.has('passenger');
+    const showFavoritesOnly = this.filterMode === 'favorites';
+
+    for (const vehicle of this.vehicles)
+      vehicle.sprite.visible =
+        vehicle.show &&
+        showVehicles && // Are vehicles not filtered
+        !filters.has(vehicle.data.mode ?? 'unknown') && // Is bus mode not filtered
+        (!showFavoritesOnly || // Is favorites filter on and is in favorites
+          this.favoriteEntitiesService.favVehicleIds().has(vehicle.data.id));
+
+    for (const passenger of this.passengersEntities)
+      passenger.sprite.visible =
+        passenger.show &&
+        showPassengers && // Are passengers not filtered
+        (!showFavoritesOnly || // Is favorites filter on and is in favorites
+          this.favoriteEntitiesService
+            .favPassengerIds()
+            .has(passenger.data.id));
+  }
+
   private setVehiclePositions() {
     // eslint-disable-next-line @typescript-eslint/prefer-for-of
     for (let index = 0; index < this.vehicles.length; ++index) {
@@ -339,7 +385,7 @@ export class AnimationService {
       // Vehicle has no animation data
       // This can happen if the vehicle is not in the environment yet
       if (!animationData) {
-        vehicle.sprite.visible = false;
+        vehicle.show = false;
         continue;
       }
 
@@ -363,11 +409,11 @@ export class AnimationService {
       let point: L.Point | null = null;
       if (animationData.notDisplayedReason !== null) {
         // Vehicle has an error
-        vehicle.sprite.visible = false;
+        vehicle.show = false;
       } else if (
         (animationData as StaticVehicleAnimationData).position !== undefined
       ) {
-        vehicle.sprite.visible = true;
+        vehicle.show = true;
         const staticVehicleAnimationData =
           animationData as StaticVehicleAnimationData;
         point = this.utils.latLngToLayerPoint([
@@ -386,7 +432,7 @@ export class AnimationService {
       } else if (
         (animationData as DynamicVehicleAnimationData).polyline !== undefined
       ) {
-        vehicle.sprite.visible = true;
+        vehicle.show = true;
         const dynamicVehicleAnimationData =
           animationData as DynamicVehicleAnimationData;
         const [lineNo, lineProgress] = this.getLineNoAndProgress(
@@ -404,7 +450,7 @@ export class AnimationService {
         lineIndex = lineNo;
       } else {
         // Vehicle has an unknown error
-        vehicle.sprite.visible = false;
+        vehicle.show = false;
       }
 
       const selectedVehicleId = this._selectedVehicleIdSignal();
@@ -436,7 +482,7 @@ export class AnimationService {
       // Passenger has no animation data
       // This can happen if the passenger is not in the environment yet
       if (!animationData) {
-        passenger.sprite.visible = false;
+        passenger.show = false;
         continue;
       }
 
@@ -460,11 +506,11 @@ export class AnimationService {
 
       if (animationData.notDisplayedReason !== null) {
         // Passenger has an error
-        passenger.sprite.visible = false;
+        passenger.show = false;
       } else if (
         (animationData as StaticPassengerAnimationData).position !== undefined
       ) {
-        passenger.sprite.visible = true;
+        passenger.show = true;
         const staticPassengerAnimationData =
           animationData as StaticPassengerAnimationData;
         const point = this.utils.latLngToLayerPoint([
@@ -474,17 +520,17 @@ export class AnimationService {
         passenger.sprite.x = point.x;
         passenger.sprite.y = point.y;
       } else if (animationData.vehicleId !== null) {
-        passenger.sprite.visible = true;
+        passenger.show = true;
         const vehicleEntity =
           this.vehicleEntitiesByVehicleId[animationData.vehicleId];
         if (vehicleEntity) {
-          passenger.sprite.visible = vehicleEntity.sprite.visible;
+          passenger.show = vehicleEntity.show;
           passenger.sprite.x = vehicleEntity.sprite.x;
           passenger.sprite.y = vehicleEntity.sprite.y;
         }
       } else {
         // Passenger has an unknown error
-        passenger.sprite.visible = false;
+        passenger.show = false;
       }
 
       const selectedPassengerId = this._selectedPassengerIdSignal();
@@ -582,6 +628,7 @@ export class AnimationService {
 
     // Distances for all vehicles
     for (const vehicle of this.vehicles) {
+      if (!vehicle.sprite.visible) continue;
       const distance = this.distanceBetweenPoints(
         point,
         vehicle.sprite.position,
@@ -591,6 +638,7 @@ export class AnimationService {
 
     // Distances for all passengers
     for (const passenger of this.passengersEntities) {
+      if (!passenger.sprite.visible) continue;
       const distance = this.distanceBetweenPoints(
         point,
         passenger.sprite.position,
@@ -800,6 +848,7 @@ export class AnimationService {
 
     this.setVehiclePositions();
     this.setPassengerPositions();
+    this.filterEntities();
   }
 
   // onClick is called after onEntityPointerdown

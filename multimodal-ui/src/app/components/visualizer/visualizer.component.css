@@ -46,14 +46,50 @@
   pointer-events: auto;
 }
 
-.search-bar {
+/* Fade animation when switching tabs */
+.fade {
+  opacity: 0;
+  transition: opacity 0.1s ease-in-out;
+}
+
+.fade-show {
+  opacity: 1;
+}
+/* ********************************** */
+
+.tabs {
   position: absolute;
   top: 1rem;
   right: 1rem;
+}
+
+.tab-content {
+  position: absolute;
+  top: 4rem;
+  right: 1rem;
+}
+
+/* mat-button-toggle-group */
+.mat-button-toggle-group-appearance-standard {
+  box-shadow: var(--mat-sys-level3) !important;
+  background-color: var(--mat-sys-surface-container-low);
+  border-radius: var(--mat-sys-corner-large);
+  border: 0px;
+}
+
+.search-bar {
   max-width: 30rem;
   /* 20rem for the information panel and 1rem for the gaps */
   width: calc(100% - 1rem - 20rem - 1rem - 1rem);
 }
+
+.search-form {
+  width: 100%;
+}
+
+/* .map-layers {
+  max-width: 30rem;
+} */
 
 .information-panel {
   overflow: auto;
@@ -63,7 +99,7 @@
   bottom: calc(1rem + 4rem + 1rem);
   left: 1rem;
   top: 1rem;
-  width: 20rem;
+  width: 25rem;
 }
 
 .show-information-panel-button {
@@ -88,4 +124,50 @@
 
 mat-card-title:not(:first-child) {
   margin-block-start: 1rem;
+}
+
+/* Favorites */
+
+.favorite-content {
+  display: flex;
+  align-items: center;
+  height: 20px; /* Squeeze div because icon is too big */
+}
+
+.favorite-content button {
+  scale: 0.8;
+}
+
+/* Favorites icon */
+
+/* Remove label padding */
+:host
+  ::ng-deep
+  .mdc-evolution-chip--with-avatar.mdc-evolution-chip--with-primary-graphic
+  .mdc-evolution-chip__action--primary {
+  padding: 0px;
+}
+
+/* Fix inner-uneven padding */
+:host
+  ::ng-deep
+  .mdc-evolution-chip--with-avatar.mdc-evolution-chip--with-primary-graphic
+  .mdc-evolution-chip__graphic {
+  padding: 4px;
+}
+.statistic-title {
+  font-size: 17px;
+  font-weight: bold;
+}
+
+.indent {
+  padding-left: 1em;
+}
+
+.double-indent {
+  padding-left: 2em;
+}
+
+.top-indent {
+  padding-top: 1rem !important;
 }
