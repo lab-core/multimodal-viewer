@@ -1,23 +1,40 @@
 <!-- The tabindex makes the div focusable -->
-<div #container tabindex='0' (blur)="onBlur()">
-    <mat-card class="fade" [style.top]="top()" [style.bottom]="bottom()" [style.left]="left()"
-        [class.fade-show]="show()" [class.disable-pointer-events]="!show()">
-        @let nbEntities = nearVehicles().length + nearPassengers().length;
-        <span class="info">{{ nbEntities }} entities close</span>
-        <mat-card-content #cardContent class="card-content" [style.max-height]="maxHeight()">
-            <div class="content">
-                @for (id of nearVehicles(); track id) {
-                <mat-chip (click)="onClickVehicle(id)" (mouseenter)="selectVehicle(id)" (mouseleave)="unselectEntity()">
-                    <mat-icon matChipAvatar>directions_car</mat-icon>{{ id }}
-                </mat-chip>
-                }
-                @for (id of nearPassengers(); track id) {
-                <mat-chip (click)="onClickPassenger(id)" (mouseenter)="selectPassenger(id)"
-                    (mouseleave)="unselectEntity()">
-                    <mat-icon matChipAvatar>accessibility</mat-icon>{{ id }}aaa
-                </mat-chip>
-                }
-            </div>
-        </mat-card-content>
-    </mat-card>
+<div #container tabindex="0" (blur)="onBlur()">
+  <mat-card
+    class="fade"
+    [style.top]="top()"
+    [style.bottom]="bottom()"
+    [style.left]="left()"
+    [class.fade-show]="show()"
+    [class.disable-pointer-events]="!show()"
+  >
+    @let nbEntities = nearVehicles().length + nearPassengers().length;
+    <span class="info">{{ nbEntities }} entities close</span>
+    <mat-card-content
+      #cardContent
+      class="card-content"
+      [style.max-height]="maxHeight()"
+    >
+      <div class="content">
+        @for (id of nearVehicles(); track id) {
+          <mat-chip
+            (click)="onClickVehicle(id)"
+            (mouseenter)="selectVehicle(id)"
+            (mouseleave)="unselectEntity()"
+          >
+            <mat-icon matChipAvatar>directions_car</mat-icon>{{ id }}
+          </mat-chip>
+        }
+        @for (id of nearPassengers(); track id) {
+          <mat-chip
+            (click)="onClickPassenger(id)"
+            (mouseenter)="selectPassenger(id)"
+            (mouseleave)="unselectEntity()"
+          >
+            <mat-icon matChipAvatar>accessibility</mat-icon>{{ id }}
+          </mat-chip>
+        }
+      </div>
+    </mat-card-content>
+  </mat-card>
 </div>
