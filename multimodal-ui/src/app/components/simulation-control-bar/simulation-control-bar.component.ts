@@ -1,4 +1,5 @@
 import { DecimalPipe } from '@angular/common';
+import hotkeys from 'hotkeys-js';
 import {
   Component,
   computed,
@@ -45,7 +46,7 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
   readonly isSimulationPausedSignal: Signal<boolean> = computed(
     () => this.simulationInputSignal().status === 'paused',
   );
-  readonly MIN_SPEED_POWER = -2;
+  readonly MIN_SPEED_POWER = 0;
   readonly MAX_SPEED_POWER = 5;
 
   private readonly speedPowerSignal: WritableSignal<number> = signal(0);
@@ -130,6 +131,38 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
       const speed = this.speedSignal();
       this.visualizationService.setVisualizationSpeed(speed);
       this.animationService.setSpeed(speed);
+    });
+
+    hotkeys('space', () => {
+      this.toggleVisualizationPause(this.isVisualizationPausedSignal());
+    });
+
+    hotkeys('ctrl+left,command+left,cmd+left', () => {
+      // TODO fast backward
+    });
+
+    hotkeys('ctrl+right,command+right,cmd+right ', () => {
+      // TODO fast forward
+    });
+
+    hotkeys('ctrl+up,command+up,cmd+up', () => {
+      this.increaseSpeed();
+    });
+
+    hotkeys('ctrl+down,command+down,cmd+down', () => {
+      this.decreaseSpeed();
+    });
+
+    hotkeys('r', () => {
+      this.toggleSimulationDirection();
+    });
+
+    hotkeys('c', () => {
+      this.centerMap();
+    });
+
+    hotkeys('f', () => {
+      this.toggleShouldFollowEntity();
     });
   }
 
