@@ -1,0 +1,21 @@
+<mat-card appearance="outlined">
+    <mat-card-content>
+        <p class="title">Map Tile Providers</p>
+        <mat-chip-listbox class="chip-list" aria-label="Map Layers">
+            @for (tile of mapTiles(); track tile) {
+            <mat-chip-option [selected]="selectedMapTile() === tile" (removed)="removeMapTile(tile)"
+                (click)="setMapTile(tile)">
+                {{tile.name}}
+                @if (tile.custom) {
+                <button matChipRemove aria-label="'remove template form' + keyword">
+                    <mat-icon>cancel</mat-icon>
+                </button>
+                }
+            </mat-chip-option>
+            }
+        </mat-chip-listbox>
+        <div class="btn-container">
+            <button mat-button (click)="addMapTile()">Add Map Tile</button>
+        </div>
+    </mat-card-content>
+</mat-card>

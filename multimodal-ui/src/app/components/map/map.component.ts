@@ -1,6 +1,6 @@
 import { Component, inject, OnDestroy } from '@angular/core';
 import { LeafletModule } from '@bluehalo/ngx-leaflet';
-import { latLng, Map, tileLayer, LatLngExpression } from 'leaflet';
+import { latLng, Map, LatLngExpression } from 'leaflet';
 import { AnimationService } from '../../services/animation.service';
 import { MapService } from '../../services/map.service';
 
@@ -14,21 +14,15 @@ export class MapComponent implements OnDestroy {
   animationService: AnimationService = inject(AnimationService);
 
   // Retrieve saved zoom and position from localStorage
-  savedZoom = localStorage.getItem('mapZoom') ? parseInt(localStorage.getItem('mapZoom')!, 10) : 12;
+  savedZoom = localStorage.getItem('mapZoom')
+    ? parseInt(localStorage.getItem('mapZoom')!, 10)
+    : 12;
   savedCenter: LatLngExpression = localStorage.getItem('mapCenter')
-    ? JSON.parse(localStorage.getItem('mapCenter')!) as [number, number]
+    ? (JSON.parse(localStorage.getItem('mapCenter')!) as [number, number])
     : latLng(45.523066, -73.652687); // Montreal as Default
 
   options = {
-    layers: [
-      tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        noWrap: true,
-        minZoom: 3,
-        maxZoom: 18,
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      }),
-    ],
+    layers: [],
 
     zoom: this.savedZoom,
     center: this.savedCenter,
@@ -48,11 +42,12 @@ export class MapComponent implements OnDestroy {
   onMapReady(map: Map) {
     this.map = map;
     this.mapService.map = map;
+    this.mapService.selectMapTile(this.mapService.selectedMapTile());
+
     map.attributionControl.setPosition('bottomleft');
     map.zoomControl.setPosition('bottomright');
     this.animationService.addPixiOverlay(map);
 
-    
     if (this.savedZoom) {
       map.setZoom(this.savedZoom);
     }
@@ -67,7 +62,10 @@ export class MapComponent implements OnDestroy {
       const currentCenter = this.map.getCenter();
 
       localStorage.setItem('mapZoom', currentZoom.toString());
-      localStorage.setItem('mapCenter', JSON.stringify([currentCenter.lat, currentCenter.lng]));
+      localStorage.setItem(
+        'mapCenter',
+        JSON.stringify([currentCenter.lat, currentCenter.lng]),
+      );
     }
   }
 }

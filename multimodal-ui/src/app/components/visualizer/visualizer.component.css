@@ -46,14 +46,51 @@
   pointer-events: auto;
 }
 
-.search-bar {
+/* Fade animation when switching tabs */
+.fade {
+  opacity: 0;
+  transition: opacity 0.10s ease-in-out;
+}
+
+.fade-show {
+  opacity: 1;
+}
+/* ********************************** */
+
+.tabs {
   position: absolute;
   top: 1rem;
   right: 1rem;
+}
+
+.tab-content {
+  position: absolute;
+  top: 4rem;
+  right: 1rem; 
+}
+
+/* mat-button-toggle-group */
+.mat-button-toggle-group-appearance-standard {
+  box-shadow: var(--mat-sys-level3) !important;
+  background-color: var(--mat-sys-surface-container-low);
+  border-radius: var(--mat-sys-corner-large);
+  border: 0px;
+}
+
+
+.search-bar {
   max-width: 30rem;
   /* 20rem for the information panel and 1rem for the gaps */
   width: calc(100% - 1rem - 20rem - 1rem - 1rem);
 }
+
+.search-form {
+  width: 100%;
+}
+
+/* .map-layers {
+  max-width: 30rem;
+} */
 
 .information-panel {
   overflow: auto;
