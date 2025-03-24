@@ -47,7 +47,7 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
     () => this.simulationInputSignal().status === 'paused',
   );
   readonly MIN_SPEED_POWER = 0;
-  readonly MAX_SPEED_POWER = 5;
+  readonly MAX_SPEED_POWER = 7;
 
   private readonly speedPowerSignal: WritableSignal<number> = signal(0);
 
