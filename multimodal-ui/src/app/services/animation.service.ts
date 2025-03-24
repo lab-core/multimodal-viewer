@@ -9,6 +9,7 @@ import * as L from 'leaflet';
 import { pixiOverlay } from 'leaflet';
 import 'leaflet-pixi-overlay';
 import * as PIXI from 'pixi.js';
+import { OutlineFilter } from 'pixi-filters';
 import {
   Entity,
   EntityFilterMode,
@@ -38,12 +39,31 @@ export class AnimationService {
   private readonly _selectedPassengerIdSignal: WritableSignal<string | null> =
     signal(null);
 
+  private readonly _clickPositionSignal: WritableSignal<PIXI.Point> = signal(
+    new PIXI.Point(0, 0),
+  );
+
+  private readonly _nearVehiclesSignal: WritableSignal<string[]> = signal([]);
+  private readonly _nearPassengersSignal: WritableSignal<string[]> = signal([]);
+
+  get nearVehiclesSignal(): Signal<string[]> {
+    return this._nearVehiclesSignal;
+  }
+
+  get nearPassengersSignal(): Signal<string[]> {
+    return this._nearPassengersSignal;
+  }
+
   get selectedVehicleIdSignal(): Signal<string | null> {
     return this._selectedVehicleIdSignal;
   }
 
   get selectedPassengerIdSignal(): Signal<string | null> {
     return this._selectedPassengerIdSignal;
+  }
+
+  get clickPositionSignal(): Signal<PIXI.Point> {
+    return this._clickPositionSignal;
   }
 
   readonly hasSelectedEntitySignal: Signal<boolean> = computed(
@@ -86,7 +106,6 @@ export class AnimationService {
   private selectedEntityPolyline: PIXI.Graphics = new PIXI.Graphics();
 
   // Variable that are alive for a single frame (could probably improve)
-  private frame_onEntityPointerDownCalled = false;
   private frame_pointToFollow: L.LatLngExpression | null = null;
 
   private previousVehiclesEntities: Entity<AnimatedVehicle>[] = [];
@@ -133,6 +152,7 @@ export class AnimationService {
       this.addVehicle(vehicle);
       if (selectedVehicleId !== null && vehicle.id == selectedVehicleId) {
         isSelectedVehicleInEnvironment = true;
+        this.hightlightEntityId(vehicle.id, 'vehicle');
       }
     }
 
@@ -151,6 +171,7 @@ export class AnimationService {
       this.addPassenger(passenger);
       if (selectedPassengerId !== null && passenger.id == selectedPassengerId) {
         isSelectedPassengerInEnvironment = true;
+        this.hightlightEntityId(passenger.id, 'passenger');
       }
     }
 
@@ -196,8 +217,6 @@ export class AnimationService {
     >;
     sprite.anchor.set(0.5, 0.5);
     sprite.scale.set(1 / this.utils.getScale());
-    sprite.interactive = true;
-    sprite.on('pointerdown', (e) => this.onClickOnVehicle(e));
 
     const entity: Entity<AnimatedVehicle> = {
       data: vehicle,
@@ -218,8 +237,6 @@ export class AnimationService {
     >;
     sprite.anchor.set(0.5, 0.5);
     sprite.scale.set(1 / this.utils.getScale());
-    sprite.interactive = true;
-    sprite.on('pointerdown', (e) => this.onClickOnPassenger(e));
 
     const entity: Entity<AnimatedPassenger> = {
       data: passenger,
@@ -601,6 +618,65 @@ export class AnimationService {
     return interpolatedPosition;
   }
 
+  private findVisuallyNearEntities(event: L.LeafletMouseEvent) {
+    // 20 comes from half the size of the images in pixels
+    const minVisualDistance = 20 / this.utils.getScale();
+    const point = this.utils.latLngToLayerPoint(event.latlng);
+
+    const nearVehicles = [];
+    const nearPassengers = [];
+
+    // Distances for all vehicles
+    for (const vehicle of this.vehicles) {
+      if (!vehicle.sprite.visible) continue;
+      const distance = this.distanceBetweenPoints(
+        point,
+        vehicle.sprite.position,
+      );
+      if (distance <= minVisualDistance) nearVehicles.push(vehicle.data.id);
+    }
+
+    // Distances for all passengers
+    for (const passenger of this.passengersEntities) {
+      if (!passenger.sprite.visible) continue;
+      const distance = this.distanceBetweenPoints(
+        point,
+        passenger.sprite.position,
+      );
+      if (distance <= minVisualDistance) nearPassengers.push(passenger.data.id);
+    }
+
+    // No entities
+    if (nearVehicles.length + nearPassengers.length === 0) {
+      this.unselectEntity();
+    }
+    // One vehicle
+    else if (nearVehicles.length === 1 && nearPassengers.length === 0) {
+      this.selectVehicle(nearVehicles[0]);
+    }
+    // One passenger
+    else if (nearVehicles.length === 0 && nearPassengers.length === 1) {
+      this.selectPassenger(nearPassengers[0]);
+    }
+    // More than one
+    else {
+      this._clickPositionSignal.set(
+        new PIXI.Point(event.containerPoint.x, event.containerPoint.y),
+      );
+      this._nearVehiclesSignal.set(nearVehicles);
+      this._nearPassengersSignal.set(nearPassengers);
+    }
+  }
+
+  private distanceBetweenPoints(
+    pointA: { x: number; y: number },
+    pointB: { x: number; y: number },
+  ) {
+    const dx = pointA.x - pointB.x;
+    const dy = pointA.y - pointB.y;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
   private redrawPolyline(
     polylineNo: number,
     lineNo: number,
@@ -777,53 +853,57 @@ export class AnimationService {
 
   // onClick is called after onEntityPointerdown
   private onClick(event: L.LeafletMouseEvent) {
-    if (!this.frame_onEntityPointerDownCalled) {
-      this.unselectVehicle();
-      this.unselectPassenger();
-    }
-    this.frame_onEntityPointerDownCalled = false;
-  }
-
-  private onClickOnVehicle(event: PIXI.FederatedPointerEvent) {
-    const sprite = event.target as EntityOwner<Entity<AnimatedVehicle>>;
-    if (!sprite) return;
-
-    const entity = sprite.entity;
-    if (!entity) return;
-
-    this.selectVehicle(entity.data.id);
-    this.frame_onEntityPointerDownCalled = true;
-  }
-
-  private onClickOnPassenger(event: PIXI.FederatedPointerEvent) {
-    const sprite = event.target as EntityOwner<Entity<AnimatedPassenger>>;
-    if (!sprite) return;
-
-    const entity = sprite.entity;
-    if (!entity) return;
-
-    this.selectPassenger(entity.data.id);
-    this.frame_onEntityPointerDownCalled = true;
+    this.findVisuallyNearEntities(event);
   }
 
   private selectVehicle(vehicleId: string) {
     this.unselectPassenger();
+    this.hightlightEntityId(vehicleId, 'vehicle');
     this._selectedVehicleIdSignal.set(vehicleId);
   }
 
   private selectPassenger(passengerId: string) {
     this.unselectVehicle();
+    this.hightlightEntityId(passengerId, 'passenger');
     this._selectedPassengerIdSignal.set(passengerId);
   }
 
   private unselectVehicle() {
+    this.unhighlightEntityId(this._selectedVehicleIdSignal(), 'vehicle');
     this._selectedVehicleIdSignal.set(null);
     this.selectedEntityPolyline.clear();
   }
 
   private unselectPassenger() {
+    this.unhighlightEntityId(this._selectedPassengerIdSignal(), 'passenger');
     this._selectedPassengerIdSignal.set(null);
     this.selectedEntityPolyline.clear();
+  }
+
+  private hightlightEntityId(entityId: string, type: 'vehicle' | 'passenger') {
+    const entitiesById =
+      type === 'vehicle'
+        ? this.vehicleEntitiesByVehicleId
+        : this.passengerEntitiesByPassengerId;
+    const entity = entitiesById[entityId];
+    if (entity)
+      entity.sprite.filters = [
+        new OutlineFilter(1, 0xffffff),
+        new OutlineFilter(2, 0xffff00),
+      ];
+  }
+
+  private unhighlightEntityId(
+    entityId: string | null,
+    type: 'vehicle' | 'passenger',
+  ) {
+    if (!entityId) return;
+    const entitiesById =
+      type === 'vehicle'
+        ? this.vehicleEntitiesByVehicleId
+        : this.passengerEntitiesByPassengerId;
+    const entity = entitiesById[entityId];
+    if (entity) entity.sprite.filters = null;
   }
 
   selectEntity(entityId: string, type: 'vehicle' | 'passenger') {
