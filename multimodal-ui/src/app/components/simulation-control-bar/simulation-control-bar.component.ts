@@ -1,9 +1,12 @@
+import { DecimalPipe } from '@angular/common';
 import {
   Component,
   computed,
   effect,
   input,
   InputSignal,
+  OnDestroy,
+  OnInit,
   output,
   signal,
   Signal,
@@ -32,11 +35,12 @@ import { VisualizationService } from '../../services/visualization.service';
     MatTooltipModule,
     MatSliderModule,
     SimulationTimePipe,
+    DecimalPipe,
   ],
   templateUrl: './simulation-control-bar.component.html',
   styleUrl: './simulation-control-bar.component.css',
 })
-export class SimulationControlBarComponent {
+export class SimulationControlBarComponent implements OnInit, OnDestroy {
   // MARK: Properties
   readonly isSimulationPausedSignal: Signal<boolean> = computed(
     () => this.simulationInputSignal().status === 'paused',
@@ -81,6 +85,41 @@ export class SimulationControlBarComponent {
     alias: 'editSimulationConfiguration',
   });
 
+  private readonly sliderUpdateSignal: WritableSignal<number> = signal(0);
+  private readonly SLIDER_UPDATE_INTERVAL = 1000 / 5; // 5 times per second
+  private interval: NodeJS.Timeout | null = null;
+
+  private wantedVisualizationTime: number | null = null;
+  private hasBeenAltered = false;
+  private readonly SMALL_OFFSET = 0.0001;
+  readonly wantedVisualizationTimeSignal: Signal<number | null> = computed(
+    () => {
+      // This allows the slider to update even when the visualization time does not change.
+      // This is necessary because the slider is not updated when it has an invalid value.
+      this.sliderUpdateSignal();
+      const newWantedVisualizationTime =
+        this.visualizationService.wantedVisualizationTimeSignal();
+
+      if (newWantedVisualizationTime === null) {
+        return null;
+      }
+
+      if (newWantedVisualizationTime !== this.wantedVisualizationTime) {
+        this.wantedVisualizationTime = newWantedVisualizationTime;
+        return newWantedVisualizationTime;
+      }
+
+      if (this.hasBeenAltered) {
+        this.hasBeenAltered = false;
+        return newWantedVisualizationTime;
+      }
+
+      this.hasBeenAltered = true;
+
+      return newWantedVisualizationTime + this.SMALL_OFFSET;
+    },
+  );
+
   // MARK: Constructor
   constructor(
     private readonly visualizationService: VisualizationService,
@@ -92,6 +131,18 @@ export class SimulationControlBarComponent {
       this.visualizationService.setVisualizationSpeed(speed);
       this.animationService.setSpeed(speed);
     });
+  }
+
+  ngOnInit() {
+    this.interval = setInterval(() => {
+      this.sliderUpdateSignal.update((value) => value + 1);
+    }, this.SLIDER_UPDATE_INTERVAL);
+  }
+
+  ngOnDestroy() {
+    if (this.interval !== null) {
+      clearInterval(this.interval);
+    }
   }
 
   // MARK: Getters
@@ -113,10 +164,6 @@ export class SimulationControlBarComponent {
 
   get isVisualizationPausedSignal(): Signal<boolean> {
     return this.visualizationService.isVisualizationPausedSignal;
-  }
-
-  get wantedVisualizationTimeSignal(): Signal<number | null> {
-    return this.visualizationService.wantedVisualizationTimeSignal;
   }
 
   get simulationStatesSignal(): Signal<SimulationStates> {

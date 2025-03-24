@@ -10,193 +10,304 @@
 @let selectedVehicle = selectedVehicleSignal();
 
 @if (isInitializedSignal() && simulation !== null) {
+  <div class="tabs enable-pointer-events">
+    <section>
+      <mat-button-toggle-group
+        mat-fab
+        hideSingleSelectionIndicator
+        name="tools"
+        aria-label="tools"
+        [formControl]="tabControl"
+      >
+        <mat-button-toggle value="search"
+          ><mat-icon>search</mat-icon></mat-button-toggle
+        >
+        <mat-button-toggle value="filter"
+          ><mat-icon>filter_list</mat-icon></mat-button-toggle
+        >
+        <mat-button-toggle value="layers"
+          ><mat-icon>layers</mat-icon></mat-button-toggle
+        >
+      </mat-button-toggle-group>
+    </section>
+  </div>
 
-<div class="tabs enable-pointer-events">
-  <section>
-    <mat-button-toggle-group mat-fab hideSingleSelectionIndicator name="tools" aria-label="tools"
-      [formControl]="tabControl">
-      <mat-button-toggle value="search"><mat-icon>search</mat-icon></mat-button-toggle>
-      <mat-button-toggle value="filter"><mat-icon>filter_list</mat-icon></mat-button-toggle>
-      <mat-button-toggle value="layers"><mat-icon>layers</mat-icon></mat-button-toggle>
-    </mat-button-toggle-group>
-  </section>
-</div>
-
-<!-- MARK: Search Bar -->
-<form class="tab-content fade search-bar" [class.fade-show]="showSearch" [class.enable-pointer-events]="showSearch">
-  @let filteredEntitySearchData = filteredEntitySearchDataSignal();
-  @let searchValue = searchValueSignal();
-  <mat-form-field class="search-form">
-    <input matInput [matAutocomplete]="auto" [formControl]="searchControl" />
-    <!-- TODO Search -->
-    <mat-label>Search in the simulation</mat-label>
-    @if (searchValue !== null && searchValue !== "") {
-    <button mat-icon-button matSuffix type="button" (click)="clearSearch()">
-      <mat-icon>close</mat-icon>
-    </button>
-    } @else {
-    <mat-icon matSuffix>search</mat-icon>
-    }
-    <mat-autocomplete #auto="matAutocomplete" [displayWith]="entitySearchDisplayFunction">
-      @for (entity of filteredEntitySearchData; track entity.displayedValue) {
-      <mat-option [value]="entity">
-        {{ entity.displayedValue }}
-      </mat-option>
+  <!-- MARK: Search Bar -->
+  <form
+    class="tab-content fade search-bar"
+    [class.fade-show]="showSearch"
+    [class.enable-pointer-events]="showSearch"
+  >
+    @let filteredEntitySearchData = filteredEntitySearchDataSignal();
+    @let searchValue = searchValueSignal();
+    <mat-form-field class="search-form">
+      <input matInput [matAutocomplete]="auto" [formControl]="searchControl" />
+      <!-- TODO Search -->
+      <mat-label>Search in the simulation</mat-label>
+      @if (searchValue !== null && searchValue !== "") {
+        <button mat-icon-button matSuffix type="button" (click)="clearSearch()">
+          <mat-icon>close</mat-icon>
+        </button>
+      } @else {
+        <mat-icon matSuffix>search</mat-icon>
       }
-    </mat-autocomplete>
-  </mat-form-field>
-</form>
+      <mat-autocomplete
+        #auto="matAutocomplete"
+        [displayWith]="entitySearchDisplayFunction"
+      >
+        @for (entity of filteredEntitySearchData; track entity.displayedValue) {
+          <mat-option [value]="entity">
+            {{ entity.displayedValue }}
+          </mat-option>
+        }
+      </mat-autocomplete>
+    </mat-form-field>
+  </form>
 
-<!-- MARK: Filter TODO (would be nice in a component maybe) -->
-<div class="tab-content fade" [class.fade-show]="showFilter" [class.enable-pointer-events]="showFilter">
-  <mat-card appearance="outlined">
-    <mat-card-content>Filters [TODO]</mat-card-content>
-  </mat-card>
-</div>
+  <!-- MARK: Filter TODO (would be nice in a component maybe) -->
+  <div
+    class="tab-content fade"
+    [class.fade-show]="showFilter"
+    [class.enable-pointer-events]="showFilter"
+  >
+    <mat-card appearance="outlined">
+      <mat-card-content>Filters [TODO]</mat-card-content>
+    </mat-card>
+  </div>
 
-<!-- MARK: Map Tiles -->
-<app-map-tiles class="tab-content fade" [class.fade-show]="showLayers"
-  [class.enable-pointer-events]="showLayers"></app-map-tiles>
+  <!-- MARK: Map Tiles -->
+  <app-map-tiles
+    class="tab-content fade"
+    [class.fade-show]="showLayers"
+    [class.enable-pointer-events]="showLayers"
+  ></app-map-tiles>
 
-<!-- MARK: Information Panel
+  <!-- MARK: Information Panel
     -->
-@if (shouldShowInformationPanelSignal()) {
-<!-- TODO Fill panel -->
-<mat-card class="flex-column information-panel enable-pointer-events">
-  <mat-card-content class="flex-1">
-    <mat-card-title>Simulation: {{ simulation.name }}</mat-card-title>
-    <mat-card-subtitle>Source: {{ simulation.data }}</mat-card-subtitle>
+  @if (shouldShowInformationPanelSignal()) {
+    <!-- TODO Fill panel -->
+    <mat-card class="flex-column information-panel enable-pointer-events">
+      <mat-card-content class="flex-1">
+        <mat-card-title>Simulation: {{ simulation.name }}</mat-card-title>
+        <mat-card-subtitle>Source: {{ simulation.data }}</mat-card-subtitle>
+        <mat-card-subtitle>
+          Current simulation time:
+          {{ simulation.simulationTime ?? "null" }}
+        </mat-card-subtitle>
+        <mat-card-subtitle>
+          Max simulation time:
+          {{ simulation.configuration.maxTime ?? "null" }}
+        </mat-card-subtitle>
 
-    <mat-card-title>Displayed Entities</mat-card-title>
-    <mat-card-subtitle>
-      Passengers ({{ totalNumberOfPassengers }})
-    </mat-card-subtitle>
-    <div class="flex-column">
-      @for (
-      statusAndCount of numberOfPassengersByStatus;
-      track statusAndCount.status
-      ) {
-      <span>{{ statusAndCount.status }}: {{ statusAndCount.count }}</span>
-      }
-    </div>
+        <!--MARK: Statistics
+    -->
+        <mat-card-title class="top-indent"> Statistics </mat-card-title>
 
-    <mat-card-subtitle>
-      Vehicles: ({{ totalNumberOfVehicles }})
-    </mat-card-subtitle>
-    <div class="flex-column">
-      @for (
-      statusAndCount of numberOfVehiclesByStatus;
-      track statusAndCount.status
-      ) {
-      <span>{{ statusAndCount.status }}: {{ statusAndCount.count }}</span>
-      }
-    </div>
-
-    @if (selectedPassenger !== null) {
-    @let selectedPassengerVehicle = selectedPassengerVehicleSignal();
-    <mat-card-title>Selected Passenger</mat-card-title>
-    <div class="flex-column">
-      <span>Id: {{ selectedPassenger.id }}</span>
-      <span>Name: {{ selectedPassenger.name }}</span>
-      <span>Status: {{ selectedPassenger.status }}</span>
-      @if (selectedPassenger.notDisplayedReason !== null) {
-      <div>
-        <span>Not displayed: </span>
-        <span class="light">{{
-          selectedPassenger.notDisplayedReason
-          }}</span>
-      </div>
-      }
-      @if (selectedPassengerVehicle !== null) {
-      <span tabindex="0" class="clickable" [matTooltip]="'Click to select the vehicle'"
-        (click)="selectVehicle(selectedPassengerVehicle.id)"
-        (keydown.enter)="selectVehicle(selectedPassengerVehicle.id)">Vehicle: {{ selectedPassengerVehicle.id }}</span>
-      }
-    </div>
-    }
-
-    @if (selectedVehicle !== null) {
-    @let selectedVehiclePassengers = selectedVehiclePassengersSignal();
-    <mat-card-title>Selected Vehicle</mat-card-title>
-    <div class="flex-column">
-      <span>Id: {{ selectedVehicle.id }}</span>
-      @if (selectedVehicle.mode !== null) {
-      <span>Mode: {{ selectedVehicle.mode }}</span>
-      }
-      <span>Status: {{ selectedVehicle.status }}</span>
-      @if (selectedVehicle.notDisplayedReason !== null) {
-      <div>
-        <span>Not displayed: </span>
-        <span class="light">{{
-          selectedVehicle.notDisplayedReason
-          }}</span>
-      </div>
-      }
-      @if (selectedVehiclePassengers.length > 0) {
-      <span>Passengers:</span>
-      }
-      @for (passenger of selectedVehiclePassengers; track passenger.id) {
-      <span tabindex="0" class="clickable" [matTooltip]="'Click to select the passenger'"
-        (click)="selectPassenger(passenger.id)" (keydown.enter)="selectPassenger(passenger.id)">{{ passenger.id
-        }}</span>
-      }
-    </div>
-    }
-
-    <mat-card-title>Not Displayed Entities</mat-card-title>
-
-    <mat-accordion>
-      @let notDisplayedPassengers = notDisplayedPassengersSignal();
-      <mat-expansion-panel>
-        <mat-expansion-panel-header>
-          <mat-panel-title>
-            Passengers ({{ notDisplayedPassengers.length }})
-          </mat-panel-title>
-        </mat-expansion-panel-header>
-        <div class="flex-column gap-0-5-rem">
-          @for (passenger of notDisplayedPassengers; track passenger.id) {
-          <div tabindex="0" class="clickable" [matTooltip]="'Click to select the passenger'"
-            (click)="selectPassenger(passenger.id)" (keydown.enter)="selectPassenger(passenger.id)">
-            <span>{{ passenger.id }}</span>
-            <span class="light">{{ passenger.notDisplayedReason }}</span>
-          </div>
+        <mat-accordion multi="true">
+          @let statistic = statisticSignal();
+          @for (statisticTitle of keys(statistic); track statisticTitle) {
+            <mat-expansion-panel>
+              <mat-expansion-panel-header>
+                <mat-panel-title>
+                  {{ capitalize(statisticTitle) }}
+                </mat-panel-title>
+              </mat-expansion-panel-header>
+              <div class="flex-column gap-0-5-rem">
+                <mat-accordion multi="true">
+                  @for (mode of keys(statistic[statisticTitle]); track mode) {
+                    <mat-expansion-panel>
+                      <mat-expansion-panel-header>
+                        <mat-panel-title>
+                          {{ capitalize(mode) }}
+                        </mat-panel-title>
+                      </mat-expansion-panel-header>
+                      <div class="flex-column gap-0-5-rem">
+                        @for (
+                          statisticName of keys(
+                            statistic[statisticTitle][mode]
+                          );
+                          track statisticName
+                        ) {
+                          <span style="white-space: normal">
+                            {{ statisticName }} :
+                            <span style="white-space: nowrap">
+                              {{
+                                formatNumber(
+                                  statistic[statisticTitle][mode][statisticName]
+                                )
+                              }}
+                            </span>
+                          </span>
+                        }
+                      </div>
+                    </mat-expansion-panel>
+                  }
+                </mat-accordion>
+              </div>
+            </mat-expansion-panel>
           }
-        </div>
-      </mat-expansion-panel>
+        </mat-accordion>
 
-      @let notDisplayedVehicles = notDisplayedVehiclesSignal();
-      <mat-expansion-panel>
-        <mat-expansion-panel-header>
-          <mat-panel-title>
-            Vehicles ({{ notDisplayedVehicles.length }})
-          </mat-panel-title>
-        </mat-expansion-panel-header>
-        <div class="flex-column gap-0-5-rem">
-          @for (vehicle of notDisplayedVehicles; track vehicle.id) {
-          <div tabindex="0" class="clickable" [matTooltip]="'Click to select the vehicle'"
-            (click)="selectVehicle(vehicle.id)" (keydown.enter)="selectVehicle(vehicle.id)">
-            <span>{{ vehicle.id }}</span>
-            <span class="light"> {{ vehicle.notDisplayedReason }}</span>
-          </div>
-          }
-        </div>
-      </mat-expansion-panel>
-    </mat-accordion>
-  </mat-card-content>
-  <mat-card-actions align="end">
-    <button mat-button (click)="hideInformationPanel()">Hide</button>
-  </mat-card-actions>
-</mat-card>
-} @else {
-<button mat-fab class="enable-pointer-events show-information-panel-button" (click)="showInformationPanel()">
-  <mat-icon>info</mat-icon>
-</button>
-}
-
-<!-- MARK: Control Bar
+        <!--MARK: Status and count
 -->
-<app-simulation-control-bar class="enable-pointer-events" [simulation]="simulation"
-  (pauseSimulation)="pauseSimulation($event)" (resumeSimulation)="resumeSimulation($event)"
-  (stopSimulation)="stopSimulation($event)" (editSimulationConfiguration)="editSimulationConfiguration($event)"
-  (leaveVisualization)="leaveVisualization()"></app-simulation-control-bar>
+        <mat-card-subtitle>
+          Passengers ({{ totalNumberOfPassengers }})
+        </mat-card-subtitle>
+        <div class="flex-column">
+          @for (
+            statusAndCount of numberOfPassengersByStatus;
+            track statusAndCount.status
+          ) {
+            <span>{{ statusAndCount.status }}: {{ statusAndCount.count }}</span>
+          }
+        </div>
+
+        <mat-card-subtitle>
+          Vehicles: ({{ totalNumberOfVehicles }})
+        </mat-card-subtitle>
+        <div class="flex-column">
+          @for (
+            statusAndCount of numberOfVehiclesByStatus;
+            track statusAndCount.status
+          ) {
+            <span>{{ statusAndCount.status }}: {{ statusAndCount.count }}</span>
+          }
+        </div>
+
+        @if (selectedPassenger !== null) {
+          @let selectedPassengerVehicle = selectedPassengerVehicleSignal();
+          <mat-card-title>Selected Passenger</mat-card-title>
+          <div class="flex-column">
+            <span>Id: {{ selectedPassenger.id }}</span>
+            <span>Name: {{ selectedPassenger.name }}</span>
+            <span>Status: {{ selectedPassenger.status }}</span>
+            @if (selectedPassenger.notDisplayedReason !== null) {
+              <div>
+                <span>Not displayed: </span>
+                <span class="light">{{
+                  selectedPassenger.notDisplayedReason
+                }}</span>
+              </div>
+            }
+            @if (selectedPassengerVehicle !== null) {
+              <span
+                tabindex="0"
+                class="clickable"
+                [matTooltip]="'Click to select the vehicle'"
+                (click)="selectVehicle(selectedPassengerVehicle.id)"
+                (keydown.enter)="selectVehicle(selectedPassengerVehicle.id)"
+                >Vehicle: {{ selectedPassengerVehicle.id }}</span
+              >
+            }
+          </div>
+        }
+
+        @if (selectedVehicle !== null) {
+          @let selectedVehiclePassengers = selectedVehiclePassengersSignal();
+          <mat-card-title>Selected Vehicle</mat-card-title>
+          <div class="flex-column">
+            <span>Id: {{ selectedVehicle.id }}</span>
+            @if (selectedVehicle.mode !== null) {
+              <span>Mode: {{ selectedVehicle.mode }}</span>
+            }
+            <span>Status: {{ selectedVehicle.status }}</span>
+            @if (selectedVehicle.notDisplayedReason !== null) {
+              <div>
+                <span>Not displayed: </span>
+                <span class="light">{{
+                  selectedVehicle.notDisplayedReason
+                }}</span>
+              </div>
+            }
+            @if (selectedVehiclePassengers.length > 0) {
+              <span>Passengers:</span>
+            }
+            @for (passenger of selectedVehiclePassengers; track passenger.id) {
+              <span
+                tabindex="0"
+                class="clickable"
+                [matTooltip]="'Click to select the passenger'"
+                (click)="selectPassenger(passenger.id)"
+                (keydown.enter)="selectPassenger(passenger.id)"
+                >{{ passenger.id }}</span
+              >
+            }
+          </div>
+        }
+
+        <mat-card-title>Not Displayed Entities</mat-card-title>
+
+        <mat-accordion>
+          @let notDisplayedPassengers = notDisplayedPassengersSignal();
+          <mat-expansion-panel>
+            <mat-expansion-panel-header>
+              <mat-panel-title>
+                Passengers ({{ notDisplayedPassengers.length }})
+              </mat-panel-title>
+            </mat-expansion-panel-header>
+            <div class="flex-column gap-0-5-rem">
+              @for (passenger of notDisplayedPassengers; track passenger.id) {
+                <div
+                  tabindex="0"
+                  class="clickable"
+                  [matTooltip]="'Click to select the passenger'"
+                  (click)="selectPassenger(passenger.id)"
+                  (keydown.enter)="selectPassenger(passenger.id)"
+                >
+                  <span>{{ passenger.id }}</span>
+                  <span class="light">{{ passenger.notDisplayedReason }}</span>
+                </div>
+              }
+            </div>
+          </mat-expansion-panel>
+
+          @let notDisplayedVehicles = notDisplayedVehiclesSignal();
+          <mat-expansion-panel>
+            <mat-expansion-panel-header>
+              <mat-panel-title>
+                Vehicles ({{ notDisplayedVehicles.length }})
+              </mat-panel-title>
+            </mat-expansion-panel-header>
+            <div class="flex-column gap-0-5-rem">
+              @for (vehicle of notDisplayedVehicles; track vehicle.id) {
+                <div
+                  tabindex="0"
+                  class="clickable"
+                  [matTooltip]="'Click to select the vehicle'"
+                  (click)="selectVehicle(vehicle.id)"
+                  (keydown.enter)="selectVehicle(vehicle.id)"
+                >
+                  <span>{{ vehicle.id }}</span>
+                  <span class="light"> {{ vehicle.notDisplayedReason }}</span>
+                </div>
+              }
+            </div>
+          </mat-expansion-panel>
+        </mat-accordion>
+      </mat-card-content>
+      <mat-card-actions align="end">
+        <button mat-button (click)="hideInformationPanel()">Hide</button>
+      </mat-card-actions>
+    </mat-card>
+  } @else {
+    <button
+      mat-fab
+      class="enable-pointer-events show-information-panel-button"
+      (click)="showInformationPanel()"
+    >
+      <mat-icon>info</mat-icon>
+    </button>
+  }
+
+  <!-- MARK: Control Bar
+-->
+  <app-simulation-control-bar
+    class="enable-pointer-events"
+    [simulation]="simulation"
+    (pauseSimulation)="pauseSimulation($event)"
+    (resumeSimulation)="resumeSimulation($event)"
+    (stopSimulation)="stopSimulation($event)"
+    (editSimulationConfiguration)="editSimulationConfiguration($event)"
+    (leaveVisualization)="leaveVisualization()"
+  ></app-simulation-control-bar>
 }

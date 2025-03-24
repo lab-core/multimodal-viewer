@@ -6,8 +6,8 @@ import {
   WritableSignal,
 } from '@angular/core';
 import * as L from 'leaflet';
+import { pixiOverlay } from 'leaflet';
 import 'leaflet-pixi-overlay';
-import { pixiOverlay } from 'leaflet'
 import * as PIXI from 'pixi.js';
 import { Entity, EntityOwner } from '../interfaces/entity.model';
 import {
@@ -710,17 +710,18 @@ export class AnimationService {
   private onRedraw(event: L.LeafletEvent) {
     if (this.startTimestamp == null || this.endTimestamp == null) return;
 
-    if (
-      this.animationVisualizationTime < this.startTimestamp ||
-      this.animationVisualizationTime > this.endTimestamp
-    ) {
-      return;
-    }
-
     if (this.pause) {
       this.animationVisualizationTime = this.lastVisualisationTime;
     } else {
       this.updateAnimationTime();
+    }
+
+    if (this.animationVisualizationTime < this.startTimestamp) {
+      this.animationVisualizationTime = this.startTimestamp;
+    }
+
+    if (this.animationVisualizationTime > this.endTimestamp) {
+      this.animationVisualizationTime = this.endTimestamp;
     }
 
     this.setVehiclePositions();
