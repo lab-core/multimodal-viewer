@@ -1,0 +1,42 @@
+<mat-card appearance="outlined">
+  <mat-card-content>
+    <p class="title">Favorites</p>
+    <div class="container">
+      <div class="content">
+        @if (favVehicleIds().size === 0 && favPassengerIds().size === 0) {
+          <p>You have no favorites.</p>
+        }
+        @for (id of favVehicleIds(); track id) {
+          <mat-chip
+            (click)="selectVehicle(id)"
+            (removed)="toggleFavoriteVehicle(id)"
+          >
+            <mat-icon matChipAvatar>directions_car</mat-icon>{{ id }}
+            <button class="remove-btn" matChipRemove>
+              <mat-icon>favorite</mat-icon>
+            </button>
+          </mat-chip>
+        }
+      </div>
+      <div
+        class="content"
+        [class.content-margin]="
+          favPassengerIds().size !== 0 && favVehicleIds().size !== 0
+        "
+      >
+        @for (id of favPassengerIds(); track id) {
+          <mat-chip
+            (click)="selectPassenger(id)"
+            (removed)="toggleFavoritePassenger(id)"
+          >
+            <mat-icon matChipAvatar>accessibility</mat-icon
+            ><span class="chip-text">{{ id }}</span>
+            <button class="remove-btn" matChipRemove>
+              <mat-icon>favorite</mat-icon>
+            </button>
+          </mat-chip>
+        }
+      </div>
+    </div>
+  </mat-card-content>
+</mat-card>

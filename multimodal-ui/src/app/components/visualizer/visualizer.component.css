@@ -49,7 +49,7 @@
 /* Fade animation when switching tabs */
 .fade {
   opacity: 0;
-  transition: opacity 0.10s ease-in-out;
+  transition: opacity 0.1s ease-in-out;
 }
 
 .fade-show {
@@ -66,7 +66,7 @@
 .tab-content {
   position: absolute;
   top: 4rem;
-  right: 1rem; 
+  right: 1rem;
 }
 
 /* mat-button-toggle-group */
@@ -76,7 +76,6 @@
   border-radius: var(--mat-sys-corner-large);
   border: 0px;
 }
-
 
 .search-bar {
   max-width: 30rem;
@@ -127,6 +126,35 @@ mat-card-title:not(:first-child) {
   margin-block-start: 1rem;
 }
 
+/* Favorites */
+
+.favorite-content {
+  display: flex;
+  align-items: center;
+  height: 20px; /* Squeeze div because icon is too big */
+}
+
+.favorite-content button {
+  scale: 0.8;
+}
+
+/* Favorites icon */
+
+/* Remove label padding */
+:host
+  ::ng-deep
+  .mdc-evolution-chip--with-avatar.mdc-evolution-chip--with-primary-graphic
+  .mdc-evolution-chip__action--primary {
+  padding: 0px;
+}
+
+/* Fix inner-uneven padding */
+:host
+  ::ng-deep
+  .mdc-evolution-chip--with-avatar.mdc-evolution-chip--with-primary-graphic
+  .mdc-evolution-chip__graphic {
+  padding: 4px;
+}
 .statistic-title {
   font-size: 17px;
   font-weight: bold;

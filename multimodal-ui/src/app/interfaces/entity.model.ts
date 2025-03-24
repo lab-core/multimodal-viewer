@@ -2,7 +2,7 @@ import { Sprite } from 'pixi.js';
 
 export interface Entity<T> {
   sprite: Sprite;
-  requestedRotation: number;
+  show: boolean;
   data: T;
 }
 
@@ -10,3 +10,5 @@ export interface Entity<T> {
 export interface EntityOwner<T> extends Sprite {
   entity: T;
 }
+
+export type EntityFilterMode = 'all' | 'favorites';

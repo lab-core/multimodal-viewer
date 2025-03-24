@@ -38,6 +38,10 @@ import { VisualizationService } from '../../services/visualization.service';
 import { InformationDialogComponent } from '../information-dialog/information-dialog.component';
 import { SimulationControlBarComponent } from '../simulation-control-bar/simulation-control-bar.component';
 import { MapLayersComponent } from '../map-tiles/map-tiles.component';
+import { VisualizerFilterComponent } from '../visualizer-filter/visualizer-filter.component';
+import { VisualizationFilterService } from '../../services/visualization-filter.service';
+import { FavoriteEntitiesComponent } from '../favorite-entities/favorite-entities.component';
+import { FavoriteEntitiesService } from '../../services/favorite-entities.service';
 
 export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 
@@ -52,6 +56,8 @@ export interface EntitySearch {
   selector: 'app-visualizer',
   imports: [
     SimulationControlBarComponent,
+    VisualizerFilterComponent,
+    FavoriteEntitiesComponent,
     MapLayersComponent,
     MatCardModule,
     MatButtonModule,
@@ -66,7 +72,7 @@ export interface EntitySearch {
     MatButtonToggleModule,
     MatTabsModule,
   ],
-  providers: [VisualizationService],
+  providers: [VisualizationService, VisualizationFilterService],
   templateUrl: './visualizer.component.html',
   styleUrl: './visualizer.component.css',
 })
@@ -304,6 +310,7 @@ export class VisualizerComponent implements OnDestroy {
   readonly tabControl: FormControl<string | null>;
   showSearch = false;
   showFilter = false;
+  showFavorites = false;
   showLayers = false;
 
   readonly searchValueSignal: WritableSignal<string | EntitySearch> =
@@ -352,15 +359,18 @@ export class VisualizerComponent implements OnDestroy {
     private readonly animationService: AnimationService,
     private readonly loadingService: LoadingService,
     private readonly visualizationService: VisualizationService,
+    private readonly favoriteEntitiesService: FavoriteEntitiesService,
     private readonly formBuilder: FormBuilder,
   ) {
     this.tabControl = new FormControl('');
     this.tabControl.valueChanges.subscribe((value) => {
       this.showSearch = false;
       this.showFilter = false;
+      this.showFavorites = false;
       this.showLayers = false;
       if (value === 'search') this.showSearch = true;
       else if (value === 'filter') this.showFilter = true;
+      else if (value === 'favorites') this.showFavorites = true;
       else if (value === 'layers') this.showLayers = true;
     });
     this.tabControl.setValue('search');
@@ -646,6 +656,24 @@ export class VisualizerComponent implements OnDestroy {
     this.animationService.selectEntity(id, 'vehicle');
   }
 
+  /** Favorite Entitites */
+  toggleFavoriteVehicle(id: string) {
+    this.favoriteEntitiesService.toggleFavoriteVehicle(id);
+  }
+
+  toggleFavoritePassenger(id: string) {
+    this.favoriteEntitiesService.toggleFavoritePassenger(id);
+  }
+
+  isFavoriteVehicle(id: string) {
+    return this.favoriteEntitiesService.favVehicleIds().has(id);
+  }
+
+  isFavoritePassenger(id: string) {
+    return this.favoriteEntitiesService.favPassengerIds().has(id);
+  }
+  /** ***************** */
+
   clearSearch() {
     this.searchControl.setValue(null);
   }
@@ -721,6 +749,6 @@ export class VisualizerComponent implements OnDestroy {
       useGrouping: true,
     });
 
-    return formatter.format(num).replace(/,/g, ' ')
+    return formatter.format(num).replace(/,/g, ' ');
   }
 }
