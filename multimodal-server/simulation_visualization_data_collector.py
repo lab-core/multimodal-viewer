@@ -1,8 +1,10 @@
 import os
 from typing import Optional
 
+from multimodalsim.statistics.data_analyzer import DataAnalyzer
+
 from log_manager import register_log
-from multimodalsim.observer.data_collector import DataCollector
+from multimodalsim.observer.data_collector import DataCollector, StandardDataCollector
 from multimodalsim.observer.environment_observer import EnvironmentObserver
 from multimodalsim.observer.visualizer import Visualizer
 from multimodalsim.simulator.environment import Environment
@@ -46,6 +48,7 @@ from simulation_visualization_data_model import (
     VisualizedEnvironment,
     VisualizedPassenger,
     VisualizedVehicle,
+    StatisticUpdate
 )
 from socketio import Client
 
@@ -63,9 +66,12 @@ class SimulationVisualizationDataCollector(DataCollector):
 
     passenger_assignment_event_queue: list[PassengerAssignment]
     vehicle_notification_event_queue: list[VehicleNotification]
+    data_analyzer: DataAnalyzer
+    delta_time: int
+    last_update_stats_time: int
 
     def __init__(
-        self, simulation_id: str, data: str, sio: Client, max_time: float | None
+        self, simulation_id: str, data: str, sio: Client, max_time: float | None, data_analyzer: DataAnalyzer, delta_time: int
     ) -> None:
         self.simulation_id = simulation_id
         self.update_counter = 0
@@ -83,6 +89,10 @@ class SimulationVisualizationDataCollector(DataCollector):
         self.passenger_assignment_event_queue = []
         self.vehicle_notification_event_queue = []
         self.last_queued_event_time = 0
+
+        self.data_analyzer = data_analyzer
+        self.delta_time = delta_time
+        self.last_update_stats_time = None
 
     # MARK: +- Collect
     def collect(
@@ -102,6 +112,17 @@ class SimulationVisualizationDataCollector(DataCollector):
 
         if self.sio.connected:
             self.sio.emit("log", (self.simulation_id, message))
+
+        if self.last_update_stats_time == None or current_event.time >= self.last_update_stats_time + self.delta_time:
+            self.last_update_stats_time = current_event.time
+            self.add_update(
+                Update(
+                    UpdateType.UPDATE_STATISTIC,
+                    StatisticUpdate(self.data_analyzer.get_statistics()),
+                    current_event.time
+                ),
+                env,
+            )
 
     # MARK: +- Add Update
     def add_update(self, update: Update, environment: Environment) -> None:
@@ -194,6 +215,9 @@ class SimulationVisualizationDataCollector(DataCollector):
             vehicle.previous_stops = stops_update.previous_stops
             vehicle.next_stops = stops_update.next_stops
             vehicle.current_stop = stops_update.current_stop
+        elif update.type == UpdateType.UPDATE_STATISTIC:
+            statistic_update: StatisticUpdate = update.data
+            self.visualized_environment.statistic = statistic_update.statistic
 
         SimulationVisualizationDataManager.save_update(
             self.current_save_file_path, update
@@ -558,16 +582,16 @@ class SimulationVisualizationEnvironmentObserver(EnvironmentObserver):
     data_collector: SimulationVisualizationDataCollector
 
     def __init__(
-        self, simulation_id: str, data: str, sio: Client, max_time: float | None
+        self, simulation_id: str, data: str, sio: Client, max_time: float | None, data_analyzer: DataAnalyzer, standard_data_collector: StandardDataCollector, delta_time: int
     ) -> None:
         self.data_collector = SimulationVisualizationDataCollector(
-            simulation_id, data, sio, max_time
+            simulation_id, data, sio, max_time, data_analyzer, delta_time
         )
         super().__init__(
             visualizers=SimulationVisualizationVisualizer(
                 simulation_id, self.data_collector, sio
             ),
-            data_collectors=self.data_collector,
+            data_collectors=[self.data_collector, standard_data_collector],
         )
 
     @property

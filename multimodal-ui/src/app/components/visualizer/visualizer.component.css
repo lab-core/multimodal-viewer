@@ -63,7 +63,7 @@
   bottom: calc(1rem + 4rem + 1rem);
   left: 1rem;
   top: 1rem;
-  width: 20rem;
+  width: 25rem;
 }
 
 .show-information-panel-button {
@@ -88,4 +88,21 @@
 
 mat-card-title:not(:first-child) {
   margin-block-start: 1rem;
+}
+
+.statistic-title {
+  font-size: 17px;
+  font-weight: bold;
+}
+
+.indent {
+  padding-left: 1em;
+}
+
+.double-indent {
+  padding-left: 2em;
+}
+
+.top-indent {
+  padding-top: 1rem !important;
 }
