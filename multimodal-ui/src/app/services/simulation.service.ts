@@ -314,15 +314,14 @@ export class SimulationService {
         }
         return null;
 
-      case 'updateStatistic':
-        {
-          return {
-            type,
-            order,
-            timestamp,
-            data: data as StatisticUpdate,
-          };
-        }
+      case 'updateStatistic': {
+        return {
+          type,
+          order,
+          timestamp,
+          data: data as StatisticUpdate,
+        };
+      }
 
       default:
         return null;
@@ -501,10 +500,6 @@ export class SimulationService {
       return null;
     }
 
-    const latitude = data.latitude ?? null;
-
-    const longitude = data.longitude ?? null;
-
     if (!Array.isArray(data.previousStops)) {
       console.error('Vehicle previous stops not found: ', data.previousStops);
       return null;
@@ -542,8 +537,6 @@ export class SimulationService {
       id,
       mode,
       status,
-      latitude,
-      longitude,
       polylines: null,
       previousStops,
       currentStop,
@@ -636,7 +629,17 @@ export class SimulationService {
 
     const departureTime = data.departureTime ?? null;
 
-    return { arrivalTime, departureTime };
+    const position = data.position ?? null;
+
+    if (
+      position !== null &&
+      (position.latitude === undefined || position.longitude === undefined)
+    ) {
+      console.error('Stop position invalid: ', position);
+      return null;
+    }
+
+    return { arrivalTime, departureTime, position };
   }
 
   private extractSimulationEnvironment(
@@ -955,7 +958,9 @@ export class SimulationService {
         break;
       case 'updateStatistic':
         {
-          simulationEnvironment.statistic = (update.data as StatisticUpdate).statistic;
+          simulationEnvironment.statistic = (
+            update.data as StatisticUpdate
+          ).statistic;
         }
         break;
     }

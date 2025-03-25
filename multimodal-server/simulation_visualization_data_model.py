@@ -328,16 +328,28 @@ class VisualizedPassenger(Serializable):
 class VisualizedStop(Serializable):
     arrival_time: float
     departure_time: float | None
+    latitude: float | None
+    longitude: float | None
 
-    def __init__(self, arrival_time: float, departure_time: float) -> None:
+    def __init__(
+        self,
+        arrival_time: float,
+        departure_time: float,
+        latitude: float | None,
+        longitude: float | None,
+    ) -> None:
         self.arrival_time = arrival_time
         self.departure_time = departure_time
+        self.latitude = latitude
+        self.longitude = longitude
 
     @classmethod
     def from_stop(cls, stop: Stop) -> "VisualizedStop":
         return cls(
             stop.arrival_time,
             stop.departure_time if stop.departure_time != math.inf else None,
+            stop.location.lat,
+            stop.location.lon,
         )
 
     def serialize(self) -> dict:
@@ -345,6 +357,12 @@ class VisualizedStop(Serializable):
 
         if self.departure_time is not None:
             serialized["departureTime"] = self.departure_time
+
+        if self.latitude is not None and self.longitude is not None:
+            serialized["position"] = {
+                "latitude": self.latitude,
+                "longitude": self.longitude,
+            }
 
         return serialized
 
@@ -359,7 +377,16 @@ class VisualizedStop(Serializable):
         arrival_time = float(data["arrivalTime"])
         departure_time = data.get("departureTime", None)
 
-        return VisualizedStop(arrival_time, departure_time)
+        latitude = None
+        longitude = None
+
+        position = data.get("position", None)
+
+        if position is not None:
+            latitude = position.get("latitude", None)
+            longitude = position.get("longitude", None)
+
+        return VisualizedStop(arrival_time, departure_time, latitude, longitude)
 
 
 # MARK: Vehicle

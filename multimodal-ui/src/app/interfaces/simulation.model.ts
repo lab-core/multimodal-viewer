@@ -186,8 +186,13 @@ export const VEHICLE_STATUSES: VehicleStatus[] = [
 
 export type RawPolylines = Record<string, [string, number[]]>;
 
+export interface Position {
+  latitude: number;
+  longitude: number;
+}
+
 export interface Polyline {
-  polyline: { latitude: number; longitude: number }[];
+  polyline: Position[];
   coefficients: number[];
 }
 
@@ -201,14 +206,13 @@ export interface AllPolylines {
 export interface Stop {
   arrivalTime: number;
   departureTime: number | null; // null means infinite
+  position: Position | null;
 }
 
 export interface Vehicle {
   id: string;
   mode: string | null;
   status: VehicleStatus;
-  latitude: number | null;
-  longitude: number | null;
   polylines: Polylines | null;
   previousStops: Stop[];
   currentStop: Stop | null;
@@ -227,14 +231,11 @@ export interface VehicleStopsUpdate {
   nextStops: Stop[];
 }
 
-export type Statistic = Record<
-  string,
-  Record<string, Record<string, number>>
-  >;
+export type Statistic = Record<string, Record<string, Record<string, number>>>;
 
 export interface StatisticUpdate {
-    statistic: Statistic
-  }
+  statistic: Statistic;
+}
 
 export type SimulationUpdateType =
   | 'createPassenger'
@@ -312,7 +313,7 @@ export interface PassengerAnimationData extends AnimationData {
 }
 
 export interface StaticPassengerAnimationData extends PassengerAnimationData {
-  position: { latitude: number; longitude: number };
+  position: Position;
 }
 
 export interface DynamicPassengerAnimationData extends PassengerAnimationData {
@@ -329,7 +330,7 @@ export interface VehicleAnimationData extends AnimationData {
 }
 
 export interface StaticVehicleAnimationData extends VehicleAnimationData {
-  position: { latitude: number; longitude: number };
+  position: Position;
 
   /**
    * Index of the polyline on which the vehicle is.
