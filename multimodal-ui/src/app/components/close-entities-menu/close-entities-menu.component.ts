@@ -69,7 +69,7 @@ export class CloseEntitiesMenuComponent {
 
     // Show menu when click position triggered
     effect(() => {
-      const position = this.clickPositionSignal(); // Trigger but don't use
+      const position = this.clickPositionSignal();
       if (position.x === 0 && position.y === 0) {
         this.show.set(false);
       } else {
