@@ -135,7 +135,7 @@ class VisualizedLeg(Serializable):
         )
 
         if route is not None:
-            all_stops = route.previous_stops
+            all_stops = route.previous_stops.copy()
             if route.current_stop is not None:
                 all_stops.append(route.current_stop)
             all_stops += route.next_stops
@@ -549,6 +549,7 @@ class UpdateType(Enum):
     UPDATE_VEHICLE_STOPS = "updateVehicleStops"
     UPDATE_STATISTIC = "updateStatistic"
 
+
 class StatisticUpdate(Serializable):
     statistic: dict[str, dict[str, dict[str, int]]]
 
@@ -562,11 +563,12 @@ class StatisticUpdate(Serializable):
     def deserialize(data: str) -> "StatisticUpdate":
         if isinstance(data, str):
             data = json.loads(data.replace("'", '"'))
-        
+
         if "statistic" not in data:
             raise ValueError("Invalid data for StatisticUpdate")
-        
+
         return StatisticUpdate(data.statistic)
+
 
 class PassengerStatusUpdate(Serializable):
     passenger_id: str
