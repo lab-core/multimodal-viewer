@@ -436,6 +436,30 @@ export class VisualizerComponent implements OnDestroy {
       this.animationService.setPause(isVisualizationPausedSignal);
     });
 
+    effect(() => {
+      const selectedPassenger = this.selectedPassengerSignal();
+      const selectedVehicle = this.selectedVehicleSignal();
+      const entitySearchData = this.entitySearchDataSignal();
+      
+      const selectedEntity = selectedPassenger || selectedVehicle;
+      
+      if (selectedEntity) {
+        const type = selectedPassenger ? 'passenger' : 'vehicle';
+        const entitySearchItem = entitySearchData.find(
+          entity => entity.type === type && entity.id === selectedEntity.id
+        );
+        
+        if (entitySearchItem) {
+          this.searchControl.setValue(entitySearchItem, { emitEvent: false });
+          return;
+        }
+      }
+      
+      if (this.searchControl.value && typeof this.searchControl.value !== 'string') {
+        this.searchControl.setValue('', { emitEvent: false });
+      }
+    });
+
     // Handle the visualization status
     effect(() => {
       const status = this.visualizerStatusSignal();
@@ -633,10 +657,28 @@ export class VisualizerComponent implements OnDestroy {
 
   selectPassenger(id: string) {
     this.animationService.selectEntity(id, 'passenger');
+
+    const entitySearchData = this.entitySearchDataSignal();
+    const passengerSearchData = entitySearchData.find(
+      entity => entity.type === 'passenger' && entity.id === id
+    );
+    
+    if (passengerSearchData) {
+      this.searchValueSignal.set(passengerSearchData);
+    }
   }
 
   selectVehicle(id: string) {
     this.animationService.selectEntity(id, 'vehicle');
+
+    const entitySearchData = this.entitySearchDataSignal();
+    const vehicleSearchData = entitySearchData.find(
+      entity => entity.type === 'vehicle' && entity.id === id
+    );
+    
+    if (vehicleSearchData) {
+      this.searchValueSignal.set(vehicleSearchData);
+    }
   }
 
   /** Favorite Entitites */
