@@ -52,13 +52,13 @@
       }
 
       @let speed = speedSignal();
-      @let canIncreaseSpeed = canIncreaseSpeedSignal();
-      @let canDecreaseSpeed = canDecreaseSpeedSignal();
+      @let fastForwardStep = fastForwardStepSignal();
       <button
         mat-icon-button
-        [disabled]="!canDecreaseSpeed"
-        [matTooltip]="'Slow down the simulation'"
-        (click)="decreaseSpeed()"
+        [matTooltip]="
+          'Rewind the simulation ' + fastForwardStep + ' seconds ago'
+        "
+        (click)="rewindTime()"
       >
         <mat-icon>fast_rewind</mat-icon>
       </button>
@@ -75,9 +75,10 @@
       </mat-menu>
       <button
         mat-icon-button
-        [disabled]="!canIncreaseSpeed"
-        [matTooltip]="'Speed up the simulation'"
-        (click)="increaseSpeed()"
+        [matTooltip]="
+          'Fast-forward the simulation ' + fastForwardStep + ' seconds later'
+        "
+        (click)="fastForwardTime()"
       >
         <mat-icon>fast_forward</mat-icon>
       </button>

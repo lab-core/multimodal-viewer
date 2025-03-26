@@ -65,22 +65,19 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
   );
   readonly MIN_SPEED_POWER = 0;
   readonly MAX_SPEED_POWER = 7;
+  readonly FAST_FORWARD_STEP = 5;
 
   private readonly speedPowerSignal: WritableSignal<number> = signal(0);
 
   private readonly speedDirectionSignal: WritableSignal<number> = signal(1);
 
-  readonly canIncreaseSpeedSignal: Signal<boolean> = computed(
-    () => this.speedPowerSignal() < this.MAX_SPEED_POWER,
-  );
-
-  readonly canDecreaseSpeedSignal: Signal<boolean> = computed(
-    () => this.speedPowerSignal() > this.MIN_SPEED_POWER,
-  );
-
   readonly speedSignal: Signal<number> = computed(
     () => Math.pow(2, this.speedPowerSignal()) * this.speedDirectionSignal(),
   );
+
+  readonly fastForwardStepSignal: Signal<number> = computed(() => {
+    return Math.abs(this.speedSignal()) * this.FAST_FORWARD_STEP;
+  });
 
   // MARK: Inputs
   readonly simulationInputSignal: InputSignal<Simulation> =
@@ -158,11 +155,11 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
     });
 
     hotkeys('ctrl+left,command+left,cmd+left', () => {
-      // TODO fast backward
+      this.rewindTime();
     });
 
     hotkeys('ctrl+right,command+right,cmd+right ', () => {
-      // TODO fast forward
+      this.fastForwardTime();
     });
 
     hotkeys('ctrl+up,command+up,cmd+up', () => {
@@ -250,6 +247,21 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
     this.speedPowerSignal.update((power) =>
       Math.min(power + 1, this.MAX_SPEED_POWER),
     );
+  }
+
+  fastForwardTime() {
+    this.translateTime(this.fastForwardStepSignal());
+  }
+
+  rewindTime() {
+    this.translateTime(-this.fastForwardStepSignal());
+  }
+
+  translateTime(value: number) {
+    const currentTime =
+      this.visualizationService.wantedVisualizationTimeSignal();
+    if (!currentTime) return;
+    this.visualizationService.setVisualizationTime(currentTime + value);
   }
 
   toggleSimulationDirection(): void {
