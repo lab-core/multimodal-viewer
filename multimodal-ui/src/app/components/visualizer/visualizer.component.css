@@ -183,15 +183,3 @@ mat-card-title:not(:first-child) {
   font-size: 17px;
   font-weight: bold;
 }
-
-.indent {
-  padding-left: 1em;
-}
-
-.double-indent {
-  padding-left: 2em;
-}
-
-.top-indent {
-  padding-top: 1rem !important;
-}
