@@ -6,6 +6,7 @@ import {
   WritableSignal,
 } from '@angular/core';
 import { decode } from 'polyline';
+import randomName from 'node-random-name';
 import {
   AllPolylines,
   AnySimulationUpdate,
@@ -337,7 +338,11 @@ export class SimulationService {
       return null;
     }
 
-    const name = data.name ?? null;
+    let  name = data.name ?? null;
+
+    if (name === id || name === null) {
+      name = (randomName as (args?: { seed: string }) => string)({ seed: id });
+    }
 
     const status = data.status;
     if (!status) {
