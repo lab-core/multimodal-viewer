@@ -323,7 +323,7 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
   private validateVisualisationTimeInput(): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
       const number = parseInt(control.value as string);
-      if (isNaN(number)) return { invalidNumber: true };
+      if (isNaN(number) || number <= 0) return { invalidNumber: true };
       else return null;
     };
   }
