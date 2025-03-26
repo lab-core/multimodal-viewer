@@ -62,7 +62,17 @@
       >
         <mat-icon>fast_rewind</mat-icon>
       </button>
-      <div class="speed">x{{ speed }}</div>
+      <button mat-button [matMenuTriggerFor]="speedMenu">x{{ speed }}</button>
+      <mat-menu #speedMenu="matMenu" class="speed-menu">
+        <button mat-menu-item (click)="setSpeed(0)">x1</button>
+        <button mat-menu-item (click)="setSpeed(1)">x2</button>
+        <button mat-menu-item (click)="setSpeed(2)">x4</button>
+        <button mat-menu-item (click)="setSpeed(3)">x8</button>
+        <button mat-menu-item (click)="setSpeed(4)">x16</button>
+        <button mat-menu-item (click)="setSpeed(5)">x32</button>
+        <button mat-menu-item (click)="setSpeed(6)">x64</button>
+        <button mat-menu-item (click)="setSpeed(7)">x128</button>
+      </mat-menu>
       <button
         mat-icon-button
         [disabled]="!canIncreaseSpeed"

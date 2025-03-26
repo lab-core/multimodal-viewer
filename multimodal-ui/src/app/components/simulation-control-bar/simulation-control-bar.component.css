@@ -55,11 +55,6 @@
   }
 }
 
-.speed {
-  text-align: center;
-  min-width: 3rem;
-}
-
 .active {
   background-color: var(--active-button-color);
 }
@@ -70,6 +65,14 @@
 
   transform: scale(0.8);
   transform-origin: bottom left;
+}
+
+::ng-deep .mat-mdc-menu-panel {
+  min-width: fit-content !important;
+}
+
+.mat-mdc-menu-item {
+  min-height: 30px;
 }
 
 .disable-pointer-events {

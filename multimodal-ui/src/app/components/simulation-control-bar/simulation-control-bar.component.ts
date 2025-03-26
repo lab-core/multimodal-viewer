@@ -28,6 +28,7 @@ import { AnimationService } from '../../services/animation.service';
 import { SimulationService } from '../../services/simulation.service';
 import { VisualizationService } from '../../services/visualization.service';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatMenuModule } from '@angular/material/menu';
 import {
   AbstractControl,
   FormControl,
@@ -50,6 +51,7 @@ import { MatInput, MatInputModule } from '@angular/material/input';
     MatInputModule,
     MatFormFieldModule,
     ReactiveFormsModule,
+    MatMenuModule,
     SimulationTimePipe,
     DecimalPipe,
   ],
@@ -232,6 +234,10 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
     } else {
       this.visualizationService.pauseVisualization();
     }
+  }
+
+  setSpeed(speed: number): void {
+    this.speedPowerSignal.set(speed);
   }
 
   decreaseSpeed(): void {
