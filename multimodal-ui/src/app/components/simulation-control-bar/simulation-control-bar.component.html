@@ -100,10 +100,48 @@
         <mat-icon>moving</mat-icon>
       </button>
 
-      <div
-        [matTooltip]="((visualizationTime | number: '1.0-0') ?? '0').toString()"
-      >
-        {{ visualizationTime | simulationTime }}
+      @let showVisualisationTimeEditor = showVisualisationTimeEditorSignal();
+      <div>
+        <div>
+          <button
+            mat-button
+            [matTooltip]="
+              ((visualizationTime | number: '1.0-0') ?? '0').toString() +
+              ' (Click to modify)'
+            "
+            [disabled]="showVisualisationTimeEditor"
+            (click)="openVisualisationTimeEditor()"
+          >
+            @if (showVisualisationTimeEditor) {
+              @if (editorVisualisationTimeForm.hasError("invalidNumber")) {
+                -- : -- : --
+              } @else {
+                {{ editorVisualisationTimeValueSignal() | simulationTime }}
+              }
+            } @else {
+              {{ visualizationTime | simulationTime }}
+            }
+          </button>
+        </div>
+        <form
+          class="fade"
+          [class.fade-show]="showVisualisationTimeEditor"
+          [class.disable-pointer-events]="!showVisualisationTimeEditor"
+        >
+          <mat-form-field class="timestamp-input">
+            <mat-label>Set Visualisation Time</mat-label>
+            <input
+              matInput
+              type="number"
+              [formControl]="editorVisualisationTimeForm"
+              (keyup.enter)="applyVisualisationTime()"
+              (blur)="hideVisualisationTimeEditor()"
+            />
+            <button matSuffix mat-icon-button aria-label="Clear">
+              <mat-icon>close</mat-icon>
+            </button>
+          </mat-form-field>
+        </form>
       </div>
 
       <div class="flex-1 sliders">

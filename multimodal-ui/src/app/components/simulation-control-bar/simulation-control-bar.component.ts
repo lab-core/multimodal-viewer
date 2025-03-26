@@ -10,6 +10,7 @@ import {
   output,
   signal,
   Signal,
+  viewChild,
   WritableSignal,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
@@ -26,6 +27,16 @@ import { SimulationTimePipe } from '../../pipes/simulation-time.pipe';
 import { AnimationService } from '../../services/animation.service';
 import { SimulationService } from '../../services/simulation.service';
 import { VisualizationService } from '../../services/visualization.service';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import {
+  AbstractControl,
+  FormControl,
+  FormsModule,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+} from '@angular/forms';
+import { MatInput, MatInputModule } from '@angular/material/input';
 
 @Component({
   selector: 'app-simulation-control-bar',
@@ -35,6 +46,10 @@ import { VisualizationService } from '../../services/visualization.service';
     MatIconModule,
     MatTooltipModule,
     MatSliderModule,
+    FormsModule,
+    MatInputModule,
+    MatFormFieldModule,
+    ReactiveFormsModule,
     SimulationTimePipe,
     DecimalPipe,
   ],
@@ -73,6 +88,15 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
   readonly leaveVisualizationOutput = output<void>({
     alias: 'leaveVisualization',
   });
+
+  showVisualisationTimeEditorSignal = signal(false);
+  readonly editorVisualisationTimeForm = new FormControl(
+    '',
+    this.validateVisualisationTimeInput(),
+  );
+  readonly editorvisualisationTimeInput = viewChild(MatInput);
+  readonly editorVisualisationTimeValueSignal: WritableSignal<number> =
+    signal(NaN);
 
   private readonly sliderUpdateSignal: WritableSignal<number> = signal(0);
   private readonly SLIDER_UPDATE_INTERVAL = 1000 / 5; // 5 times per second
@@ -119,6 +143,12 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
       const speed = this.speedSignal();
       this.visualizationService.setVisualizationSpeed(speed);
       this.animationService.setSpeed(speed);
+    });
+
+    this.editorVisualisationTimeForm.valueChanges.subscribe((value) => {
+      this.editorVisualisationTimeValueSignal.set(
+        value ? parseInt(value) : NaN,
+      );
     });
 
     hotkeys('space', () => {
@@ -232,6 +262,35 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
     this.leaveVisualizationOutput.emit();
   }
 
+  /**** Visualisation Time Editor ****/
+
+  openVisualisationTimeEditor() {
+    const visualisationTimeInput = this.editorvisualisationTimeInput();
+    if (visualisationTimeInput === undefined) return;
+
+    this.editorVisualisationTimeForm.setValue(
+      this.wantedVisualizationTimeSignal()?.toFixed(0) ?? null,
+    );
+
+    this.showVisualisationTimeEditorSignal.set(true);
+    visualisationTimeInput.focus();
+  }
+
+  applyVisualisationTime() {
+    const visualisationTimeValue = this.editorVisualisationTimeValueSignal();
+    if (visualisationTimeValue === null || isNaN(visualisationTimeValue))
+      return;
+
+    this.visualizationService.setVisualizationTime(visualisationTimeValue);
+    this.showVisualisationTimeEditorSignal.set(false);
+  }
+
+  hideVisualisationTimeEditor() {
+    this.showVisualisationTimeEditorSignal.set(false);
+  }
+
+  /**** ************************ ****/
+
   onSliderChange(value: number) {
     this.visualizationService.setVisualizationTime(value);
   }
@@ -240,6 +299,14 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
   sliderLabelFormatter(min: number, max: number): (value: number) => string {
     return (value: number) => {
       return Math.floor((100 * (value - min)) / (max - min)) + '%';
+    };
+  }
+
+  private validateVisualisationTimeInput(): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const number = parseInt(control.value as string);
+      if (isNaN(number)) return { invalidNumber: true };
+      else return null;
     };
   }
 }

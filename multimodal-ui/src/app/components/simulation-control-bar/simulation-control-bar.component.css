@@ -63,3 +63,26 @@
 .active {
   background-color: var(--active-button-color);
 }
+
+.timestamp-input {
+  position: absolute;
+  bottom: 50px;
+
+  transform: scale(0.8);
+  transform-origin: bottom left;
+}
+
+.disable-pointer-events {
+  pointer-events: none;
+}
+
+/* Fade animation when switching tabs */
+.fade {
+  opacity: 0;
+  transition: opacity 0.1s ease-in-out;
+}
+
+.fade-show {
+  opacity: 1;
+}
+/* ********************************** */
