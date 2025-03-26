@@ -44,7 +44,7 @@ import { MapLayersComponent } from '../map-tiles/map-tiles.component';
 import { SimulationControlBarComponent } from '../simulation-control-bar/simulation-control-bar.component';
 import { SimulationControlPanelComponent } from '../simulation-control-panel/simulation-control-panel.component';
 import { VisualizerFilterComponent } from '../visualizer-filter/visualizer-filter.component';
-import { RecursiveStatisticComponent } from "../recursive-statistic/recursive-statistic.component";
+import { RecursiveStatisticComponent } from '../recursive-statistic/recursive-statistic.component';
 
 export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 
@@ -76,7 +76,7 @@ export interface EntitySearch {
     MatButtonToggleModule,
     MatTabsModule,
     RecursiveStatisticComponent,
-  ],
+],
   providers: [VisualizationService, VisualizationFilterService],
   templateUrl: './visualizer.component.html',
   styleUrl: './visualizer.component.css',
@@ -316,6 +316,12 @@ export class VisualizerComponent implements OnDestroy {
   showFavorites = false;
   showLayers = false;
 
+  readonly informationTabControl: FormControl<string | null>;
+  showSimulationInformation = false;
+  showStatistic = false;
+  showStatusAndCount = false;
+  showNotDisplayedEntities = false;
+
   readonly searchValueSignal: WritableSignal<string | EntitySearch> =
     signal('');
 
@@ -385,6 +391,33 @@ export class VisualizerComponent implements OnDestroy {
       else if (value === 'layers') this.showLayers = true;
     });
     this.tabControl.setValue('search');
+
+    this.informationTabControl = new FormControl('');
+    this.informationTabControl.valueChanges.subscribe((value) => {
+      this.showSimulationInformation = false;
+      this.showStatistic = false;
+      this.showStatusAndCount = false;
+      this.showNotDisplayedEntities = false;
+      switch (value) {
+        case 'information': {
+          this.showSimulationInformation = true;
+          break;
+        }
+        case 'statistic': {
+          this.showStatistic = true;
+          break;
+        }
+        case 'statusAndCount': {
+          this.showStatusAndCount = true;
+          break;
+        }
+        case 'notDisplayedEntities': {
+          this.showNotDisplayedEntities = true;
+          break;
+        }
+      }
+    });
+    this.informationTabControl.setValue('information');
 
     this.searchControl = this.formBuilder.control('');
     this.searchControl.valueChanges.subscribe((value) => {

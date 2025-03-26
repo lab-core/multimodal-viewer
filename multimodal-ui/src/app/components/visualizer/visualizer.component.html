@@ -5,6 +5,8 @@
 @let numberOfVehiclesByStatus = numberOfDisplayedVehiclesByStatusSignal();
 @let totalNumberOfPassengers = displayedPassengers.length;
 @let totalNumberOfVehicles = displayedVehicles.length;
+@let statistic = statisticSignal();
+
 
 @let selectedPassenger = selectedPassengerSignal();
 @let selectedVehicle = selectedVehicleSignal();
@@ -22,7 +24,8 @@
   </section>
 </div>
 
-<!-- MARK: Search Bar -->
+<!-- MARK: Search Bar
+-->
 <form class="tab-content fade search-bar" [class.fade-show]="showSearch" [class.enable-pointer-events]="showSearch">
   @let filteredEntitySearchData = filteredEntitySearchDataSignal();
   @let searchValue = searchValueSignal();
@@ -61,6 +64,21 @@
     -->
 @if (shouldShowInformationPanelSignal()) {
 <mat-card class="flex-column information-panel enable-pointer-events">
+  <div class="enable-pointer-events">
+    <section>
+      <mat-button-toggle-group class="toggle-group" mat-fab hideSingleSelectionIndicator name="tools" aria-label="tools"
+        [formControl]="informationTabControl">
+        <mat-button-toggle style="width: 100%;" value="information"><mat-icon>info</mat-icon></mat-button-toggle>
+        <mat-button-toggle style="width: 100%;" value="statistic"><mat-icon>bar_chart</mat-icon></mat-button-toggle>
+        <mat-button-toggle style="width: 100%;" value="statusAndCount"><mat-icon>star</mat-icon></mat-button-toggle>
+        <mat-button-toggle style="width: 100%;"
+          value="notDisplayedEntities"><mat-icon>visibility_off</mat-icon></mat-button-toggle>
+      </mat-button-toggle-group>
+    </section>
+  </div>
+  <!--MARK: Information
+      -->
+  @if (showSimulationInformation) {
   <mat-card-content class="flex-1">
     <mat-card-title>Simulation: {{ simulation.name }}</mat-card-title>
     <mat-card-subtitle>Source: {{ simulation.data }}</mat-card-subtitle>
@@ -72,19 +90,26 @@
       Max simulation time:
       {{ simulation.configuration.maxTime ?? "null" }}
     </mat-card-subtitle>
-
-    <!--MARK: Statistics
-    -->
-    <mat-card-title class="top-indent"> Statistics </mat-card-title>
+  </mat-card-content>
+  }
+  <!--MARK: Statistic
+      -->
+  @else if (showStatistic) {
+  <mat-card-content class="flex-1">
+    <mat-card-title> Statistics </mat-card-title>
 
     <mat-accordion multi="true">
-      @let statistic = statisticSignal();
       <!--Recursive-->
       <app-recursive-statistic [recursiveDict]="statistic" />
     </mat-accordion>
-    
-    <!--MARK: Status and count
--->
+  </mat-card-content>
+  }
+  <!--MARK: Status And Count
+      -->
+  @else if(showStatusAndCount) {
+  <mat-card-content class="flex-1">
+    <mat-card-title> Status and count </mat-card-title>
+
     <mat-card-subtitle>
       Passengers ({{ totalNumberOfPassengers }})
     </mat-card-subtitle>
@@ -120,8 +145,8 @@
       <div>
         <span>Not displayed: </span>
         <span class="light">{{
-                  selectedPassenger.notDisplayedReason
-                }}</span>
+                        selectedPassenger.notDisplayedReason
+                      }}</span>
       </div>
       }
       <div class="favorite-content">
@@ -137,7 +162,8 @@
       @if (selectedPassengerVehicle !== null) {
       <span tabindex="0" class="clickable" [matTooltip]="'Click to select the vehicle'"
         (click)="selectVehicle(selectedPassengerVehicle.id)"
-        (keydown.enter)="selectVehicle(selectedPassengerVehicle.id)">Vehicle: {{ selectedPassengerVehicle.id }}</span>
+        (keydown.enter)="selectVehicle(selectedPassengerVehicle.id)">Vehicle:
+        {{ selectedPassengerVehicle.id }}</span>
       }
     </div>
     }
@@ -155,8 +181,8 @@
       <div>
         <span>Not displayed: </span>
         <span class="light">{{
-                  selectedVehicle.notDisplayedReason
-                }}</span>
+                        selectedVehicle.notDisplayedReason
+                      }}</span>
       </div>
       }
       <div class="favorite-content">
@@ -179,10 +205,12 @@
       }
     </div>
     }
-
-    <!--MARK: Not Displayed Entities
-    -->
-
+  </mat-card-content>
+  }
+  <!--MARK: Not Displayed Entities
+  -->
+  @else if(showNotDisplayedEntities) {
+  <mat-card-content class="flex-1">
     <mat-card-title>Not Displayed Entities</mat-card-title>
 
     <mat-accordion>
@@ -223,6 +251,8 @@
       </mat-expansion-panel>
     </mat-accordion>
   </mat-card-content>
+  }
+
   <mat-card-actions align="end">
     <button mat-button (click)="hideInformationPanel()">Hide</button>
   </mat-card-actions>
