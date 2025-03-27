@@ -59,6 +59,10 @@
   background-color: var(--active-button-color);
 }
 
+.speed-button {
+  min-width: fit-content;
+}
+
 .timestamp-input {
   position: absolute;
   bottom: 50px;

@@ -34,23 +34,6 @@
         }}</mat-icon>
       </button>
 
-      @if (isVisualizationPaused) {
-        <button
-          mat-icon-button
-          disabled
-          [matTooltip]="'Step one event backward'"
-        >
-          <mat-icon>skip_previous</mat-icon>
-        </button>
-        <button
-          mat-icon-button
-          disabled
-          [matTooltip]="'Step one event forward'"
-        >
-          <mat-icon>skip_next</mat-icon>
-        </button>
-      }
-
       @let speed = speedSignal();
       @let fastForwardStep = fastForwardStepSignal();
       <button
@@ -60,9 +43,11 @@
         "
         (click)="rewindTime()"
       >
-        <mat-icon>fast_rewind</mat-icon>
+        <mat-icon>skip_previous</mat-icon>
       </button>
-      <button mat-button [matMenuTriggerFor]="speedMenu">x{{ speed }}</button>
+      <button mat-button class="speed-button" [matMenuTriggerFor]="speedMenu">
+        x{{ speed }}
+      </button>
       <mat-menu #speedMenu="matMenu" class="speed-menu">
         <button mat-menu-item (click)="setSpeed(0)">x1</button>
         <button mat-menu-item (click)="setSpeed(1)">x2</button>
@@ -80,7 +65,7 @@
         "
         (click)="fastForwardTime()"
       >
-        <mat-icon>fast_forward</mat-icon>
+        <mat-icon>skip_next</mat-icon>
       </button>
 
       <button

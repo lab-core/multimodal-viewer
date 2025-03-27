@@ -65,7 +65,7 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
   );
   readonly MIN_SPEED_POWER = 0;
   readonly MAX_SPEED_POWER = 7;
-  readonly FAST_FORWARD_STEP = 5;
+  readonly FAST_FORWARD_STEP = 1;
 
   private readonly speedPowerSignal: WritableSignal<number> = signal(0);
 
