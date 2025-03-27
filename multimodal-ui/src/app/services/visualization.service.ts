@@ -295,6 +295,15 @@ export class VisualizationService {
         const animationData =
           animatedEnvironment.animationData.passengers[passengerId];
 
+        if (animationData === undefined) {
+          console.error(
+            'Passenger animation data not found',
+            passenger,
+            animatedEnvironment,
+          );
+          continue;
+        }
+
         const currentAnimationData = animationData.find(
           (data) =>
             data.startTimestamp <= environment.timestamp &&
@@ -313,6 +322,15 @@ export class VisualizationService {
         const vehicle = environment.vehicles[vehicleId];
         const animationData =
           animatedEnvironment.animationData.vehicles[vehicleId];
+
+        if (animationData === undefined) {
+          console.error(
+            'Vehicle animation data not found',
+            vehicle,
+            animatedEnvironment,
+          );
+          continue;
+        }
 
         const currentAnimationData = animationData.find(
           (data) =>
@@ -786,7 +804,6 @@ export class VisualizationService {
       animatedSimulationEnvironment.animationData.passengers[passenger.id] = [
         this.getPassengerAnimationDataFromPassenger(
           passenger,
-          // animatedSimulationEnvironment.animationData.vehicles,
           initialEnvironment.timestamp,
           initialEnvironment.order,
           initialEnvironment.timestamp,
@@ -799,7 +816,6 @@ export class VisualizationService {
 
   private getPassengerAnimationDataFromPassenger(
     passenger: Passenger,
-    // vehicles: Record<string, AnimatedVehicle>,
     startTimestamp: number,
     startOrder: number,
     currentTimestamp: number,
@@ -835,26 +851,11 @@ export class VisualizationService {
 
     basicAnimationData.vehicleId = passenger.currentLeg.assignedVehicleId;
 
-    // const vehicle = vehicles[passenger.currentLeg.assignedVehicleId];
-
-    // if (vehicle === undefined) {
-    //   basicAnimationData.notDisplayedReason = 'Vehicle not found';
-    //   return basicAnimationData;
-    // }
-
-    // const allStops = this.getAllStops(vehicle);
-
-    // if (allStops.length < passenger.currentLeg.boardingStopIndex) {
-    //   basicAnimationData.notDisplayedReason = 'Boarding stop not found';
-    //   return basicAnimationData;
-    // }
-
     // Is at the boarding stop
     if (
       passenger.currentLeg.boardingTime === null ||
       passenger.currentLeg.boardingTime > currentTimestamp
     ) {
-      // const boardingStop = allStops[passenger.currentLeg.boardingStopIndex];
       const staticAnimationData: StaticPassengerAnimationData = {
         ...basicAnimationData,
         stopIndex: passenger.currentLeg.boardingStopIndex,
@@ -867,22 +868,6 @@ export class VisualizationService {
       passenger.currentLeg.alightingTime === null ||
       passenger.currentLeg.alightingTime > currentTimestamp
     ) {
-      // if (
-      //   vehicle.animationData === null ||
-      //   vehicle.animationData.length === 0
-      // ) {
-      //   basicAnimationData.notDisplayedReason = 'Vehicle is not present';
-      //   return basicAnimationData;
-      // }
-
-      // There is only one animation data
-      // const vehicleAnimationData = vehicle.animationData[0];
-
-      // if (vehicleAnimationData.notDisplayedReason !== null) {
-      //   basicAnimationData.notDisplayedReason = 'Vehicle is not displayed';
-      //   return basicAnimationData;
-      // }
-
       const dynamicAnimationData: DynamicPassengerAnimationData = {
         ...basicAnimationData,
         isOnBoard: true,
@@ -892,7 +877,6 @@ export class VisualizationService {
     }
 
     // Is at the alighting stop
-    // const alightingStop = allStops[passenger.currentLeg.alightingStopIndex];
     const staticAnimationData: StaticPassengerAnimationData = {
       ...basicAnimationData,
       stopIndex: passenger.currentLeg.alightingStopIndex,
@@ -972,7 +956,6 @@ export class VisualizationService {
     animatedSimulationEnvironment.animationData.passengers[passenger.id] = [
       this.getPassengerAnimationDataFromPassenger(
         passenger,
-        // animatedSimulationEnvironment.animationData.vehicles,
         animatedSimulationEnvironment.finalState.timestamp,
         animatedSimulationEnvironment.finalState.order,
         animatedSimulationEnvironment.finalState.timestamp,
@@ -1034,7 +1017,6 @@ export class VisualizationService {
 
     const newAnimationData = this.getPassengerAnimationDataFromPassenger(
       passenger,
-      // animatedSimulationEnvironment.animationData.vehicles,
       update.timestamp,
       update.order,
       animatedSimulationEnvironment.finalState.timestamp,
@@ -1500,7 +1482,7 @@ export class VisualizationService {
     const currentPolylineEndTime = isVehicleTravelling
       ? vehicle.nextStops[0].arrivalTime
       : null;
-    const currentPolylineIndex = vehicle.previousStops.length;
+    const currentPolylineIndex = vehicle.previousStops.length - 1;
 
     const displayedPolylines: DisplayedPolylines = {
       polylines: [],

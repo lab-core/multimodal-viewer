@@ -786,30 +786,17 @@ export class AnimationService {
 
     const polylines = displayedPolylines.polylines;
 
-    // Set first point
-    let currentPolylineIndex = 0;
-
-    while (currentPolylineIndex < polylines.length) {
-      const polyline = polylines[currentPolylineIndex];
-      if (polyline === undefined) return;
-
-      const polylinePoints = polyline.polyline;
-      if (polylinePoints.length > 0) {
-        const firstPoint = polylinePoints[0];
-        const point = this.utils.latLngToLayerPoint([
-          firstPoint.latitude,
-          firstPoint.longitude,
-        ]);
-        graphics.moveTo(point.x, point.y);
-        break;
-      }
-
-      currentPolylineIndex++;
-    }
-
     // Draw all polylines before the polylineNo
     for (let i = 0; i < polylineNo; ++i) {
       const polyline = polylines[i];
+      if (polyline.polyline.length === 0) continue;
+      const firstPoint = polyline.polyline[0];
+      const firstLayerPoint = this.utils.latLngToLayerPoint([
+        firstPoint.latitude,
+        firstPoint.longitude,
+      ]);
+      graphics.moveTo(firstLayerPoint.x, firstLayerPoint.y);
+
       for (let j = 1; j < polyline.polyline.length; ++j) {
         const geoPos = polyline.polyline[j];
         const point = this.utils.latLngToLayerPoint([
@@ -823,6 +810,15 @@ export class AnimationService {
     // Draw all the lines of polylineNo but before lineNo
     const currentPolyline = polylines[polylineNo];
     if (currentPolyline !== undefined) {
+      const polylinePoints = currentPolyline.polyline;
+      if (polylinePoints.length === 0) return;
+      const firstPoint = polylinePoints[0];
+      const firstLayerPoint = this.utils.latLngToLayerPoint([
+        firstPoint.latitude,
+        firstPoint.longitude,
+      ]);
+      graphics.moveTo(firstLayerPoint.x, firstLayerPoint.y);
+
       for (let j = 1; j <= lineNo; ++j) {
         const geoPos = currentPolyline.polyline[j];
         const point = this.utils.latLngToLayerPoint([
@@ -852,6 +848,13 @@ export class AnimationService {
     // Draw rest of polylines
     for (let i = polylineNo + 1; i < polylines.length; ++i) {
       const polyline = polylines[i];
+      if (polyline.polyline.length === 0) continue;
+      const firstPoint = polyline.polyline[0];
+      const firstLayerPoint = this.utils.latLngToLayerPoint([
+        firstPoint.latitude,
+        firstPoint.longitude,
+      ]);
+      graphics.moveTo(firstLayerPoint.x, firstLayerPoint.y);
       for (let j = 1; j < polyline.polyline.length; ++j) {
         const geoPos = polyline.polyline[j];
         const point = this.utils.latLngToLayerPoint([
@@ -862,12 +865,27 @@ export class AnimationService {
       }
     }
 
-    // Draw stops that are completed
     graphics.lineStyle(width, this.KELLY_GREEN, ALPHA);
 
+    let firstStopHasBeenDrawn = false;
+
+    // Draw stops that are completed
     for (let i = 0; i < polylineNo; ++i) {
       const polyline = polylines[i];
       if (polyline.polyline.length === 0) continue;
+
+      if (!firstStopHasBeenDrawn) {
+        const firstPoint = polyline.polyline[0];
+        const firstLayerPoint = this.utils.latLngToLayerPoint([
+          firstPoint.latitude,
+          firstPoint.longitude,
+        ]);
+        graphics.beginFill(this.WHITE, 1);
+        graphics.drawCircle(firstLayerPoint.x, firstLayerPoint.y, width * 1.2);
+        graphics.endFill();
+        firstStopHasBeenDrawn = true;
+      }
+
       const geoPos = polyline.polyline[polyline.polyline.length - 1];
       const point = this.utils.latLngToLayerPoint([
         geoPos.latitude,
@@ -881,9 +899,22 @@ export class AnimationService {
     // Draw stops that are not completed
     graphics.lineStyle(width, this.LIGHT_GRAY, ALPHA);
 
-    for (let i = polylineNo; i < polylines.length - 1; ++i) {
+    for (let i = Math.max(polylineNo, 0); i < polylines.length; ++i) {
       const polyline = polylines[i];
       if (polyline.polyline.length === 0) continue;
+
+      if (!firstStopHasBeenDrawn) {
+        const firstPoint = polyline.polyline[0];
+        const firstLayerPoint = this.utils.latLngToLayerPoint([
+          firstPoint.latitude,
+          firstPoint.longitude,
+        ]);
+        graphics.beginFill(this.WHITE, 1);
+        graphics.drawCircle(firstLayerPoint.x, firstLayerPoint.y, width * 1.2);
+        graphics.endFill();
+        firstStopHasBeenDrawn = true;
+      }
+
       const geoPos = polyline.polyline[polyline.polyline.length - 1];
       const point = this.utils.latLngToLayerPoint([
         geoPos.latitude,

@@ -421,9 +421,9 @@ class VisualizedVehicle(Serializable):
     @property
     def all_stops(self) -> list[VisualizedStop]:
         return (
-            self.previous_stops + [self.current_stop]
-            if self.current_stop is not None
-            else [] + self.next_stops
+            self.previous_stops
+            + ([self.current_stop] if self.current_stop is not None else [])
+            + self.next_stops
         )
 
     @classmethod
