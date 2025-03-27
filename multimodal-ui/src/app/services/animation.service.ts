@@ -385,12 +385,10 @@ export class AnimationService {
         continue;
       }
 
-      const animationData = structuredClone(
-        vehicle.animationData.find(
-          (data) =>
-            data.startTimestamp <= this.animationVisualizationTime &&
-            data.endTimestamp! >= this.animationVisualizationTime,
-        ),
+      const animationData = vehicle.animationData.find(
+        (data) =>
+          data.startTimestamp <= this.animationVisualizationTime &&
+          data.endTimestamp! >= this.animationVisualizationTime,
       );
 
       // Vehicle has no animation data

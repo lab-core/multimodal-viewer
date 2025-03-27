@@ -166,7 +166,11 @@ export class VisualizationService {
       }
 
       const environment = this.simulationService.buildEnvironment(
-        structuredClone(state),
+        {
+          ...state,
+          passengers: { ...state.passengers },
+          vehicles: { ...state.vehicles },
+        },
         wantedVisualizationTime,
       );
 
@@ -203,9 +207,7 @@ export class VisualizationService {
         return null;
       }
 
-      const allUpdates = structuredClone(
-        continuousStates.flatMap((state) => state.updates),
-      );
+      const allUpdates = continuousStates.flatMap((state) => state.updates);
 
       let animatedSimulationEnvironment: AnimatedSimulationEnvironment | null =
         null;
@@ -265,8 +267,11 @@ export class VisualizationService {
       //   }
       // } else {
       const { updates: _updates, ...initialEnvironment } = continuousStates[0];
-      const initialEnvironmentClone: SimulationEnvironment =
-        structuredClone(initialEnvironment);
+      const initialEnvironmentClone: SimulationEnvironment = {
+        ...initialEnvironment,
+        passengers: { ...initialEnvironment.passengers },
+        vehicles: { ...initialEnvironment.vehicles },
+      };
 
       animatedSimulationEnvironment = this.getAnimationData(
         initialEnvironmentClone,
@@ -1293,9 +1298,16 @@ export class VisualizationService {
     let finalState = animatedSimulationEnvironment.finalState;
 
     if (animatedSimulationEnvironment.finalState.timestamp > newEndTimestamp) {
-      // We need to rebuild the final state
       finalState = this.simulationService.buildEnvironment(
-        structuredClone(lastContinuousState),
+        {
+          ...lastContinuousState,
+          passengers: {
+            ...lastContinuousState.passengers,
+          },
+          vehicles: {
+            ...lastContinuousState.vehicles,
+          },
+        },
         newEndTimestamp,
       );
     }
@@ -1339,9 +1351,8 @@ export class VisualizationService {
     }
 
     // Copy and crop animation data
-    const passengerAnimationData = structuredClone(
-      animatedSimulationEnvironment.animationData.passengers,
-    );
+    const passengerAnimationData =
+      animatedSimulationEnvironment.animationData.passengers;
     Object.entries(passengerAnimationData).forEach(
       ([passengerId, allAnimationData]) => {
         allAnimationData = allAnimationData
@@ -1382,9 +1393,8 @@ export class VisualizationService {
       },
     );
 
-    const vehicleAnimationData = structuredClone(
-      animatedSimulationEnvironment.animationData.vehicles,
-    );
+    const vehicleAnimationData =
+      animatedSimulationEnvironment.animationData.vehicles;
     Object.entries(vehicleAnimationData).forEach(
       ([vehicleId, allAnimationData]) => {
         allAnimationData = allAnimationData

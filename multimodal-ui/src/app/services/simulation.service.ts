@@ -921,7 +921,10 @@ export class SimulationService {
             console.error('Passenger not found: ', passengerStatusUpdate.id);
             break;
           }
-          passenger.status = passengerStatusUpdate.status;
+          simulationEnvironment.passengers[passengerStatusUpdate.id] = {
+            ...passenger,
+            status: passengerStatusUpdate.status,
+          };
         }
         break;
       case 'updatePassengerLegs':
@@ -934,9 +937,12 @@ export class SimulationService {
             break;
           }
 
-          passenger.previousLegs = passengerLegsUpdate.previousLegs;
-          passenger.currentLeg = passengerLegsUpdate.currentLeg;
-          passenger.nextLegs = passengerLegsUpdate.nextLegs;
+          simulationEnvironment.passengers[passengerLegsUpdate.id] = {
+            ...passenger,
+            previousLegs: passengerLegsUpdate.previousLegs,
+            currentLeg: passengerLegsUpdate.currentLeg,
+            nextLegs: passengerLegsUpdate.nextLegs,
+          };
         }
         break;
       case 'createVehicle':
@@ -955,7 +961,11 @@ export class SimulationService {
             console.error('Vehicle not found: ', vehicleStatusUpdate.id);
             break;
           }
-          vehicle.status = vehicleStatusUpdate.status;
+
+          simulationEnvironment.vehicles[vehicleStatusUpdate.id] = {
+            ...vehicle,
+            status: vehicleStatusUpdate.status,
+          };
         }
         break;
 
@@ -968,9 +978,12 @@ export class SimulationService {
             break;
           }
 
-          vehicle.previousStops = vehicleStopsUpdate.previousStops;
-          vehicle.currentStop = vehicleStopsUpdate.currentStop;
-          vehicle.nextStops = vehicleStopsUpdate.nextStops;
+          simulationEnvironment.vehicles[vehicleStopsUpdate.id] = {
+            ...vehicle,
+            previousStops: vehicleStopsUpdate.previousStops,
+            currentStop: vehicleStopsUpdate.currentStop,
+            nextStops: vehicleStopsUpdate.nextStops,
+          };
         }
         break;
       case 'updateStatistic':
