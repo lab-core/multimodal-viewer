@@ -83,7 +83,7 @@
   pointer-events: none;
 }
 
-/* Fade animation when switching tabs */
+/* Fade animation when opening visualisation time editor */
 .fade {
   opacity: 0;
   transition: opacity 0.1s ease-in-out;
