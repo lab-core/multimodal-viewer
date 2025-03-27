@@ -92,7 +92,10 @@ export class VisualizationService {
         visualizationTimeOverride !== null
       ) {
         this.visualizationTimeOverride = visualizationTimeOverride;
-        return Math.min(visualizationMaxTime, visualizationTimeOverride);
+        return Math.max(
+          Math.min(visualizationMaxTime, visualizationTimeOverride),
+          simulationStartTime,
+        );
       }
 
       if (isLoading) {
@@ -554,7 +557,6 @@ export class VisualizationService {
           wantedVisualizationTime >
             simulationStates.lastContinuousState.timestamp,
       );
-      
     });
 
     effect(() => {
@@ -591,9 +593,15 @@ export class VisualizationService {
     const isVisualizationPaused = this._isVisualizationPausedSignal();
 
     if (wantedVisualizationTime !== null) {
-      localStorage.setItem('wantedVisualizationTime', wantedVisualizationTime.toString());
+      localStorage.setItem(
+        'wantedVisualizationTime',
+        wantedVisualizationTime.toString(),
+      );
     }
-    localStorage.setItem('isVisualizationPaused', JSON.stringify(isVisualizationPaused));
+    localStorage.setItem(
+      'isVisualizationPaused',
+      JSON.stringify(isVisualizationPaused),
+    );
   }
 
   private initializeAutoLoad(): void {
@@ -603,8 +611,12 @@ export class VisualizationService {
   }
 
   private loadWantedVisualizationTime(): void {
-    const savedWantedVisualizationTime = localStorage.getItem('wantedVisualizationTime');
-    const savedIsVisualizationPaused = localStorage.getItem('isVisualizationPaused');
+    const savedWantedVisualizationTime = localStorage.getItem(
+      'wantedVisualizationTime',
+    );
+    const savedIsVisualizationPaused = localStorage.getItem(
+      'isVisualizationPaused',
+    );
 
     if (savedWantedVisualizationTime) {
       const time = parseFloat(savedWantedVisualizationTime);
