@@ -196,24 +196,49 @@ export interface Polyline {
   coefficients: number[];
 }
 
-export type Polylines = Record<string, Polyline>;
-
 export interface AllPolylines {
   version: number;
-  polylinesByVehicleId: Record<string, Polylines>;
+  polylinesByCoordinates: Record<string, Polyline>;
+}
+
+export interface DisplayedPolylines {
+  /**
+   * To show the entire path of the vehicle
+   */
+  polylines: Polyline[];
+
+  /**
+   * Before this index, everything has been traveled.
+   *
+   * After this index, everything is to be traveled.
+   *
+   * At this index, the vehicle is currently traveling.
+   *
+   * If -1, all polylines are gray.
+   */
+  currentPolylineIndex: number;
+
+  /**
+   * If null, the polyline will not be green.
+   */
+  currentPolylineStartTime: number | null;
+
+  /**
+   * If null, the polyline will not be green.
+   */
+  currentPolylineEndTime: number | null;
 }
 
 export interface Stop {
   arrivalTime: number;
   departureTime: number | null; // null means infinite
-  position: Position | null;
+  position: Position;
 }
 
 export interface Vehicle {
   id: string;
   mode: string | null;
   status: VehicleStatus;
-  polylines: Polylines | null;
   previousStops: Stop[];
   currentStop: Stop | null;
   nextStops: Stop[];
@@ -287,24 +312,12 @@ export type displayed<T> = T & {
   notDisplayedReason: string | null;
 };
 
-export interface DisplayedPassenger extends displayed<Passenger> {
-  /**
-   * The vehicle id assigned to the passenger
-   */
-  vehicleId: string | null;
-}
-
-export interface DisplayedVehicle extends displayed<Vehicle> {
-  /**
-   * The id of all passengers on board
-   */
-  passengers: string[];
-}
-
 export interface AnimationData {
   startTimestamp: number;
-  endTimestamp: number;
-  notDisplayedReason: string | null;
+  startOrder: number;
+  endTimestamp: number | null;
+  endOrder: number | null; // null when the data is the last one and the animated environment is not fully built
+  notDisplayedReason: string | null; // null when the data is the last one and the animated environment is not fully built
 }
 
 export interface PassengerAnimationData extends AnimationData {
@@ -313,11 +326,11 @@ export interface PassengerAnimationData extends AnimationData {
 }
 
 export interface StaticPassengerAnimationData extends PassengerAnimationData {
-  position: Position;
+  stopIndex: number;
 }
 
 export interface DynamicPassengerAnimationData extends PassengerAnimationData {
-  vehicleId: string;
+  isOnBoard: boolean; // always true
 }
 
 export type AnyPassengerAnimationData =
@@ -327,21 +340,16 @@ export type AnyPassengerAnimationData =
 
 export interface VehicleAnimationData extends AnimationData {
   status: VehicleStatus;
+
+  displayedPolylines: DisplayedPolylines;
 }
 
 export interface StaticVehicleAnimationData extends VehicleAnimationData {
   position: Position;
-
-  /**
-   * Index of the polyline on which the vehicle is.
-   * If the vehicle is at a stop, it is considered at the end of the polyline.
-   */
-  polylineIndex: number;
 }
 
 export interface DynamicVehicleAnimationData extends VehicleAnimationData {
   polyline: Polyline;
-  polylineIndex: number;
 }
 
 export type AnyVehicleAnimationData =
@@ -349,11 +357,11 @@ export type AnyVehicleAnimationData =
   | DynamicVehicleAnimationData
   | VehicleAnimationData; // For not displayed vehicles
 
-export interface AnimatedPassenger extends Passenger {
+export interface AnimatedPassenger extends displayed<Passenger> {
   animationData: AnyPassengerAnimationData[];
 }
 
-export interface AnimatedVehicle extends Vehicle {
+export interface AnimatedVehicle extends displayed<Vehicle> {
   animationData: AnyVehicleAnimationData[];
 }
 
@@ -376,18 +384,23 @@ export interface SimulationEnvironment {
   order: number;
 }
 
-export interface AnimatedSimulationEnvironment extends SimulationEnvironment {
-  passengers: Record<string, DisplayedPassenger>;
-  vehicles: Record<string, DisplayedVehicle>;
+export interface AnimatedSimulationEnvironment {
+  finalState: SimulationEnvironment;
+  currentState: SimulationEnvironment & {
+    passengers: Record<string, AnimatedPassenger>;
+    vehicles: Record<string, AnimatedVehicle>;
+  };
 
   /**
    * A data structure to speed up the animation
    */
   animationData: {
-    passengers: Record<string, AnimatedPassenger>;
-    vehicles: Record<string, AnimatedVehicle>;
+    passengers: Record<string, AnyPassengerAnimationData[]>;
+    vehicles: Record<string, AnyVehicleAnimationData[]>;
     startTimestamp: number;
     endTimestamp: number;
+    startOrder: number;
+    endOrder: number;
   };
 }
 
@@ -462,3 +475,10 @@ export interface SimulationStates {
 }
 
 export const STATE_SAVE_STEP = 500;
+
+export function getAllStops(vehicle: Vehicle): Stop[] {
+  return vehicle.previousStops.concat(
+    vehicle.currentStop === null ? [] : [vehicle.currentStop],
+    vehicle.nextStops,
+  );
+}

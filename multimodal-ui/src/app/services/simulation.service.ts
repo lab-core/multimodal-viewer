@@ -14,8 +14,7 @@ import {
   PASSENGER_STATUSES,
   PassengerLegsUpdate,
   PassengerStatusUpdate,
-  Polylines,
-  RawPolylines,
+  Polyline,
   RawSimulationEnvironment,
   RawSimulationState,
   Simulation,
@@ -119,12 +118,12 @@ export class SimulationService {
 
     this.communicationService.on(
       `polylines-${simulationId}`,
-      (polylinesByVehicleId, version) => {
+      (polylinesByCoordinates, version) => {
         this._isFetchingPolylinesSignal.set(false);
 
         this._simulationPolylinesSignal.set(
           this.extractPolylines(
-            polylinesByVehicleId as unknown as Record<string, string>,
+            polylinesByCoordinates as unknown as string[],
             version as number,
           ) ?? null,
         );
@@ -537,7 +536,6 @@ export class SimulationService {
       id,
       mode,
       status,
-      polylines: null,
       previousStops,
       currentStop,
       nextStops,
@@ -629,11 +627,12 @@ export class SimulationService {
 
     const departureTime = data.departureTime ?? null;
 
-    const position = data.position ?? null;
+    const position = data.position;
 
     if (
-      position !== null &&
-      (position.latitude === undefined || position.longitude === undefined)
+      position === undefined ||
+      position.latitude === undefined ||
+      position.longitude === undefined
     ) {
       console.error('Stop position invalid: ', position);
       return null;
@@ -725,21 +724,126 @@ export class SimulationService {
   }
 
   private extractPolylines(
-    rawPolylinesByVehicleId: Record<string, string>,
+    polylinesByCoordinates: string[],
     version: number,
   ): AllPolylines | null {
-    const parsedPolylinesByVehicleId = Object.entries(
-      rawPolylinesByVehicleId,
-    ).reduce(
-      (acc, [vehicleId, rawPolylines]) => {
-        acc[vehicleId] = JSON.parse(rawPolylines) as RawPolylines;
-        return acc;
-      },
-      {} as Record<string, RawPolylines>,
-    );
+    if (!Array.isArray(polylinesByCoordinates)) {
+      console.error('Polylines not found: ', polylinesByCoordinates);
+      return null;
+    }
 
-    if (!parsedPolylinesByVehicleId) {
-      console.error('Polylines not found: ', parsedPolylinesByVehicleId);
+    const parsedPolylinesByCoordinates: Record<string, Polyline> | null =
+      polylinesByCoordinates.reduce<Record<string, Polyline> | null>(
+        (acc, rawPolyline) => {
+          if (acc === null) {
+            return null;
+          }
+
+          const parsedPolyline: Record<string, unknown> = JSON.parse(
+            rawPolyline,
+          ) as Record<string, unknown>;
+
+          const coordinatesString: string = parsedPolyline[
+            'coordinatesString'
+          ] as string;
+          if (coordinatesString === undefined) {
+            console.error('Coordinates string not found: ', coordinatesString);
+            return null;
+          }
+          if (typeof coordinatesString !== 'string') {
+            console.error('Invalid coordinates string: ', coordinatesString);
+            return null;
+          }
+
+          const coefficients: number[] = parsedPolyline[
+            'coefficients'
+          ] as number[];
+          if (coefficients === undefined) {
+            console.error('Coefficients not found: ', coefficients);
+            return null;
+          }
+          if (!Array.isArray(coefficients)) {
+            console.error('Invalid coefficients: ', coefficients);
+            return null;
+          }
+
+          const encodedPolyline: string = parsedPolyline[
+            'encodedPolyline'
+          ] as string;
+          if (encodedPolyline === undefined) {
+            console.error(
+              'Polyline not found: ',
+              encodedPolyline,
+              parsedPolyline,
+            );
+            return null;
+          }
+          if (typeof encodedPolyline !== 'string') {
+            console.error('Invalid polyline: ', encodedPolyline);
+            return null;
+          }
+
+          const decodedPolyline = decode(encodedPolyline).map((point) => ({
+            latitude: point[0],
+            longitude: point[1],
+          }));
+
+          if (!Array.isArray(decodedPolyline)) {
+            console.error('Decoded polyline not found: ', decodedPolyline);
+            return null;
+          }
+
+          if (
+            decodedPolyline.length > 1 &&
+            coefficients.length !== decodedPolyline.length - 1
+          ) {
+            if (coefficients.length === 1 && coefficients[0] === 1) {
+              // The simulation was unable to calculate the coefficients, but
+              // we can still make the vehicle move at a constant speed.
+              const distances = [];
+
+              for (let index = 0; index < decodedPolyline.length - 1; index++) {
+                const point1 = decodedPolyline[index];
+                const point2 = decodedPolyline[index + 1];
+
+                const distance = Math.sqrt(
+                  (point2.latitude - point1.latitude) ** 2 +
+                    (point2.longitude - point1.longitude) ** 2,
+                );
+
+                distances.push(distance);
+              }
+
+              const totalDistance = distances.reduce((a, b) => a + b, 0);
+
+              if (totalDistance === 0) {
+                console.error('Total distance is zero: ', decodedPolyline);
+                return null;
+              }
+
+              coefficients.splice(
+                0,
+                coefficients.length,
+                ...distances.map((distance) => distance / totalDistance),
+              );
+            } else {
+              console.error(
+                'Polyline coefficients length mismatch: ',
+                decodedPolyline,
+                coefficients,
+              );
+              return null;
+            }
+          }
+
+          acc[coordinatesString] = { polyline: decodedPolyline, coefficients };
+
+          return acc;
+        },
+        {} as Record<string, Polyline>,
+      );
+
+    if (parsedPolylinesByCoordinates === null) {
       return null;
     }
 
@@ -747,96 +851,7 @@ export class SimulationService {
       console.error('Polylines version not found: ', version);
       return null;
     }
-
-    if (Object.keys(parsedPolylinesByVehicleId).length === 0) {
-      return { version, polylinesByVehicleId: {} };
-    }
-
-    const polylinesByVehicleId: Record<string, Polylines> = {};
-
-    for (const [vehicleId, rawPolylines] of Object.entries(
-      parsedPolylinesByVehicleId,
-    )) {
-      const polylines: Polylines = {};
-
-      if (!rawPolylines) {
-        console.error('Polylines not found: ', rawPolylines);
-        return null;
-      }
-
-      if (Object.keys(rawPolylines).length === 0) {
-        polylinesByVehicleId[vehicleId] = polylines;
-        continue;
-      }
-
-      for (const [stopId, rawPolyline] of Object.entries(rawPolylines)) {
-        if (!rawPolyline) {
-          console.error('Polyline not found: ', rawPolyline);
-          return null;
-        }
-
-        if (!Array.isArray(rawPolyline) || rawPolyline.length !== 2) {
-          console.error('Invalid polyline: ', rawPolyline);
-          return null;
-        }
-
-        const [encodedPolyline, coefficients] = rawPolyline;
-
-        const decodedPolyline = decode(encodedPolyline).map((point) => ({
-          latitude: point[0],
-          longitude: point[1],
-        }));
-
-        if (
-          decodedPolyline.length > 1 &&
-          coefficients.length !== decodedPolyline.length - 1
-        ) {
-          if (coefficients.length === 1 && coefficients[0] === 1) {
-            // The simulation was unable to calculate the coefficients, but
-            // we can still make the vehicle move at a constant speed.
-            const distances = [];
-
-            for (let index = 0; index < decodedPolyline.length - 1; index++) {
-              const point1 = decodedPolyline[index];
-              const point2 = decodedPolyline[index + 1];
-
-              const distance = Math.sqrt(
-                (point2.latitude - point1.latitude) ** 2 +
-                  (point2.longitude - point1.longitude) ** 2,
-              );
-
-              distances.push(distance);
-            }
-
-            const totalDistance = distances.reduce((a, b) => a + b, 0);
-
-            if (totalDistance === 0) {
-              console.error('Total distance is zero: ', decodedPolyline);
-              return null;
-            }
-
-            coefficients.splice(
-              0,
-              coefficients.length,
-              ...distances.map((distance) => distance / totalDistance),
-            );
-          } else {
-            console.error(
-              'Polyline coefficients length mismatch: ',
-              decodedPolyline,
-              coefficients,
-            );
-            return null;
-          }
-        }
-
-        polylines[stopId] = { polyline: decodedPolyline, coefficients };
-      }
-
-      polylinesByVehicleId[vehicleId] = polylines;
-    }
-
-    return { version, polylinesByVehicleId };
+    return { version, polylinesByCoordinates: parsedPolylinesByCoordinates };
   }
 
   // MARK: Build environment
@@ -861,14 +876,11 @@ export class SimulationService {
    */
   buildEnvironment(
     state: SimulationState,
-    polylinesByVehicleId: Record<string, Polylines>,
     visualizationTime: number,
   ): SimulationEnvironment {
-    const sortedUpdates = state.updates.sort((a, b) => a.order - b.order);
-
     let lastUpdate: AnySimulationUpdate | null = null;
 
-    for (const update of sortedUpdates) {
+    for (const update of state.updates) {
       if (update.timestamp > visualizationTime) {
         break;
       }
@@ -876,16 +888,6 @@ export class SimulationService {
       this.applyUpdate(update, state);
 
       lastUpdate = update;
-    }
-
-    for (const [vehicleId, vehicle] of Object.entries(state.vehicles)) {
-      const polylines = polylinesByVehicleId[vehicleId];
-      if (!polylines) {
-        console.error('Polyline not found for vehicle: ', vehicleId, polylines);
-        continue;
-      }
-
-      vehicle.polylines = polylines;
     }
 
     if (lastUpdate) {
@@ -896,7 +898,7 @@ export class SimulationService {
     return state;
   }
 
-  private applyUpdate(
+  applyUpdate(
     update: AnySimulationUpdate,
     simulationEnvironment: SimulationEnvironment,
   ) {
@@ -920,6 +922,21 @@ export class SimulationService {
             break;
           }
           passenger.status = passengerStatusUpdate.status;
+        }
+        break;
+      case 'updatePassengerLegs':
+        {
+          const passengerLegsUpdate = update.data as PassengerLegsUpdate;
+          const passenger =
+            simulationEnvironment.passengers[passengerLegsUpdate.id];
+          if (!passenger) {
+            console.error('Passenger not found: ', passengerLegsUpdate.id);
+            break;
+          }
+
+          passenger.previousLegs = passengerLegsUpdate.previousLegs;
+          passenger.currentLeg = passengerLegsUpdate.currentLeg;
+          passenger.nextLegs = passengerLegsUpdate.nextLegs;
         }
         break;
       case 'createVehicle':
@@ -981,12 +998,7 @@ export class SimulationService {
       }
     }
 
-    const sortedStates = missingStates
-      .sort((a, b) => a.order - b.order)
-      .map((state) => ({
-        ...state,
-        updates: state.updates.sort((a, b) => a.order - b.order),
-      }));
+    const sortedStates = missingStates.sort((a, b) => a.order - b.order);
 
     const firstStateIndex = sortedStates.findIndex(
       (state) => state.order === firstContinuousStateOrder,

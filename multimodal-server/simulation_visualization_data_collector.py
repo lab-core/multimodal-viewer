@@ -46,6 +46,7 @@ from simulation_visualization_data_model import (
     VehicleStopsUpdate,
     VisualizedEnvironment,
     VisualizedPassenger,
+    VisualizedStop,
     VisualizedVehicle,
 )
 from socketio import Client
@@ -73,6 +74,8 @@ class SimulationVisualizationDataCollector(DataCollector):
 
     stop_event: threading.Event | None = None
     connection_thread: threading.Thread | None = None
+
+    saved_polylines_coordinates_pairs: set[str] = set()
 
     def __init__(
         self,
@@ -270,14 +273,7 @@ class SimulationVisualizationDataCollector(DataCollector):
             self.visualized_environment.add_vehicle(update.data)
             data: VisualizedVehicle = update.data
             if data.polylines is not None:
-                SimulationVisualizationDataManager.set_polylines(
-                    self.simulation_id, data
-                )
-                if self.sio.connected:
-                    self.sio.emit(
-                        "simulation-update-polylines-version",
-                        self.simulation_id,
-                    )
+                self.update_polylines_if_needed(data)
         elif update.type == UpdateType.UPDATE_PASSENGER_STATUS:
             passenger = self.visualized_environment.get_passenger(
                 update.data.passenger_id
@@ -300,6 +296,8 @@ class SimulationVisualizationDataCollector(DataCollector):
             vehicle.previous_stops = stops_update.previous_stops
             vehicle.next_stops = stops_update.next_stops
             vehicle.current_stop = stops_update.current_stop
+            if vehicle.polylines is not None:
+                self.update_polylines_if_needed(vehicle)
         elif update.type == UpdateType.UPDATE_STATISTIC:
             statistic_update: StatisticUpdate = update.data
             self.visualized_environment.statistic = statistic_update.statistic
@@ -310,6 +308,62 @@ class SimulationVisualizationDataCollector(DataCollector):
 
         self.update_counter += 1
 
+    # MARK: +- Polylines
+    def update_polylines_if_needed(self, vehicle: VisualizedVehicle) -> None:
+        polylines = vehicle.polylines
+        stops = vehicle.all_stops
+
+        # A polyline needs to have at least 2 points
+        if len(stops) < 2:
+            return
+
+        # Notify if their are not enough polylines
+        if len(polylines) < len(stops) - 1:
+            raise ValueError(
+                f"Vehicle {vehicle.vehicle_id} has not enough polylines for its stops"
+            )
+
+        stops_pairs: list[
+            tuple[tuple[VisualizedStop, VisualizedStop], tuple[str, list[float]]]
+        ] = zip(
+            [(stops[i], stops[i + 1]) for i in range(len(stops) - 1)],
+            polylines.values(),
+            strict=False,  # There may be more polylines than stops
+        )
+
+        polylines_to_save: dict[str, tuple[str, list[float]]] = {}
+
+        for stop_pair, polyline in stops_pairs:
+            first_stop, second_stop = stop_pair
+
+            if (
+                first_stop.latitude is None
+                or first_stop.longitude is None
+                or second_stop.latitude is None
+                or second_stop.longitude is None
+            ):
+                raise ValueError(
+                    f"Vehicle {vehicle.vehicle_id} has stops without coordinates"
+                )
+
+            coordinates_pair = f"{first_stop.latitude},{first_stop.longitude},{second_stop.latitude},{second_stop.longitude}"
+
+            if coordinates_pair not in self.saved_polylines_coordinates_pairs:
+                polylines_to_save[coordinates_pair] = polyline
+                self.saved_polylines_coordinates_pairs.add(coordinates_pair)
+
+        if len(polylines_to_save) > 0:
+            SimulationVisualizationDataManager.set_polylines(
+                self.simulation_id, polylines_to_save
+            )
+
+        if self.sio.connected:
+            self.sio.emit(
+                "simulation-update-polylines-version",
+                self.simulation_id,
+            )
+
+    # MARK: +- Flush
     def flush(self, environment) -> None:
         for event in self.passenger_assignment_event_queue:
             self.add_update(
@@ -336,18 +390,12 @@ class SimulationVisualizationDataCollector(DataCollector):
                 environment,
             )
 
-        polylines_version_updated = False
-
         for event in self.vehicle_notification_event_queue:
             vehicle = event._VehicleNotification__vehicle
             route = event._VehicleNotification__route
             existing_vehicle = self.visualized_environment.get_vehicle(vehicle.id)
             if vehicle.polylines != existing_vehicle.polylines:
                 existing_vehicle.polylines = vehicle.polylines
-                SimulationVisualizationDataManager.set_polylines(
-                    self.simulation_id, existing_vehicle
-                )
-                polylines_version_updated = True
 
             self.add_update(
                 Update(
@@ -356,12 +404,6 @@ class SimulationVisualizationDataCollector(DataCollector):
                     event.time,
                 ),
                 environment,
-            )
-
-        if self.sio.connected and polylines_version_updated:
-            self.sio.emit(
-                "simulation-update-polylines-version",
-                self.simulation_id,
             )
 
         self.passenger_assignment_event_queue = []

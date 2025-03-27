@@ -6,7 +6,6 @@ import {
   runInInjectionContext,
   Signal,
   signal,
-  untracked,
   WritableSignal,
 } from '@angular/core';
 import {
@@ -14,23 +13,25 @@ import {
   AnimatedSimulationEnvironment,
   AnimatedVehicle,
   AnyPassengerAnimationData,
+  AnySimulationUpdate,
   AnyVehicleAnimationData,
-  DisplayedPassenger,
-  DisplayedVehicle,
+  DisplayedPolylines,
   DynamicPassengerAnimationData,
   DynamicVehicleAnimationData,
+  getAllStops,
   Passenger,
-  PassengerStatus,
-  PassengerStatusUpdate,
+  PassengerAnimationData,
+  Polyline,
   RUNNING_SIMULATION_STATUSES,
   Simulation,
   SimulationEnvironment,
+  SimulationState,
+  SimulationUpdate,
   StaticPassengerAnimationData,
   StaticVehicleAnimationData,
   Stop,
   Vehicle,
-  VehicleStatus,
-  VehicleStatusUpdate,
+  VehicleAnimationData,
 } from '../interfaces/simulation.model';
 import { CommunicationService } from './communication.service';
 import { SimulationService } from './simulation.service';
@@ -119,8 +120,8 @@ export class VisualizationService {
     });
 
   // MARK: +- Visualization Environment
-  private visualizationEnvironment: SimulationEnvironment | null = null;
-  readonly visualizationEnvironmentSignal: Signal<SimulationEnvironment | null> =
+  private currentVisualizationEnvironment: SimulationEnvironment | null = null;
+  readonly currentVisualizationEnvironmentSignal: Signal<SimulationEnvironment | null> =
     computed(() => {
       const wantedVisualizationTime = this._wantedVisualizationTimeSignal();
       const simulationStates = this.simulationService.simulationStatesSignal();
@@ -134,7 +135,7 @@ export class VisualizationService {
           'No simulation states found for visualization time:',
           wantedVisualizationTime,
         );
-        return this.visualizationEnvironment;
+        return this.currentVisualizationEnvironment;
       }
 
       if (
@@ -142,7 +143,15 @@ export class VisualizationService {
         simulationStates.lastContinuousState === null ||
         simulationStates.currentState === null
       ) {
-        return this.visualizationEnvironment;
+        return this.currentVisualizationEnvironment;
+      }
+
+      if (
+        wantedVisualizationTime <
+          simulationStates.firstContinuousState.timestamp ||
+        wantedVisualizationTime > simulationStates.lastContinuousState.timestamp
+      ) {
+        return this.currentVisualizationEnvironment;
       }
 
       // Get last state with a timestamp less than or equal to the wanted visualization time
@@ -156,35 +165,29 @@ export class VisualizationService {
         }
       }
 
-      const polylines = this.simulationService.simulationPolylinesSignal();
-
       const environment = this.simulationService.buildEnvironment(
         structuredClone(state),
-        polylines?.polylinesByVehicleId ?? {},
         wantedVisualizationTime,
       );
 
       environment.timestamp = wantedVisualizationTime;
 
-      this.visualizationEnvironment = environment;
+      this.currentVisualizationEnvironment = environment;
 
       return environment;
     });
 
-  readonly animatedSimulationEnvironmentSignal: Signal<AnimatedSimulationEnvironment | null> =
+  // MARK: +- Animated
+  private animatedSimulationEnvironment: AnimatedSimulationEnvironment | null =
+    null;
+  private readonly animatedSimulationEnvironmentSignal: Signal<AnimatedSimulationEnvironment | null> =
     computed(() => {
-      const simulationEnvironment = this.visualizationEnvironmentSignal();
-
-      // We only want to update this signal when the environment changes to avoid unnecessary re-renders.
-      const simulationStates = untracked(
-        this.simulationService.simulationStatesSignal,
-      );
-      const polylinesByVehicleId = untracked(
-        this.simulationService.simulationPolylinesSignal,
-      );
+      const simulationStates = this.simulationService.simulationStatesSignal();
+      const polylines =
+        this.simulationService.simulationPolylinesSignal()
+          ?.polylinesByCoordinates ?? null;
 
       if (
-        simulationEnvironment === null ||
         simulationStates.firstContinuousState === null ||
         simulationStates.lastContinuousState === null
       ) {
@@ -200,278 +203,138 @@ export class VisualizationService {
         return null;
       }
 
-      const allUpdates = continuousStates.flatMap((state) => state.updates);
-
-      const firstState = continuousStates[0];
-
-      const lastState = continuousStates.slice(-1)[0];
-
-      const lastEnvironment = this.simulationService.buildEnvironment(
-        structuredClone(lastState),
-        polylinesByVehicleId?.polylinesByVehicleId ?? {},
-        simulationStates.lastContinuousState.timestamp,
+      const allUpdates = structuredClone(
+        continuousStates.flatMap((state) => state.updates),
       );
 
-      const passengerStatusUpdates: Record<
-        string,
-        {
-          status: PassengerStatus;
-          timestamp: number;
-        }[]
-      > = {};
-      const vehicleStatusUpdates: Record<
-        string,
-        {
-          status: VehicleStatus;
-          timestamp: number;
-        }[]
-      > = {};
+      let animatedSimulationEnvironment: AnimatedSimulationEnvironment | null =
+        null;
 
-      // Initialize status updates
-      for (const passenger of Object.values(lastEnvironment.passengers)) {
-        passengerStatusUpdates[passenger.id] = [];
-      }
+      // TODO Optimisations have bugs so disabled for now
+      // const canExtendAnimationData =
+      //   this.animatedSimulationEnvironment !== null &&
+      //   this.animatedSimulationEnvironment.animationData.endOrder >=
+      //     simulationStates.firstContinuousState.order &&
+      //   this.animatedSimulationEnvironment.animationData.startOrder <=
+      //     simulationStates.lastContinuousState.order;
 
-      for (const vehicle of Object.values(lastEnvironment.vehicles)) {
-        vehicleStatusUpdates[vehicle.id] = [];
-      }
+      // if (canExtendAnimationData) {
+      //   animatedSimulationEnvironment = this.cropAnimationData(
+      //     this.animatedSimulationEnvironment!,
+      //     simulationStates.firstContinuousState.timestamp,
+      //     simulationStates.firstContinuousState.order,
+      //     simulationStates.lastContinuousState.timestamp,
+      //     simulationStates.lastContinuousState.order,
+      //     continuousStates.slice(-1)[0],
+      //   );
 
-      // Add first status updates
-      for (const passenger of Object.values(firstState.passengers)) {
-        passengerStatusUpdates[passenger.id].push({
-          status: passenger.status,
-          timestamp: firstState.timestamp,
-        });
-      }
+      //   const updatesBefore = allUpdates.filter(
+      //     (update) =>
+      //       update.order <
+      //       animatedSimulationEnvironment!.animationData.startOrder,
+      //   );
+      //   const updatesAfter = allUpdates.filter(
+      //     (update) =>
+      //       update.order >
+      //       animatedSimulationEnvironment!.animationData.endOrder,
+      //   );
 
-      for (const vehicle of Object.values(firstState.vehicles)) {
-        vehicleStatusUpdates[vehicle.id].push({
-          status: vehicle.status,
-          timestamp: firstState.timestamp,
-        });
-      }
+      //   if (updatesBefore.length > 0) {
+      //     const { updates: _updates, ...initialEnvironment } =
+      //       continuousStates[0];
+      //     const initialEnvironmentClone: SimulationEnvironment =
+      //       structuredClone(initialEnvironment);
 
-      for (const update of allUpdates) {
-        switch (update.type) {
-          case 'createPassenger':
-            {
-              const passenger = update.data as Passenger;
-              passengerStatusUpdates[passenger.id] = [
-                {
-                  status: passenger.status,
-                  timestamp: update.timestamp,
-                },
-              ];
-            }
-            break;
-          case 'updatePassengerStatus':
-            {
-              const passengerStatusUpdate =
-                update.data as PassengerStatusUpdate;
-              passengerStatusUpdates[passengerStatusUpdate.id].push({
-                status: passengerStatusUpdate.status,
-                timestamp: update.timestamp,
-              });
-            }
-            break;
-          case 'createVehicle':
-            {
-              const vehicle = update.data as Vehicle;
-              vehicleStatusUpdates[vehicle.id] = [
-                {
-                  status: vehicle.status,
-                  timestamp: update.timestamp,
-                },
-              ];
-            }
-            break;
-          case 'updateVehicleStatus':
-            {
-              const vehicleStatusUpdate = update.data as VehicleStatusUpdate;
-              vehicleStatusUpdates[vehicleStatusUpdate.id].push({
-                status: vehicleStatusUpdate.status,
-                timestamp: update.timestamp,
-              });
-            }
-            break;
-          default:
-            break;
-        }
-      }
+      //     animatedSimulationEnvironment = this.mergeAnimationData(
+      //       this.getAnimationData(
+      //         initialEnvironmentClone,
+      //         updatesBefore,
+      //         polylines,
+      //       ),
+      //       animatedSimulationEnvironment,
+      //     );
+      //   }
 
-      const animatedPassengers: Record<string, AnimatedPassenger> = {};
+      //   if (updatesAfter.length > 0) {
+      //     const initialEnvironment = animatedSimulationEnvironment.finalState;
 
-      for (const passenger of Object.values(lastEnvironment.passengers)) {
-        const animatedPassenger = this.getPassengerAnimationDataFromPassenger(
-          passenger,
-          simulationStates.firstContinuousState.timestamp,
-          simulationStates.lastContinuousState.timestamp,
-          passengerStatusUpdates[passenger.id] ?? [],
-          lastEnvironment.vehicles,
-        );
+      //     animatedSimulationEnvironment = this.mergeAnimationData(
+      //       animatedSimulationEnvironment,
+      //       this.getAnimationData(initialEnvironment, updatesAfter, polylines),
+      //     );
+      //   }
+      // } else {
+      const { updates: _updates, ...initialEnvironment } = continuousStates[0];
+      const initialEnvironmentClone: SimulationEnvironment =
+        structuredClone(initialEnvironment);
 
-        animatedPassengers[passenger.id] = animatedPassenger;
-      }
+      animatedSimulationEnvironment = this.getAnimationData(
+        initialEnvironmentClone,
+        allUpdates,
+        polylines,
+      );
+      // }
 
-      const animatedVehicles: Record<string, AnimatedVehicle> = {};
-
-      for (const vehicle of Object.values(lastEnvironment.vehicles)) {
-        const animatedVehicle = this.getVehicleAnimationDataFromVehicle(
-          vehicle,
-          simulationStates.firstContinuousState.timestamp,
-          simulationStates.lastContinuousState.timestamp,
-          vehicleStatusUpdates[vehicle.id] ?? [],
-        );
-
-        animatedVehicles[vehicle.id] = animatedVehicle;
-      }
-
-      // Find if each vehicle is displayed
-      const displayedVehicles: Record<string, DisplayedVehicle> = {};
-
-      for (const vehicle of Object.values(simulationEnvironment.vehicles)) {
-        const animatedVehicle = animatedVehicles[vehicle.id];
-
-        if (animatedVehicle.animationData.length === 0) {
-          displayedVehicles[vehicle.id] = {
-            ...vehicle,
-            passengers: [],
-            notDisplayedReason: 'Vehicle has no animation data',
-          };
-          continue;
-        }
-
-        const currentAnimationData = animatedVehicle.animationData.find(
-          (animationData) =>
-            animationData.startTimestamp <= simulationEnvironment.timestamp &&
-            animationData.endTimestamp >= simulationEnvironment.timestamp,
-        );
-
-        if (currentAnimationData === undefined) {
-          displayedVehicles[vehicle.id] = {
-            ...vehicle,
-            passengers: [],
-            notDisplayedReason: 'Vehicle animation data not found',
-          };
-          continue;
-        }
-
-        if (currentAnimationData.notDisplayedReason !== null) {
-          displayedVehicles[vehicle.id] = {
-            ...vehicle,
-            passengers: [],
-            notDisplayedReason: currentAnimationData.notDisplayedReason,
-          };
-          continue;
-        }
-
-        displayedVehicles[vehicle.id] = {
-          ...vehicle,
-          passengers: [],
-          notDisplayedReason: null,
-        };
-      }
-
-      // Find if each passenger is displayed
-      const displayedPassengers: Record<string, DisplayedPassenger> = {};
-      for (const passenger of Object.values(simulationEnvironment.passengers)) {
-        const animatedPassenger = animatedPassengers[passenger.id];
-
-        if (animatedPassenger === undefined) {
-          displayedPassengers[passenger.id] = {
-            ...passenger,
-            vehicleId: null,
-            notDisplayedReason: 'Passenger not found',
-          };
-          continue;
-        }
-
-        if (animatedPassenger.animationData.length === 0) {
-          displayedPassengers[passenger.id] = {
-            ...passenger,
-            vehicleId: null,
-            notDisplayedReason: 'Passenger has no animation data',
-          };
-          continue;
-        }
-
-        const currentAnimationData = animatedPassenger.animationData.find(
-          (animationData) =>
-            animationData.startTimestamp <= simulationEnvironment.timestamp &&
-            animationData.endTimestamp >= simulationEnvironment.timestamp,
-        );
-
-        if (currentAnimationData === undefined) {
-          displayedPassengers[passenger.id] = {
-            ...passenger,
-            vehicleId: null,
-            notDisplayedReason: 'Passenger animation data not found',
-          };
-          continue;
-        }
-
-        if (currentAnimationData.notDisplayedReason !== null) {
-          displayedPassengers[passenger.id] = {
-            ...passenger,
-            vehicleId: currentAnimationData.vehicleId,
-            notDisplayedReason: currentAnimationData.notDisplayedReason,
-          };
-          continue;
-        }
-
-        if (
-          currentAnimationData.vehicleId !== null &&
-          (currentAnimationData as StaticPassengerAnimationData).position ===
-            undefined
-        ) {
-          const dynamicAnimationData =
-            currentAnimationData as DynamicPassengerAnimationData;
-
-          const vehicle = displayedVehicles[dynamicAnimationData.vehicleId];
-
-          if (vehicle === undefined) {
-            displayedPassengers[passenger.id] = {
-              ...passenger,
-              vehicleId: currentAnimationData.vehicleId,
-              notDisplayedReason: 'Vehicle not found',
-            };
-            currentAnimationData.notDisplayedReason = 'Vehicle not found';
-            continue;
-          }
-
-          vehicle.passengers.push(passenger.id);
-
-          if (vehicle.notDisplayedReason !== null) {
-            displayedPassengers[passenger.id] = {
-              ...passenger,
-              vehicleId: currentAnimationData.vehicleId,
-              notDisplayedReason: 'Vehicle not displayed',
-            };
-            currentAnimationData.notDisplayedReason = 'Vehicle not displayed';
-            continue;
-          }
-        }
-
-        displayedPassengers[passenger.id] = {
-          ...passenger,
-          vehicleId: currentAnimationData.vehicleId,
-          notDisplayedReason: null,
-        };
-      }
-
-      const animatedSimulationEnvironment: AnimatedSimulationEnvironment = {
-        ...simulationEnvironment,
-        passengers: displayedPassengers,
-        vehicles: displayedVehicles,
-        animationData: {
-          passengers: animatedPassengers,
-          vehicles: animatedVehicles,
-          startTimestamp: simulationStates.firstContinuousState.timestamp,
-          endTimestamp: simulationStates.lastContinuousState.timestamp,
-        },
-      };
+      this.animatedSimulationEnvironment = animatedSimulationEnvironment;
 
       return animatedSimulationEnvironment;
+    });
+
+  readonly visualizationEnvironmentSignal: Signal<AnimatedSimulationEnvironment | null> =
+    computed(() => {
+      const environment = this.currentVisualizationEnvironmentSignal();
+      const animatedEnvironment = this.animatedSimulationEnvironmentSignal();
+
+      if (environment === null || animatedEnvironment === null) {
+        return null;
+      }
+
+      const passengers: Record<string, AnimatedPassenger> = {};
+      for (const passengerId of Object.keys(environment.passengers)) {
+        const passenger = environment.passengers[passengerId];
+        const animationData =
+          animatedEnvironment.animationData.passengers[passengerId];
+
+        const currentAnimationData = animationData.find(
+          (data) =>
+            data.startTimestamp <= environment.timestamp &&
+            data.endTimestamp! >= environment.timestamp,
+        );
+
+        passengers[passengerId] = {
+          ...passenger,
+          animationData,
+          notDisplayedReason: currentAnimationData?.notDisplayedReason ?? null,
+        };
+      }
+
+      const vehicles: Record<string, AnimatedVehicle> = {};
+      for (const vehicleId of Object.keys(environment.vehicles)) {
+        const vehicle = environment.vehicles[vehicleId];
+        const animationData =
+          animatedEnvironment.animationData.vehicles[vehicleId];
+
+        const currentAnimationData = animationData.find(
+          (data) =>
+            data.startTimestamp <= environment.timestamp &&
+            data.endTimestamp! >= environment.timestamp,
+        );
+
+        vehicles[vehicleId] = {
+          ...vehicle,
+          animationData,
+          notDisplayedReason: currentAnimationData?.notDisplayedReason ?? null,
+        };
+      }
+
+      return {
+        ...animatedEnvironment,
+        currentState: {
+          ...environment,
+          passengers,
+          vehicles,
+        },
+      };
     });
 
   private readonly _isLoadingSignal: WritableSignal<boolean> = signal(true);
@@ -554,7 +417,6 @@ export class VisualizationService {
           wantedVisualizationTime >
             simulationStates.lastContinuousState.timestamp,
       );
-      
     });
 
     effect(() => {
@@ -591,9 +453,15 @@ export class VisualizationService {
     const isVisualizationPaused = this._isVisualizationPausedSignal();
 
     if (wantedVisualizationTime !== null) {
-      localStorage.setItem('wantedVisualizationTime', wantedVisualizationTime.toString());
+      localStorage.setItem(
+        'wantedVisualizationTime',
+        wantedVisualizationTime.toString(),
+      );
     }
-    localStorage.setItem('isVisualizationPaused', JSON.stringify(isVisualizationPaused));
+    localStorage.setItem(
+      'isVisualizationPaused',
+      JSON.stringify(isVisualizationPaused),
+    );
   }
 
   private initializeAutoLoad(): void {
@@ -603,8 +471,12 @@ export class VisualizationService {
   }
 
   private loadWantedVisualizationTime(): void {
-    const savedWantedVisualizationTime = localStorage.getItem('wantedVisualizationTime');
-    const savedIsVisualizationPaused = localStorage.getItem('isVisualizationPaused');
+    const savedWantedVisualizationTime = localStorage.getItem(
+      'wantedVisualizationTime',
+    );
+    const savedIsVisualizationPaused = localStorage.getItem(
+      'isVisualizationPaused',
+    );
 
     if (savedWantedVisualizationTime) {
       const time = parseFloat(savedWantedVisualizationTime);
@@ -788,625 +660,894 @@ export class VisualizationService {
     this.simulationService.getPolylines(simulationId);
   }
 
+  private getAnimationData(
+    initialEnvironment: SimulationEnvironment,
+    updates: AnySimulationUpdate[],
+    polylines: Record<string, Polyline> | null,
+  ): AnimatedSimulationEnvironment {
+    const animatedSimulationEnvironment = this.createInitialAnimationData(
+      initialEnvironment,
+      polylines,
+    );
+
+    for (const update of updates) {
+      this.simulationService.applyUpdate(
+        update,
+        animatedSimulationEnvironment.finalState,
+      );
+      animatedSimulationEnvironment.animationData.endOrder = update.order;
+      animatedSimulationEnvironment.animationData.endTimestamp =
+        update.timestamp;
+
+      switch (update.type) {
+        case 'createPassenger':
+          {
+            const castedUpdate = update as SimulationUpdate<'createPassenger'>;
+            this.handleCreatePassenger(
+              animatedSimulationEnvironment,
+              castedUpdate,
+            );
+          }
+          break;
+        case 'updatePassengerStatus':
+          {
+            const castedUpdate =
+              update as SimulationUpdate<'updatePassengerStatus'>;
+            this.handleUpdatePassengerStatus(
+              animatedSimulationEnvironment,
+              castedUpdate,
+            );
+          }
+          break;
+        case 'updatePassengerLegs':
+          {
+            const castedUpdate =
+              update as SimulationUpdate<'updatePassengerLegs'>;
+            this.handleUpdatePassengerLegs(
+              animatedSimulationEnvironment,
+              castedUpdate,
+            );
+          }
+          break;
+        case 'createVehicle':
+          {
+            const castedUpdate = update as SimulationUpdate<'createVehicle'>;
+            this.handleCreateVehicle(
+              animatedSimulationEnvironment,
+              castedUpdate,
+              polylines,
+            );
+          }
+          break;
+        case 'updateVehicleStatus':
+          {
+            const castedUpdate =
+              update as SimulationUpdate<'updateVehicleStatus'>;
+            this.handleUpdateVehicleStatus(
+              animatedSimulationEnvironment,
+              castedUpdate,
+            );
+          }
+          break;
+        case 'updateVehicleStops':
+          {
+            const castedUpdate =
+              update as SimulationUpdate<'updateVehicleStops'>;
+            this.handleUpdateVehicleStops(
+              animatedSimulationEnvironment,
+              castedUpdate,
+              polylines,
+            );
+          }
+          break;
+        case 'updateStatistic':
+          // Do nothing
+          break;
+      }
+    }
+
+    this.updateEndTimestamps(animatedSimulationEnvironment);
+
+    return animatedSimulationEnvironment;
+  }
+
+  private createInitialAnimationData(
+    initialEnvironment: SimulationEnvironment,
+    polylines: Record<string, Polyline> | null,
+  ): AnimatedSimulationEnvironment {
+    const animatedSimulationEnvironment: AnimatedSimulationEnvironment = {
+      finalState: initialEnvironment,
+      currentState: null as unknown as SimulationEnvironment & {
+        passengers: Record<string, AnimatedPassenger>;
+        vehicles: Record<string, AnimatedVehicle>;
+      }, // Will be overwritten
+      animationData: {
+        passengers: {},
+        vehicles: {},
+        startTimestamp: initialEnvironment.timestamp,
+        startOrder: initialEnvironment.order,
+        endTimestamp: initialEnvironment.timestamp,
+        endOrder: initialEnvironment.order,
+      },
+    };
+
+    for (const vehicle of Object.values(initialEnvironment.vehicles)) {
+      animatedSimulationEnvironment.animationData.vehicles[vehicle.id] = [
+        this.getVehicleAnimationDataFromVehicle(
+          vehicle,
+          polylines,
+          initialEnvironment.timestamp,
+          initialEnvironment.order,
+        ),
+      ];
+    }
+
+    for (const passenger of Object.values(initialEnvironment.passengers)) {
+      animatedSimulationEnvironment.animationData.passengers[passenger.id] = [
+        this.getPassengerAnimationDataFromPassenger(
+          passenger,
+          // animatedSimulationEnvironment.animationData.vehicles,
+          initialEnvironment.timestamp,
+          initialEnvironment.order,
+          initialEnvironment.timestamp,
+        ),
+      ];
+    }
+
+    return animatedSimulationEnvironment;
+  }
+
   private getPassengerAnimationDataFromPassenger(
     passenger: Passenger,
+    // vehicles: Record<string, AnimatedVehicle>,
     startTimestamp: number,
-    endTimestamp: number,
-    statusUpdates: {
-      status: PassengerStatus;
-      timestamp: number;
-    }[],
-    vehicles: Record<string, Vehicle>,
-  ): AnimatedPassenger {
-    const allLegs = passenger.previousLegs.concat(
-      passenger.currentLeg === null ? [] : [passenger.currentLeg],
-      passenger.nextLegs,
-    );
-
-    const allAnimationData: AnyPassengerAnimationData[] = [];
-
-    if (allLegs.length === 0) {
-      allAnimationData.push({
-        status: passenger.status,
-        startTimestamp: startTimestamp,
-        endTimestamp: endTimestamp,
-        vehicleId: null,
-        notDisplayedReason: 'Passenger has no legs',
-      });
-    }
-
-    let currentTimestamp = startTimestamp;
-
-    for (let legIndex = 0; legIndex < allLegs.length; legIndex++) {
-      const leg = allLegs[legIndex];
-
-      if (leg.assignedVehicleId === null || leg.assignedTime === null) {
-        allAnimationData.push({
-          status: passenger.status,
-          startTimestamp: currentTimestamp,
-          endTimestamp: endTimestamp,
-          vehicleId: null,
-          notDisplayedReason: 'Leg has no assigned vehicle',
-        });
-        break;
-      }
-
-      currentTimestamp = Math.max(leg.assignedTime, currentTimestamp);
-
-      if (leg.assignedTime >= endTimestamp) {
-        break;
-      }
-
-      const vehicle = vehicles[leg.assignedVehicleId];
-
-      if (vehicle === undefined) {
-        allAnimationData.push({
-          status: passenger.status,
-          startTimestamp: currentTimestamp,
-          endTimestamp: endTimestamp,
-          vehicleId: leg.assignedVehicleId,
-          notDisplayedReason: 'Vehicle not found',
-        });
-        break;
-      }
-
-      if (vehicle.polylines === null) {
-        allAnimationData.push({
-          status: passenger.status,
-          startTimestamp: currentTimestamp,
-          endTimestamp: endTimestamp,
-          vehicleId: leg.assignedVehicleId,
-          notDisplayedReason: 'Vehicle has no polylines',
-        });
-        break;
-      }
-
-      if (leg.boardingStopIndex === null) {
-        allAnimationData.push({
-          status: passenger.status,
-          startTimestamp: currentTimestamp,
-          endTimestamp: endTimestamp,
-          vehicleId: leg.assignedVehicleId,
-          notDisplayedReason: 'Leg has no boarding stop',
-        });
-        break;
-      }
-
-      if (leg.boardingTime === null || leg.boardingTime >= currentTimestamp) {
-        const polyline =
-          vehicle.polylines[Math.max(leg.boardingStopIndex - 1, 0)];
-
-        if (polyline === undefined) {
-          allAnimationData.push({
-            status: passenger.status,
-            startTimestamp: currentTimestamp,
-            endTimestamp: Math.min(
-              leg.boardingTime ?? endTimestamp,
-              endTimestamp,
-            ),
-            vehicleId: leg.assignedVehicleId,
-            notDisplayedReason: 'Vehicle has no polyline for boarding stop',
-          });
-          continue;
-        }
-
-        if (polyline.polyline.length === 0) {
-          allAnimationData.push({
-            status: passenger.status,
-            startTimestamp: currentTimestamp,
-            endTimestamp: Math.min(
-              leg.boardingTime ?? endTimestamp,
-              endTimestamp,
-            ),
-            vehicleId: leg.assignedVehicleId,
-            notDisplayedReason:
-              'Vehicle has an empty polyline for boarding stop',
-          });
-          continue;
-        }
-
-        const position =
-          leg.boardingStopIndex === 0
-            ? polyline.polyline[0]
-            : polyline.polyline.slice(-1)[0];
-
-        allAnimationData.push({
-          status: passenger.status,
-          startTimestamp: currentTimestamp,
-          endTimestamp: Math.min(
-            leg.boardingTime ?? endTimestamp,
-            endTimestamp,
-          ),
-          position: position,
-          vehicleId: leg.assignedVehicleId,
-          notDisplayedReason: null,
-        });
-
-        currentTimestamp = Math.min(
-          leg.boardingTime ?? endTimestamp,
-          endTimestamp,
-        );
-      }
-
-      if (
-        leg.boardingTime !== null &&
-        leg.boardingTime <= endTimestamp &&
-        (leg.alightingTime === null || leg.alightingTime >= currentTimestamp)
-      ) {
-        allAnimationData.push({
-          status: passenger.status,
-          startTimestamp: Math.max(leg.boardingTime, currentTimestamp),
-          endTimestamp: Math.min(
-            leg.alightingTime ?? endTimestamp,
-            endTimestamp,
-          ),
-          vehicleId: leg.assignedVehicleId,
-          notDisplayedReason: null,
-        });
-
-        currentTimestamp = Math.min(
-          leg.alightingTime ?? endTimestamp,
-          endTimestamp,
-        );
-      }
-
-      if (leg.alightingTime === null || leg.alightingTime >= endTimestamp) {
-        break;
-      }
-
-      if (leg.alightingStopIndex === null) {
-        allAnimationData.push({
-          status: passenger.status,
-          startTimestamp: Math.max(leg.alightingTime, currentTimestamp),
-          endTimestamp: Math.min(leg.alightingTime, endTimestamp),
-          notDisplayedReason: 'Leg has no alighting stop',
-          vehicleId: leg.assignedVehicleId,
-        });
-        break;
-      }
-
-      const polyline = vehicle.polylines[leg.alightingStopIndex];
-
-      if (polyline === undefined) {
-        allAnimationData.push({
-          status: passenger.status,
-          startTimestamp: Math.max(leg.alightingTime, currentTimestamp),
-          endTimestamp: Math.min(leg.alightingTime, endTimestamp),
-          notDisplayedReason: 'Vehicle has no polyline for alighting stop',
-          vehicleId: leg.assignedVehicleId,
-        });
-        break;
-      }
-
-      if (polyline.polyline.length === 0) {
-        allAnimationData.push({
-          status: passenger.status,
-          startTimestamp: Math.max(leg.alightingTime, currentTimestamp),
-          endTimestamp: Math.min(leg.alightingTime, endTimestamp),
-          notDisplayedReason:
-            'Vehicle has an empty polyline for alighting stop',
-          vehicleId: leg.assignedVehicleId,
-        });
-        break;
-      }
-
-      const position = polyline.polyline[0];
-
-      allAnimationData.push({
-        status: passenger.status,
-        startTimestamp: Math.max(leg.alightingTime, currentTimestamp),
-        endTimestamp: Math.min(
-          allLegs[legIndex + 1]?.assignedTime ?? endTimestamp,
-          endTimestamp,
-        ),
-        position: position,
-        notDisplayedReason: null,
-        vehicleId: leg.assignedVehicleId,
-      });
-
-      currentTimestamp = Math.min(
-        allLegs[legIndex + 1]?.assignedTime ?? endTimestamp,
-        endTimestamp,
-      );
-    }
-
-    // Fill the gaps with previous or next position
-    const length = allAnimationData.length;
-    for (let i = 0; i < length - 1; i++) {
-      const currentData = allAnimationData[i];
-      const nextData = allAnimationData[i + 1];
-
-      if (
-        currentData.endTimestamp < nextData.startTimestamp &&
-        currentData.endTimestamp < endTimestamp
-      ) {
-        const position =
-          (currentData as StaticPassengerAnimationData).position ??
-          (nextData as StaticPassengerAnimationData).position ??
-          null;
-
-        const newData: AnyPassengerAnimationData = {
-          status: passenger.status,
-          startTimestamp: currentData.endTimestamp,
-          endTimestamp: nextData.startTimestamp,
-          notDisplayedReason: 'Passenger has no position',
-          vehicleId: currentData.vehicleId,
-        };
-
-        if (position !== null) {
-          (newData as StaticPassengerAnimationData).position = position;
-        }
-
-        allAnimationData.push(newData);
-      }
-    }
-
-    const allSortedAnimationData = allAnimationData.sort(
-      (a, b) => a.startTimestamp - b.startTimestamp,
-    );
-
-    const previousAnimationData = structuredClone(allSortedAnimationData);
-
-    // Set status according to updates
-    for (const animationData of allSortedAnimationData) {
-      animationData.status =
-        statusUpdates.find(
-          (update) =>
-            update.timestamp >= animationData.startTimestamp &&
-            update.timestamp <= animationData.endTimestamp,
-        )?.status ?? passenger.status;
-    }
-
-    // Add other status updates
-    let currentIndex = 0;
-    for (const statusUpdate of statusUpdates) {
-      while (
-        currentIndex < allSortedAnimationData.length &&
-        (allSortedAnimationData[currentIndex].endTimestamp <
-          statusUpdate.timestamp ||
-          (currentIndex + 1 < allSortedAnimationData.length &&
-            allSortedAnimationData[currentIndex].startTimestamp ===
-              allSortedAnimationData[currentIndex + 1].startTimestamp))
-      ) {
-        currentIndex++;
-      }
-
-      if (currentIndex >= allSortedAnimationData.length) {
-        break;
-      }
-
-      const currentAnimationData = allSortedAnimationData[currentIndex];
-
-      if (currentAnimationData.startTimestamp > statusUpdate.timestamp) {
-        continue;
-      }
-
-      if (currentAnimationData.startTimestamp === statusUpdate.timestamp) {
-        currentAnimationData.status = statusUpdate.status;
-      } else {
-        currentAnimationData.endTimestamp = statusUpdate.timestamp;
-        allSortedAnimationData.splice(currentIndex + 1, 0, {
-          ...currentAnimationData,
-          status: statusUpdate.status,
-          startTimestamp: statusUpdate.timestamp,
-        });
-        currentIndex++;
-      }
-    }
-
-    // Verify the order of the timestamps
-    for (let i = 0; i < allSortedAnimationData.length - 1; i++) {
-      if (
-        allSortedAnimationData[i].endTimestamp >
-        allSortedAnimationData[i + 1].startTimestamp
-      ) {
-        console.error(
-          'Invalid timestamps for vehicle:',
-          allSortedAnimationData,
-          i,
-          allSortedAnimationData[i],
-          i + 1,
-          allSortedAnimationData[i + 1],
-          passenger,
-          previousAnimationData,
-          statusUpdates,
-          startTimestamp,
-          endTimestamp,
-        );
-      }
-    }
-
-    return {
-      ...passenger,
-      animationData: allSortedAnimationData,
+    startOrder: number,
+    currentTimestamp: number,
+  ): AnyPassengerAnimationData {
+    const basicAnimationData: PassengerAnimationData = {
+      status: passenger.status,
+      startTimestamp,
+      startOrder,
+      endTimestamp: null,
+      endOrder: null,
+      vehicleId: null,
+      notDisplayedReason: null,
     };
+
+    if (passenger.currentLeg === null) {
+      basicAnimationData.notDisplayedReason = 'Passenger has no current leg';
+      return basicAnimationData;
+    }
+
+    if (
+      passenger.currentLeg.assignedVehicleId === null ||
+      passenger.currentLeg.assignedTime === null
+    ) {
+      basicAnimationData.notDisplayedReason = 'Leg has no assigned vehicle';
+      return basicAnimationData;
+    } else if (passenger.currentLeg.boardingStopIndex === null) {
+      basicAnimationData.notDisplayedReason = 'Leg has no boarding stop';
+      return basicAnimationData;
+    } else if (passenger.currentLeg.alightingStopIndex === null) {
+      basicAnimationData.notDisplayedReason = 'Leg has no alighting stop';
+      return basicAnimationData;
+    }
+
+    basicAnimationData.vehicleId = passenger.currentLeg.assignedVehicleId;
+
+    // const vehicle = vehicles[passenger.currentLeg.assignedVehicleId];
+
+    // if (vehicle === undefined) {
+    //   basicAnimationData.notDisplayedReason = 'Vehicle not found';
+    //   return basicAnimationData;
+    // }
+
+    // const allStops = this.getAllStops(vehicle);
+
+    // if (allStops.length < passenger.currentLeg.boardingStopIndex) {
+    //   basicAnimationData.notDisplayedReason = 'Boarding stop not found';
+    //   return basicAnimationData;
+    // }
+
+    // Is at the boarding stop
+    if (
+      passenger.currentLeg.boardingTime === null ||
+      passenger.currentLeg.boardingTime > currentTimestamp
+    ) {
+      // const boardingStop = allStops[passenger.currentLeg.boardingStopIndex];
+      const staticAnimationData: StaticPassengerAnimationData = {
+        ...basicAnimationData,
+        stopIndex: passenger.currentLeg.boardingStopIndex,
+      };
+      return staticAnimationData;
+    }
+
+    // Is between boarding and alighting stop
+    if (
+      passenger.currentLeg.alightingTime === null ||
+      passenger.currentLeg.alightingTime > currentTimestamp
+    ) {
+      // if (
+      //   vehicle.animationData === null ||
+      //   vehicle.animationData.length === 0
+      // ) {
+      //   basicAnimationData.notDisplayedReason = 'Vehicle is not present';
+      //   return basicAnimationData;
+      // }
+
+      // There is only one animation data
+      // const vehicleAnimationData = vehicle.animationData[0];
+
+      // if (vehicleAnimationData.notDisplayedReason !== null) {
+      //   basicAnimationData.notDisplayedReason = 'Vehicle is not displayed';
+      //   return basicAnimationData;
+      // }
+
+      const dynamicAnimationData: DynamicPassengerAnimationData = {
+        ...basicAnimationData,
+        isOnBoard: true,
+      };
+
+      return dynamicAnimationData;
+    }
+
+    // Is at the alighting stop
+    // const alightingStop = allStops[passenger.currentLeg.alightingStopIndex];
+    const staticAnimationData: StaticPassengerAnimationData = {
+      ...basicAnimationData,
+      stopIndex: passenger.currentLeg.alightingStopIndex,
+    };
+
+    return staticAnimationData;
   }
 
   private getVehicleAnimationDataFromVehicle(
     vehicle: Vehicle,
+    polylines: Record<string, Polyline> | null,
     startTimestamp: number,
-    endTimestamp: number,
-    statusUpdates: {
-      status: VehicleStatus;
-      timestamp: number;
-    }[],
-  ): AnimatedVehicle {
-    const allStops = vehicle.previousStops.concat(
-      vehicle.currentStop === null ? [] : [vehicle.currentStop],
-      vehicle.nextStops,
-    );
+    startOrder: number,
+  ): AnyVehicleAnimationData {
+    const basicAnimationData: VehicleAnimationData = {
+      status: vehicle.status,
+      startTimestamp,
+      startOrder,
+      endTimestamp: null,
+      endOrder: null,
+      displayedPolylines: this.getDisplayedPolylines(vehicle, polylines),
+      notDisplayedReason: null,
+    };
 
-    // remove duplicated stops
-    const uniqueStops: Stop[] = [];
-    for (const stop of allStops) {
-      if (
-        uniqueStops.find(
-          (otherStop) => otherStop.arrivalTime === stop.arrivalTime,
-        ) === undefined
-      ) {
-        if (
-          stop.departureTime === null &&
-          allStops.find(
-            (otherStop) =>
-              otherStop.arrivalTime === stop.arrivalTime &&
-              otherStop.departureTime !== null,
-          ) !== undefined
-        ) {
-          continue;
-        }
+    // Vehicle is static
+    if (vehicle.currentStop !== null) {
+      const staticAnimationData: StaticVehicleAnimationData = {
+        ...basicAnimationData,
+        position: vehicle.currentStop.position,
+      };
 
-        uniqueStops.push(stop);
-      }
+      return staticAnimationData;
     }
 
-    const allAnimationData: AnyVehicleAnimationData[] = [];
+    // Vehicle is moving
+    if (vehicle.previousStops.length > 0 && vehicle.nextStops.length > 0) {
+      const stop = vehicle.previousStops.slice(-1)[0];
+      const nextStop = vehicle.nextStops[0];
 
-    if (uniqueStops.length === 0) {
-      allAnimationData.push({
-        status: vehicle.status,
-        startTimestamp: startTimestamp,
-        endTimestamp: endTimestamp,
-        notDisplayedReason: 'Vehicle has no stops',
-      });
-    } else if (vehicle.polylines === null) {
-      allAnimationData.push({
-        status: vehicle.status,
-        startTimestamp: startTimestamp,
-        endTimestamp: endTimestamp,
-        notDisplayedReason: 'Vehicle has no polylines',
-      });
+      const polyline = this.getPolylineForStops(stop, nextStop, polylines);
+
+      if (polyline === null) {
+        basicAnimationData.notDisplayedReason =
+          'Vehicle has no polyline between previous and next stop';
+
+        return basicAnimationData;
+      }
+
+      const dynamicAnimationData: DynamicVehicleAnimationData = {
+        ...basicAnimationData,
+        polyline: polyline,
+      };
+
+      return dynamicAnimationData;
+    }
+
+    if (vehicle.previousStops.length > 0 && vehicle.nextStops.length === 0) {
+      basicAnimationData.notDisplayedReason = 'Vehicle has no next stop';
+    } else if (
+      vehicle.previousStops.length === 0 &&
+      vehicle.nextStops.length > 0
+    ) {
+      basicAnimationData.notDisplayedReason = 'Vehicle has no previous stop';
     } else {
-      for (let stopIndex = 0; stopIndex < uniqueStops.length - 1; stopIndex++) {
-        const departingStop = uniqueStops[stopIndex];
-
-        if (
-          departingStop.arrivalTime <= endTimestamp &&
-          (departingStop.departureTime === null ||
-            departingStop.departureTime >= startTimestamp)
-        ) {
-          const currentPositionPolyline =
-            vehicle.polylines[Math.max(stopIndex - 1, 0)];
-
-          if (currentPositionPolyline === undefined) {
-            allAnimationData.push({
-              status: vehicle.status,
-              startTimestamp: Math.max(
-                startTimestamp,
-                departingStop.arrivalTime,
-              ),
-              endTimestamp: Math.min(
-                departingStop.departureTime ?? endTimestamp,
-                endTimestamp,
-              ),
-              notDisplayedReason:
-                'Vehicle has no polyline for current position',
-            });
-            continue;
-          }
-
-          if (currentPositionPolyline.polyline.length === 0) {
-            allAnimationData.push({
-              status: vehicle.status,
-              startTimestamp: Math.max(
-                startTimestamp,
-                departingStop.arrivalTime,
-              ),
-              endTimestamp: Math.min(
-                departingStop.departureTime ?? endTimestamp,
-                endTimestamp,
-              ),
-              notDisplayedReason:
-                'Vehicle has an empty polyline for current position',
-            });
-            continue;
-          }
-
-          const currentPosition =
-            stopIndex === 0
-              ? currentPositionPolyline.polyline[0]
-              : currentPositionPolyline.polyline.slice(-1)[0];
-
-          allAnimationData.push({
-            status: vehicle.status,
-            startTimestamp: Math.max(startTimestamp, departingStop.arrivalTime),
-            endTimestamp: Math.min(
-              departingStop.departureTime ?? endTimestamp,
-              endTimestamp,
-            ),
-            position: currentPosition,
-            polylineIndex: stopIndex - 1,
-            notDisplayedReason: null,
-          });
-        }
-
-        if (departingStop.departureTime === null) {
-          break;
-        }
-
-        const arrivingStop = uniqueStops[stopIndex + 1];
-
-        if (
-          arrivingStop !== undefined &&
-          arrivingStop.arrivalTime >= startTimestamp &&
-          departingStop.departureTime <= endTimestamp
-        ) {
-          const polylineBetweenStops = vehicle.polylines[stopIndex];
-
-          if (polylineBetweenStops === undefined) {
-            allAnimationData.push({
-              status: vehicle.status,
-              startTimestamp: Math.max(
-                startTimestamp,
-                departingStop.arrivalTime,
-              ),
-              endTimestamp: Math.min(arrivingStop.arrivalTime, endTimestamp),
-              notDisplayedReason:
-                'Vehicle has no polyline between departing and arriving stop',
-            });
-            continue;
-          }
-
-          if (polylineBetweenStops.polyline.length === 0) {
-            allAnimationData.push({
-              status: vehicle.status,
-              startTimestamp: Math.max(
-                startTimestamp,
-                departingStop.arrivalTime,
-              ),
-              endTimestamp: Math.min(arrivingStop.arrivalTime, endTimestamp),
-              notDisplayedReason:
-                'Vehicle has an empty polyline between departing and arriving stop',
-            });
-            continue;
-          }
-
-          allAnimationData.push({
-            status: vehicle.status,
-            startTimestamp: Math.max(
-              startTimestamp,
-              departingStop.departureTime,
-            ),
-            endTimestamp: Math.min(arrivingStop.arrivalTime, endTimestamp),
-            polyline: polylineBetweenStops,
-            polylineIndex: stopIndex,
-            notDisplayedReason: null,
-          });
-        }
-      }
+      basicAnimationData.notDisplayedReason = 'Vehicle has no stops';
     }
 
-    // Fill the gaps with previous or next position
-    const length = allAnimationData.length;
-    for (let i = 0; i < length - 1; i++) {
-      const currentData = allAnimationData[i];
-      const nextData = allAnimationData[i + 1];
+    return basicAnimationData;
+  }
 
-      if (
-        currentData.endTimestamp < nextData.startTimestamp &&
-        currentData.endTimestamp < endTimestamp
-      ) {
-        const position =
-          (currentData as StaticVehicleAnimationData).position ??
-          (nextData as StaticVehicleAnimationData).position ??
-          (currentData as DynamicVehicleAnimationData).polyline?.polyline.slice(
-            -1,
-          )[0] ??
-          (nextData as DynamicVehicleAnimationData).polyline?.polyline[0] ??
-          null;
+  private handleCreatePassenger(
+    animatedSimulationEnvironment: AnimatedSimulationEnvironment,
+    update: SimulationUpdate<'createPassenger'>,
+  ): void {
+    const passenger = update.data;
 
-        const newData: AnyVehicleAnimationData = {
-          status: vehicle.status,
-          startTimestamp: currentData.endTimestamp,
-          endTimestamp: nextData.startTimestamp,
-          notDisplayedReason: 'Vehicle has no position',
-        };
+    animatedSimulationEnvironment.animationData.passengers[passenger.id] = [
+      this.getPassengerAnimationDataFromPassenger(
+        passenger,
+        // animatedSimulationEnvironment.animationData.vehicles,
+        animatedSimulationEnvironment.finalState.timestamp,
+        animatedSimulationEnvironment.finalState.order,
+        animatedSimulationEnvironment.finalState.timestamp,
+      ),
+    ];
+  }
 
-        if (position !== null) {
-          (newData as StaticVehicleAnimationData).position = position;
-        }
+  private handleUpdatePassengerStatus(
+    animatedSimulationEnvironment: AnimatedSimulationEnvironment,
+    update: SimulationUpdate<'updatePassengerStatus'>,
+  ): void {
+    const passengerId = update.data.id;
+    const status = update.data.status;
 
-        allAnimationData.push(newData);
-      }
+    const passengerAnimationData =
+      animatedSimulationEnvironment.animationData.passengers[passengerId];
+
+    if (passengerAnimationData === undefined) {
+      console.error('Passenger animation data not found');
+      return;
     }
 
-    const allSortedAnimationData = allAnimationData.sort(
-      (a, b) => a.startTimestamp - b.startTimestamp,
+    const lastAnimationData = passengerAnimationData.slice(-1)[0];
+
+    if (lastAnimationData.startTimestamp === update.timestamp) {
+      lastAnimationData.status = status;
+    } else {
+      lastAnimationData.endTimestamp = update.timestamp;
+      lastAnimationData.endOrder = update.order;
+      passengerAnimationData.push({
+        ...lastAnimationData,
+        startTimestamp: update.timestamp,
+        startOrder: update.order,
+        endTimestamp: null,
+        endOrder: null,
+        status,
+      });
+    }
+  }
+
+  private handleUpdatePassengerLegs(
+    animatedSimulationEnvironment: AnimatedSimulationEnvironment,
+    update: SimulationUpdate<'updatePassengerLegs'>,
+  ): void {
+    const passengerId = update.data.id;
+
+    const passengerAnimationData =
+      animatedSimulationEnvironment.animationData.passengers[passengerId];
+
+    if (passengerAnimationData === undefined) {
+      console.error('Passenger animation data not found');
+      return;
+    }
+
+    const passenger =
+      animatedSimulationEnvironment.finalState.passengers[passengerId];
+
+    const lastAnimationData = passengerAnimationData.slice(-1)[0];
+
+    const newAnimationData = this.getPassengerAnimationDataFromPassenger(
+      passenger,
+      // animatedSimulationEnvironment.animationData.vehicles,
+      update.timestamp,
+      update.order,
+      animatedSimulationEnvironment.finalState.timestamp,
     );
 
-    const previousAnimationData = structuredClone(allSortedAnimationData);
-
-    // Set status according to updates
-    for (const animationData of allSortedAnimationData) {
-      animationData.status =
-        statusUpdates.find(
-          (update) =>
-            update.timestamp >= animationData.startTimestamp &&
-            update.timestamp <= animationData.endTimestamp,
-        )?.status ?? vehicle.status;
+    if (lastAnimationData.startTimestamp === update.timestamp) {
+      passengerAnimationData.pop();
+    } else {
+      lastAnimationData.endTimestamp = update.timestamp;
+      lastAnimationData.endOrder = update.order;
     }
 
-    // Add other status updates
-    let currentIndex = 0;
-    for (const statusUpdate of statusUpdates) {
-      while (
-        currentIndex < allSortedAnimationData.length &&
-        (allSortedAnimationData[currentIndex].endTimestamp <
-          statusUpdate.timestamp ||
-          (currentIndex + 1 < allSortedAnimationData.length &&
-            allSortedAnimationData[currentIndex].startTimestamp ===
-              allSortedAnimationData[currentIndex + 1].startTimestamp))
-      ) {
-        currentIndex++;
-      }
+    passengerAnimationData.push(newAnimationData);
+  }
 
-      if (currentIndex >= allSortedAnimationData.length) {
-        break;
-      }
+  private handleCreateVehicle(
+    animatedSimulationEnvironment: AnimatedSimulationEnvironment,
+    update: SimulationUpdate<'createVehicle'>,
+    polylines: Record<string, Polyline> | null,
+  ): void {
+    const vehicle = update.data;
 
-      const currentAnimationData = allSortedAnimationData[currentIndex];
+    animatedSimulationEnvironment.animationData.vehicles[vehicle.id] = [
+      this.getVehicleAnimationDataFromVehicle(
+        vehicle,
+        polylines,
+        animatedSimulationEnvironment.finalState.timestamp,
+        animatedSimulationEnvironment.finalState.order,
+      ),
+    ];
+  }
 
-      if (currentAnimationData.startTimestamp > statusUpdate.timestamp) {
+  private handleUpdateVehicleStatus(
+    animatedSimulationEnvironment: AnimatedSimulationEnvironment,
+    update: SimulationUpdate<'updateVehicleStatus'>,
+  ): void {
+    const vehicleId = update.data.id;
+    const status = update.data.status;
+
+    const vehicleAnimationData =
+      animatedSimulationEnvironment.animationData.vehicles[vehicleId];
+
+    if (vehicleAnimationData === undefined) {
+      console.error('Vehicle animation data not found');
+      return;
+    }
+
+    const lastAnimationData = vehicleAnimationData.slice(-1)[0];
+
+    if (lastAnimationData.startTimestamp === update.timestamp) {
+      lastAnimationData.status = status;
+    } else {
+      lastAnimationData.endTimestamp = update.timestamp;
+      lastAnimationData.endOrder = update.order;
+      vehicleAnimationData.push({
+        ...lastAnimationData,
+        startTimestamp: update.timestamp,
+        startOrder: update.order,
+        endTimestamp: null,
+        endOrder: null,
+        status,
+      });
+    }
+  }
+
+  private handleUpdateVehicleStops(
+    animatedSimulationEnvironment: AnimatedSimulationEnvironment,
+    update: SimulationUpdate<'updateVehicleStops'>,
+    polylines: Record<string, Polyline> | null,
+  ): void {
+    const vehicleId = update.data.id;
+
+    const vehicleAnimationData =
+      animatedSimulationEnvironment.animationData.vehicles[vehicleId];
+
+    if (vehicleAnimationData === undefined) {
+      console.error('Vehicle animation data not found');
+      return;
+    }
+
+    const vehicle =
+      animatedSimulationEnvironment.finalState.vehicles[vehicleId];
+
+    const lastAnimationData = vehicleAnimationData.slice(-1)[0];
+
+    const newAnimationData = this.getVehicleAnimationDataFromVehicle(
+      vehicle,
+      polylines,
+      update.timestamp,
+      update.order,
+    );
+
+    if (lastAnimationData.startTimestamp === update.timestamp) {
+      vehicleAnimationData.pop();
+    } else {
+      lastAnimationData.endTimestamp = update.timestamp;
+      lastAnimationData.endOrder = update.order;
+    }
+
+    vehicleAnimationData.push(newAnimationData);
+  }
+
+  private mergeAnimationData(
+    firstAnimatedSimulationEnvironment: AnimatedSimulationEnvironment,
+    secondAnimatedSimulationEnvironment: AnimatedSimulationEnvironment,
+  ): AnimatedSimulationEnvironment {
+    const finalState = secondAnimatedSimulationEnvironment.finalState;
+
+    const mergedPassengerAnimationData: Record<
+      string,
+      PassengerAnimationData[]
+    > = {};
+
+    for (const passengerId of Object.keys(
+      firstAnimatedSimulationEnvironment.animationData.passengers,
+    )) {
+      const firstPassengerAnimationData =
+        firstAnimatedSimulationEnvironment.animationData.passengers[
+          passengerId
+        ];
+      const secondPassengerAnimationData =
+        secondAnimatedSimulationEnvironment.animationData.passengers[
+          passengerId
+        ];
+
+      const firstHasAnimationData =
+        firstPassengerAnimationData !== undefined &&
+        firstPassengerAnimationData.length > 0;
+      const secondHasAnimationData =
+        secondPassengerAnimationData !== undefined &&
+        secondPassengerAnimationData.length > 0;
+
+      if (!firstHasAnimationData && !secondHasAnimationData) {
         continue;
       }
 
-      if (currentAnimationData.startTimestamp === statusUpdate.timestamp) {
-        currentAnimationData.status = statusUpdate.status;
+      if (!firstHasAnimationData) {
+        mergedPassengerAnimationData[passengerId] =
+          secondPassengerAnimationData;
+        continue;
+      }
+
+      if (!secondHasAnimationData) {
+        mergedPassengerAnimationData[passengerId] = firstPassengerAnimationData;
+        continue;
+      }
+
+      const lastFirstAnimationData = firstPassengerAnimationData.slice(-1)[0];
+      const firstSecondAnimationData = secondPassengerAnimationData[0];
+
+      const {
+        startOrder: _1,
+        startTimestamp: _2,
+        endOrder: _3,
+        endTimestamp: _4,
+        ...firstComparableData
+      } = lastFirstAnimationData;
+      const {
+        startOrder: _5,
+        startTimestamp: _6,
+        endOrder: _7,
+        endTimestamp: _8,
+        ...secondComparableData
+      } = firstSecondAnimationData;
+
+      if (
+        JSON.stringify(firstComparableData) !==
+        JSON.stringify(secondComparableData)
+      ) {
+        mergedPassengerAnimationData[passengerId] =
+          firstPassengerAnimationData.concat(secondPassengerAnimationData);
+        continue;
       } else {
-        currentAnimationData.endTimestamp = statusUpdate.timestamp;
-        allSortedAnimationData.splice(currentIndex + 1, 0, {
-          ...currentAnimationData,
-          status: statusUpdate.status,
-          startTimestamp: statusUpdate.timestamp,
-        });
-        currentIndex++;
+        mergedPassengerAnimationData[passengerId] = firstPassengerAnimationData
+          .slice(0, -1)
+          .concat(secondPassengerAnimationData);
+        firstSecondAnimationData.startOrder = lastFirstAnimationData.startOrder;
+        firstSecondAnimationData.startTimestamp =
+          lastFirstAnimationData.startTimestamp;
       }
     }
 
-    // Verify the order of the timestamps
-    for (let i = 0; i < allSortedAnimationData.length - 1; i++) {
+    const mergedVehicleAnimationData: Record<string, VehicleAnimationData[]> =
+      {};
+
+    for (const vehicleId of Object.keys(
+      firstAnimatedSimulationEnvironment.animationData.vehicles,
+    )) {
+      const firstVehicleAnimationData =
+        firstAnimatedSimulationEnvironment.animationData.vehicles[vehicleId];
+      const secondVehicleAnimationData =
+        secondAnimatedSimulationEnvironment.animationData.vehicles[vehicleId];
+
+      const firstHasAnimationData =
+        firstVehicleAnimationData !== undefined &&
+        firstVehicleAnimationData.length > 0;
+      const secondHasAnimationData =
+        secondVehicleAnimationData !== undefined &&
+        secondVehicleAnimationData.length > 0;
+
+      if (!firstHasAnimationData && !secondHasAnimationData) {
+        continue;
+      }
+
+      if (!firstHasAnimationData) {
+        mergedVehicleAnimationData[vehicleId] = secondVehicleAnimationData;
+        continue;
+      }
+
+      if (!secondHasAnimationData) {
+        mergedVehicleAnimationData[vehicleId] = firstVehicleAnimationData;
+        continue;
+      }
+
+      const lastFirstAnimationData = firstVehicleAnimationData.slice(-1)[0];
+      const firstSecondAnimationData = secondVehicleAnimationData[0];
+
+      const {
+        startOrder: _1,
+        startTimestamp: _2,
+        endOrder: _3,
+        endTimestamp: _4,
+        ...firstComparableData
+      } = lastFirstAnimationData;
+      const {
+        startOrder: _5,
+        startTimestamp: _6,
+        endOrder: _7,
+        endTimestamp: _8,
+        ...secondComparableData
+      } = firstSecondAnimationData;
+
       if (
-        allSortedAnimationData[i].endTimestamp >
-        allSortedAnimationData[i + 1].startTimestamp
+        JSON.stringify(firstComparableData) !==
+        JSON.stringify(secondComparableData)
       ) {
-        console.error(
-          'Invalid timestamps for vehicle:',
-          allSortedAnimationData,
-          i,
-          allSortedAnimationData[i],
-          i + 1,
-          allSortedAnimationData[i + 1],
-          vehicle,
-          previousAnimationData,
-          statusUpdates,
-          startTimestamp,
-          endTimestamp,
-        );
+        mergedVehicleAnimationData[vehicleId] =
+          firstVehicleAnimationData.concat(secondVehicleAnimationData);
+        continue;
+      } else {
+        mergedVehicleAnimationData[vehicleId] = firstVehicleAnimationData
+          .slice(0, -1)
+          .concat(secondVehicleAnimationData);
+        firstSecondAnimationData.startOrder = lastFirstAnimationData.startOrder;
+        firstSecondAnimationData.startTimestamp =
+          lastFirstAnimationData.startTimestamp;
       }
     }
 
     return {
-      ...vehicle,
-      animationData: allSortedAnimationData,
+      ...secondAnimatedSimulationEnvironment,
+      finalState,
+      animationData: {
+        passengers: mergedPassengerAnimationData,
+        vehicles: mergedVehicleAnimationData,
+        startTimestamp:
+          firstAnimatedSimulationEnvironment.animationData.startTimestamp,
+        startOrder: firstAnimatedSimulationEnvironment.animationData.startOrder,
+        endTimestamp:
+          secondAnimatedSimulationEnvironment.animationData.endTimestamp,
+        endOrder: secondAnimatedSimulationEnvironment.animationData.endOrder,
+      },
     };
+  }
+
+  private cropAnimationData(
+    animatedSimulationEnvironment: AnimatedSimulationEnvironment,
+    newStartTimestamp: number,
+    newStartOrder: number,
+    newEndTimestamp: number,
+    newEndOrder: number,
+    lastContinuousState: SimulationState,
+  ): AnimatedSimulationEnvironment {
+    let finalState = animatedSimulationEnvironment.finalState;
+
+    if (animatedSimulationEnvironment.finalState.timestamp > newEndTimestamp) {
+      // We need to rebuild the final state
+      finalState = this.simulationService.buildEnvironment(
+        structuredClone(lastContinuousState),
+        newEndTimestamp,
+      );
+    }
+
+    const startTimestamp = Math.max(
+      animatedSimulationEnvironment.animationData.startTimestamp,
+      newStartTimestamp,
+    );
+    const startOrder = Math.max(
+      animatedSimulationEnvironment.animationData.startOrder,
+      newStartOrder,
+    );
+
+    const endTimestamp = Math.min(
+      animatedSimulationEnvironment.animationData.endTimestamp,
+      newEndTimestamp,
+    );
+    const endOrder = Math.min(
+      animatedSimulationEnvironment.animationData.endOrder,
+      newEndOrder,
+    );
+
+    // No need to crop
+    if (
+      newStartOrder === startOrder &&
+      newStartTimestamp === startTimestamp &&
+      newEndOrder === endOrder &&
+      newEndTimestamp === endTimestamp
+    ) {
+      return {
+        ...animatedSimulationEnvironment,
+        finalState,
+        animationData: {
+          ...animatedSimulationEnvironment.animationData,
+          startTimestamp,
+          startOrder,
+          endTimestamp,
+          endOrder,
+        },
+      };
+    }
+
+    // Copy and crop animation data
+    const passengerAnimationData = structuredClone(
+      animatedSimulationEnvironment.animationData.passengers,
+    );
+    Object.entries(passengerAnimationData).forEach(
+      ([passengerId, allAnimationData]) => {
+        allAnimationData = allAnimationData
+          .filter(
+            (animationData) =>
+              animationData.startOrder < newEndOrder &&
+              animationData.startTimestamp < newEndOrder &&
+              animationData.endOrder !== null &&
+              animationData.endTimestamp !== null &&
+              animationData.endOrder > newStartOrder &&
+              animationData.endTimestamp > newStartTimestamp,
+          )
+          .map((animationData) => {
+            if (animationData.startOrder < newStartOrder) {
+              animationData.startOrder = newStartOrder;
+            }
+
+            if (animationData.startTimestamp < newStartTimestamp) {
+              animationData.startTimestamp = newStartTimestamp;
+            }
+
+            if (animationData.endOrder! > newEndOrder) {
+              animationData.endOrder = newEndOrder;
+            }
+
+            if (animationData.endTimestamp! > newEndTimestamp) {
+              animationData.endTimestamp = newEndTimestamp;
+            }
+
+            return animationData;
+          });
+
+        if (allAnimationData.length === 0) {
+          delete animatedSimulationEnvironment.animationData.passengers[
+            passengerId
+          ];
+        }
+      },
+    );
+
+    const vehicleAnimationData = structuredClone(
+      animatedSimulationEnvironment.animationData.vehicles,
+    );
+    Object.entries(vehicleAnimationData).forEach(
+      ([vehicleId, allAnimationData]) => {
+        allAnimationData = allAnimationData
+          .filter(
+            (animationData) =>
+              animationData.startOrder < newEndOrder &&
+              animationData.startTimestamp < newEndOrder &&
+              animationData.endOrder !== null &&
+              animationData.endTimestamp !== null &&
+              animationData.endOrder > newStartOrder &&
+              animationData.endTimestamp > newStartTimestamp,
+          )
+          .map((animationData) => {
+            if (animationData.startOrder < newStartOrder) {
+              animationData.startOrder = newStartOrder;
+            }
+
+            if (animationData.startTimestamp < newStartTimestamp) {
+              animationData.startTimestamp = newStartTimestamp;
+            }
+
+            if (animationData.endOrder! > newEndOrder) {
+              animationData.endOrder = newEndOrder;
+            }
+
+            if (animationData.endTimestamp! > newEndTimestamp) {
+              animationData.endTimestamp = newEndTimestamp;
+            }
+
+            return animationData;
+          });
+
+        if (allAnimationData.length === 0) {
+          delete animatedSimulationEnvironment.animationData.vehicles[
+            vehicleId
+          ];
+        }
+      },
+    );
+
+    return {
+      ...animatedSimulationEnvironment,
+      finalState,
+      animationData: {
+        ...animatedSimulationEnvironment.animationData,
+        passengers: passengerAnimationData,
+        vehicles: vehicleAnimationData,
+        startTimestamp,
+        startOrder,
+        endTimestamp,
+        endOrder,
+      },
+    };
+  }
+
+  private updateEndTimestamps(
+    animatedSimulationEnvironment: AnimatedSimulationEnvironment,
+  ): void {
+    for (const passengerAnimationData of Object.values(
+      animatedSimulationEnvironment.animationData.passengers,
+    )) {
+      if (passengerAnimationData.length === 0) {
+        continue;
+      }
+
+      passengerAnimationData.slice(-1)[0].endTimestamp =
+        animatedSimulationEnvironment.animationData.endTimestamp;
+    }
+
+    for (const vehicleAnimationData of Object.values(
+      animatedSimulationEnvironment.animationData.vehicles,
+    )) {
+      if (vehicleAnimationData.length === 0) {
+        continue;
+      }
+
+      vehicleAnimationData.slice(-1)[0].endTimestamp =
+        animatedSimulationEnvironment.animationData.endTimestamp;
+    }
+  }
+
+  private getDisplayedPolylines(
+    vehicle: Vehicle,
+    polylines: Record<string, Polyline> | null,
+  ): DisplayedPolylines {
+    const allStops = getAllStops(vehicle);
+
+    const isVehicleTravelling =
+      vehicle.currentStop === null &&
+      vehicle.previousStops.length > 0 &&
+      vehicle.nextStops.length > 0;
+    const currentPolylineStartTime = isVehicleTravelling
+      ? vehicle.previousStops.slice(-1)[0].departureTime
+      : null;
+    const currentPolylineEndTime = isVehicleTravelling
+      ? vehicle.nextStops[0].arrivalTime
+      : null;
+    const currentPolylineIndex = vehicle.previousStops.length;
+
+    const displayedPolylines: DisplayedPolylines = {
+      polylines: [],
+      currentPolylineStartTime,
+      currentPolylineEndTime,
+      currentPolylineIndex,
+    };
+
+    if (polylines === null) {
+      displayedPolylines.currentPolylineIndex = -1;
+      return displayedPolylines;
+    }
+
+    for (let i = 0; i < allStops.length - 1; i++) {
+      const stop = allStops[i];
+      const nextStop = allStops[i + 1];
+
+      const polyline = this.getPolylineForStops(stop, nextStop, polylines);
+
+      if (polyline === null) {
+        // Do not count the current polyline if it is not found
+        // and if it is before the current stop
+        if (
+          displayedPolylines.polylines.length <=
+          displayedPolylines.currentPolylineIndex
+        ) {
+          displayedPolylines.currentPolylineIndex -= 1;
+        }
+        continue;
+      }
+
+      displayedPolylines.polylines.push({ ...polyline });
+    }
+
+    return displayedPolylines;
+  }
+
+  private getPolylineForStops(
+    stop: Stop,
+    nextStop: Stop,
+    polylines: Record<string, Polyline> | null,
+  ): Polyline | null {
+    if (polylines === null) {
+      return null;
+    }
+
+    const polylineId = `${stop.position.latitude},${stop.position.longitude},${nextStop.position.latitude},${nextStop.position.longitude}`;
+    return polylines[polylineId] ?? null;
   }
 }
