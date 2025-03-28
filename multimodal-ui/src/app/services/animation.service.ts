@@ -780,6 +780,12 @@ export class AnimationService {
     const passenger = this.passengerEntitiesByPassengerId[selectedPassengerId];
     if (!passenger) return;
 
+    const passengerAnimationData = passenger.data.animationData.find(
+      (data) =>
+        data.startTimestamp <= this.animationVisualizationTime &&
+        data.endTimestamp! >= this.animationVisualizationTime,
+    );
+
     const legs = passenger.data.currentLeg
       ? [
           ...passenger.data.previousLegs,
@@ -790,6 +796,7 @@ export class AnimationService {
 
     const polylines: Polyline[] = [];
 
+    let reachedCurrentVehicle = false;
     let calculatedPolylineNo = 0;
     let lineNo = 0;
 
@@ -819,17 +826,25 @@ export class AnimationService {
           leg.alightingStopIndex,
         );
 
-      // Should be last vehicle too
-      if (vehicle.data.id === leg.assignedVehicleId) {
+      // When we reach our waiting/current vehicle
+      if (vehicle.data.id === passengerAnimationData?.vehicleId) {
+        reachedCurrentVehicle = true;
         calculatedPolylineNo +=
           vehicleAnimationData.displayedPolylines.currentPolylineIndex -
           leg.boardingStopIndex;
         lineNo = vehicle.data.currentLineIndex ?? 0;
-      } else calculatedPolylineNo += passengerPath.length;
+      } else if (!reachedCurrentVehicle)
+        calculatedPolylineNo += passengerPath.length;
 
       polylines.push(...passengerPath);
     }
     if (polylines.length === 0) return;
+
+    // When assigned vehicle did not reach him yet
+    if (calculatedPolylineNo < 0) {
+      calculatedPolylineNo = 0;
+      lineNo = 0;
+    }
 
     this.redrawPolyline(
       calculatedPolylineNo,
@@ -1065,7 +1080,6 @@ export class AnimationService {
   private selectPassenger(passengerId: string) {
     this.unselectVehicle();
     this.hightlightEntityId(passengerId, 'passenger');
-    console.log(this.passengerEntitiesByPassengerId[passengerId]);
     this._selectedPassengerIdSignal.set(passengerId);
   }
 
