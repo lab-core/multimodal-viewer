@@ -23,8 +23,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import {
-  DisplayedPassenger,
-  DisplayedVehicle,
+  AnimatedPassenger,
+  AnimatedVehicle,
   RUNNING_SIMULATION_STATUSES,
   Simulation,
   SimulationStatus,
@@ -51,7 +51,7 @@ export interface EntitySearch {
   id: string;
   displayedValue: string;
   type: 'passenger' | 'vehicle';
-  entity: DisplayedPassenger | DisplayedVehicle;
+  entity: AnimatedPassenger | AnimatedVehicle;
 }
 
 @Component({
@@ -100,35 +100,33 @@ export class VisualizerComponent implements OnDestroy {
     },
   );
 
-  readonly displayedPassengersSignal: Signal<DisplayedPassenger[]> = computed(
+  readonly displayedPassengersSignal: Signal<AnimatedPassenger[]> = computed(
     () => {
       const environment =
-        this.visualizationService.animatedSimulationEnvironmentSignal();
+        this.visualizationService.visualizationEnvironmentSignal();
 
       if (environment === null) {
         return [];
       }
 
-      return Object.values(environment.passengers).filter(
+      return Object.values(environment.currentState.passengers).filter(
         (passenger) => passenger.notDisplayedReason === null,
       );
     },
   );
 
-  readonly displayedVehiclesSignal: Signal<DisplayedVehicle[]> = computed(
-    () => {
-      const environment =
-        this.visualizationService.animatedSimulationEnvironmentSignal();
+  readonly displayedVehiclesSignal: Signal<AnimatedVehicle[]> = computed(() => {
+    const environment =
+      this.visualizationService.visualizationEnvironmentSignal();
 
-      if (environment === null) {
-        return [];
-      }
+    if (environment === null) {
+      return [];
+    }
 
-      return Object.values(environment.vehicles).filter(
-        (vehicle) => vehicle.notDisplayedReason === null,
-      );
-    },
-  );
+    return Object.values(environment.currentState.vehicles).filter(
+      (vehicle) => vehicle.notDisplayedReason === null,
+    );
+  });
 
   readonly numberOfDisplayedPassengersByStatusSignal: Signal<
     {
@@ -137,12 +135,12 @@ export class VisualizerComponent implements OnDestroy {
     }[]
   > = computed(() => {
     const environment =
-      this.visualizationService.animatedSimulationEnvironmentSignal();
+      this.visualizationService.visualizationEnvironmentSignal();
     if (environment === null) {
       return [];
     }
 
-    const passengers = Object.values(environment.passengers);
+    const passengers = Object.values(environment.currentState.passengers);
     const counts: Record<string, number> = {};
 
     for (const passenger of passengers) {
@@ -166,12 +164,12 @@ export class VisualizerComponent implements OnDestroy {
     }[]
   > = computed(() => {
     const environment =
-      this.visualizationService.animatedSimulationEnvironmentSignal();
+      this.visualizationService.visualizationEnvironmentSignal();
     if (environment === null) {
       return [];
     }
 
-    const vehicles = Object.values(environment.vehicles);
+    const vehicles = Object.values(environment.currentState.vehicles);
     const counts: Record<string, number> = {};
 
     for (const vehicle of vehicles) {
@@ -188,95 +186,103 @@ export class VisualizerComponent implements OnDestroy {
     }));
   });
 
-  readonly notDisplayedPassengersSignal: Signal<DisplayedPassenger[]> =
-    computed(() => {
-      const environment =
-        this.visualizationService.animatedSimulationEnvironmentSignal();
-
-      if (environment === null) {
-        return [];
-      }
-
-      return Object.values(environment.passengers).filter(
-        (passenger) => passenger.notDisplayedReason !== null,
-      );
-    });
-
-  readonly notDisplayedVehiclesSignal: Signal<DisplayedVehicle[]> = computed(
+  readonly notDisplayedPassengersSignal: Signal<AnimatedPassenger[]> = computed(
     () => {
       const environment =
-        this.visualizationService.animatedSimulationEnvironmentSignal();
+        this.visualizationService.visualizationEnvironmentSignal();
 
       if (environment === null) {
         return [];
       }
 
-      return Object.values(environment.vehicles).filter(
+      return Object.values(environment.currentState.passengers).filter(
+        (passenger) => passenger.notDisplayedReason !== null,
+      );
+    },
+  );
+
+  readonly notDisplayedVehiclesSignal: Signal<AnimatedVehicle[]> = computed(
+    () => {
+      const environment =
+        this.visualizationService.visualizationEnvironmentSignal();
+
+      if (environment === null) {
+        return [];
+      }
+
+      return Object.values(environment.currentState.vehicles).filter(
         (vehicle) => vehicle.notDisplayedReason !== null,
       );
     },
   );
 
-  readonly selectedPassengerSignal: Signal<DisplayedPassenger | null> =
-    computed(() => {
+  readonly selectedPassengerSignal: Signal<AnimatedPassenger | null> = computed(
+    () => {
       const environment =
-        this.visualizationService.animatedSimulationEnvironmentSignal();
+        this.visualizationService.visualizationEnvironmentSignal();
       const selectedPassengerId = this.selectedPassengerIdSignal();
 
       if (environment === null || selectedPassengerId === null) {
         return null;
       }
 
-      return environment.passengers[selectedPassengerId] ?? null;
-    });
+      return environment.currentState.passengers[selectedPassengerId] ?? null;
+    },
+  );
 
-  readonly selectedVehicleSignal: Signal<DisplayedVehicle | null> = computed(
+  readonly selectedVehicleSignal: Signal<AnimatedVehicle | null> = computed(
     () => {
       const environment =
-        this.visualizationService.animatedSimulationEnvironmentSignal();
+        this.visualizationService.visualizationEnvironmentSignal();
       const selectedVehicleId = this.selectedVehicleIdSignal();
 
       if (environment === null || selectedVehicleId === null) {
         return null;
       }
 
-      return environment.vehicles[selectedVehicleId] ?? null;
+      return environment.currentState.vehicles[selectedVehicleId] ?? null;
     },
   );
 
-  readonly selectedPassengerVehicleSignal: Signal<DisplayedVehicle | null> =
+  readonly selectedPassengerVehicleSignal: Signal<AnimatedVehicle | null> =
     computed(() => {
       const selectedPassenger = this.selectedPassengerSignal();
       const environment =
-        this.visualizationService.animatedSimulationEnvironmentSignal();
+        this.visualizationService.visualizationEnvironmentSignal();
 
       if (
         selectedPassenger === null ||
-        selectedPassenger.vehicleId === null ||
+        selectedPassenger.currentLeg === null ||
+        selectedPassenger.currentLeg.assignedVehicleId === null ||
         environment === null
       ) {
         return null;
       }
 
-      const selectedVehicle = environment.vehicles[selectedPassenger.vehicleId];
+      const selectedVehicle =
+        environment.currentState.vehicles[
+          selectedPassenger.currentLeg.assignedVehicleId
+        ];
 
       return selectedVehicle ?? null;
     });
 
-  readonly selectedVehiclePassengersSignal: Signal<DisplayedPassenger[]> =
+  readonly selectedVehiclePassengersSignal: Signal<AnimatedPassenger[]> =
     computed(() => {
       const selectedVehicle = this.selectedVehicleSignal();
       const environment =
-        this.visualizationService.animatedSimulationEnvironmentSignal();
+        this.visualizationService.visualizationEnvironmentSignal();
 
       if (selectedVehicle === null || environment === null) {
         return [];
       }
 
-      const passengers = Object.values(environment.passengers).filter(
+      const passengers = Object.values(
+        environment.currentState.passengers,
+      ).filter(
         (passenger) =>
-          passenger.vehicleId !== null &&
-          selectedVehicle.passengers.includes(passenger.id),
+          passenger.currentLeg !== null &&
+          passenger.currentLeg.assignedVehicleId === selectedVehicle.id,
       );
 
       return passengers;
@@ -284,12 +290,12 @@ export class VisualizerComponent implements OnDestroy {
 
   readonly entitySearchDataSignal: Signal<EntitySearch[]> = computed(() => {
     const environment =
-      this.visualizationService.animatedSimulationEnvironmentSignal();
+      this.visualizationService.visualizationEnvironmentSignal();
     if (environment === null) {
       return [];
     }
 
-    const passengers = Object.values(environment.passengers).map(
+    const passengers = Object.values(environment.currentState.passengers).map(
       (passenger) => ({
         id: passenger.id,
         displayedValue: `[PASSENGER] ${passenger.id}`,
@@ -298,12 +304,14 @@ export class VisualizerComponent implements OnDestroy {
       }),
     );
 
-    const vehicles = Object.values(environment.vehicles).map((vehicle) => ({
-      id: vehicle.id,
-      displayedValue: `[VEHICLE] ${vehicle.id}`,
-      type: 'vehicle' as const,
-      entity: vehicle,
-    }));
+    const vehicles = Object.values(environment.currentState.vehicles).map(
+      (vehicle) => ({
+        id: vehicle.id,
+        displayedValue: `[VEHICLE] ${vehicle.id}`,
+        type: 'vehicle' as const,
+        entity: vehicle,
+      }),
+    );
 
     return [...passengers, ...vehicles];
   });
@@ -319,29 +327,24 @@ export class VisualizerComponent implements OnDestroy {
 
   readonly searchControl: FormControl<string | EntitySearch | null>;
 
-  readonly filteredEntitySearchDataSignal: Signal<
-    {
-      id: string;
-      displayedValue: string;
-      type: 'passenger' | 'vehicle';
-      entity: DisplayedPassenger | DisplayedVehicle;
-    }[]
-  > = computed(() => {
-    const searchValue = this.searchValueSignal();
-    const entitySearchData = this.entitySearchDataSignal();
+  readonly filteredEntitySearchDataSignal: Signal<EntitySearch[]> = computed(
+    () => {
+      const searchValue = this.searchValueSignal();
+      const entitySearchData = this.entitySearchDataSignal();
 
-    if (searchValue === '') {
-      return entitySearchData;
-    }
+      if (searchValue === '') {
+        return entitySearchData;
+      }
 
-    if (typeof searchValue === 'object') {
-      return [searchValue];
-    }
+      if (typeof searchValue === 'object') {
+        return [searchValue];
+      }
 
-    return entitySearchData.filter((entity) =>
-      entity.displayedValue.toLowerCase().includes(searchValue.toLowerCase()),
-    );
-  });
+      return entitySearchData.filter((entity) =>
+        entity.displayedValue.toLowerCase().includes(searchValue.toLowerCase()),
+      );
+    },
+  );
 
   readonly isSimulationRunningSignal: Signal<boolean> = computed(() => {
     const simulation = this.simulationSignal();
@@ -351,12 +354,8 @@ export class VisualizerComponent implements OnDestroy {
     );
   });
 
-  readonly entitySearchDisplayFunction = (entity: {
-    id: string;
-    displayedValue: string;
-    type: 'passenger' | 'vehicle';
-    entity: DisplayedPassenger | DisplayedVehicle;
-  }) => entity?.displayedValue ?? '';
+  readonly entitySearchDisplayFunction = (entity: EntitySearch) =>
+    entity?.displayedValue ?? '';
 
   // MARK: Constructor
   constructor(
@@ -387,7 +386,6 @@ export class VisualizerComponent implements OnDestroy {
     this.searchControl = this.formBuilder.control('');
     this.searchControl.valueChanges.subscribe((value) => {
       this.searchValueSignal.set(value ?? '');
-      console.log(value);
     });
 
     // MARK: Effects
@@ -407,7 +405,7 @@ export class VisualizerComponent implements OnDestroy {
 
     effect(() => {
       const animatedSimulationEnvironment =
-        this.visualizationService.animatedSimulationEnvironmentSignal();
+        this.visualizationService.visualizationEnvironmentSignal();
       if (animatedSimulationEnvironment == null) return;
 
       this.animationService.synchronizeEnvironment(
@@ -417,7 +415,7 @@ export class VisualizerComponent implements OnDestroy {
 
     effect(() => {
       const animatedSimulationEnvironment =
-        this.visualizationService.animatedSimulationEnvironmentSignal();
+        this.visualizationService.visualizationEnvironmentSignal();
       const visualizationTime =
         this.visualizationService.wantedVisualizationTimeSignal();
 
@@ -590,11 +588,11 @@ export class VisualizerComponent implements OnDestroy {
   > {
     return computed(() => {
       const environment =
-        this.visualizationService.animatedSimulationEnvironmentSignal();
+        this.visualizationService.visualizationEnvironmentSignal();
       if (!environment) {
         return {};
       }
-      return environment.statistic;
+      return environment.currentState.statistic;
     });
   }
 
