@@ -829,10 +829,16 @@ export class AnimationService {
       // When we reach our waiting/current vehicle
       if (vehicle.data.id === passengerAnimationData?.vehicleId) {
         reachedCurrentVehicle = true;
-        calculatedPolylineNo +=
+
+        const relativePolylineIndex =
           vehicleAnimationData.displayedPolylines.currentPolylineIndex -
           leg.boardingStopIndex;
-        lineNo = vehicle.data.currentLineIndex ?? 0;
+
+        // When vehicle did not reach him yet
+        if (relativePolylineIndex >= 0) {
+          calculatedPolylineNo += relativePolylineIndex;
+          lineNo = vehicle.data.currentLineIndex ?? 0;
+        }
       } else if (!reachedCurrentVehicle)
         calculatedPolylineNo += passengerPath.length;
 
@@ -840,7 +846,6 @@ export class AnimationService {
     }
     if (polylines.length === 0) return;
 
-    // When assigned vehicle did not reach him yet
     if (calculatedPolylineNo < 0) {
       calculatedPolylineNo = 0;
       lineNo = 0;
