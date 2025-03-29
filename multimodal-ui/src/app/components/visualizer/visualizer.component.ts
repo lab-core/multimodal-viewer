@@ -422,6 +422,7 @@ export class VisualizerComponent implements OnDestroy {
     effect(() => {
       const searchValue = this.searchValueSignal();
       
+      
       if (searchValue === null || typeof searchValue === 'string') {
         return;
       }
