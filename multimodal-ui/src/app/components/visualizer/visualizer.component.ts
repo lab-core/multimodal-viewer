@@ -428,9 +428,9 @@ export class VisualizerComponent implements OnDestroy {
       }
       
       if (searchValue.type === 'passenger') {
-        this.selectPassenger(searchValue.id);
+        this.animationService.selectEntity(searchValue.id, 'passenger');
       } else if (searchValue.type === 'vehicle') {
-        this.selectVehicle(searchValue.id);
+        this.animationService.selectEntity(searchValue.id, 'vehicle');
       } else if (searchValue.type === 'mode') {
         this.searchControl.setValue(searchValue, { emitEvent: false });
       }
@@ -481,7 +481,9 @@ export class VisualizerComponent implements OnDestroy {
         );
         
         if (entitySearchItem) {
-          this.searchControl.setValue(entitySearchItem, { emitEvent: false });
+          if (this.searchControl.value !== entitySearchItem) {
+            this.searchControl.setValue(entitySearchItem, { emitEvent: false });
+          }
           return;
         }
       }
@@ -688,28 +690,10 @@ export class VisualizerComponent implements OnDestroy {
 
   selectPassenger(id: string) {
     this.animationService.selectEntity(id, 'passenger');
-
-    const entitySearchData = this.entitySearchDataSignal();
-    const passengerSearchData = entitySearchData.find(
-      entity => entity.type === 'passenger' && entity.id === id
-    );
-    
-    if (passengerSearchData) {
-      this.searchValueSignal.set(passengerSearchData);
-    }
   }
 
   selectVehicle(id: string) {
     this.animationService.selectEntity(id, 'vehicle');
-
-    const entitySearchData = this.entitySearchDataSignal();
-    const vehicleSearchData = entitySearchData.find(
-      entity => entity.type === 'vehicle' && entity.id === id
-    );
-    
-    if (vehicleSearchData) {
-      this.searchValueSignal.set(vehicleSearchData);
-    }
   }
 
   /** Favorite Entitites */
@@ -806,10 +790,5 @@ export class VisualizerComponent implements OnDestroy {
     });
 
     return formatter.format(num).replace(/,/g, ' ');
-  }
-
-  onSearchInputClick() {
-    this.searchValueSignal.set('');
-    this.animationService.unselectEntity();
   }
 }

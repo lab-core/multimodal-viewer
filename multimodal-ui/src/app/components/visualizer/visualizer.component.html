@@ -44,7 +44,7 @@
     @let filteredEntitySearchData = filteredEntitySearchDataSignal();
     @let searchValue = searchValueSignal();
     <mat-form-field class="search-form">
-      <input matInput [matAutocomplete]="auto" [formControl]="searchControl" (click)="onSearchInputClick()"/>
+      <input matInput [matAutocomplete]="auto" [formControl]="searchControl" />
       <mat-label>Search in the simulation</mat-label>
       @if (searchValue !== null && searchValue !== "") {
         <button mat-icon-button matSuffix type="button" (click)="clearSearch()">
