@@ -288,33 +288,31 @@ export class VisualizerComponent implements OnDestroy {
       return passengers;
     });
 
-  readonly entitySearchDataSignal: Signal<EntitySearch[]> = computed(() => {
-    const environment =
-      this.visualizationService.visualizationEnvironmentSignal();
-    if (environment === null) {
-      return [];
-    }
-
-    const passengers = Object.values(environment.currentState.passengers).map(
-      (passenger) => ({
-        id: passenger.id,
-        displayedValue: `[PASSENGER] ${passenger.id}`,
-        type: 'passenger' as const,
-        entity: passenger,
-      }),
-    );
-
-    const vehicles = Object.values(environment.currentState.vehicles).map(
-      (vehicle) => ({
+    readonly entitySearchDataSignal: Signal<EntitySearch[]> = computed(() => {
+      const environment =
+        this.visualizationService.visualizationEnvironmentSignal();
+      if (environment === null) {
+        return [];
+      }
+    
+      const passengers = Object.values(environment.currentState.passengers).map(
+        (passenger) => ({
+          id: passenger.id,
+          displayedValue: `[PASSENGER] ${passenger.name ? passenger.name + ' (' + passenger.id + ')' : passenger.id}`,
+          type: 'passenger' as const,
+          entity: passenger,
+        }),
+      );
+    
+      const vehicles = Object.values(environment.currentState.vehicles).map((vehicle) => ({
         id: vehicle.id,
         displayedValue: `[VEHICLE] ${vehicle.id}`,
         type: 'vehicle' as const,
         entity: vehicle,
-      }),
-    );
-
-    return [...passengers, ...vehicles];
-  });
+      }));
+    
+      return [...passengers, ...vehicles];
+    });
 
   readonly tabControl: FormControl<string | null>;
   showSearch = false;
@@ -358,10 +356,20 @@ export class VisualizerComponent implements OnDestroy {
       
         return [...modeSuggestions];
       }
-
-      return entitySearchData.filter((entity) =>
-        entity.displayedValue.toLowerCase().includes(searchValue.toLowerCase()),
-      );
+  
+      const searchLower = searchValue.toLowerCase();
+      return entitySearchData.filter((entity) => {
+        // Check if the entity is a passenger and has a name property
+        if (entity.type === 'passenger') {
+          const passenger = entity.entity as AnimatedPassenger;
+          return (
+            entity.displayedValue.toLowerCase().includes(searchLower) ||
+            (passenger.name && passenger.name.toLowerCase().includes(searchLower)
+          ));
+        }
+        // For vehicles or other types, just check the displayedValue
+        return entity.displayedValue.toLowerCase().includes(searchLower);
+      });
     }
   
     return [searchValue];
