@@ -807,4 +807,9 @@ export class VisualizerComponent implements OnDestroy {
 
     return formatter.format(num).replace(/,/g, ' ');
   }
+
+  onSearchInputClick() {
+    this.searchValueSignal.set('');
+    this.animationService.unselectEntity();
+  }
 }
