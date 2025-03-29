@@ -327,10 +327,9 @@ export class VisualizerComponent implements OnDestroy {
 
   readonly searchControl: FormControl<string | EntitySearch | null>;
 
-  readonly filteredEntitySearchDataSignal: Signal<EntitySearch[]> = computed(
-    () => {
-      const searchValue = this.searchValueSignal();
-      const entitySearchData = this.entitySearchDataSignal();
+  readonly filteredEntitySearchDataSignal: Signal<EntitySearch[]> = computed(() => {
+    const searchValue = this.searchValueSignal();
+    const entitySearchData = this.entitySearchDataSignal();
 
       if (searchValue === '') {
         return entitySearchData;
