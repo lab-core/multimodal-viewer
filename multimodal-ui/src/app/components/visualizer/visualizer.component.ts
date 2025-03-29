@@ -50,8 +50,8 @@ export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 export interface EntitySearch {
   id: string;
   displayedValue: string;
-  type: 'passenger' | 'vehicle';
-  entity: AnimatedPassenger | AnimatedVehicle;
+  type: 'passenger' | 'vehicle' | 'mode';
+  entity: AnimatedPassenger | AnimatedVehicle | { mode: string };
 }
 
 @Component({
@@ -330,20 +330,42 @@ export class VisualizerComponent implements OnDestroy {
   readonly filteredEntitySearchDataSignal: Signal<EntitySearch[]> = computed(() => {
     const searchValue = this.searchValueSignal();
     const entitySearchData = this.entitySearchDataSignal();
-
-      if (searchValue === '') {
-        return entitySearchData;
-      }
-
-      if (typeof searchValue === 'object') {
-        return [searchValue];
+    const vehicleModes = this.visualizationFilterService.vehicleModes();
+  
+    if (typeof searchValue === 'object' && searchValue.type === 'mode') {
+      const selectedMode = (searchValue.entity as {mode: string}).mode;
+      return entitySearchData.filter(entity => 
+        entity.type === 'vehicle' && 
+        (entity.entity as AnimatedVehicle).mode === selectedMode
+      );
+    }
+  
+    if (searchValue === '') {
+      return entitySearchData;
+    }
+  
+    if (typeof searchValue === 'string') {
+      if (searchValue.toLowerCase().startsWith('mode:')) {
+        const modeFilter = searchValue.substring(5).trim().toLowerCase();
+        const modeSuggestions = vehicleModes
+          .filter(mode => mode.toLowerCase().includes(modeFilter))
+          .map(mode => ({
+            id: `mode:${mode}`,
+            displayedValue: `[MODE] ${mode}`,
+            type: 'mode' as const,
+            entity: { mode }
+          }));
+      
+        return [...modeSuggestions];
       }
 
       return entitySearchData.filter((entity) =>
         entity.displayedValue.toLowerCase().includes(searchValue.toLowerCase()),
       );
-    },
-  );
+    }
+  
+    return [searchValue];
+  });
 
   readonly isSimulationRunningSignal: Signal<boolean> = computed(() => {
     const simulation = this.simulationSignal();
@@ -368,6 +390,7 @@ export class VisualizerComponent implements OnDestroy {
     private readonly visualizationService: VisualizationService,
     private readonly favoriteEntitiesService: FavoriteEntitiesService,
     private readonly formBuilder: FormBuilder,
+    private readonly visualizationFilterService: VisualizationFilterService,
   ) {
     this.tabControl = new FormControl('');
     this.tabControl.valueChanges.subscribe((value) => {
@@ -390,15 +413,17 @@ export class VisualizerComponent implements OnDestroy {
     // MARK: Effects
     effect(() => {
       const searchValue = this.searchValueSignal();
-
+      
       if (searchValue === null || typeof searchValue === 'string') {
         return;
       }
-
+      
       if (searchValue.type === 'passenger') {
         this.selectPassenger(searchValue.id);
       } else if (searchValue.type === 'vehicle') {
         this.selectVehicle(searchValue.id);
+      } else if (searchValue.type === 'mode') {
+        this.searchControl.setValue(searchValue, { emitEvent: false });
       }
     });
 
