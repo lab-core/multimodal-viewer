@@ -10,6 +10,8 @@ import 'leaflet-pixi-overlay';
 import { pixiOverlay } from 'leaflet';
 import { OutlineFilter } from 'pixi-filters';
 import * as PIXI from 'pixi.js';
+import { interpolateRgb as d3InterpolateRgb } from 'd3-interpolate';
+import { color as d3Color } from 'd3-color';
 import { Entity, EntityFilterMode } from '../interfaces/entity.model';
 import {
   AnimatedPassenger,
@@ -79,6 +81,12 @@ export class AnimationService {
   private readonly KELLY_GREEN = 0x028a0f;
   private readonly LIGHT_GRAY = 0x666666;
 
+  private readonly BITMAPTEXT_URL = 'bitmap-fonts/custom-sans-serif.xml';
+  private readonly BITMAPTEXT_STYLE: Partial<PIXI.IBitmapTextStyle> = {
+    fontName: 'custom-sans-serif',
+    fontSize: 18,
+  };
+
   private readonly TEXT_STYLE = new PIXI.TextStyle({
     fontFamily: 'Arial',
     fontSize: 18,
@@ -93,7 +101,6 @@ export class AnimationService {
   private animationVisualizationTime = 0;
   private lastVisualisationTime = 0;
 
-  private ticker: PIXI.Ticker = new PIXI.Ticker();
   private vehicles: Entity<AnimatedVehicle>[] = [];
   private vehicleEntitiesByVehicleId: Record<string, Entity<AnimatedVehicle>> =
     {};
@@ -132,7 +139,9 @@ export class AnimationService {
 
   constructor(
     private readonly favoriteEntitiesService: FavoriteEntitiesService,
-  ) {}
+  ) {
+    void PIXI.Assets.load(this.BITMAPTEXT_URL);
+  }
 
   synchronizeEnvironment(simulationEnvironment: AnimatedSimulationEnvironment) {
     this.selectedEntityPolyline.clear();
@@ -227,7 +236,7 @@ export class AnimationService {
     sprite.anchor.set(0.5, 0.5); // Center texture on coordinate
     vehicleContainer.addChild(sprite);
 
-    const passengerCountText = new PIXI.Text('10', this.TEXT_STYLE);
+    const passengerCountText = new PIXI.BitmapText('', this.BITMAPTEXT_STYLE);
     passengerCountText.anchor.set(0, 0.5); // Center y on coordinate y
     passengerCountText.x = sprite.width / 2; // Move text to the right-end of the container
     vehicleContainer.addChild(passengerCountText);
@@ -363,7 +372,7 @@ export class AnimationService {
     const showFavoritesOnly = this.filterMode === 'favorites';
 
     for (const vehicle of this.vehicles)
-      vehicle.sprite.visible =
+      vehicle.sprite.parent.visible =
         vehicle.show &&
         showVehicles && // Are vehicles not filtered
         !filters.has(vehicle.data.mode ?? 'unknown') && // Is bus mode not filtered
@@ -629,12 +638,28 @@ export class AnimationService {
   }
 
   private updateVehiclePassengerCounters() {
+    const MAX_PASSENGER_COUNT_VALUE = 50;
+    const MIN_COLOR = '#ffffff'; // WHITE
+    const MAX_COLOR = '#ff0000'; // RED
+
+    const interpolate = d3InterpolateRgb(MIN_COLOR, MAX_COLOR);
+
     // eslint-disable-next-line @typescript-eslint/prefer-for-of
     for (let index = 0; index < this.vehicles.length; ++index) {
       const vehicleEntity = this.vehicles[index];
       const passengerCount = vehicleEntity.data.passengerCount;
+
       if (passengerCount === 0) vehicleEntity.text!.text = '';
       else vehicleEntity.text!.text = passengerCount.toString();
+
+      const t =
+        Math.min(passengerCount, MAX_PASSENGER_COUNT_VALUE) /
+        MAX_PASSENGER_COUNT_VALUE;
+      const color = d3Color(interpolate(t))?.rgb();
+      if (!color) continue;
+
+      const tint = 256 * (color.r * 256 + color.g) + color.b;
+      vehicleEntity.text!.tint = tint;
     }
   }
 
@@ -944,7 +969,7 @@ export class AnimationService {
   }
 
   private updateAnimationTime() {
-    const deltaSec = this.ticker.deltaMS / 1000;
+    const deltaSec = PIXI.Ticker.shared.deltaMS / 1000;
     if (!this.pause) {
       this.animationVisualizationTime += deltaSec * this.speed;
       this.lastVisualisationTime += deltaSec * this.speed;
@@ -1092,14 +1117,14 @@ export class AnimationService {
 
     pixiLayer.addTo(map);
 
-    this.ticker.add((delta) => {
+    PIXI.Ticker.shared.add((delta) => {
       pixiLayer.redraw({ type: 'redraw', delta: delta } as L.LeafletEvent);
 
       if (this.frame_pointToFollow && this._shouldFollowEntitySignal())
         this.utils.getMap().setView(this.frame_pointToFollow);
       this.frame_pointToFollow = null;
     });
-    this.ticker.start();
+    PIXI.Ticker.shared.start();
   }
 
   setSpeed(speed: number) {

@@ -1,8 +1,8 @@
-import { Sprite, Text } from 'pixi.js';
+import { BitmapText, Sprite } from 'pixi.js';
 
 export interface Entity<T> {
   sprite: Sprite;
-  text?: Text;
+  text?: BitmapText;
   show: boolean;
   data: T;
 }
