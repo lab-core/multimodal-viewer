@@ -34,42 +34,38 @@
         }}</mat-icon>
       </button>
 
-      @if (isVisualizationPaused) {
-        <button
-          mat-icon-button
-          disabled
-          [matTooltip]="'Step one event backward'"
-        >
-          <mat-icon>skip_previous</mat-icon>
-        </button>
-        <button
-          mat-icon-button
-          disabled
-          [matTooltip]="'Step one event forward'"
-        >
-          <mat-icon>skip_next</mat-icon>
-        </button>
-      }
-
       @let speed = speedSignal();
-      @let canIncreaseSpeed = canIncreaseSpeedSignal();
-      @let canDecreaseSpeed = canDecreaseSpeedSignal();
+      @let fastForwardStep = fastForwardStepSignal();
       <button
         mat-icon-button
-        [disabled]="!canDecreaseSpeed"
-        [matTooltip]="'Slow down the simulation'"
-        (click)="decreaseSpeed()"
+        [matTooltip]="
+          'Rewind the simulation ' + fastForwardStep + ' seconds ago'
+        "
+        (click)="rewindTime()"
       >
-        <mat-icon>fast_rewind</mat-icon>
+        <mat-icon>skip_previous</mat-icon>
       </button>
-      <div class="speed">x{{ speed }}</div>
+      <button mat-button class="speed-button" [matMenuTriggerFor]="speedMenu">
+        x{{ speed }}
+      </button>
+      <mat-menu #speedMenu="matMenu" class="speed-menu">
+        <button mat-menu-item (click)="setSpeed(0)">x1</button>
+        <button mat-menu-item (click)="setSpeed(1)">x2</button>
+        <button mat-menu-item (click)="setSpeed(2)">x4</button>
+        <button mat-menu-item (click)="setSpeed(3)">x8</button>
+        <button mat-menu-item (click)="setSpeed(4)">x16</button>
+        <button mat-menu-item (click)="setSpeed(5)">x32</button>
+        <button mat-menu-item (click)="setSpeed(6)">x64</button>
+        <button mat-menu-item (click)="setSpeed(7)">x128</button>
+      </mat-menu>
       <button
         mat-icon-button
-        [disabled]="!canIncreaseSpeed"
-        [matTooltip]="'Speed up the simulation'"
-        (click)="increaseSpeed()"
+        [matTooltip]="
+          'Fast-forward the simulation ' + fastForwardStep + ' seconds later'
+        "
+        (click)="fastForwardTime()"
       >
-        <mat-icon>fast_forward</mat-icon>
+        <mat-icon>skip_next</mat-icon>
       </button>
 
       <button
@@ -100,10 +96,45 @@
         <mat-icon>moving</mat-icon>
       </button>
 
-      <div
-        [matTooltip]="((visualizationTime | number: '1.0-0') ?? '0').toString()"
-      >
-        {{ visualizationTime | simulationTime }}
+      @let showVisualisationTimeEditor = showVisualisationTimeEditorSignal();
+      <div>
+        <div>
+          <button
+            mat-button
+            [matTooltip]="
+              ((visualizationTime | number: '1.0-0') ?? '0').toString() +
+              ' (Click to modify)'
+            "
+            [disabled]="showVisualisationTimeEditor"
+            (click)="openVisualisationTimeEditor()"
+          >
+            @if (showVisualisationTimeEditor) {
+              @if (editorVisualisationTimeForm.hasError("invalidNumber")) {
+                -- : -- : --
+              } @else {
+                {{ editorVisualisationTimeValueSignal() | simulationTime }}
+              }
+            } @else {
+              {{ visualizationTime | simulationTime }}
+            }
+          </button>
+        </div>
+        <form
+          class="fade"
+          [class.fade-show]="showVisualisationTimeEditor"
+          [class.disable-pointer-events]="!showVisualisationTimeEditor"
+        >
+          <mat-form-field class="timestamp-input">
+            <mat-label>Set Visualisation Time</mat-label>
+            <input
+              matInput
+              type="number"
+              [formControl]="editorVisualisationTimeForm"
+              (keyup.enter)="applyVisualisationTime()"
+              (blur)="hideVisualisationTimeEditor()"
+            />
+          </mat-form-field>
+        </form>
       </div>
 
       <div class="flex-1 sliders">

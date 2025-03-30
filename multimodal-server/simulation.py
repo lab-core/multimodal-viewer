@@ -1,9 +1,10 @@
 import os
 import threading
 
+from multimodalsim.observer.data_collector import DataContainer, StandardDataCollector
+from multimodalsim.observer.environment_observer import EnvironmentObserver
 from multimodalsim.simulator.simulator import Simulator
 from multimodalsim.statistics.data_analyzer import FixedLineDataAnalyzer
-from multimodalsim.observer.data_collector import DataContainer, StandardDataCollector
 from server_utils import (
     HOST,
     PORT,
@@ -13,9 +14,7 @@ from server_utils import (
     set_event_on_input,
     verify_simulation_name,
 )
-from simulation_visualization_data_collector import (
-    SimulationVisualizationEnvironmentObserver,
-)
+from simulation_visualization_data_collector import SimulationVisualizationDataCollector
 from socketio import Client
 
 
@@ -25,58 +24,15 @@ def run_simulation(
     max_time: float | None,
     stop_event: threading.Event | None = None,
 ) -> None:
-    sio = Client(reconnection_attempts=1)
-
-    status = SimulationStatus.STARTING
-
     data_container = DataContainer()
-    environment_observer = SimulationVisualizationEnvironmentObserver(
-        simulation_id, data, sio, max_time, FixedLineDataAnalyzer(data_container), StandardDataCollector(data_container), 10
+
+    data_collector = SimulationVisualizationDataCollector(
+        simulation_id, data, max_time, FixedLineDataAnalyzer(data_container), 10
     )
 
-
-
-    @sio.on("pause-simulation")
-    def pauseSimulator():
-        simulator.pause()
-        status = SimulationStatus.PAUSED
-        sio.emit("simulation-pause", simulation_id)
-
-    @sio.on("resume-simulation")
-    def resumeSimulator():
-        simulator.resume()
-        sio.emit("simulation-resume", simulation_id)
-        status = SimulationStatus.RUNNING
-
-    @sio.on("stop-simulation")
-    def stopSimulator():
-        simulator.stop()
-        status = SimulationStatus.STOPPING
-
-    @sio.on("connect")
-    def on_connect():
-        sio.emit(
-            "simulation-identification",
-            (
-                simulation_id,
-                data,
-                environment_observer.data_collector.simulation_information.simulation_start_time,
-                environment_observer.data_collector.visualized_environment.timestamp,
-                environment_observer.data_collector.visualized_environment.estimated_end_time,
-                environment_observer.max_time,
-                status.value,
-            ),
-        )
-
-    @sio.on("edit-simulation-configuration")
-    def on_edit_simulation_configuration(max_time: float | None):
-        environment_observer.max_time = max_time
-
-    try:
-        sio.connect(f"http://{HOST}:{PORT}", auth={"type": "simulation"})
-    except Exception as e:
-        print(f"Failed to connect to server: {e}")
-        print("Running in offline mode")
+    environment_observer = EnvironmentObserver(
+        [StandardDataCollector(data_container), data_collector],
+    )
 
     current_directory = os.path.dirname(os.path.abspath(__file__))
     simulation_data_directory = f"{current_directory}/../data/{data}/"
@@ -89,33 +45,20 @@ def run_simulation(
     simulation_thread = threading.Thread(target=simulator.simulate)
     simulation_thread.start()
 
-    status = SimulationStatus.RUNNING
-
-    # Wait for the thread to finish while reconnecting if necessary
+    # Wait for the simulation to finish
     while simulation_thread.is_alive() and (
         stop_event is None or not stop_event.is_set()
     ):
-        simulation_thread.join(timeout=5)
-        if not sio.connected and status != SimulationStatus.STOPPING:
-            try:
-                print("Trying to reconnect")
-                sio.connect(f"http://{HOST}:{PORT}", auth={"type": "simulation"})
-            except Exception as e:
-                print(f"Failed to connect to server: {e}")
-                print("Continuing in offline mode")
+        simulation_thread.join(timeout=5)  # Check every 5 seconds
 
-    status = SimulationStatus.STOPPING
-    simulator.stop()
+    if simulation_thread.is_alive():
+        print("Simulation is still running, stopping it")
+        simulator.stop()
+
+    simulation_thread.join()
 
     if stop_event is not None:
         stop_event.set()
-
-    # Wait for the simulation to end
-    simulation_thread.join()
-    if sio.connected:
-        sio.disconnect()
-
-    sio.wait()
 
 
 if __name__ == "__main__":

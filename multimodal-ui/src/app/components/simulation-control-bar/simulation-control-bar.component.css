@@ -55,11 +55,41 @@
   }
 }
 
-.speed {
-  text-align: center;
-  min-width: 3rem;
-}
-
 .active {
   background-color: var(--active-button-color);
 }
+
+.speed-button {
+  min-width: fit-content;
+}
+
+.timestamp-input {
+  position: absolute;
+  bottom: 50px;
+
+  transform: scale(0.9);
+  transform-origin: bottom left;
+}
+
+::ng-deep .mat-mdc-menu-panel {
+  min-width: fit-content !important;
+}
+
+.mat-mdc-menu-item {
+  min-height: 30px;
+}
+
+.disable-pointer-events {
+  pointer-events: none;
+}
+
+/* Fade animation when opening visualisation time editor */
+.fade {
+  opacity: 0;
+  transition: opacity 0.1s ease-in-out;
+}
+
+.fade-show {
+  opacity: 1;
+}
+/* ********************************** */

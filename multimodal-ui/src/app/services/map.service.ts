@@ -49,7 +49,7 @@ export class MapService {
     if (this.map == null) return;
 
     const selectedMapTile = this._selectedMapTile();
-    if (selectedMapTile !== undefined) {
+    if (selectedMapTile !== undefined && selectedMapTile !== mapTile) {
       this.map.removeLayer(selectedMapTile.tile);
     }
 

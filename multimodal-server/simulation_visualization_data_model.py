@@ -135,7 +135,7 @@ class VisualizedLeg(Serializable):
         )
 
         if route is not None:
-            all_stops = route.previous_stops
+            all_stops = route.previous_stops.copy()
             if route.current_stop is not None:
                 all_stops.append(route.current_stop)
             all_stops += route.next_stops
@@ -328,16 +328,28 @@ class VisualizedPassenger(Serializable):
 class VisualizedStop(Serializable):
     arrival_time: float
     departure_time: float | None
+    latitude: float | None
+    longitude: float | None
 
-    def __init__(self, arrival_time: float, departure_time: float) -> None:
+    def __init__(
+        self,
+        arrival_time: float,
+        departure_time: float,
+        latitude: float | None,
+        longitude: float | None,
+    ) -> None:
         self.arrival_time = arrival_time
         self.departure_time = departure_time
+        self.latitude = latitude
+        self.longitude = longitude
 
     @classmethod
     def from_stop(cls, stop: Stop) -> "VisualizedStop":
         return cls(
             stop.arrival_time,
             stop.departure_time if stop.departure_time != math.inf else None,
+            stop.location.lat,
+            stop.location.lon,
         )
 
     def serialize(self) -> dict:
@@ -345,6 +357,12 @@ class VisualizedStop(Serializable):
 
         if self.departure_time is not None:
             serialized["departureTime"] = self.departure_time
+
+        if self.latitude is not None and self.longitude is not None:
+            serialized["position"] = {
+                "latitude": self.latitude,
+                "longitude": self.longitude,
+            }
 
         return serialized
 
@@ -359,7 +377,16 @@ class VisualizedStop(Serializable):
         arrival_time = float(data["arrivalTime"])
         departure_time = data.get("departureTime", None)
 
-        return VisualizedStop(arrival_time, departure_time)
+        latitude = None
+        longitude = None
+
+        position = data.get("position", None)
+
+        if position is not None:
+            latitude = position.get("latitude", None)
+            longitude = position.get("longitude", None)
+
+        return VisualizedStop(arrival_time, departure_time, latitude, longitude)
 
 
 # MARK: Vehicle
@@ -390,6 +417,14 @@ class VisualizedVehicle(Serializable):
         self.previous_stops = previous_stops
         self.current_stop = current_stop
         self.next_stops = next_stops
+
+    @property
+    def all_stops(self) -> list[VisualizedStop]:
+        return (
+            self.previous_stops
+            + ([self.current_stop] if self.current_stop is not None else [])
+            + self.next_stops
+        )
 
     @classmethod
     def from_vehicle_and_route(
@@ -549,6 +584,7 @@ class UpdateType(Enum):
     UPDATE_VEHICLE_STOPS = "updateVehicleStops"
     UPDATE_STATISTIC = "updateStatistic"
 
+
 class StatisticUpdate(Serializable):
     statistic: dict[str, dict[str, dict[str, int]]]
 
@@ -562,11 +598,12 @@ class StatisticUpdate(Serializable):
     def deserialize(data: str) -> "StatisticUpdate":
         if isinstance(data, str):
             data = json.loads(data.replace("'", '"'))
-        
+
         if "statistic" not in data:
             raise ValueError("Invalid data for StatisticUpdate")
-        
+
         return StatisticUpdate(data.statistic)
+
 
 class PassengerStatusUpdate(Serializable):
     passenger_id: str
@@ -1011,19 +1048,20 @@ class SimulationVisualizationDataManager:
     __SIMULATION_INFORMATION_FILE_NAME = "simulation_information.json"
     __STATES_DIRECTORY_NAME = "states"
     __POLYLINES_DIRECTORY_NAME = "polylines"
+    __POLYLINES_FILE_NAME = "polylines"
     __POLYLINES_VERSION_FILE_NAME = "version"
-    __POLYLINES_BY_VEHICLE_ID_DIRECTORY_NAME = "by_vehicle_id"
 
     __STATES_ORDER_MINIMUM_LENGTH = 8
     __STATES_TIMESTAMP_MINIMUM_LENGTH = 8
 
-    # Only send a maximum of 10 states at once
-    __MAX_STATES_AT_ONCE = 10
+    # Only send a maximum of __MAX_STATES_AT_ONCE states at once
+    __MAX_STATES_AT_ONCE = 4
 
-    # The client keeps a maximum of 150 states in memory
-    # The current one, the previous 49, and the next 100
-    __MAX_STATES_IN_CLIENT_BEFORE_NECESSARY = 49
-    __MAX_STATES_IN_CLIENT_AFTER_NECESSARY = 100
+    # The client keeps a maximum of __MAX_STATES_IN_CLIENT_BEFORE_NECESSARY + __MAX_STATES_IN_CLIENT_AFTER_NECESSARY + 1
+    # states in memory
+    # The current one, the previous __MAX_STATES_IN_CLIENT_BEFORE_NECESSARY and the next __MAX_STATES_IN_CLIENT_AFTER_NECESSARY
+    __MAX_STATES_IN_CLIENT_BEFORE_NECESSARY = 24
+    __MAX_STATES_IN_CLIENT_AFTER_NECESSARY = 50
 
     # MARK: +- Format
     @staticmethod
@@ -1395,9 +1433,21 @@ class SimulationVisualizationDataManager:
         )
 
     # MARK: +- Polylines
+
+    # The polylines are saved with the following structure :
+    # polylines/
+    #   version
+    #   polylines.jsonl
+    #     { "coordinatesString": "string", "encodedPolyline": "string", "coefficients": [float] }
+
     @staticmethod
     def get_saved_simulation_polylines_lock(simulation_id: str) -> FileLock:
-        return FileLock(f"{simulation_id}.lock")
+        simulation_directory_path = (
+            SimulationVisualizationDataManager.get_saved_simulation_directory_path(
+                simulation_id
+            )
+        )
+        return FileLock(f"{simulation_directory_path}/polylines.lock")
 
     @staticmethod
     def get_saved_simulation_polylines_directory_path(simulation_id: str) -> str:
@@ -1461,27 +1511,12 @@ class SimulationVisualizationDataManager:
             )
 
     @staticmethod
-    def get_saved_simulation_polylines_by_vehicle_id_directory_path(
-        simulation_id: str,
-    ) -> str:
+    def get_saved_simulation_polylines_file_path(simulation_id: str) -> str:
         directory_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_directory_path(
             simulation_id
         )
-        polylines_by_vehicle_id_directory_path = f"{directory_path}/{SimulationVisualizationDataManager.__POLYLINES_BY_VEHICLE_ID_DIRECTORY_NAME}"
 
-        if not os.path.exists(polylines_by_vehicle_id_directory_path):
-            os.makedirs(polylines_by_vehicle_id_directory_path)
-
-        return polylines_by_vehicle_id_directory_path
-
-    @staticmethod
-    def get_saved_simulation_polylines_file_path(
-        simulation_id: str, vehicle_id: str
-    ) -> str:
-        directory_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_by_vehicle_id_directory_path(
-            simulation_id
-        )
-        file_path = f"{directory_path}/{vehicle_id}.json"
+        file_path = f"{directory_path}/{SimulationVisualizationDataManager.__POLYLINES_FILE_NAME}.jsonl"
 
         if not os.path.exists(file_path):
             with open(file_path, "w") as file:
@@ -1490,22 +1525,16 @@ class SimulationVisualizationDataManager:
         return file_path
 
     @staticmethod
-    def get_saved_simulation_all_polylines_file_paths(simulation_id: str) -> list[str]:
-        directory_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_by_vehicle_id_directory_path(
-            simulation_id
-        )
-        return [f"{directory_path}/{file}" for file in os.listdir(directory_path)]
+    def set_polylines(
+        simulation_id: str, polylines: dict[str, tuple[str, list[float]]]
+    ) -> None:
 
-    @staticmethod
-    def set_polylines(simulation_id: str, vehicle: VisualizedVehicle) -> None:
         file_path = (
             SimulationVisualizationDataManager.get_saved_simulation_polylines_file_path(
-                simulation_id, vehicle.vehicle_id
+                simulation_id
             )
         )
 
-        # This lock file is the same for all vehicles to prevent reading and writing two
-        # different vehicles at the same time.
         lock = SimulationVisualizationDataManager.get_saved_simulation_polylines_lock(
             simulation_id
         )
@@ -1520,26 +1549,28 @@ class SimulationVisualizationDataManager:
                 simulation_id, version
             )
 
-            with open(file_path, "w") as file:
-                SimulationVisualizationDataManager.__format_json_readable(
-                    vehicle.polylines, file
-                )
+            with open(file_path, "a") as file:
+                for coordinates_string, (
+                    encoded_polyline,
+                    coefficients,
+                ) in polylines.items():
+                    data = {
+                        "coordinatesString": coordinates_string,
+                        "encodedPolyline": encoded_polyline,
+                        "coefficients": coefficients,
+                    }
+                    SimulationVisualizationDataManager.__format_json_one_line(
+                        data, file
+                    )
 
     @staticmethod
     def get_polylines(
         simulation_id: str,
-    ) -> tuple[dict[str, str], int]:
-        """
-        Get all polylines as unparsed JSON strings by vehicle ID, and the version of the polylines.
-        """
+    ) -> tuple[list[str], int]:
 
-        polylines = {}
+        polylines = []
 
         lock = SimulationVisualizationDataManager.get_saved_simulation_polylines_lock(
-            simulation_id
-        )
-
-        all_polylines_file_paths = SimulationVisualizationDataManager.get_saved_simulation_all_polylines_file_paths(
             simulation_id
         )
 
@@ -1550,9 +1581,12 @@ class SimulationVisualizationDataManager:
                 simulation_id
             )
 
-            for file_path in all_polylines_file_paths:
-                with open(file_path, "r") as file:
-                    vehicle_id = file_path.split("/")[-1].split(".")[0]
-                    polylines[vehicle_id] = file.read()
+            file_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_file_path(
+                simulation_id
+            )
+
+            with open(file_path, "r") as file:
+                for line in file:
+                    polylines.append(line)
 
         return polylines, version

@@ -6,10 +6,10 @@ import {
   WritableSignal,
 } from '@angular/core';
 import * as L from 'leaflet';
-import { pixiOverlay } from 'leaflet';
 import 'leaflet-pixi-overlay';
-import * as PIXI from 'pixi.js';
+import { pixiOverlay } from 'leaflet';
 import { OutlineFilter } from 'pixi-filters';
+import * as PIXI from 'pixi.js';
 import {
   Entity,
   EntityFilterMode,
@@ -19,10 +19,12 @@ import {
   AnimatedPassenger,
   AnimatedSimulationEnvironment,
   AnimatedVehicle,
+  DisplayedPolylines,
+  DynamicPassengerAnimationData,
   DynamicVehicleAnimationData,
+  getAllStops,
   Passenger,
   Polyline,
-  Polylines,
   StaticPassengerAnimationData,
   StaticVehicleAnimationData,
   Vehicle,
@@ -147,7 +149,7 @@ export class AnimationService {
     const selectedPassengerId = this._selectedPassengerIdSignal();
 
     for (const vehicle of Object.values(
-      simulationEnvironment.animationData.vehicles,
+      simulationEnvironment.currentState.vehicles,
     )) {
       this.addVehicle(vehicle);
       if (selectedVehicleId !== null && vehicle.id == selectedVehicleId) {
@@ -166,7 +168,7 @@ export class AnimationService {
     let isSelectedPassengerInEnvironment = false;
 
     for (const passenger of Object.values(
-      simulationEnvironment.animationData.passengers,
+      simulationEnvironment.currentState.passengers,
     )) {
       this.addPassenger(passenger);
       if (selectedPassengerId !== null && passenger.id == selectedPassengerId) {
@@ -191,7 +193,9 @@ export class AnimationService {
     visualizationTime: number,
   ) {
     // Don't sync if we don't have the right state
-    if (animatedSimulationEnvironment.timestamp != visualizationTime) {
+    if (
+      animatedSimulationEnvironment.currentState.timestamp != visualizationTime
+    ) {
       console.warn(
         "Animation not synced: simulation timestamp doesn't match visualisation time",
       );
@@ -258,7 +262,6 @@ export class AnimationService {
     this.passengersEntities = [];
     this.passengerEntitiesByPassengerId = {};
     this.unselectEntity();
-    this.removePolylines();
     this.previousVehiclesEntities = [];
     this.previousPassengerEntities = [];
   }
@@ -374,18 +377,24 @@ export class AnimationService {
   private setVehiclePositions() {
     // eslint-disable-next-line @typescript-eslint/prefer-for-of
     for (let index = 0; index < this.vehicles.length; ++index) {
-      const vehicle = this.vehicles[index];
+      const vehicleEntity = this.vehicles[index];
+      const vehicle = vehicleEntity.data;
 
-      const animationData = vehicle.data.animationData.find(
+      if (!vehicle.animationData) {
+        vehicleEntity.show = false;
+        continue;
+      }
+
+      const animationData = vehicle.animationData.find(
         (data) =>
           data.startTimestamp <= this.animationVisualizationTime &&
-          data.endTimestamp >= this.animationVisualizationTime,
+          data.endTimestamp! >= this.animationVisualizationTime,
       );
 
       // Vehicle has no animation data
       // This can happen if the vehicle is not in the environment yet
       if (!animationData) {
-        vehicle.show = false;
+        vehicleEntity.show = false;
         continue;
       }
 
@@ -394,76 +403,85 @@ export class AnimationService {
         case 'boarding':
         case 'idle':
         case 'release':
-          vehicle.sprite.tint = this.LIGHT_BLUE;
+          vehicleEntity.sprite.tint = this.LIGHT_BLUE;
           break;
         case 'complete':
-          vehicle.sprite.tint = this.LIGHT_RED;
+          vehicleEntity.sprite.tint = this.LIGHT_RED;
           break;
         case 'enroute':
-          vehicle.sprite.tint = this.WHITE;
+          vehicleEntity.sprite.tint = this.WHITE;
           break;
       }
 
-      let polylineIndex: number | null = null;
+      const polylineIndex: number =
+        animationData.displayedPolylines.currentPolylineIndex;
       let lineIndex: number | null = null;
       let point: L.Point | null = null;
       if (animationData.notDisplayedReason !== null) {
         // Vehicle has an error
-        vehicle.show = false;
+        vehicleEntity.show = false;
+        // console.error(
+        //   `Vehicle ${vehicle.id} has an error: ${animationData.notDisplayedReason}`,
+        // );
       } else if (
         (animationData as StaticVehicleAnimationData).position !== undefined
       ) {
-        vehicle.show = true;
+        vehicleEntity.show = true;
         const staticVehicleAnimationData =
           animationData as StaticVehicleAnimationData;
         point = this.utils.latLngToLayerPoint([
           staticVehicleAnimationData.position.latitude,
           staticVehicleAnimationData.position.longitude,
         ]);
-        vehicle.sprite.x = point.x;
-        vehicle.sprite.y = point.y;
-        polylineIndex = Math.max(staticVehicleAnimationData.polylineIndex, 0);
+        vehicleEntity.sprite.x = point.x;
+        vehicleEntity.sprite.y = point.y;
         lineIndex =
-          staticVehicleAnimationData.polylineIndex === -1
+          polylineIndex === -1
             ? 0
-            : (vehicle.data.polylines?.[
-                staticVehicleAnimationData.polylineIndex
-              ]?.polyline.length ?? 0) - 1;
+            : (animationData.displayedPolylines.polylines[polylineIndex]
+                ?.polyline.length ?? 0) - 1;
       } else if (
         (animationData as DynamicVehicleAnimationData).polyline !== undefined
       ) {
-        vehicle.show = true;
+        vehicleEntity.show = true;
         const dynamicVehicleAnimationData =
           animationData as DynamicVehicleAnimationData;
         const [lineNo, lineProgress] = this.getLineNoAndProgress(
-          dynamicVehicleAnimationData.polyline,
-          dynamicVehicleAnimationData.startTimestamp,
-          dynamicVehicleAnimationData.endTimestamp,
+          dynamicVehicleAnimationData.displayedPolylines,
         );
         point = this.applyInterpolation(
-          vehicle,
-          dynamicVehicleAnimationData.polyline,
+          vehicleEntity,
+          dynamicVehicleAnimationData.displayedPolylines.polylines[
+            Math.min(
+              polylineIndex,
+              dynamicVehicleAnimationData.displayedPolylines.polylines.length -
+                1,
+            )
+          ],
           lineNo,
           lineProgress,
         );
-        polylineIndex = dynamicVehicleAnimationData.polylineIndex;
         lineIndex = lineNo;
       } else {
         // Vehicle has an unknown error
-        vehicle.show = false;
+        vehicleEntity.show = false;
       }
 
       const selectedVehicleId = this._selectedVehicleIdSignal();
       if (
-        vehicle.sprite.visible &&
+        vehicleEntity.sprite.visible &&
         selectedVehicleId !== null &&
-        selectedVehicleId === vehicle.data.id &&
-        polylineIndex !== null &&
+        selectedVehicleId === vehicle.id &&
         lineIndex !== null &&
         point !== null
       ) {
         this.frame_pointToFollow = this.utils.layerPointToLatLng(point);
-        this.redrawPolyline(polylineIndex, lineIndex, point);
+        this.redrawPolyline(
+          polylineIndex,
+          lineIndex,
+          point,
+          animationData.displayedPolylines,
+        );
       }
     }
   }
@@ -471,104 +489,177 @@ export class AnimationService {
   private setPassengerPositions() {
     // eslint-disable-next-line @typescript-eslint/prefer-for-of
     for (let index = 0; index < this.passengersEntities.length; ++index) {
-      const passenger = this.passengersEntities[index];
+      const passengerEntity = this.passengersEntities[index];
+      const passenger = passengerEntity.data;
 
-      const animationData = passenger.data.animationData.find(
+      if (!passenger.animationData) {
+        passengerEntity.show = false;
+        continue;
+      }
+
+      const animationData = passenger.animationData.find(
         (data) =>
           data.startTimestamp <= this.animationVisualizationTime &&
-          data.endTimestamp >= this.animationVisualizationTime,
+          data.endTimestamp! >= this.animationVisualizationTime,
       );
 
       // Passenger has no animation data
       // This can happen if the passenger is not in the environment yet
       if (!animationData) {
-        passenger.show = false;
+        passengerEntity.show = false;
         continue;
       }
 
       switch (animationData.status) {
         case 'release':
-          passenger.sprite.tint = '0xffff00'; // Yellow
+          passengerEntity.sprite.tint = '0xffff00'; // Yellow
           break;
         case 'assigned':
-          passenger.sprite.tint = '0x0000ff'; // Blue
+          passengerEntity.sprite.tint = '0x0000ff'; // Blue
           break;
         case 'ready':
-          passenger.sprite.tint = '0x00ff00'; // Green
+          passengerEntity.sprite.tint = '0x00ff00'; // Green
           break;
         case 'onboard':
-          passenger.sprite.tint = '0x00ffff'; // Cyan
+          passengerEntity.sprite.tint = '0x00ffff'; // Cyan
           break;
         case 'complete':
-          passenger.sprite.tint = '0xff00ff'; // Magenta
+          passengerEntity.sprite.tint = '0xff00ff'; // Magenta
           break;
       }
 
       if (animationData.notDisplayedReason !== null) {
         // Passenger has an error
-        passenger.show = false;
+        passengerEntity.show = false;
       } else if (
-        (animationData as StaticPassengerAnimationData).position !== undefined
+        (animationData as StaticPassengerAnimationData).stopIndex !==
+          undefined &&
+        animationData.vehicleId !== null
       ) {
-        passenger.show = true;
-        const staticPassengerAnimationData =
-          animationData as StaticPassengerAnimationData;
-        const point = this.utils.latLngToLayerPoint([
-          staticPassengerAnimationData.position.latitude,
-          staticPassengerAnimationData.position.longitude,
-        ]);
-        passenger.sprite.x = point.x;
-        passenger.sprite.y = point.y;
-      } else if (animationData.vehicleId !== null) {
-        passenger.show = true;
+        const vehicleEntity =
+          this.vehicleEntitiesByVehicleId[animationData.vehicleId];
+        const allStops = getAllStops(vehicleEntity.data);
+        const stop =
+          allStops[(animationData as StaticPassengerAnimationData).stopIndex];
+        if (stop !== undefined) {
+          passengerEntity.show = true;
+          const point = this.utils.latLngToLayerPoint([
+            stop.position.latitude,
+            stop.position.longitude,
+          ]);
+          passengerEntity.sprite.x = point.x;
+          passengerEntity.sprite.y = point.y;
+        }
+      } else if (
+        (animationData as DynamicPassengerAnimationData).isOnBoard === true &&
+        animationData.vehicleId !== null
+      ) {
         const vehicleEntity =
           this.vehicleEntitiesByVehicleId[animationData.vehicleId];
         if (vehicleEntity) {
-          passenger.show = vehicleEntity.show;
-          passenger.sprite.x = vehicleEntity.sprite.x;
-          passenger.sprite.y = vehicleEntity.sprite.y;
+          passengerEntity.show = vehicleEntity.show;
+          passengerEntity.sprite.x = vehicleEntity.sprite.x;
+          passengerEntity.sprite.y = vehicleEntity.sprite.y;
         }
       } else {
         // Passenger has an unknown error
-        passenger.show = false;
+        passengerEntity.show = false;
       }
 
       const selectedPassengerId = this._selectedPassengerIdSignal();
       if (
-        passenger.sprite.visible &&
+        passengerEntity.sprite.visible &&
         selectedPassengerId !== null &&
-        selectedPassengerId === passenger.data.id
+        selectedPassengerId === passenger.id
       ) {
         this.frame_pointToFollow = this.utils.layerPointToLatLng(
-          new L.Point(passenger.sprite.x, passenger.sprite.y),
+          new L.Point(passengerEntity.sprite.x, passengerEntity.sprite.y),
         );
       }
     }
+
+    //   if (animationData.notDisplayedReason !== null) {
+    //     // Passenger has an error
+    //     passenger.show = false;
+    //   } else if (
+    //     (animationData as StaticPassengerAnimationData).position !== undefined
+    //   ) {
+    //     passenger.show = true;
+    //     const staticPassengerAnimationData =
+    //       animationData as StaticPassengerAnimationData;
+    //     const point = this.utils.latLngToLayerPoint([
+    //       staticPassengerAnimationData.position.latitude,
+    //       staticPassengerAnimationData.position.longitude,
+    //     ]);
+    //     passenger.sprite.x = point.x;
+    //     passenger.sprite.y = point.y;
+    //   } else if (animationData.vehicleId !== null) {
+    //     passenger.show = true;
+    //     const vehicleEntity =
+    //       this.vehicleEntitiesByVehicleId[animationData.vehicleId];
+    //     if (vehicleEntity) {
+    //       passenger.show = vehicleEntity.show;
+    //       passenger.sprite.x = vehicleEntity.sprite.x;
+    //       passenger.sprite.y = vehicleEntity.sprite.y;
+    //     }
+    //   } else {
+    //     // Passenger has an unknown error
+    //     passenger.show = false;
+    //   }
+    //   const selectedPassengerId = this._selectedPassengerIdSignal();
+    //   if (
+    //     passenger.sprite.visible &&
+    //     selectedPassengerId !== null &&
+    //     selectedPassengerId === passenger.data.id
+    //   ) {
+    //     this.frame_pointToFollow = this.utils.layerPointToLatLng(
+    //       new L.Point(passenger.sprite.x, passenger.sprite.y),
+    //     );
+    //   }
+    // }
   }
 
-  private getLineNoAndProgress(
-    polyline: Polyline,
-    departureTime: number,
-    arrivalTime: number,
-  ) {
+  private getLineNoAndProgress(displayedPolylines: DisplayedPolylines) {
+    if (
+      displayedPolylines.currentPolylineEndTime === null ||
+      displayedPolylines.currentPolylineStartTime === null
+    ) {
+      return [0, 0];
+    }
+
+    if (displayedPolylines.currentPolylineIndex === -1) {
+      return [0, 0];
+    }
+
+    if (
+      displayedPolylines.currentPolylineIndex >=
+      displayedPolylines.polylines.length
+    ) {
+      return [0, 0];
+    }
+
     const polylineProgress =
-      (this.animationVisualizationTime - departureTime) /
-      (arrivalTime - departureTime);
+      (this.animationVisualizationTime -
+        displayedPolylines.currentPolylineStartTime) /
+      (displayedPolylines.currentPolylineEndTime -
+        displayedPolylines.currentPolylineStartTime);
+
+    const polyline =
+      displayedPolylines.polylines[displayedPolylines.currentPolylineIndex];
 
     const coefficients = polyline.coefficients;
     let lineProgress = 0;
-    let cummulativeProgress = 0;
+    let cumulativeProgress = 0;
     let lineNo = 0;
     for (; lineNo < coefficients.length; ++lineNo) {
-      const nextCummulativeProgress =
-        cummulativeProgress + coefficients[lineNo];
-      if (polylineProgress < nextCummulativeProgress) {
+      const nextCumulativeProgress = cumulativeProgress + coefficients[lineNo];
+      if (polylineProgress < nextCumulativeProgress) {
         lineProgress =
-          (polylineProgress - cummulativeProgress) /
-          (nextCummulativeProgress - cummulativeProgress);
+          (polylineProgress - cumulativeProgress) /
+          (nextCumulativeProgress - cumulativeProgress);
         break;
       }
-      cummulativeProgress = nextCummulativeProgress;
+      cumulativeProgress = nextCumulativeProgress;
     }
 
     return [lineNo, lineProgress];
@@ -681,39 +772,29 @@ export class AnimationService {
     polylineNo: number,
     lineNo: number,
     interpolatedPoint: L.Point,
+    displayedPolylines: DisplayedPolylines,
   ) {
-    const selectedVehicleId = this._selectedVehicleIdSignal();
-    if (selectedVehicleId === null) return;
-
-    const selectedVehicle = this.vehicleEntitiesByVehicleId[selectedVehicleId];
-    if (selectedVehicle === undefined) return;
-
     const BASE_LINE_WIDTH = 4;
     const MIN_WIDTH = 0.04; // By testing out values
     const ALPHA = 0.9;
-
     const width = Math.max(BASE_LINE_WIDTH / this.utils?.getScale(), MIN_WIDTH);
-
     const graphics = this.selectedEntityPolyline;
     graphics.clear();
     graphics.lineStyle(width, this.KELLY_GREEN, ALPHA);
 
-    const polylines = Object.values(selectedVehicle.data.polylines ?? {});
-    if (polylines.length == 0) return;
+    const polylines = displayedPolylines.polylines;
 
-    const polyline = polylines[0].polyline;
-    if (polyline.length == 0) return;
-
-    const geoPos = polyline[0];
-    const point = this.utils.latLngToLayerPoint([
-      geoPos.latitude,
-      geoPos.longitude,
-    ]);
-    graphics.moveTo(point.x, point.y);
-
-    // Draw all poylines before the polylineNo
+    // Draw all polylines before the polylineNo
     for (let i = 0; i < polylineNo; ++i) {
       const polyline = polylines[i];
+      if (polyline.polyline.length === 0) continue;
+      const firstPoint = polyline.polyline[0];
+      const firstLayerPoint = this.utils.latLngToLayerPoint([
+        firstPoint.latitude,
+        firstPoint.longitude,
+      ]);
+      graphics.moveTo(firstLayerPoint.x, firstLayerPoint.y);
+
       for (let j = 1; j < polyline.polyline.length; ++j) {
         const geoPos = polyline.polyline[j];
         const point = this.utils.latLngToLayerPoint([
@@ -726,34 +807,52 @@ export class AnimationService {
 
     // Draw all the lines of polylineNo but before lineNo
     const currentPolyline = polylines[polylineNo];
-    for (let j = 1; j <= lineNo; ++j) {
-      const geoPos = currentPolyline.polyline[j];
-      const point = this.utils.latLngToLayerPoint([
-        geoPos.latitude,
-        geoPos.longitude,
+    if (currentPolyline !== undefined) {
+      const polylinePoints = currentPolyline.polyline;
+      if (polylinePoints.length === 0) return;
+      const firstPoint = polylinePoints[0];
+      const firstLayerPoint = this.utils.latLngToLayerPoint([
+        firstPoint.latitude,
+        firstPoint.longitude,
       ]);
-      graphics.lineTo(point.x, point.y);
-    }
+      graphics.moveTo(firstLayerPoint.x, firstLayerPoint.y);
 
-    // Draw line until interpolated point
-    graphics.lineTo(interpolatedPoint.x, interpolatedPoint.y);
+      for (let j = 1; j <= lineNo; ++j) {
+        const geoPos = currentPolyline.polyline[j];
+        const point = this.utils.latLngToLayerPoint([
+          geoPos.latitude,
+          geoPos.longitude,
+        ]);
+        graphics.lineTo(point.x, point.y);
+      }
 
-    // Change color
-    graphics.lineStyle(width, this.LIGHT_GRAY, ALPHA);
+      // Draw line until interpolated point
+      graphics.lineTo(interpolatedPoint.x, interpolatedPoint.y);
 
-    // Draw rest of lines of polylineNo
-    for (let j = lineNo + 1; j < currentPolyline.polyline.length; ++j) {
-      const geoPos = currentPolyline.polyline[j];
-      const point = this.utils.latLngToLayerPoint([
-        geoPos.latitude,
-        geoPos.longitude,
-      ]);
-      graphics.lineTo(point.x, point.y);
+      // Change color
+      graphics.lineStyle(width, this.LIGHT_GRAY, ALPHA);
+
+      // Draw rest of lines of polylineNo
+      for (let j = lineNo + 1; j < currentPolyline.polyline.length; ++j) {
+        const geoPos = currentPolyline.polyline[j];
+        const point = this.utils.latLngToLayerPoint([
+          geoPos.latitude,
+          geoPos.longitude,
+        ]);
+        graphics.lineTo(point.x, point.y);
+      }
     }
 
     // Draw rest of polylines
     for (let i = polylineNo + 1; i < polylines.length; ++i) {
       const polyline = polylines[i];
+      if (polyline.polyline.length === 0) continue;
+      const firstPoint = polyline.polyline[0];
+      const firstLayerPoint = this.utils.latLngToLayerPoint([
+        firstPoint.latitude,
+        firstPoint.longitude,
+      ]);
+      graphics.moveTo(firstLayerPoint.x, firstLayerPoint.y);
       for (let j = 1; j < polyline.polyline.length; ++j) {
         const geoPos = polyline.polyline[j];
         const point = this.utils.latLngToLayerPoint([
@@ -764,10 +863,27 @@ export class AnimationService {
       }
     }
 
-    // Draw stops that are completed
     graphics.lineStyle(width, this.KELLY_GREEN, ALPHA);
+
+    let firstStopHasBeenDrawn = false;
+
+    // Draw stops that are completed
     for (let i = 0; i < polylineNo; ++i) {
       const polyline = polylines[i];
+      if (polyline.polyline.length === 0) continue;
+
+      if (!firstStopHasBeenDrawn) {
+        const firstPoint = polyline.polyline[0];
+        const firstLayerPoint = this.utils.latLngToLayerPoint([
+          firstPoint.latitude,
+          firstPoint.longitude,
+        ]);
+        graphics.beginFill(this.WHITE, 1);
+        graphics.drawCircle(firstLayerPoint.x, firstLayerPoint.y, width * 1.2);
+        graphics.endFill();
+        firstStopHasBeenDrawn = true;
+      }
+
       const geoPos = polyline.polyline[polyline.polyline.length - 1];
       const point = this.utils.latLngToLayerPoint([
         geoPos.latitude,
@@ -780,8 +896,23 @@ export class AnimationService {
 
     // Draw stops that are not completed
     graphics.lineStyle(width, this.LIGHT_GRAY, ALPHA);
-    for (let i = polylineNo; i < polylines.length - 1; ++i) {
+
+    for (let i = Math.max(polylineNo, 0); i < polylines.length; ++i) {
       const polyline = polylines[i];
+      if (polyline.polyline.length === 0) continue;
+
+      if (!firstStopHasBeenDrawn) {
+        const firstPoint = polyline.polyline[0];
+        const firstLayerPoint = this.utils.latLngToLayerPoint([
+          firstPoint.latitude,
+          firstPoint.longitude,
+        ]);
+        graphics.beginFill(this.WHITE, 1);
+        graphics.drawCircle(firstLayerPoint.x, firstLayerPoint.y, width * 1.2);
+        graphics.endFill();
+        firstStopHasBeenDrawn = true;
+      }
+
       const geoPos = polyline.polyline[polyline.polyline.length - 1];
       const point = this.utils.latLngToLayerPoint([
         geoPos.latitude,
@@ -949,35 +1080,6 @@ export class AnimationService {
       this.frame_pointToFollow = null;
     });
     this.ticker.start();
-  }
-
-  private lines: L.Polyline[] = [];
-
-  removePolylines() {
-    this.lines.forEach((line) => line.remove());
-    this.lines = [];
-  }
-
-  displayPolylines(polylinesByVehicleId: Record<string, Polylines>) {
-    this.removePolylines();
-
-    Object.keys(polylinesByVehicleId).forEach((vehicleId) => {
-      const polylines = polylinesByVehicleId[vehicleId];
-      Object.keys(polylines).forEach((polylineId) => {
-        const polyline = polylines[polylineId];
-        const points = polyline.polyline.map((point) => ({
-          lat: point.latitude,
-          lng: point.longitude,
-        }));
-        const line = L.polyline(points, {
-          color: 'blue',
-          weight: 5,
-          opacity: 0.7,
-        });
-        line.addTo(this.utils.getMap());
-        this.lines.push(line);
-      });
-    });
   }
 
   setSpeed(speed: number) {
