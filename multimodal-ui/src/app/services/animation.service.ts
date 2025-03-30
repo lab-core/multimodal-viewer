@@ -10,11 +10,7 @@ import 'leaflet-pixi-overlay';
 import { pixiOverlay } from 'leaflet';
 import { OutlineFilter } from 'pixi-filters';
 import * as PIXI from 'pixi.js';
-import {
-  Entity,
-  EntityFilterMode,
-  EntityOwner,
-} from '../interfaces/entity.model';
+import { Entity, EntityFilterMode } from '../interfaces/entity.model';
 import {
   AnimatedPassenger,
   AnimatedSimulationEnvironment,
@@ -23,7 +19,6 @@ import {
   DynamicPassengerAnimationData,
   DynamicVehicleAnimationData,
   getAllStops,
-  Passenger,
   Polyline,
   StaticPassengerAnimationData,
   StaticVehicleAnimationData,
@@ -83,6 +78,16 @@ export class AnimationService {
   private readonly SATURATED_RED = 0xcd2222;
   private readonly KELLY_GREEN = 0x028a0f;
   private readonly LIGHT_GRAY = 0x666666;
+
+  private readonly TEXT_STYLE = new PIXI.TextStyle({
+    fontFamily: 'Arial',
+    fontSize: 18,
+    fontWeight: 'bold',
+    fill: '#ffffff',
+    stroke: '#333333',
+    strokeThickness: 5,
+    lineJoin: 'round',
+  });
 
   private pause = false;
   private animationVisualizationTime = 0;
@@ -216,30 +221,32 @@ export class AnimationService {
   }
 
   private addVehicle(vehicle: AnimatedVehicle, type = 'sample-bus'): void {
-    const sprite = PIXI.Sprite.from(`images/${type}.png`) as EntityOwner<
-      Entity<Vehicle>
-    >;
-    sprite.anchor.set(0.5, 0.5);
-    sprite.scale.set(1 / this.utils.getScale());
+    const vehicleContainer = new PIXI.Container();
+    const sprite = PIXI.Sprite.from(`images/${type}.png`);
+    vehicleContainer.scale.set(1 / this.utils.getScale());
+    sprite.anchor.set(0.5, 0.5); // Center texture on coordinate
+    vehicleContainer.addChild(sprite);
+
+    const passengerCountText = new PIXI.Text('10', this.TEXT_STYLE);
+    passengerCountText.anchor.set(0, 0.5); // Center y on coordinate y
+    passengerCountText.x = sprite.width / 2; // Move text to the right-end of the container
+    vehicleContainer.addChild(passengerCountText);
 
     const entity: Entity<AnimatedVehicle> = {
       data: vehicle,
       sprite,
+      text: passengerCountText,
       show: true,
     };
-    sprite.entity = entity;
 
-    this.container.addChild(sprite);
+    this.container.addChild(vehicleContainer);
     this.vehicles.push(entity);
-
     this.vehicleEntitiesByVehicleId[vehicle.id] = entity;
   }
 
   private addPassenger(passenger: AnimatedPassenger): void {
-    const sprite = PIXI.Sprite.from('images/sample-walk.png') as EntityOwner<
-      Entity<Passenger>
-    >;
-    sprite.anchor.set(0.5, 0.5);
+    const sprite = PIXI.Sprite.from('images/sample-walk.png');
+    sprite.anchor.set(0.5, 0.5); // Center texture on coordinate
     sprite.scale.set(1 / this.utils.getScale());
 
     const entity: Entity<AnimatedPassenger> = {
@@ -247,7 +254,6 @@ export class AnimationService {
       sprite,
       show: true,
     };
-    sprite.entity = entity;
 
     this.container.addChild(sprite);
     this.passengersEntities.push(entity);
@@ -380,6 +386,8 @@ export class AnimationService {
       const vehicleEntity = this.vehicles[index];
       const vehicle = vehicleEntity.data;
 
+      vehicle.passengerCount = 0;
+
       if (!vehicle.animationData) {
         vehicleEntity.show = false;
         continue;
@@ -433,8 +441,8 @@ export class AnimationService {
           staticVehicleAnimationData.position.latitude,
           staticVehicleAnimationData.position.longitude,
         ]);
-        vehicleEntity.sprite.x = point.x;
-        vehicleEntity.sprite.y = point.y;
+        vehicleEntity.sprite.parent.x = point.x;
+        vehicleEntity.sprite.parent.y = point.y;
         lineIndex =
           polylineIndex === -1
             ? 0
@@ -557,9 +565,10 @@ export class AnimationService {
         const vehicleEntity =
           this.vehicleEntitiesByVehicleId[animationData.vehicleId];
         if (vehicleEntity) {
+          vehicleEntity.data.passengerCount += 1;
           passengerEntity.show = vehicleEntity.show;
-          passengerEntity.sprite.x = vehicleEntity.sprite.x;
-          passengerEntity.sprite.y = vehicleEntity.sprite.y;
+          passengerEntity.sprite.x = vehicleEntity.sprite.parent.x;
+          passengerEntity.sprite.y = vehicleEntity.sprite.parent.y;
         }
       } else {
         // Passenger has an unknown error
@@ -617,6 +626,16 @@ export class AnimationService {
     //     );
     //   }
     // }
+  }
+
+  private updateVehiclePassengerCounters() {
+    // eslint-disable-next-line @typescript-eslint/prefer-for-of
+    for (let index = 0; index < this.vehicles.length; ++index) {
+      const vehicleEntity = this.vehicles[index];
+      const passengerCount = vehicleEntity.data.passengerCount;
+      if (passengerCount === 0) vehicleEntity.text!.text = '';
+      else vehicleEntity.text!.text = passengerCount.toString();
+    }
   }
 
   private getLineNoAndProgress(displayedPolylines: DisplayedPolylines) {
@@ -698,8 +717,8 @@ export class AnimationService {
       .multiplyBy(lineProgress)
       .add(pointA.multiplyBy(1 - lineProgress));
 
-    vehicleEntity.sprite.x = interpolatedPosition.x;
-    vehicleEntity.sprite.y = interpolatedPosition.y;
+    vehicleEntity.sprite.parent.x = interpolatedPosition.x;
+    vehicleEntity.sprite.parent.y = interpolatedPosition.y;
 
     // Set orientation
     const direction = pointB.subtract(pointA);
@@ -722,7 +741,7 @@ export class AnimationService {
       if (!vehicle.sprite.visible) continue;
       const distance = this.distanceBetweenPoints(
         point,
-        vehicle.sprite.position,
+        vehicle.sprite.parent.position,
       );
       if (distance <= minVisualDistance) nearVehicles.push(vehicle.data.id);
     }
@@ -953,7 +972,7 @@ export class AnimationService {
   private onZoomEnd(event: L.LeafletEvent) {
     const invScale = 1 / this.utils.getScale();
     this.vehicles.forEach((entity) => {
-      entity.sprite.scale.set(invScale);
+      entity.sprite.parent.scale.set(invScale);
     });
     this.passengersEntities.forEach((entity) => {
       entity.sprite.scale.set(invScale);
@@ -979,6 +998,7 @@ export class AnimationService {
 
     this.setVehiclePositions();
     this.setPassengerPositions();
+    this.updateVehiclePassengerCounters();
     this.filterEntities();
   }
 
