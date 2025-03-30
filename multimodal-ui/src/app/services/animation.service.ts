@@ -6,8 +6,8 @@ import {
   WritableSignal,
 } from '@angular/core';
 import * as L from 'leaflet';
-import { pixiOverlay } from 'leaflet';
 import 'leaflet-pixi-overlay';
+import { pixiOverlay } from 'leaflet';
 import { OutlineFilter } from 'pixi-filters';
 import * as PIXI from 'pixi.js';
 import {
