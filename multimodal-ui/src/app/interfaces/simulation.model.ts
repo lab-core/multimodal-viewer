@@ -256,7 +256,8 @@ export interface VehicleStopsUpdate {
   nextStops: Stop[];
 }
 
-export type Statistic = Record<string, Record<string, Record<string, number>>>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type Statistic = Record<string, any>;
 
 export interface StatisticUpdate {
   statistic: Statistic;
@@ -371,7 +372,8 @@ export interface AnimatedVehicle extends displayed<Vehicle> {
 export interface SimulationEnvironment {
   passengers: Record<string, Passenger>;
   vehicles: Record<string, Vehicle>;
-  statistic: Record<string, Record<string, Record<string, number>>>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  statistic: Statistic;
 
   /**
    * The timestamp of the last update before the snapshot
@@ -408,7 +410,8 @@ export interface RawSimulationEnvironment
   extends Pick<SimulationEnvironment, 'timestamp' | 'order'> {
   passengers: Passenger[];
   vehicles: Vehicle[];
-  statistic: Record<string, Record<string, Record<string, number>>>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  statistic: Statistic;
 }
 
 export interface RawSimulationState extends RawSimulationEnvironment {

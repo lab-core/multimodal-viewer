@@ -1,5 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { Statistic } from '../../interfaces/simulation.model';
 
 @Component({
   selector: 'app-recursive-statistic',
@@ -8,8 +9,7 @@ import { MatExpansionModule } from '@angular/material/expansion';
   styleUrl: './recursive-statistic.component.css',
 })
 export class RecursiveStatisticComponent {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  @Input() recursiveDict: Record<string, any>;
+  @Input() recursiveDict: Statistic;
 
   constructor() {
     this.recursiveDict = {};
