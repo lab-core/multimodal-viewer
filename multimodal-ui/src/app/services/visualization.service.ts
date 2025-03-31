@@ -351,6 +351,7 @@ export class VisualizationService {
           animationData,
           notDisplayedReason: currentAnimationData?.notDisplayedReason ?? null,
           passengerCount: 0,
+          currentLineIndex: null,
         };
       }
 

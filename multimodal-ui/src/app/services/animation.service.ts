@@ -432,7 +432,6 @@ export class AnimationService {
 
       const polylineIndex: number =
         animationData.displayedPolylines.currentPolylineIndex;
-      let lineIndex: number | null = null;
       let point: L.Point | null = null;
       if (animationData.notDisplayedReason !== null) {
         // Vehicle has an error
@@ -452,7 +451,7 @@ export class AnimationService {
         ]);
         vehicleEntity.sprite.parent.x = point.x;
         vehicleEntity.sprite.parent.y = point.y;
-        lineIndex =
+        vehicleEntity.data.currentLineIndex =
           polylineIndex === -1
             ? 0
             : (animationData.displayedPolylines.polylines[polylineIndex]
@@ -478,7 +477,7 @@ export class AnimationService {
           lineNo,
           lineProgress,
         );
-        lineIndex = lineNo;
+        vehicleEntity.data.currentLineIndex = lineNo;
       } else {
         // Vehicle has an unknown error
         vehicleEntity.show = false;
@@ -489,15 +488,15 @@ export class AnimationService {
         vehicleEntity.sprite.visible &&
         selectedVehicleId !== null &&
         selectedVehicleId === vehicle.id &&
-        lineIndex !== null &&
+        vehicleEntity.data.currentLineIndex !== null &&
         point !== null
       ) {
         this.frame_pointToFollow = this.utils.layerPointToLatLng(point);
         this.redrawPolyline(
           polylineIndex,
-          lineIndex,
+          vehicleEntity.data.currentLineIndex,
           point,
-          animationData.displayedPolylines,
+          animationData.displayedPolylines.polylines,
         );
       }
     }
@@ -586,6 +585,7 @@ export class AnimationService {
 
       const selectedPassengerId = this._selectedPassengerIdSignal();
       if (
+        passengerEntity.show &&
         passengerEntity.sprite.visible &&
         selectedPassengerId !== null &&
         selectedPassengerId === passenger.id
@@ -593,6 +593,7 @@ export class AnimationService {
         this.frame_pointToFollow = this.utils.layerPointToLatLng(
           new L.Point(passengerEntity.sprite.x, passengerEntity.sprite.y),
         );
+        this.redrawPassengerPolyline();
       }
     }
 
@@ -812,11 +813,97 @@ export class AnimationService {
     return Math.sqrt(dx * dx + dy * dy);
   }
 
+  private redrawPassengerPolyline() {
+    const selectedPassengerId = this._selectedPassengerIdSignal();
+    if (!selectedPassengerId) return;
+
+    const passenger = this.passengerEntitiesByPassengerId[selectedPassengerId];
+    if (!passenger) return;
+
+    const passengerAnimationData = passenger.data.animationData.find(
+      (data) =>
+        data.startTimestamp <= this.animationVisualizationTime &&
+        data.endTimestamp! >= this.animationVisualizationTime,
+    );
+
+    const legs = passenger.data.currentLeg
+      ? [
+          ...passenger.data.previousLegs,
+          passenger.data.currentLeg,
+          ...passenger.data.nextLegs,
+        ]
+      : [...passenger.data.previousLegs, ...passenger.data.nextLegs];
+
+    const polylines: Polyline[] = [];
+
+    let reachedCurrentVehicle = false;
+    let calculatedPolylineNo = 0;
+    let lineNo = 0;
+
+    // Collect all polylines
+    for (const leg of legs) {
+      if (
+        leg.assignedVehicleId === null ||
+        leg.boardingStopIndex === null ||
+        leg.alightingStopIndex === null
+      )
+        continue;
+
+      const vehicle = this.vehicleEntitiesByVehicleId[leg.assignedVehicleId];
+      if (!vehicle) continue;
+
+      const vehicleAnimationData = vehicle.data.animationData.find(
+        (data) =>
+          data.startTimestamp <= this.animationVisualizationTime &&
+          data.endTimestamp! >= this.animationVisualizationTime,
+      );
+      if (vehicleAnimationData === undefined) continue;
+
+      // Get polylines that passenger will be inside vehicle
+      const passengerPath =
+        vehicleAnimationData.displayedPolylines.polylines.slice(
+          leg.boardingStopIndex,
+          leg.alightingStopIndex,
+        );
+
+      // When we reach our waiting/current vehicle
+      if (vehicle.data.id === passengerAnimationData?.vehicleId) {
+        reachedCurrentVehicle = true;
+
+        const relativePolylineIndex =
+          vehicleAnimationData.displayedPolylines.currentPolylineIndex -
+          leg.boardingStopIndex;
+
+        // When vehicle did not reach him yet
+        if (relativePolylineIndex >= 0) {
+          calculatedPolylineNo += relativePolylineIndex;
+          lineNo = vehicle.data.currentLineIndex ?? 0;
+        }
+      } else if (!reachedCurrentVehicle)
+        calculatedPolylineNo += passengerPath.length;
+
+      polylines.push(...passengerPath);
+    }
+    if (polylines.length === 0) return;
+
+    if (calculatedPolylineNo < 0) {
+      calculatedPolylineNo = 0;
+      lineNo = 0;
+    }
+
+    this.redrawPolyline(
+      calculatedPolylineNo,
+      lineNo,
+      new L.Point(passenger.sprite.x, passenger.sprite.y),
+      polylines,
+    );
+  }
+
   private redrawPolyline(
     polylineNo: number,
     lineNo: number,
     interpolatedPoint: L.Point,
-    displayedPolylines: DisplayedPolylines,
+    polylines: Polyline[],
   ) {
     const BASE_LINE_WIDTH = 4;
     const MIN_WIDTH = 0.04; // By testing out values
@@ -825,8 +912,6 @@ export class AnimationService {
     const graphics = this.selectedEntityPolyline;
     graphics.clear();
     graphics.lineStyle(width, this.KELLY_GREEN, ALPHA);
-
-    const polylines = displayedPolylines.polylines;
 
     // Draw all polylines before the polylineNo
     for (let i = 0; i < polylineNo; ++i) {
