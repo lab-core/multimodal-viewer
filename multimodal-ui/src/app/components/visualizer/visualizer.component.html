@@ -49,7 +49,7 @@
   </mat-form-field>
 </form>
 
-  <!-- MARK: Tab Elements
+<!-- MARK: Tab Elements
  -->
 <app-visualizer-filter class="tab-content fade" [class.fade-show]="showFilter"
   [class.enable-pointer-events]="showFilter"></app-visualizer-filter>
@@ -97,11 +97,9 @@
   @else if (showStatistic) {
   <mat-card-content class="flex-1">
     <mat-card-title> Statistics </mat-card-title>
-
-    <mat-accordion multi="true">
-      <!--Recursive-->
-      <app-recursive-statistic [recursiveDict]="statistic" />
-    </mat-accordion>
+    
+    <!--Recursive-->
+    <app-recursive-statistic [recursiveDict]="statistic" />
   </mat-card-content>
   }
   <!--MARK: Status And Count
