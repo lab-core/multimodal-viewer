@@ -1,3 +1,5 @@
+import 'leaflet-pixi-overlay';
+
 import {
   computed,
   Injectable,
@@ -5,13 +7,12 @@ import {
   signal,
   WritableSignal,
 } from '@angular/core';
+import { color as d3Color } from 'd3-color';
+import { interpolateRgb as d3InterpolateRgb } from 'd3-interpolate';
 import * as L from 'leaflet';
-import 'leaflet-pixi-overlay';
 import { pixiOverlay } from 'leaflet';
 import { OutlineFilter } from 'pixi-filters';
 import * as PIXI from 'pixi.js';
-import { interpolateRgb as d3InterpolateRgb } from 'd3-interpolate';
-import { color as d3Color } from 'd3-color';
 import { Entity, EntityFilterMode } from '../interfaces/entity.model';
 import {
   AnimatedPassenger,
@@ -972,6 +973,8 @@ export class AnimationService {
       }
     }
 
+    graphics.lineStyle(width, this.LIGHT_GRAY, ALPHA);
+
     // Draw rest of polylines
     for (let i = polylineNo + 1; i < polylines.length; ++i) {
       const polyline = polylines[i];
@@ -997,7 +1000,8 @@ export class AnimationService {
     let firstStopHasBeenDrawn = false;
 
     // Draw stops that are completed
-    for (let i = 0; i < polylineNo; ++i) {
+    for (let i = 0; i <= polylineNo; ++i) {
+      if (i >= polylines.length) break;
       const polyline = polylines[i];
       if (polyline.polyline.length === 0) continue;
 
