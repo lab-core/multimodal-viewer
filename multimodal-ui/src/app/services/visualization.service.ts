@@ -350,6 +350,8 @@ export class VisualizationService {
           ...vehicle,
           animationData,
           notDisplayedReason: currentAnimationData?.notDisplayedReason ?? null,
+          passengerCount: 0,
+          currentLineIndex: null,
         };
       }
 

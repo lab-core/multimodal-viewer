@@ -364,6 +364,8 @@ export interface AnimatedPassenger extends displayed<Passenger> {
 
 export interface AnimatedVehicle extends displayed<Vehicle> {
   animationData: AnyVehicleAnimationData[];
+  passengerCount: number;
+  currentLineIndex: number | null;
 }
 
 /**
