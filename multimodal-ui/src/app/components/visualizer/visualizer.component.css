@@ -55,6 +55,7 @@
 .fade-show {
   opacity: 1;
 }
+
 /* ********************************** */
 
 .tabs {
@@ -92,14 +93,14 @@
 } */
 
 .information-panel {
+  --information-panel-width: 25rem;
   overflow: auto;
-
   position: absolute;
   /* 4rem for the control bar and 1rem for the gaps */
   bottom: calc(1rem + 4rem + 1rem);
   left: 1rem;
   top: 1rem;
-  width: 25rem;
+  width: var(--information-panel-width);
 }
 
 .show-information-panel-button {
@@ -134,6 +135,7 @@ mat-card-title:not(:first-child) {
   0% {
     transform: rotate(0deg);
   }
+
   100% {
     transform: rotate(360deg);
   }
@@ -155,7 +157,8 @@ mat-card-title:not(:first-child) {
 .favorite-content {
   display: flex;
   align-items: center;
-  height: 20px; /* Squeeze div because icon is too big */
+  height: 20px;
+  /* Squeeze div because icon is too big */
 }
 
 .favorite-content button {
@@ -165,33 +168,22 @@ mat-card-title:not(:first-child) {
 /* Favorites icon */
 
 /* Remove label padding */
-:host
-  ::ng-deep
-  .mdc-evolution-chip--with-avatar.mdc-evolution-chip--with-primary-graphic
-  .mdc-evolution-chip__action--primary {
+:host ::ng-deep .mdc-evolution-chip--with-avatar.mdc-evolution-chip--with-primary-graphic .mdc-evolution-chip__action--primary {
   padding: 0px;
 }
 
 /* Fix inner-uneven padding */
-:host
-  ::ng-deep
-  .mdc-evolution-chip--with-avatar.mdc-evolution-chip--with-primary-graphic
-  .mdc-evolution-chip__graphic {
+:host ::ng-deep .mdc-evolution-chip--with-avatar.mdc-evolution-chip--with-primary-graphic .mdc-evolution-chip__graphic {
   padding: 4px;
 }
-.statistic-title {
-  font-size: 17px;
-  font-weight: bold;
-}
 
-.indent {
-  padding-left: 1em;
-}
+.toggle-group {
+  --toggle-group-margin: 1%;
+  --toggle-group-border-radius: calc(var(--mat-sys-corner-medium) - var(--toggle-group-margin));
 
-.double-indent {
-  padding-left: 2em;
-}
-
-.top-indent {
-  padding-top: 1rem !important;
+  width: calc(var(--information-panel-width) - calc(var(--toggle-group-margin) * 2));
+  margin: var(--toggle-group-margin);
+  border-radius: var(--toggle-group-border-radius) var(--toggle-group-border-radius) 0px 0px;
+  box-shadow: none !important;
+  outline: solid 1px var(--mat-standard-button-toggle-divider-color, var(--mat-sys-outline));
 }
