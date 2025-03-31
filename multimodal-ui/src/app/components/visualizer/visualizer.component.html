@@ -62,23 +62,23 @@
 
 <!-- MARK: Information Panel
     -->
-@if (shouldShowInformationPanelSignal()) {
-<mat-card class="flex-column information-panel enable-pointer-events">
-  <div class="enable-pointer-events">
-    <section>
-      <mat-button-toggle-group class="toggle-group" mat-fab hideSingleSelectionIndicator name="tools" aria-label="tools"
-        [formControl]="informationTabControl">
-        <mat-button-toggle style="width: 100%;" value="information"><mat-icon>info</mat-icon></mat-button-toggle>
-        <mat-button-toggle style="width: 100%;" value="statistic"><mat-icon>bar_chart</mat-icon></mat-button-toggle>
-        <mat-button-toggle style="width: 100%;" value="statusAndCount"><mat-icon>star</mat-icon></mat-button-toggle>
-        <mat-button-toggle style="width: 100%;"
-          value="notDisplayedEntities"><mat-icon>visibility_off</mat-icon></mat-button-toggle>
-      </mat-button-toggle-group>
-    </section>
-  </div>
-  <!--MARK: Information
+<div class="enable-pointer-events information-panel-header">
+  <section>
+    <mat-button-toggle-group class=".information-group" mat-fab hideSingleSelectionIndicator name="tools"
+      aria-label="tools" [formControl]="informationTabControl">
+      <mat-button-toggle style="width: 100%;" value="information"><mat-icon>info</mat-icon></mat-button-toggle>
+      <mat-button-toggle style="width: 100%;" value="statistic"><mat-icon>bar_chart</mat-icon></mat-button-toggle>
+      <mat-button-toggle style="width: 100%;" value="statusAndCount"><mat-icon>star</mat-icon></mat-button-toggle>
+      <mat-button-toggle style="width: 100%;"
+        value="notDisplayedEntities"><mat-icon>visibility_off</mat-icon></mat-button-toggle>
+    </mat-button-toggle-group>
+  </section>
+</div>
+
+<!--MARK: Information
       -->
-  @if (showSimulationInformation) {
+<mat-card class="information-panel-content fade" [class.fade-show]="showSimulationInformation"
+  [class.enable-pointer-events]="showSimulationInformation">
   <mat-card-content class="flex-1">
     <mat-card-title>Simulation: {{ simulation.name }}</mat-card-title>
     <mat-card-subtitle>Source: {{ simulation.data }}</mat-card-subtitle>
@@ -91,20 +91,24 @@
       {{ simulation.configuration.maxTime ?? "null" }}
     </mat-card-subtitle>
   </mat-card-content>
-  }
-  <!--MARK: Statistic
-      -->
-  @else if (showStatistic) {
+</mat-card>
+
+<!--MARK: Statistic
+        -->
+<mat-card class="information-panel-content fade" [class.fade-show]="showStatistic"
+  [class.enable-pointer-events]="showStatistic">
   <mat-card-content class="flex-1">
     <mat-card-title> Statistics </mat-card-title>
-    
+
     <!--Recursive-->
     <app-recursive-statistic [recursiveDict]="statistic" />
   </mat-card-content>
-  }
-  <!--MARK: Status And Count
-      -->
-  @else if(showStatusAndCount) {
+</mat-card>
+
+<!--MARK: Status And Count
+        -->
+<mat-card class="information-panel-content fade" [class.fade-show]="showStatusAndCount"
+  [class.enable-pointer-events]="showStatusAndCount">
   <mat-card-content class="flex-1">
     <mat-card-title> Status and count </mat-card-title>
 
@@ -204,10 +208,12 @@
     </div>
     }
   </mat-card-content>
-  }
-  <!--MARK: Not Displayed Entities
+</mat-card>
+
+<!--MARK: Not Displayed Entities
   -->
-  @else if(showNotDisplayedEntities) {
+<mat-card class="information-panel-content fade" [class.fade-show]="showNotDisplayedEntities"
+  [class.enable-pointer-events]="showNotDisplayedEntities">
   <mat-card-content class="flex-1">
     <mat-card-title>Not Displayed Entities</mat-card-title>
 
@@ -249,17 +255,16 @@
       </mat-expansion-panel>
     </mat-accordion>
   </mat-card-content>
-  }
-
-  <mat-card-actions align="end">
-    <button mat-button (click)="hideInformationPanel()">Hide</button>
-  </mat-card-actions>
 </mat-card>
-} @else {
-<button mat-fab class="enable-pointer-events show-information-panel-button" matTooltip="Information panel (i)" (click)="showInformationPanel()">
+
+
+
+<!-- @else {
+<button mat-fab class="enable-pointer-events show-information-panel-button" matTooltip="Information panel (i)"
+  (click)="showInformationPanel()">
   <mat-icon>info</mat-icon>
 </button>
-}
+} -->
 
 <!-- MARK: Control Bar
   -->
@@ -274,7 +279,6 @@
   (pauseSimulation)="pauseSimulation($event)" (resumeSimulation)="resumeSimulation($event)"
   (stopSimulation)="stopSimulation($event)" (editSimulationConfiguration)="editSimulationConfiguration($event)" />
 }
-}
 
 <!-- MARK: Loading
 -->
@@ -286,4 +290,5 @@
     Loading visualization data...
   </div>
 </mat-chip>
+}
 }

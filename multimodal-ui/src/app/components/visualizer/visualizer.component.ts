@@ -426,7 +426,7 @@ export class VisualizerComponent implements OnDestroy {
         }
       }
     });
-    this.informationTabControl.setValue('information');
+    // this.informationTabControl.setValue('information');
 
     this.searchControl = this.formBuilder.control('');
     this.searchControl.valueChanges.subscribe((value) => {
