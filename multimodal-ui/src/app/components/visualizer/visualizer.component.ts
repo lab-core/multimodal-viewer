@@ -45,6 +45,7 @@ import { SimulationControlBarComponent } from '../simulation-control-bar/simulat
 import { SimulationControlPanelComponent } from '../simulation-control-panel/simulation-control-panel.component';
 import { VisualizerFilterComponent } from '../visualizer-filter/visualizer-filter.component';
 import { RecursiveStatisticComponent } from '../recursive-statistic/recursive-statistic.component';
+import hotkeys from 'hotkeys-js';
 
 export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 
@@ -76,7 +77,7 @@ export interface EntitySearch {
     MatButtonToggleModule,
     MatTabsModule,
     RecursiveStatisticComponent,
-],
+  ],
   providers: [VisualizationService, VisualizationFilterService],
   templateUrl: './visualizer.component.html',
   styleUrl: './visualizer.component.css',
@@ -389,6 +390,15 @@ export class VisualizerComponent implements OnDestroy {
       else if (value === 'favorites') this.showFavorites = true;
       else if (value === 'layers') this.showLayers = true;
     });
+
+    hotkeys('i', () => {
+      if (this.shouldShowInformationPanelSignal()) {
+        this.hideInformationPanel()
+      } else {
+        this.showInformationPanel();
+      }
+    });
+
     this.tabControl.setValue('search');
 
     this.informationTabControl = new FormControl('');
