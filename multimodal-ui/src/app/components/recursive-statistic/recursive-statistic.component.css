@@ -1,5 +1,5 @@
-.mat-expansion-panel-body {
-    padding: 0 !important;
+::ng-deep .mat-expansion-panel-body {
+    padding: 0 5px 5px 5px !important;
 }
 
 .indent {

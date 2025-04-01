@@ -22,7 +22,15 @@ export class RecursiveStatisticComponent {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   keys(record: Record<string, any>): string[] {
-    return Object.keys(record);
+    return Object.keys(record).sort((a, b) => {
+      const isANumber = typeof record[a] === 'number';
+      const isBNumber = typeof record[b] === 'number';
+
+      // Prioritize number keys (move them earlier)
+      if (isANumber && !isBNumber) return -1;
+      if (!isANumber && isBNumber) return 1;
+      return 0; // Keep original order for same types
+    });
   }
 
   formatNumber(num: number): string {
