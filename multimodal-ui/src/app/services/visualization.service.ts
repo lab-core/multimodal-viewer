@@ -19,6 +19,7 @@ import {
   DynamicPassengerAnimationData,
   DynamicVehicleAnimationData,
   getAllStops,
+  Leg,
   Passenger,
   PassengerAnimationData,
   Polyline,
@@ -840,44 +841,42 @@ export class VisualizationService {
       notDisplayedReason: null,
     };
 
-    if (passenger.currentLeg === null) {
-      basicAnimationData.notDisplayedReason = 'Passenger has no current leg';
+    let leg: Leg | null = null;
+
+    if (passenger.currentLeg !== null) {
+      leg = passenger.currentLeg;
+    } else if (passenger.nextLegs.length > 0) {
+      leg = passenger.nextLegs[0];
+    } else {
+      basicAnimationData.notDisplayedReason =
+        'Passenger has no current and next legs';
       return basicAnimationData;
     }
 
-    if (
-      passenger.currentLeg.assignedVehicleId === null ||
-      passenger.currentLeg.assignedTime === null
-    ) {
+    if (leg.assignedVehicleId === null || leg.assignedTime === null) {
       basicAnimationData.notDisplayedReason = 'Leg has no assigned vehicle';
       return basicAnimationData;
-    } else if (passenger.currentLeg.boardingStopIndex === null) {
+    } else if (leg.boardingStopIndex === null) {
       basicAnimationData.notDisplayedReason = 'Leg has no boarding stop';
       return basicAnimationData;
-    } else if (passenger.currentLeg.alightingStopIndex === null) {
+    } else if (leg.alightingStopIndex === null) {
       basicAnimationData.notDisplayedReason = 'Leg has no alighting stop';
       return basicAnimationData;
     }
 
-    basicAnimationData.vehicleId = passenger.currentLeg.assignedVehicleId;
+    basicAnimationData.vehicleId = leg.assignedVehicleId;
 
     // Is at the boarding stop
-    if (
-      passenger.currentLeg.boardingTime === null ||
-      passenger.currentLeg.boardingTime > currentTimestamp
-    ) {
+    if (leg.boardingTime === null || leg.boardingTime > currentTimestamp) {
       const staticAnimationData: StaticPassengerAnimationData = {
         ...basicAnimationData,
-        stopIndex: passenger.currentLeg.boardingStopIndex,
+        stopIndex: leg.boardingStopIndex,
       };
       return staticAnimationData;
     }
 
     // Is between boarding and alighting stop
-    if (
-      passenger.currentLeg.alightingTime === null ||
-      passenger.currentLeg.alightingTime > currentTimestamp
-    ) {
+    if (leg.alightingTime === null || leg.alightingTime > currentTimestamp) {
       const dynamicAnimationData: DynamicPassengerAnimationData = {
         ...basicAnimationData,
         isOnBoard: true,
@@ -889,7 +888,7 @@ export class VisualizationService {
     // Is at the alighting stop
     const staticAnimationData: StaticPassengerAnimationData = {
       ...basicAnimationData,
-      stopIndex: passenger.currentLeg.alightingStopIndex,
+      stopIndex: leg.alightingStopIndex,
     };
 
     return staticAnimationData;
