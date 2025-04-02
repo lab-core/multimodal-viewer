@@ -805,4 +805,8 @@ export class VisualizerComponent implements OnDestroy {
   async leaveVisualization() {
     await this.router.navigate(['home']);
   }
+
+  onSearchInputClick() {
+    this.animationService.unselectEntity();
+  }
 }
