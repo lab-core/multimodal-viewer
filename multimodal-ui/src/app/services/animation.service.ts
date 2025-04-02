@@ -1102,21 +1102,23 @@ export class AnimationService {
   }
 
   private calculateSpriteScales() {
-    const MAX_ZOOM = 15;
-    const RELATiVE_MIN_SCALE = 0.7;
-    const RELATIVE_MAX_SCALE = 1;
+    const MAX_SPRITE_SCALE = 1;
+    const MIN_SPRITE_SCALE = 0.2;
+
+    const MAX_SPRITE_ZOOM = 15;
+    const SCALE_POWER = 1.15;
 
     const map = this.utils.getMap();
-    const minZoom = map.getMinZoom();
-    const maxZoom = MAX_ZOOM;
+    const maxZoom = MAX_SPRITE_ZOOM;
     const currentZoom = map.getZoom();
 
-    let wantedRelativeScale =
-      ((RELATIVE_MAX_SCALE - RELATiVE_MIN_SCALE) * (currentZoom - minZoom)) /
-        (maxZoom - minZoom) +
-      RELATiVE_MIN_SCALE;
+    const zoomPow = maxZoom - currentZoom;
 
-    wantedRelativeScale = Math.min(wantedRelativeScale, 1);
+    let wantedRelativeScale = Math.pow(SCALE_POWER, -zoomPow);
+    wantedRelativeScale = Math.min(
+      Math.max(wantedRelativeScale, MIN_SPRITE_SCALE),
+      MAX_SPRITE_SCALE,
+    );
 
     this.vehicleSpriteScales = wantedRelativeScale / this.utils.getScale();
     this.passengerSpriteScales = this.vehicleSpriteScales * 0.75;
