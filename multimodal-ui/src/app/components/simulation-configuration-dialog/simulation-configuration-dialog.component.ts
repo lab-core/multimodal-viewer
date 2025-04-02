@@ -240,11 +240,20 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
       formData.append('file', blob, 'folder.zip');
 
       this.httpService
-        .importFolder(contentType, baseFolder, formData)
-        .subscribe((response) => {
+      .importFolder(contentType, baseFolder, formData)
+      .subscribe({
+        next: (response) => {
           console.log('Upload successful:', response);
-        });
-    };
+          this.refreshAvailableData();
+          setTimeout(() => {
+            this.dataFormControl.setValue(baseFolder);
+          }, 100);
+        },
+        error: (error) => {
+          console.error('Upload failed:', error);
+        }
+      });
+  };
 
     input.addEventListener('change', (event: Event) => {
       handleFileChange(event).catch((error) => {
