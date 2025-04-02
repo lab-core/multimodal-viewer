@@ -1101,7 +1101,7 @@ export class AnimationService {
   }
 
   private calculateSpriteScales() {
-    const RELATiVE_MIN_SCALE = 0.5;
+    const RELATiVE_MIN_SCALE = 0.7;
     const RELATIVE_MAX_SCALE = 1;
 
     const map = this.utils.getMap();
@@ -1113,8 +1113,6 @@ export class AnimationService {
       ((RELATIVE_MAX_SCALE - RELATiVE_MIN_SCALE) * (maxZoom - currentZoom)) /
         (maxZoom - minZoom) +
       RELATiVE_MIN_SCALE;
-
-    console.log('wantedRelativeScale', wantedRelativeScale);
 
     this.spriteScales = wantedRelativeScale / this.utils.getScale();
   }

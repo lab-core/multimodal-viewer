@@ -23,6 +23,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { CustomSprite } from '../../interfaces/entity.model';
 import { SpritesService } from '../../services/sprites.service';
 import { MatDividerModule } from '@angular/material/divider';
+import { Jimp } from 'jimp';
 
 export type EditMapIconsDialogData = null;
 
@@ -83,17 +84,20 @@ export class EditMapIconsDialogComponent {
     if (!input || !input.files) return;
 
     const reader = new FileReader();
-    reader.onloadend = () => {
-      console.log(reader.result);
+    reader.onloadend = async () => {
       if (!reader.result) return;
 
+      const image = await Jimp.read(reader.result);
+      image.resize({ w: 40 });
+      const base64url = await image.getBase64('image/png');
+
       if (this.selectedSpriteIndex !== -1) {
-        this.setCustomSprite(this.selectedSpriteIndex, reader.result as string);
+        this.setCustomSprite(this.selectedSpriteIndex, base64url);
       } else {
         if (this.selectedDefaultSprite === 'vehicle')
-          this.defaultVehicleSprite.set(reader.result as string);
+          this.defaultVehicleSprite.set(base64url);
         else if (this.selectedDefaultSprite === 'passenger')
-          this.defaultPassengerSprite.set(reader.result as string);
+          this.defaultPassengerSprite.set(base64url);
       }
     };
 
