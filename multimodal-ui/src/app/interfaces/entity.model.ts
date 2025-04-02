@@ -1,14 +1,10 @@
-import { Sprite } from 'pixi.js';
+import { BitmapText, Sprite } from 'pixi.js';
 
 export interface Entity<T> {
   sprite: Sprite;
+  text?: BitmapText;
   show: boolean;
   data: T;
-}
-
-// Maybe will change (VehicleEntity extends Sprite?)
-export interface EntityOwner<T> extends Sprite {
-  entity: T;
 }
 
 export type EntityFilterMode = 'all' | 'favorites';
