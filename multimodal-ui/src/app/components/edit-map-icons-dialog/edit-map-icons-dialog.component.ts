@@ -21,7 +21,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { CustomSprite } from '../../interfaces/entity.model';
-import { SpritesService } from '../../services/sprites.service';
+import { SpriteSaveData, SpritesService } from '../../services/sprites.service';
 import { MatDividerModule } from '@angular/material/divider';
 import { Jimp } from 'jimp';
 
@@ -104,6 +104,25 @@ export class EditMapIconsDialogComponent {
     reader.readAsDataURL(input.files[0]);
   }
 
+  onFileImport(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input || !input.files) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (!reader.result) return;
+
+      const spriteSaveData = JSON.parse(
+        reader.result as string,
+      ) as SpriteSaveData;
+      this.defaultVehicleSprite.set(spriteSaveData.defaultVehicleSprite);
+      this.defaultPassengerSprite.set(spriteSaveData.defaultPassengerSprite);
+      this.customSprites.set(spriteSaveData.customSprites);
+    };
+
+    reader.readAsText(input.files[0]);
+  }
+
   uploadDefaultSprite(type: 'vehicle' | 'passenger') {
     this.selectedSpriteIndex = -1;
     this.selectedDefaultSprite = type;
@@ -142,6 +161,25 @@ export class EditMapIconsDialogComponent {
       customSprites[index].url = url;
       return [...customSprites];
     });
+  }
+
+  exportSprites() {
+    const saveData: SpriteSaveData = {
+      defaultVehicleSprite: this.defaultVehicleSprite(),
+      defaultPassengerSprite: this.defaultPassengerSprite(),
+      customSprites: this.customSprites(),
+    };
+
+    const blob = new Blob([JSON.stringify(saveData, null, 2)], {
+      type: 'application/json',
+    });
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `multimodal-icons.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   onSave() {

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { CustomSprite } from '../interfaces/entity.model';
 
-interface SpriteSaveData {
+export interface SpriteSaveData {
   defaultVehicleSprite: string;
   defaultPassengerSprite: string;
   customSprites: CustomSprite[];

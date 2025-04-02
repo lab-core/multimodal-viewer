@@ -7,6 +7,12 @@
     class="file-upload"
     (change)="onFileSelected($event)"
   />
+  <input
+    #importUpload
+    type="file"
+    class="file-upload"
+    (change)="onFileImport($event)"
+  />
   <div>
     <div>
       <p>The icons must have dimensions close to a square.</p>
@@ -32,7 +38,7 @@
 
           <button
             mat-icon-button
-            [matTooltip]="'Upload image'"
+            matTooltip="Upload image"
             (click)="uploadCustomSprite($index)"
           >
             <mat-icon>upload</mat-icon>
@@ -41,7 +47,7 @@
           <mat-form-field
             class="compact-input"
             appearance="outline"
-            [subscriptSizing]="'dynamic'"
+            subscriptSizing="dynamic"
           >
             <input
               matInput
@@ -69,7 +75,7 @@
 
         <button
           mat-icon-button
-          [matTooltip]="'Upload image'"
+          matTooltip="Upload image"
           (click)="uploadDefaultSprite('vehicle')"
         >
           <mat-icon>upload</mat-icon>
@@ -78,14 +84,14 @@
         <mat-form-field
           class="compact-input"
           appearance="outline"
-          [subscriptSizing]="'dynamic'"
+          subscriptSizing="dynamic"
         >
           <input matInput disabled value="Default Vehicle Icon" />
         </mat-form-field>
 
         <button
           mat-icon-button
-          [matTooltip]="'Reset icon'"
+          matTooltip="Reset icon"
           (click)="resetDefaultSprite('vehicle')"
         >
           <mat-icon>restart_alt</mat-icon>
@@ -99,7 +105,7 @@
 
         <button
           mat-icon-button
-          [matTooltip]="'Upload image'"
+          matTooltip="Upload image"
           (click)="uploadDefaultSprite('passenger')"
         >
           <mat-icon>upload</mat-icon>
@@ -108,14 +114,14 @@
         <mat-form-field
           class="compact-input"
           appearance="outline"
-          [subscriptSizing]="'dynamic'"
+          subscriptSizing="dynamic"
         >
           <input matInput disabled value="Default Passenger Icon" />
         </mat-form-field>
 
         <button
           mat-icon-button
-          [matTooltip]="'Reset icon'"
+          matTooltip="Reset icon"
           (click)="resetDefaultSprite('passenger')"
         >
           <mat-icon>restart_alt</mat-icon>
@@ -126,7 +132,19 @@
 </mat-dialog-content>
 
 <mat-dialog-actions>
-  <button mat-button mat-dialog-close>Cancel</button>
+  <div class="file-porters">
+    <button mat-icon-button matTooltip="Export JSON" (click)="exportSprites()">
+      <mat-icon>download_for_offline</mat-icon>
+    </button>
+    <button
+      mat-icon-button
+      matTooltip="Import JSON"
+      (click)="importUpload.click()"
+    >
+      <mat-icon>upload_file</mat-icon>
+    </button>
+  </div>
 
+  <button mat-button mat-dialog-close>Cancel</button>
   <button mat-button (click)="onSave()">Save</button>
 </mat-dialog-actions>

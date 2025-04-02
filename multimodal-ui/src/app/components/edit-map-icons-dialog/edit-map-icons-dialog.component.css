@@ -37,3 +37,11 @@ p {
 .file-upload {
   display: none;
 }
+
+.file-porters {
+  margin-right: auto; /* Move buttons to the left */
+
+  button {
+    color: var(--mat-sys-primary);
+  }
+}
