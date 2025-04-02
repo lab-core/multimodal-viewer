@@ -1,0 +1,116 @@
+<h2 mat-dialog-title>Edit Map Icons</h2>
+
+<mat-dialog-content>
+  <input
+    #fileUpload
+    type="file"
+    class="file-upload"
+    (change)="onFileSelected($event)"
+  />
+  <div>
+    <div>
+      <p>The icons must have the dimensions close to a square.</p>
+      <p>The uploaded icons will be rescaled to 40px in width.</p>
+    </div>
+
+    <div class="add-container">
+      <button class="add-button" mat-button (click)="addSprite()">
+        Add Custom Icon
+      </button>
+    </div>
+
+    @if (customSprites().length === 0) {
+      <p>You have no custom sprites.</p>
+    }
+
+    <section class="custom-icon-list">
+      @for (customSprites of customSprites(); track $index) {
+        <div class="custom-item">
+          <div class="custom-icon">
+            <img width="40" alt="icon" [src]="customSprites.url" />
+          </div>
+
+          <button
+            mat-icon-button
+            [matTooltip]="'Upload image'"
+            (click)="uploadSprite($index)"
+          >
+            <mat-icon>upload</mat-icon>
+          </button>
+
+          <mat-form-field
+            class="compact-input"
+            appearance="outline"
+            [subscriptSizing]="'dynamic'"
+          >
+            <input
+              matInput
+              placeholder="Type a vehicle mode..."
+              [(ngModel)]="customSprites.mode"
+            />
+          </mat-form-field>
+
+          <button
+            mat-icon-button
+            [matTooltip]="'Remove custom icon'"
+            (click)="removeSprite($index)"
+          >
+            <mat-icon>cancel</mat-icon>
+          </button>
+        </div>
+      }
+
+      <mat-divider></mat-divider>
+
+      <div class="custom-item">
+        <div class="custom-icon">
+          <img width="40" alt="icon" src="/images/sample-bus.png" />
+        </div>
+
+        <button mat-icon-button [matTooltip]="'Upload image'">
+          <mat-icon>upload</mat-icon>
+        </button>
+
+        <mat-form-field
+          class="compact-input"
+          appearance="outline"
+          [subscriptSizing]="'dynamic'"
+        >
+          <input matInput disabled value="Default Vehicle Icon" />
+        </mat-form-field>
+
+        <button mat-icon-button [matTooltip]="'Reset icon'">
+          <mat-icon>restart_alt</mat-icon>
+        </button>
+      </div>
+
+      <div class="custom-item">
+        <div class="custom-icon">
+          <img width="40" alt="icon" src="/images/sample-walk.png" />
+        </div>
+
+        <button mat-icon-button [matTooltip]="'Upload image'">
+          <mat-icon>upload</mat-icon>
+        </button>
+
+        <mat-form-field
+          class="compact-input"
+          appearance="outline"
+          [subscriptSizing]="'dynamic'"
+        >
+          <input matInput disabled value="Default Passenger Icon" />
+        </mat-form-field>
+
+        <button mat-icon-button [matTooltip]="'Reset icon'">
+          <mat-icon>restart_alt</mat-icon>
+        </button>
+      </div>
+    </section>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions>
+  <button mat-button mat-dialog-close>Cancel</button>
+
+  <button mat-button (click)="onSave()">Save</button>
+</mat-dialog-actions>

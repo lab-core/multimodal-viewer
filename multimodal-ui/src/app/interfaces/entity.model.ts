@@ -8,3 +8,8 @@ export interface Entity<T> {
 }
 
 export type EntityFilterMode = 'all' | 'favorites';
+
+export interface CustomSprite {
+  mode: string;
+  url: string | ArrayBuffer;
+}

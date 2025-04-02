@@ -116,6 +116,7 @@ export class AnimationService {
   private endTimestamp: number | null = null;
 
   private lastScale = 0;
+  private spriteScales = 1;
   private utils!: L.PixiOverlayUtils;
 
   private selectedEntityPolyline: PIXI.Graphics = new PIXI.Graphics();
@@ -233,7 +234,7 @@ export class AnimationService {
   private addVehicle(vehicle: AnimatedVehicle, type = 'sample-bus'): void {
     const vehicleContainer = new PIXI.Container();
     const sprite = PIXI.Sprite.from(`images/${type}.png`);
-    vehicleContainer.scale.set(1 / this.utils.getScale());
+    vehicleContainer.scale.set(this.spriteScales);
     sprite.anchor.set(0.5, 0.5); // Center texture on coordinate
     vehicleContainer.addChild(sprite);
 
@@ -257,7 +258,7 @@ export class AnimationService {
   private addPassenger(passenger: AnimatedPassenger): void {
     const sprite = PIXI.Sprite.from('images/sample-walk.png');
     sprite.anchor.set(0.5, 0.5); // Center texture on coordinate
-    sprite.scale.set(1 / this.utils.getScale());
+    sprite.scale.set(this.spriteScales);
 
     const entity: Entity<AnimatedPassenger> = {
       data: passenger,
@@ -1075,6 +1076,7 @@ export class AnimationService {
   // Called once when Pixi layer is added.
   private onAdd(utils: L.PixiOverlayUtils) {
     this.lastScale = utils.getScale();
+    this.calculateSpriteScales();
   }
 
   private onMoveEnd(event: L.LeafletEvent) {
@@ -1084,13 +1086,33 @@ export class AnimationService {
   }
 
   private onZoomEnd(event: L.LeafletEvent) {
-    const invScale = 1 / this.utils.getScale();
+    this.calculateSpriteScales();
+
     this.vehicles.forEach((entity) => {
-      entity.sprite.parent.scale.set(invScale);
+      entity.sprite.parent.scale.set(this.spriteScales);
     });
     this.passengersEntities.forEach((entity) => {
-      entity.sprite.scale.set(invScale);
+      entity.sprite.scale.set(this.spriteScales);
     });
+  }
+
+  private calculateSpriteScales() {
+    const RELATiVE_MIN_SCALE = 0.5;
+    const RELATIVE_MAX_SCALE = 1;
+
+    const map = this.utils.getMap();
+    const minZoom = map.getMaxZoom();
+    const maxZoom = map.getMinZoom();
+    const currentZoom = map.getZoom();
+
+    const wantedRelativeScale =
+      ((RELATIVE_MAX_SCALE - RELATiVE_MIN_SCALE) * (maxZoom - currentZoom)) /
+        (maxZoom - minZoom) +
+      RELATiVE_MIN_SCALE;
+
+    console.log('wantedRelativeScale', wantedRelativeScale);
+
+    this.spriteScales = wantedRelativeScale / this.utils.getScale();
   }
 
   private onRedraw(event: L.LeafletEvent) {
