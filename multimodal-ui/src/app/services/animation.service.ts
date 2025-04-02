@@ -1225,4 +1225,9 @@ export class AnimationService {
       (shouldFollowEntity) => !shouldFollowEntity,
     );
   }
+
+  findPassengerName(id: string) {
+    return this.passengerEntitiesByPassengerId[id].data.name as string; 
+  }
+
 }
