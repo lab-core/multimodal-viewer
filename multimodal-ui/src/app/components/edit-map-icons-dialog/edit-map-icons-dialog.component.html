@@ -9,18 +9,18 @@
   />
   <div>
     <div>
-      <p>The icons must have the dimensions close to a square.</p>
+      <p>The icons must have dimensions close to a square.</p>
       <p>The uploaded icons will be rescaled to 40px in width.</p>
     </div>
 
     <div class="add-container">
-      <button class="add-button" mat-button (click)="addSprite()">
+      <button class="add-button" mat-button (click)="addCustomSprite()">
         Add Custom Icon
       </button>
     </div>
 
     @if (customSprites().length === 0) {
-      <p>You have no custom sprites.</p>
+      <p>You have no custom icons.</p>
     }
 
     <section class="custom-icon-list">
@@ -33,7 +33,7 @@
           <button
             mat-icon-button
             [matTooltip]="'Upload image'"
-            (click)="uploadSprite($index)"
+            (click)="uploadCustomSprite($index)"
           >
             <mat-icon>upload</mat-icon>
           </button>
@@ -53,7 +53,7 @@
           <button
             mat-icon-button
             [matTooltip]="'Remove custom icon'"
-            (click)="removeSprite($index)"
+            (click)="removeCustomSprite($index)"
           >
             <mat-icon>cancel</mat-icon>
           </button>
@@ -64,10 +64,14 @@
 
       <div class="custom-item">
         <div class="custom-icon">
-          <img width="40" alt="icon" src="/images/sample-bus.png" />
+          <img width="40" alt="icon" [src]="defaultVehicleSprite()" />
         </div>
 
-        <button mat-icon-button [matTooltip]="'Upload image'">
+        <button
+          mat-icon-button
+          [matTooltip]="'Upload image'"
+          (click)="uploadDefaultSprite('vehicle')"
+        >
           <mat-icon>upload</mat-icon>
         </button>
 
@@ -79,17 +83,25 @@
           <input matInput disabled value="Default Vehicle Icon" />
         </mat-form-field>
 
-        <button mat-icon-button [matTooltip]="'Reset icon'">
+        <button
+          mat-icon-button
+          [matTooltip]="'Reset icon'"
+          (click)="resetDefaultSprite('vehicle')"
+        >
           <mat-icon>restart_alt</mat-icon>
         </button>
       </div>
 
       <div class="custom-item">
         <div class="custom-icon">
-          <img width="40" alt="icon" src="/images/sample-walk.png" />
+          <img width="40" alt="icon" [src]="defaultPassengerSprite()" />
         </div>
 
-        <button mat-icon-button [matTooltip]="'Upload image'">
+        <button
+          mat-icon-button
+          [matTooltip]="'Upload image'"
+          (click)="uploadDefaultSprite('passenger')"
+        >
           <mat-icon>upload</mat-icon>
         </button>
 
@@ -101,7 +113,11 @@
           <input matInput disabled value="Default Passenger Icon" />
         </mat-form-field>
 
-        <button mat-icon-button [matTooltip]="'Reset icon'">
+        <button
+          mat-icon-button
+          [matTooltip]="'Reset icon'"
+          (click)="resetDefaultSprite('passenger')"
+        >
           <mat-icon>restart_alt</mat-icon>
         </button>
       </div>

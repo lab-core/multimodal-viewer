@@ -11,5 +11,5 @@ export type EntityFilterMode = 'all' | 'favorites';
 
 export interface CustomSprite {
   mode: string;
-  url: string | ArrayBuffer;
+  url: string;
 }

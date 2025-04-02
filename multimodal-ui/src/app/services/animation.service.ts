@@ -28,6 +28,7 @@ import {
   Vehicle,
 } from '../interfaces/simulation.model';
 import { FavoriteEntitiesService } from './favorite-entities.service';
+import { SpritesService } from './sprites.service';
 
 @Injectable({
   providedIn: 'root',
@@ -141,6 +142,7 @@ export class AnimationService {
 
   constructor(
     private readonly favoriteEntitiesService: FavoriteEntitiesService,
+    private readonly spriteService: SpritesService,
   ) {
     void PIXI.Assets.load(this.BITMAPTEXT_URL);
   }
@@ -231,9 +233,11 @@ export class AnimationService {
     this.lastVisualisationTime = visualizationTime;
   }
 
-  private addVehicle(vehicle: AnimatedVehicle, type = 'sample-bus'): void {
+  private addVehicle(vehicle: AnimatedVehicle): void {
     const vehicleContainer = new PIXI.Container();
-    const sprite = PIXI.Sprite.from(`images/${type}.png`);
+    const sprite = PIXI.Sprite.from(
+      this.spriteService.getVehicleSprite(vehicle.mode ?? ''),
+    );
     vehicleContainer.scale.set(this.spriteScales);
     sprite.anchor.set(0.5, 0.5); // Center texture on coordinate
     vehicleContainer.addChild(sprite);
@@ -256,7 +260,7 @@ export class AnimationService {
   }
 
   private addPassenger(passenger: AnimatedPassenger): void {
-    const sprite = PIXI.Sprite.from('images/sample-walk.png');
+    const sprite = PIXI.Sprite.from(this.spriteService.defaultPassengerSprite);
     sprite.anchor.set(0.5, 0.5); // Center texture on coordinate
     sprite.scale.set(this.spriteScales);
 

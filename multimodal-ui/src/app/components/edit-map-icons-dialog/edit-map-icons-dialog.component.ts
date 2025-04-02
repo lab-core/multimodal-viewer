@@ -2,18 +2,10 @@ import {
   Component,
   ElementRef,
   signal,
-  Signal,
   viewChild,
   WritableSignal,
 } from '@angular/core';
-import {
-  FormBuilder,
-  FormControl,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import {
@@ -30,7 +22,6 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { CustomSprite } from '../../interfaces/entity.model';
 import { SpritesService } from '../../services/sprites.service';
-import { read } from 'fs';
 import { MatDividerModule } from '@angular/material/divider';
 
 export type EditMapIconsDialogData = null;
@@ -64,8 +55,13 @@ export interface EditMapIconsDialogResult {
 })
 export class EditMapIconsDialogComponent {
   private selectedSpriteIndex = 0;
+  private selectedDefaultSprite: 'vehicle' | 'passenger' = 'vehicle';
 
   customSprites: WritableSignal<CustomSprite[]> = signal([]);
+
+  defaultVehicleSprite: WritableSignal<string> = signal('');
+
+  defaultPassengerSprite: WritableSignal<string> = signal('');
 
   uploadButton =
     viewChild.required<ElementRef<HTMLButtonElement>>('fileUpload');
@@ -76,17 +72,13 @@ export class EditMapIconsDialogComponent {
       EditMapIconsDialogResult
     >,
     private readonly spritesService: SpritesService,
-  ) {}
-
-  uploadSprite(index: number) {
-    this.selectedSpriteIndex = index;
-    this.uploadButton().nativeElement.click();
+  ) {
+    this.defaultVehicleSprite.set(this.spritesService.defaultVehicleSprite);
+    this.defaultPassengerSprite.set(this.spritesService.defaultPassengerSprite);
+    this.customSprites.set(this.spritesService.customSprites);
   }
 
   onFileSelected(event: Event) {
-    console.log(`index: ${this.selectedSpriteIndex}`);
-    console.log(event);
-
     const input = event.target as HTMLInputElement;
     if (!input || !input.files) return;
 
@@ -94,19 +86,45 @@ export class EditMapIconsDialogComponent {
     reader.onloadend = () => {
       console.log(reader.result);
       if (!reader.result) return;
-      console.log('setting it');
-      this.setSprite(this.selectedSpriteIndex, reader.result);
+
+      if (this.selectedSpriteIndex !== -1) {
+        this.setCustomSprite(this.selectedSpriteIndex, reader.result as string);
+      } else {
+        if (this.selectedDefaultSprite === 'vehicle')
+          this.defaultVehicleSprite.set(reader.result as string);
+        else if (this.selectedDefaultSprite === 'passenger')
+          this.defaultPassengerSprite.set(reader.result as string);
+      }
     };
+
     reader.readAsDataURL(input.files[0]);
   }
 
-  addSprite() {
+  uploadDefaultSprite(type: 'vehicle' | 'passenger') {
+    this.selectedSpriteIndex = -1;
+    this.selectedDefaultSprite = type;
+    this.uploadButton().nativeElement.click();
+  }
+
+  resetDefaultSprite(type: 'vehicle' | 'passenger') {
+    if (type === 'vehicle')
+      this.defaultVehicleSprite.set('/images/sample-bus.png');
+    else if (type === 'passenger')
+      this.defaultPassengerSprite.set('/images/sample-walk.png');
+  }
+
+  uploadCustomSprite(index: number) {
+    this.selectedSpriteIndex = index;
+    this.uploadButton().nativeElement.click();
+  }
+
+  addCustomSprite() {
     this.customSprites.update((customSprites) => {
       return [...customSprites, { mode: '', url: '/images/sample-bus.png' }];
     });
   }
 
-  removeSprite(index: number) {
+  removeCustomSprite(index: number) {
     if (index >= this.customSprites().length) return;
     this.customSprites.update((customSprites) => {
       customSprites.splice(index, 1);
@@ -114,7 +132,7 @@ export class EditMapIconsDialogComponent {
     });
   }
 
-  setSprite(index: number, url: string | ArrayBuffer) {
+  setCustomSprite(index: number, url: string) {
     if (index >= this.customSprites().length) return;
     this.customSprites.update((customSprites) => {
       customSprites[index].url = url;
@@ -122,5 +140,12 @@ export class EditMapIconsDialogComponent {
     });
   }
 
-  onSave() {}
+  onSave() {
+    this.spritesService.saveSpriteData(
+      this.defaultVehicleSprite(),
+      this.defaultPassengerSprite(),
+      this.customSprites(),
+    );
+    this.dialogRef.close();
+  }
 }
