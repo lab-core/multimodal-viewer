@@ -163,9 +163,11 @@ export class EditMapIconsDialogComponent {
 
   resetDefaultSprite(type: 'vehicle' | 'passenger') {
     if (type === 'vehicle')
-      this.defaultVehicleSprite.set('/images/sample-bus.png');
+      this.defaultVehicleSprite.set(this.spritesService.DEFAULT_VEHICLE_SPRITE);
     else if (type === 'passenger')
-      this.defaultPassengerSprite.set('/images/sample-walk.png');
+      this.defaultPassengerSprite.set(
+        this.spritesService.DEFAULT_PASSENGER_SPRITE,
+      );
   }
 
   uploadCustomSprite(index: number) {
@@ -175,7 +177,10 @@ export class EditMapIconsDialogComponent {
 
   addCustomSprite() {
     this.customSprites.update((customSprites) => {
-      return [...customSprites, { mode: '', url: '/images/sample-bus.png' }];
+      return [
+        ...customSprites,
+        { mode: '', url: this.spritesService.DEFAULT_VEHICLE_SPRITE },
+      ];
     });
   }
 

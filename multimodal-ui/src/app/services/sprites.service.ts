@@ -11,12 +11,14 @@ export interface SpriteSaveData {
   providedIn: 'root',
 })
 export class SpritesService {
+  readonly DEFAULT_VEHICLE_SPRITE = '/images/sample-bus.png';
+  readonly DEFAULT_PASSENGER_SPRITE = '/images/sample-wait.png';
   readonly SPRITE_SIZE = 40;
 
   private readonly KEY_SPRITES: string = 'multimodal.sprites';
 
-  private _defaultVehicleSprite = '/images/sample-bus.png';
-  private _defaultPassengerSprite = '/images/sample-walk.png';
+  private _defaultVehicleSprite = this.DEFAULT_VEHICLE_SPRITE;
+  private _defaultPassengerSprite = this.DEFAULT_PASSENGER_SPRITE;
   private _customSprites: CustomSprite[] = [];
 
   private _spriteSet = new Map<string, string>();
