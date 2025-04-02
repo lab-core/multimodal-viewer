@@ -46,6 +46,12 @@ export interface SimulationConfigurationDialogResult {
   configuration: SimulationConfiguration;
 }
 
+export interface ImportFolderResponse {
+  message: string;
+  actual_folder_name?: string;
+  error?: string;
+}
+
 @Component({
   selector: 'app-simulation-configuration-dialog',
   imports: [
@@ -245,8 +251,11 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
         next: (response) => {
           console.log('Upload successful:', response);
           this.refreshAvailableData();
+          const actualFolderName = 'actual_folder_name' in response 
+            ? response.actual_folder_name as string
+            : baseFolder;
           setTimeout(() => {
-            this.dataFormControl.setValue(baseFolder);
+            this.dataFormControl.setValue(actualFolderName);
           }, 100);
         },
         error: (error) => {
