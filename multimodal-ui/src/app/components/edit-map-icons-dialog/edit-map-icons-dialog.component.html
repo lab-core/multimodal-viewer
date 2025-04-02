@@ -5,18 +5,25 @@
     #fileUpload
     type="file"
     class="file-upload"
+    accept=".png, .jpg, .jpeg, .bmp"
     (change)="onFileSelected($event)"
   />
   <input
     #importUpload
     type="file"
     class="file-upload"
+    accept=".json"
     (change)="onFileImport($event)"
   />
   <div>
-    <div>
+    <div class="text-content">
       <p>The icons must have dimensions close to a square.</p>
-      <p>The uploaded icons will be rescaled to 40px in width.</p>
+      <p>
+        The uploaded icons will be rescaled to {{ SPRITE_SIZE }}px in width.
+      </p>
+      @if (currentError !== "") {
+        <mat-error>{{ currentError }}</mat-error>
+      }
     </div>
 
     <div class="add-container">

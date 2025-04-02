@@ -11,6 +11,8 @@ export interface SpriteSaveData {
   providedIn: 'root',
 })
 export class SpritesService {
+  readonly SPRITE_SIZE = 40;
+
   private readonly KEY_SPRITES: string = 'multimodal.sprites';
 
   private _defaultVehicleSprite = '/images/sample-bus.png';

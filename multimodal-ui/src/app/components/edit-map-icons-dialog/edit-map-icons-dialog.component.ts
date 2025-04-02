@@ -55,8 +55,9 @@ export interface EditMapIconsDialogResult {
   styleUrl: './edit-map-icons-dialog.component.css',
 })
 export class EditMapIconsDialogComponent {
-  private selectedSpriteIndex = 0;
-  private selectedDefaultSprite: 'vehicle' | 'passenger' = 'vehicle';
+  readonly SPRITE_SIZE;
+
+  currentError = '';
 
   customSprites: WritableSignal<CustomSprite[]> = signal([]);
 
@@ -67,6 +68,9 @@ export class EditMapIconsDialogComponent {
   uploadButton =
     viewChild.required<ElementRef<HTMLButtonElement>>('fileUpload');
 
+  private selectedSpriteIndex = 0;
+  private selectedDefaultSprite: 'vehicle' | 'passenger' = 'vehicle';
+
   constructor(
     private readonly dialogRef: MatDialogRef<
       EditMapIconsDialogComponent,
@@ -74,6 +78,7 @@ export class EditMapIconsDialogComponent {
     >,
     private readonly spritesService: SpritesService,
   ) {
+    this.SPRITE_SIZE = this.spritesService.SPRITE_SIZE;
     this.defaultVehicleSprite.set(this.spritesService.defaultVehicleSprite);
     this.defaultPassengerSprite.set(this.spritesService.defaultPassengerSprite);
     this.customSprites.set(this.spritesService.customSprites);
@@ -87,17 +92,22 @@ export class EditMapIconsDialogComponent {
     reader.onloadend = async () => {
       if (!reader.result) return;
 
-      const image = await Jimp.read(reader.result);
-      image.resize({ w: 40 });
-      const base64url = await image.getBase64('image/png');
+      try {
+        const image = await Jimp.read(reader.result);
+        image.resize({ w: this.SPRITE_SIZE });
+        const base64url = await image.getBase64('image/png');
+        if (this.selectedSpriteIndex !== -1) {
+          this.setCustomSprite(this.selectedSpriteIndex, base64url);
+        } else {
+          if (this.selectedDefaultSprite === 'vehicle')
+            this.defaultVehicleSprite.set(base64url);
+          else if (this.selectedDefaultSprite === 'passenger')
+            this.defaultPassengerSprite.set(base64url);
+        }
 
-      if (this.selectedSpriteIndex !== -1) {
-        this.setCustomSprite(this.selectedSpriteIndex, base64url);
-      } else {
-        if (this.selectedDefaultSprite === 'vehicle')
-          this.defaultVehicleSprite.set(base64url);
-        else if (this.selectedDefaultSprite === 'passenger')
-          this.defaultPassengerSprite.set(base64url);
+        this.currentError = '';
+      } catch {
+        this.currentError = 'Cannot upload this image.';
       }
     };
 
@@ -112,12 +122,34 @@ export class EditMapIconsDialogComponent {
     reader.onloadend = () => {
       if (!reader.result) return;
 
-      const spriteSaveData = JSON.parse(
-        reader.result as string,
-      ) as SpriteSaveData;
-      this.defaultVehicleSprite.set(spriteSaveData.defaultVehicleSprite);
-      this.defaultPassengerSprite.set(spriteSaveData.defaultPassengerSprite);
-      this.customSprites.set(spriteSaveData.customSprites);
+      try {
+        const spriteSaveData = JSON.parse(
+          reader.result as string,
+        ) as SpriteSaveData;
+
+        if (!spriteSaveData.defaultVehicleSprite) {
+          this.currentError = 'JSON has missing data: defaultVehicleSprite';
+          return;
+        }
+
+        if (!spriteSaveData.defaultPassengerSprite) {
+          this.currentError = 'JSON has missing data: defaultPassengerSprite';
+          return;
+        }
+
+        if (!spriteSaveData.customSprites) {
+          this.currentError = 'JSON has missing data: customSprites';
+          return;
+        }
+
+        this.defaultVehicleSprite.set(spriteSaveData.defaultVehicleSprite);
+        this.defaultPassengerSprite.set(spriteSaveData.defaultPassengerSprite);
+        this.customSprites.set(spriteSaveData.customSprites);
+
+        this.currentError = '';
+      } catch {
+        this.currentError = 'Could not parse JSON data.';
+      }
     };
 
     reader.readAsText(input.files[0]);
