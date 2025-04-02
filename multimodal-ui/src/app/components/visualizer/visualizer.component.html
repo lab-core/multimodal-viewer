@@ -230,7 +230,7 @@
       @for (passenger of selectedVehiclePassengers; track passenger.id) {
       <span tabindex="0" class="clickable" [matTooltip]="'Click to select the passenger'"
         (click)="selectPassenger(passenger.id)"
-        (keydown.enter)="selectPassenger(passenger.id)">{{ passenger.id }}</span>
+        (keydown.enter)="selectPassenger(passenger.id)">{{ passenger.name }}</span>
       }
     </div>
     }
