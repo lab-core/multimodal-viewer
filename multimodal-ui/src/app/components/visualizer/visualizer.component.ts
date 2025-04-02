@@ -807,6 +807,17 @@ export class VisualizerComponent implements OnDestroy {
   }
 
   onSearchInputClick() {
+    this.searchControl.setValue(null);
     this.animationService.unselectEntity();
+  }
+  copyToClipboard(text: string): void {
+    navigator.clipboard.writeText(text).catch(err => {
+      console.error('Failed to copy text: ', err);
+    });
+  }
+
+  truncateId(id: string): string {
+    const maxLength = 20
+    return id.length > maxLength ? `${id.slice(0, maxLength)}...` : id;
   }
 }

@@ -30,7 +30,7 @@
   @let filteredEntitySearchData = filteredEntitySearchDataSignal();
   @let searchValue = searchValueSignal();
   <mat-form-field class="search-form">
-    <input matInput [matAutocomplete]="auto" [formControl]="searchControl" (click)="onSearchInputClick()"/>
+    <input matInput [matAutocomplete]="auto" [formControl]="searchControl" />
     <mat-label>Search in the simulation</mat-label>
     @if (searchValue !== null && searchValue !== "") {
     <button mat-icon-button matSuffix type="button" (click)="clearSearch()">
@@ -136,8 +136,29 @@
     @let selectedPassengerVehicle = selectedPassengerVehicleSignal();
     <mat-card-title>Selected Passenger</mat-card-title>
     <div class="flex-column">
-      <span>Id: {{ selectedPassenger.id }}</span>
-      <span>Name: {{ selectedPassenger.name }}</span>
+      <span class="row-item">
+        <span class="label">Id: </span>
+        <span #idElement
+              tabindex="0"
+              style="cursor: pointer; display: inline-block;"
+              [matTooltip]="'Click to copy'"
+              (click)="copyToClipboard(selectedPassenger.id)"
+              (keydown.enter)="copyToClipboard(selectedPassenger.id)">
+          {{ truncateId(selectedPassenger.id) }}
+        </span>
+      </span>
+      
+      <span class="row-item">
+        <span class="label">Name: </span>
+        <span #nameElement
+              tabindex="0"
+              style="cursor: pointer; display: inline-block;"
+              [matTooltip]="'Click to copy'"
+              (click)="copyToClipboard(selectedPassenger.name!)"
+              (keydown.enter)="copyToClipboard(selectedPassenger.name!)">
+          {{ selectedPassenger.name }}
+        </span>
+      </span>
       <span>Status: {{ selectedPassenger.status }}</span>
       @if (selectedPassenger.notDisplayedReason !== null) {
       <div>
@@ -170,7 +191,17 @@
     @let selectedVehiclePassengers = selectedVehiclePassengersSignal();
     <mat-card-title>Selected Vehicle</mat-card-title>
     <div class="flex-column">
-      <span>Id: {{ selectedVehicle.id }}</span>
+      <span class="row-item">
+        <span class="label">Id: </span>
+        <span #idElement
+              tabindex="0"
+              style="cursor: pointer; display: inline-block;"
+              [matTooltip]="'Click to copy'"
+              (click)="copyToClipboard(selectedVehicle.id)"
+              (keydown.enter)="copyToClipboard(selectedVehicle.id)">
+          {{ truncateId(selectedVehicle.id) }}
+        </span>
+      </span>     
       @if (selectedVehicle.mode !== null) {
       <span>Mode: {{ selectedVehicle.mode }}</span>
       }
