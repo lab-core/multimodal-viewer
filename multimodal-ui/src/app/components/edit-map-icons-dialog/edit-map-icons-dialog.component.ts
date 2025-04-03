@@ -108,6 +108,8 @@ export class EditMapIconsDialogComponent {
         this.currentError = '';
       } catch {
         this.currentError = 'Cannot upload this image.';
+      } finally {
+        input.value = ''; // Clear
       }
     };
 
@@ -149,6 +151,8 @@ export class EditMapIconsDialogComponent {
         this.currentError = '';
       } catch {
         this.currentError = 'Could not parse JSON data.';
+      } finally {
+        input.value = ''; // Clear
       }
     };
 
