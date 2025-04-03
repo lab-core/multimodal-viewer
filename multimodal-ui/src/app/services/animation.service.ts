@@ -771,7 +771,7 @@ export class AnimationService {
 
     // Distances for all vehicles
     for (const vehicle of this.vehicles) {
-      if (!vehicle.sprite.visible) continue;
+      if (!vehicle.sprite.parent.visible) continue;
       const distance = this.distanceBetweenPoints(
         point,
         vehicle.sprite.parent.position,
