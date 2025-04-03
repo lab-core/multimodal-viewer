@@ -918,7 +918,7 @@ export class AnimationService {
     const width = Math.max(BASE_LINE_WIDTH / this.utils?.getScale(), MIN_WIDTH);
     const graphics = this.selectedEntityPolyline;
     graphics.clear();
-    graphics.lineStyle(width, this.KELLY_GREEN, ALPHA);
+    graphics.lineStyle(width, this.LIGHT_GRAY, ALPHA);
 
     // Draw all polylines before the polylineNo
     for (let i = 0; i < polylineNo; ++i) {
@@ -966,7 +966,7 @@ export class AnimationService {
       graphics.lineTo(interpolatedPoint.x, interpolatedPoint.y);
 
       // Change color
-      graphics.lineStyle(width, this.LIGHT_GRAY, ALPHA);
+      graphics.lineStyle(width, this.KELLY_GREEN, ALPHA);
 
       // Draw rest of lines of polylineNo
       for (let j = lineNo + 1; j < currentPolyline.polyline.length; ++j) {
@@ -979,7 +979,7 @@ export class AnimationService {
       }
     }
 
-    graphics.lineStyle(width, this.LIGHT_GRAY, ALPHA);
+    graphics.lineStyle(width, this.KELLY_GREEN, ALPHA);
 
     // Draw rest of polylines
     for (let i = polylineNo + 1; i < polylines.length; ++i) {
@@ -1001,7 +1001,7 @@ export class AnimationService {
       }
     }
 
-    graphics.lineStyle(width, this.KELLY_GREEN, ALPHA);
+    graphics.lineStyle(width, this.LIGHT_GRAY, ALPHA);
 
     let firstStopHasBeenDrawn = false;
 
@@ -1034,7 +1034,7 @@ export class AnimationService {
     }
 
     // Draw stops that are not completed
-    graphics.lineStyle(width, this.LIGHT_GRAY, ALPHA);
+    graphics.lineStyle(width, this.KELLY_GREEN, ALPHA);
 
     for (let i = Math.max(polylineNo, 0); i < polylines.length; ++i) {
       const polyline = polylines[i];
