@@ -45,7 +45,7 @@ import { SimulationControlBarComponent } from '../simulation-control-bar/simulat
 import { SimulationControlPanelComponent } from '../simulation-control-panel/simulation-control-panel.component';
 import { VisualizerFilterComponent } from '../visualizer-filter/visualizer-filter.component';
 import { RecursiveStatisticComponent } from '../recursive-statistic/recursive-statistic.component';
-import hotkeys from 'hotkeys-js';
+import { EntitiesTabComponent } from '../entities-tab/entities-tab.component';
 
 export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 
@@ -77,6 +77,7 @@ export interface EntitySearch {
     MatButtonToggleModule,
     MatTabsModule,
     RecursiveStatisticComponent,
+    EntitiesTabComponent,
   ],
   providers: [VisualizationService, VisualizationFilterService],
   templateUrl: './visualizer.component.html',
@@ -100,122 +101,6 @@ export class VisualizerComponent implements OnDestroy {
         return simulation.status;
       }
       return 'not-found';
-    },
-  );
-
-  readonly displayedPassengersSignal: Signal<AnimatedPassenger[]> = computed(
-    () => {
-      const environment =
-        this.visualizationService.visualizationEnvironmentSignal();
-
-      if (environment === null) {
-        return [];
-      }
-
-      return Object.values(environment.currentState.passengers).filter(
-        (passenger) => passenger.notDisplayedReason === null,
-      );
-    },
-  );
-
-  readonly displayedVehiclesSignal: Signal<AnimatedVehicle[]> = computed(() => {
-    const environment =
-      this.visualizationService.visualizationEnvironmentSignal();
-
-    if (environment === null) {
-      return [];
-    }
-
-    return Object.values(environment.currentState.vehicles).filter(
-      (vehicle) => vehicle.notDisplayedReason === null,
-    );
-  });
-
-  readonly numberOfDisplayedPassengersByStatusSignal: Signal<
-    {
-      status: string;
-      count: number;
-    }[]
-  > = computed(() => {
-    const environment =
-      this.visualizationService.visualizationEnvironmentSignal();
-    if (environment === null) {
-      return [];
-    }
-
-    const passengers = Object.values(environment.currentState.passengers);
-    const counts: Record<string, number> = {};
-
-    for (const passenger of passengers) {
-      const status = passenger.status;
-      if (passenger.notDisplayedReason !== null) {
-        continue;
-      }
-      counts[status] = (counts[status] ?? 0) + 1;
-    }
-
-    return Object.entries(counts).map(([status, count]) => ({
-      status,
-      count,
-    }));
-  });
-
-  readonly numberOfDisplayedVehiclesByStatusSignal: Signal<
-    {
-      status: string;
-      count: number;
-    }[]
-  > = computed(() => {
-    const environment =
-      this.visualizationService.visualizationEnvironmentSignal();
-    if (environment === null) {
-      return [];
-    }
-
-    const vehicles = Object.values(environment.currentState.vehicles);
-    const counts: Record<string, number> = {};
-
-    for (const vehicle of vehicles) {
-      const status = vehicle.status;
-      if (vehicle.notDisplayedReason !== null) {
-        continue;
-      }
-      counts[status] = (counts[status] ?? 0) + 1;
-    }
-
-    return Object.entries(counts).map(([status, count]) => ({
-      status,
-      count,
-    }));
-  });
-
-  readonly notDisplayedPassengersSignal: Signal<AnimatedPassenger[]> = computed(
-    () => {
-      const environment =
-        this.visualizationService.visualizationEnvironmentSignal();
-
-      if (environment === null) {
-        return [];
-      }
-
-      return Object.values(environment.currentState.passengers).filter(
-        (passenger) => passenger.notDisplayedReason !== null,
-      );
-    },
-  );
-
-  readonly notDisplayedVehiclesSignal: Signal<AnimatedVehicle[]> = computed(
-    () => {
-      const environment =
-        this.visualizationService.visualizationEnvironmentSignal();
-
-      if (environment === null) {
-        return [];
-      }
-
-      return Object.values(environment.currentState.vehicles).filter(
-        (vehicle) => vehicle.notDisplayedReason !== null,
-      );
     },
   );
 
@@ -328,8 +213,8 @@ export class VisualizerComponent implements OnDestroy {
   readonly informationTabControl: FormControl<string | null>;
   showSimulationInformation = false;
   showStatistic = false;
-  showStatusAndCount = false;
-  showNotDisplayedEntities = false;
+  showEntitiesTab = false;
+  showSelectedEntitiesTab = false;
 
   readonly searchValueSignal: WritableSignal<string | EntitySearch> =
     signal('');
@@ -391,42 +276,13 @@ export class VisualizerComponent implements OnDestroy {
       else if (value === 'layers') this.showLayers = true;
     });
 
-    hotkeys('i', () => {
-      if (this.shouldShowInformationPanelSignal()) {
-        this.hideInformationPanel()
-      } else {
-        this.showInformationPanel();
-      }
-    });
-
     this.tabControl.setValue('search');
 
     this.informationTabControl = new FormControl('');
     this.informationTabControl.valueChanges.subscribe((value) => {
-      this.showSimulationInformation = false;
-      this.showStatistic = false;
-      this.showStatusAndCount = false;
-      this.showNotDisplayedEntities = false;
-      switch (value) {
-        case 'information': {
-          this.showSimulationInformation = true;
-          break;
-        }
-        case 'statistic': {
-          this.showStatistic = true;
-          break;
-        }
-        case 'statusAndCount': {
-          this.showStatusAndCount = true;
-          break;
-        }
-        case 'notDisplayedEntities': {
-          this.showNotDisplayedEntities = true;
-          break;
-        }
-      }
+      this.updateInformationTab(value);
     });
-    // this.informationTabControl.setValue('information');
+    this.informationTabControl.setValue('information');
 
     this.searchControl = this.formBuilder.control('');
     this.searchControl.valueChanges.subscribe((value) => {
@@ -665,12 +521,31 @@ export class VisualizerComponent implements OnDestroy {
   }
 
   // MARK: Handlers
-  hideInformationPanel() {
-    this.userInterfaceService.hideInformationPanel();
-  }
-
-  showInformationPanel() {
-    this.userInterfaceService.showInformationPanel();
+  updateInformationTab(value: string | null) {
+    this.showSimulationInformation = false;
+    this.showStatistic = false;
+    this.showEntitiesTab = false;
+    this.showSelectedEntitiesTab = false;
+    switch (value) {
+      case 'information': {
+        this.showSimulationInformation = true;
+        break;
+      }
+      case 'statistic': {
+        this.showStatistic = true;
+        break;
+      }
+      case 'entities': {
+        this.showEntitiesTab = true;
+        break;
+      }
+      case 'selectedEntities': {
+        this.showSelectedEntitiesTab = true;
+        break;
+      }
+      default:
+        break;
+    }
   }
 
   selectPassenger(id: string) {

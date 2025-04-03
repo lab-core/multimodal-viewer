@@ -88,17 +88,6 @@
   width: 100%;
 }
 
-
-.clickable {
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 0.5rem;
-
-  &:hover {
-    background-color: rgba(0, 0, 0, 0.32);
-  }
-}
-
 .light {
   font-weight: 300;
 }

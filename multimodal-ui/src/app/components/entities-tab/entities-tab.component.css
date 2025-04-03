@@ -1,0 +1,13 @@
+.clickable {
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+
+    &:hover {
+        background-color: rgba(0, 0, 0, 0.32);
+    }
+}
+
+.indent {
+    padding-left: 24px;
+}

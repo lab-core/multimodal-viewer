@@ -1,0 +1,72 @@
+<mat-accordion multi="true">
+    <mat-expansion-panel>
+        @let passengers = getPassengers();
+        @let numberOfPassengersByStatus = numberOfPassengersByStatusSignal();
+        <mat-expansion-panel-header>
+            <mat-panel-title> Passengers ({{ passengers.length }}) </mat-panel-title>
+        </mat-expansion-panel-header>
+        <div class="flex-column gap-0-5-rem">
+            <mat-accordion multi="true">
+                @for (
+                passengerStatusAndCount of numberOfPassengersByStatus;
+                track passengerStatusAndCount.status
+                ) {
+                <mat-expansion-panel>
+                    <mat-expansion-panel-header>
+                        <mat-panel-title>
+                            {{ passengerStatusAndCount.status }} ({{
+                            passengerStatusAndCount.count
+                            }})
+                        </mat-panel-title>
+                    </mat-expansion-panel-header>
+                    <div class="flex-column gap-0-5-rem">
+                        @for (
+                        passenger of passengerStatusAndCount.passengers;
+                        track passenger.status
+                        ) {
+                        <div tabindex="0" class="clickable indent" [matTooltip]="'Click to select the passenger'"
+                            (click)="selectPassenger(passenger.id)" (keydown.enter)="selectPassenger(passenger.id)">
+                            <span>{{ passenger.name }}</span>
+                        </div>
+                        }
+                    </div>
+                </mat-expansion-panel>
+                }
+            </mat-accordion>
+        </div>
+    </mat-expansion-panel>
+
+    <mat-expansion-panel>
+        @let vehicles = getVehicles();
+        @let numberOfVehiclesByStatus = numberOfVehiclesByStatusSignal();
+        <mat-expansion-panel-header>
+            <mat-panel-title> Vehicles ({{ vehicles.length }}) </mat-panel-title>
+        </mat-expansion-panel-header>
+        <div class="flex-column gap-0-5-rem">
+            <mat-accordion multi="true">
+                @for (
+                vehicleStatusAndCount of numberOfVehiclesByStatus;
+                track vehicleStatusAndCount.status
+                ) {
+                <mat-expansion-panel>
+                    <mat-expansion-panel-header>
+                        <mat-panel-title>
+                            {{ vehicleStatusAndCount.status }} ({{
+                            vehicleStatusAndCount.count
+                            }})
+                        </mat-panel-title>
+                    </mat-expansion-panel-header>
+                    <div class="flex-column gap-0-5-rem">
+                        @for (vehicle of vehicleStatusAndCount.vehicles; track vehicle) {
+                        <div tabindex="0" class="clickable indent" [matTooltip]="'Click to select the vehicle'"
+                            (click)="selectVehicle(vehicle.id)" (keydown.enter)="selectVehicle(vehicle.id)">
+                            <span>{{ vehicle.id }}</span>
+                        </div>
+                        }
+                    </div>
+                </mat-expansion-panel>
+                }
+            </mat-accordion>
+        </div>
+    </mat-expansion-panel>
+</mat-accordion>

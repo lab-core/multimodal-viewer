@@ -1,294 +1,297 @@
 @let simulation = simulationSignal();
-@let displayedVehicles = displayedVehiclesSignal();
-@let displayedPassengers = displayedPassengersSignal();
-@let numberOfPassengersByStatus = numberOfDisplayedPassengersByStatusSignal();
-@let numberOfVehiclesByStatus = numberOfDisplayedVehiclesByStatusSignal();
-@let totalNumberOfPassengers = displayedPassengers.length;
-@let totalNumberOfVehicles = displayedVehicles.length;
 @let statistic = statisticSignal();
-
 
 @let selectedPassenger = selectedPassengerSignal();
 @let selectedVehicle = selectedVehicleSignal();
 
 @if (isInitializedSignal() && simulation !== null) {
-<div class="tabs enable-pointer-events">
-  <section>
-    <mat-button-toggle-group mat-fab hideSingleSelectionIndicator name="tools" aria-label="tools"
-      [formControl]="tabControl">
-      <mat-button-toggle value="search"><mat-icon>search</mat-icon></mat-button-toggle>
-      <mat-button-toggle value="filter"><mat-icon>filter_list</mat-icon></mat-button-toggle>
-      <mat-button-toggle value="favorites"><mat-icon>star</mat-icon></mat-button-toggle>
-      <mat-button-toggle value="layers"><mat-icon>layers</mat-icon></mat-button-toggle>
-    </mat-button-toggle-group>
-  </section>
-</div>
-
-<!-- MARK: Search Bar
--->
-<form class="tab-content fade search-bar" [class.fade-show]="showSearch" [class.enable-pointer-events]="showSearch">
-  @let filteredEntitySearchData = filteredEntitySearchDataSignal();
-  @let searchValue = searchValueSignal();
-  <mat-form-field class="search-form">
-    <input matInput [matAutocomplete]="auto" [formControl]="searchControl" />
-    <mat-label>Search in the simulation</mat-label>
-    @if (searchValue !== null && searchValue !== "") {
-    <button mat-icon-button matSuffix type="button" (click)="clearSearch()">
-      <mat-icon>close</mat-icon>
-    </button>
-    } @else {
-    <mat-icon matSuffix>search</mat-icon>
-    }
-    <mat-autocomplete #auto="matAutocomplete" [displayWith]="entitySearchDisplayFunction">
-      @for (entity of filteredEntitySearchData; track entity.displayedValue) {
-      <mat-option [value]="entity">
-        {{ entity.displayedValue }}
-      </mat-option>
-      }
-    </mat-autocomplete>
-  </mat-form-field>
-</form>
-
-<!-- MARK: Tab Elements
- -->
-<app-visualizer-filter class="tab-content fade" [class.fade-show]="showFilter"
-  [class.enable-pointer-events]="showFilter"></app-visualizer-filter>
-
-<app-favorite-entities class="tab-content fade" [class.fade-show]="showFavorites"
-  [class.enable-pointer-events]="showFavorites"></app-favorite-entities>
-
-<app-map-tiles class="tab-content fade" [class.fade-show]="showLayers"
-  [class.enable-pointer-events]="showLayers"></app-map-tiles>
-
-<!-- MARK: Information Panel
-    -->
-<div class="enable-pointer-events information-panel-header">
-  <section>
-    <mat-button-toggle-group class=".information-group" mat-fab hideSingleSelectionIndicator name="tools"
-      aria-label="tools" [formControl]="informationTabControl">
-      <mat-button-toggle style="width: 100%;" value="information"><mat-icon>info</mat-icon></mat-button-toggle>
-      <mat-button-toggle style="width: 100%;" value="statistic"><mat-icon>bar_chart</mat-icon></mat-button-toggle>
-      <mat-button-toggle style="width: 100%;" value="statusAndCount"><mat-icon>star</mat-icon></mat-button-toggle>
-      <mat-button-toggle style="width: 100%;"
-        value="notDisplayedEntities"><mat-icon>visibility_off</mat-icon></mat-button-toggle>
-    </mat-button-toggle-group>
-  </section>
-</div>
-
-<!--MARK: Information
-      -->
-<mat-card class="information-panel-content fade" [class.fade-show]="showSimulationInformation"
-  [class.enable-pointer-events]="showSimulationInformation">
-  <mat-card-content class="flex-1">
-    <mat-card-title>Simulation: {{ simulation.name }}</mat-card-title>
-    <mat-card-subtitle>Source: {{ simulation.data }}</mat-card-subtitle>
-    <mat-card-subtitle>
-      Current simulation time:
-      {{ simulation.simulationTime ?? "null" }}
-    </mat-card-subtitle>
-    <mat-card-subtitle>
-      Max simulation time:
-      {{ simulation.configuration.maxTime ?? "null" }}
-    </mat-card-subtitle>
-  </mat-card-content>
-</mat-card>
-
-<!--MARK: Statistic
-        -->
-<mat-card class="information-panel-content fade" [class.fade-show]="showStatistic"
-  [class.enable-pointer-events]="showStatistic">
-  <mat-card-content class="flex-1">
-    <mat-card-title> Statistics </mat-card-title>
-
-    <!--Recursive-->
-    <app-recursive-statistic [recursiveDict]="statistic" />
-  </mat-card-content>
-</mat-card>
-
-<!--MARK: Status And Count
-        -->
-<mat-card class="information-panel-content fade" [class.fade-show]="showStatusAndCount"
-  [class.enable-pointer-events]="showStatusAndCount">
-  <mat-card-content class="flex-1">
-    <mat-card-title> Status and count </mat-card-title>
-
-    <mat-card-subtitle>
-      Passengers ({{ totalNumberOfPassengers }})
-    </mat-card-subtitle>
-    <div class="flex-column">
-      @for (
-      statusAndCount of numberOfPassengersByStatus;
-      track statusAndCount.status
-      ) {
-      <span>{{ statusAndCount.status }}: {{ statusAndCount.count }}</span>
-      }
-    </div>
-
-    <mat-card-subtitle>
-      Vehicles: ({{ totalNumberOfVehicles }})
-    </mat-card-subtitle>
-    <div class="flex-column">
-      @for (
-      statusAndCount of numberOfVehiclesByStatus;
-      track statusAndCount.status
-      ) {
-      <span>{{ statusAndCount.status }}: {{ statusAndCount.count }}</span>
-      }
-    </div>
-
-    @if (selectedPassenger !== null) {
-    @let selectedPassengerVehicle = selectedPassengerVehicleSignal();
-    <mat-card-title>Selected Passenger</mat-card-title>
-    <div class="flex-column">
-      <span>Id: {{ selectedPassenger.id }}</span>
-      <span>Name: {{ selectedPassenger.name }}</span>
-      <span>Status: {{ selectedPassenger.status }}</span>
-      @if (selectedPassenger.notDisplayedReason !== null) {
-      <div>
-        <span>Not displayed: </span>
-        <span class="light">{{
-                        selectedPassenger.notDisplayedReason
-                      }}</span>
-      </div>
-      }
-      <div class="favorite-content">
-        <span>Favorite: </span>
-        <button mat-icon-button disableRipple (click)="toggleFavoritePassenger(selectedPassenger.id)">
-          @let icon =
-          isFavoritePassenger(selectedPassenger.id)
-          ? "favorite"
-          : "favorite_outline";
-          <mat-icon>{{ icon }}</mat-icon>
-        </button>
-      </div>
-      @if (selectedPassengerVehicle !== null) {
-      <span tabindex="0" class="clickable" [matTooltip]="'Click to select the vehicle'"
-        (click)="selectVehicle(selectedPassengerVehicle.id)"
-        (keydown.enter)="selectVehicle(selectedPassengerVehicle.id)">Vehicle:
-        {{ selectedPassengerVehicle.id }}</span>
-      }
-    </div>
-    }
-
-    @if (selectedVehicle !== null) {
-    @let selectedVehiclePassengers = selectedVehiclePassengersSignal();
-    <mat-card-title>Selected Vehicle</mat-card-title>
-    <div class="flex-column">
-      <span>Id: {{ selectedVehicle.id }}</span>
-      @if (selectedVehicle.mode !== null) {
-      <span>Mode: {{ selectedVehicle.mode }}</span>
-      }
-      <span>Status: {{ selectedVehicle.status }}</span>
-      @if (selectedVehicle.notDisplayedReason !== null) {
-      <div>
-        <span>Not displayed: </span>
-        <span class="light">{{
-                        selectedVehicle.notDisplayedReason
-                      }}</span>
-      </div>
-      }
-      <div class="favorite-content">
-        <span>Favorite: </span>
-        <button mat-icon-button disableRipple (click)="toggleFavoriteVehicle(selectedVehicle.id)">
-          @let icon =
-          isFavoriteVehicle(selectedVehicle.id)
-          ? "favorite"
-          : "favorite_outline";
-          <mat-icon>{{ icon }}</mat-icon>
-        </button>
-      </div>
-      @if (selectedVehiclePassengers.length > 0) {
-      <span>Passengers:</span>
-      }
-      @for (passenger of selectedVehiclePassengers; track passenger.id) {
-      <span tabindex="0" class="clickable" [matTooltip]="'Click to select the passenger'"
-        (click)="selectPassenger(passenger.id)"
-        (keydown.enter)="selectPassenger(passenger.id)">{{ passenger.id }}</span>
-      }
-    </div>
-    }
-  </mat-card-content>
-</mat-card>
-
-<!--MARK: Not Displayed Entities
-  -->
-<mat-card class="information-panel-content fade" [class.fade-show]="showNotDisplayedEntities"
-  [class.enable-pointer-events]="showNotDisplayedEntities">
-  <mat-card-content class="flex-1">
-    <mat-card-title>Not Displayed Entities</mat-card-title>
-
-    <mat-accordion>
-      @let notDisplayedPassengers = notDisplayedPassengersSignal();
-      <mat-expansion-panel>
-        <mat-expansion-panel-header>
-          <mat-panel-title>
-            Passengers ({{ notDisplayedPassengers.length }})
-          </mat-panel-title>
-        </mat-expansion-panel-header>
-        <div class="flex-column gap-0-5-rem">
-          @for (passenger of notDisplayedPassengers; track passenger.id) {
-          <div tabindex="0" class="clickable" [matTooltip]="'Click to select the passenger'"
-            (click)="selectPassenger(passenger.id)" (keydown.enter)="selectPassenger(passenger.id)">
-            <span>{{ passenger.id }}</span>
-            <span class="light">{{ passenger.notDisplayedReason }}</span>
-          </div>
-          }
-        </div>
-      </mat-expansion-panel>
-
-      @let notDisplayedVehicles = notDisplayedVehiclesSignal();
-      <mat-expansion-panel>
-        <mat-expansion-panel-header>
-          <mat-panel-title>
-            Vehicles ({{ notDisplayedVehicles.length }})
-          </mat-panel-title>
-        </mat-expansion-panel-header>
-        <div class="flex-column gap-0-5-rem">
-          @for (vehicle of notDisplayedVehicles; track vehicle.id) {
-          <div tabindex="0" class="clickable" [matTooltip]="'Click to select the vehicle'"
-            (click)="selectVehicle(vehicle.id)" (keydown.enter)="selectVehicle(vehicle.id)">
-            <span>{{ vehicle.id }}</span>
-            <span class="light"> {{ vehicle.notDisplayedReason }}</span>
-          </div>
-          }
-        </div>
-      </mat-expansion-panel>
-    </mat-accordion>
-  </mat-card-content>
-</mat-card>
-
-
-
-<!-- @else {
-<button mat-fab class="enable-pointer-events show-information-panel-button" matTooltip="Information panel (i)"
-  (click)="showInformationPanel()">
-  <mat-icon>info</mat-icon>
-</button>
-} -->
-
-<!-- MARK: Control Bar
-  -->
-<app-simulation-control-bar class="enable-pointer-events" [simulation]="simulation"
-  (leaveVisualization)="leaveVisualization()" />
-
-<!-- MARK: Control Panel
-  -->
-@let isSimulationRunning = isSimulationRunningSignal();
-@if (isSimulationRunning) {
-<app-simulation-control-panel class="enable-pointer-events" [simulation]="simulation"
-  (pauseSimulation)="pauseSimulation($event)" (resumeSimulation)="resumeSimulation($event)"
-  (stopSimulation)="stopSimulation($event)" (editSimulationConfiguration)="editSimulationConfiguration($event)" />
-}
-
-<!-- MARK: Loading
--->
-@let isLoading = isLoadingSignal();
-@if (isLoading) {
-<mat-chip class="loading background-gray text-gray enable-pointer-events">
-  <div class="flex-row align-center gap-0-5-rem">
-    <mat-icon class="spin">autorenew</mat-icon>
-    Loading visualization data...
+  <div class="tabs enable-pointer-events">
+    <section>
+      <mat-button-toggle-group
+        mat-fab
+        hideSingleSelectionIndicator
+        name="tools"
+        aria-label="tools"
+        [formControl]="tabControl"
+      >
+        <mat-button-toggle value="search"
+          ><mat-icon>search</mat-icon></mat-button-toggle
+        >
+        <mat-button-toggle value="filter"
+          ><mat-icon>filter_list</mat-icon></mat-button-toggle
+        >
+        <mat-button-toggle value="favorites"
+          ><mat-icon>star</mat-icon></mat-button-toggle
+        >
+        <mat-button-toggle value="layers"
+          ><mat-icon>layers</mat-icon></mat-button-toggle
+        >
+      </mat-button-toggle-group>
+    </section>
   </div>
-</mat-chip>
-}
+
+  <!-- MARK: Search Bar
+-->
+  <form
+    class="tab-content fade search-bar"
+    [class.fade-show]="showSearch"
+    [class.enable-pointer-events]="showSearch"
+  >
+    @let filteredEntitySearchData = filteredEntitySearchDataSignal();
+    @let searchValue = searchValueSignal();
+    <mat-form-field class="search-form">
+      <input matInput [matAutocomplete]="auto" [formControl]="searchControl" />
+      <mat-label>Search in the simulation</mat-label>
+      @if (searchValue !== null && searchValue !== "") {
+        <button mat-icon-button matSuffix type="button" (click)="clearSearch()">
+          <mat-icon>close</mat-icon>
+        </button>
+      } @else {
+        <mat-icon matSuffix>search</mat-icon>
+      }
+      <mat-autocomplete
+        #auto="matAutocomplete"
+        [displayWith]="entitySearchDisplayFunction"
+      >
+        @for (entity of filteredEntitySearchData; track entity.displayedValue) {
+          <mat-option [value]="entity">
+            {{ entity.displayedValue }}
+          </mat-option>
+        }
+      </mat-autocomplete>
+    </mat-form-field>
+  </form>
+
+  <!-- MARK: Tab Elements
+ -->
+  <app-visualizer-filter
+    class="tab-content fade"
+    [class.fade-show]="showFilter"
+    [class.enable-pointer-events]="showFilter"
+  ></app-visualizer-filter>
+
+  <app-favorite-entities
+    class="tab-content fade"
+    [class.fade-show]="showFavorites"
+    [class.enable-pointer-events]="showFavorites"
+  ></app-favorite-entities>
+
+  <app-map-tiles
+    class="tab-content fade"
+    [class.fade-show]="showLayers"
+    [class.enable-pointer-events]="showLayers"
+  ></app-map-tiles>
+
+  <!-- MARK: Information Panel
+    -->
+  <div class="enable-pointer-events information-panel-header">
+    <section>
+      <mat-button-toggle-group
+        class=".information-group"
+        mat-fab
+        hideSingleSelectionIndicator
+        name="tools"
+        aria-label="tools"
+        [formControl]="informationTabControl"
+      >
+        <mat-button-toggle value="information"
+          ><mat-icon>info</mat-icon></mat-button-toggle
+        >
+        <mat-button-toggle value="statistic"
+          ><mat-icon>bar_chart</mat-icon></mat-button-toggle
+        >
+        <mat-button-toggle value="entities"
+          ><mat-icon><!--TODO icon selection--></mat-icon></mat-button-toggle
+        >
+        <mat-button-toggle value="selectedEntities"
+          ><mat-icon>touch_app</mat-icon></mat-button-toggle
+        >
+      </mat-button-toggle-group>
+    </section>
+  </div>
+
+  <!--MARK: Information
+      -->
+  <mat-card
+    class="information-panel-content fade"
+    [class.fade-show]="showSimulationInformation"
+    [class.enable-pointer-events]="showSimulationInformation"
+  >
+    <mat-card-content class="flex-1">
+      <mat-card-title>Simulation: {{ simulation.name }}</mat-card-title>
+      <mat-card-subtitle>Source: {{ simulation.data }}</mat-card-subtitle>
+      <mat-card-subtitle>
+        Current simulation time:
+        {{ simulation.simulationTime ?? "null" }}
+      </mat-card-subtitle>
+      <mat-card-subtitle>
+        Max simulation time:
+        {{ simulation.configuration.maxTime ?? "null" }}
+      </mat-card-subtitle>
+    </mat-card-content>
+  </mat-card>
+
+  <!--MARK: Statistic
+        -->
+  <mat-card
+    class="information-panel-content fade"
+    [class.fade-show]="showStatistic"
+    [class.enable-pointer-events]="showStatistic"
+  >
+    <mat-card-content class="flex-1">
+      <mat-card-title> Statistics </mat-card-title>
+
+      <!--Recursive-->
+      <app-recursive-statistic [recursiveDict]="statistic" />
+    </mat-card-content>
+  </mat-card>
+
+  <!--MARK: Entities
+        -->
+  <mat-card
+    class="information-panel-content fade"
+    [class.fade-show]="showEntitiesTab"
+    [class.enable-pointer-events]="showEntitiesTab"
+  >
+    <mat-card-content class="flex-1">
+      <mat-card-title> Entities </mat-card-title>
+
+      <app-entities-tab></app-entities-tab>
+    </mat-card-content>
+  </mat-card>
+
+  <!--MARK: Selected entities
+  -->
+  <mat-card
+    class="information-panel-content fade"
+    [class.fade-show]="showSelectedEntitiesTab"
+    [class.enable-pointer-events]="showSelectedEntitiesTab"
+  >
+    <mat-card-content class="flex-1">
+      <mat-card-title>Selected entities</mat-card-title>
+
+      <!-- @if (selectedPassenger !== null) {
+        @let selectedPassengerVehicle = selectedPassengerVehicleSignal();
+        <mat-card-title>Selected Passenger</mat-card-title>
+        <div class="flex-column">
+          <span>Id: {{ selectedPassenger.id }}</span>
+          <span>Name: {{ selectedPassenger.name }}</span>
+          <span>Status: {{ selectedPassenger.status }}</span>
+          @if (selectedPassenger.notDisplayedReason !== null) {
+            <div>
+              <span>Not displayed: </span>
+              <span class="light">{{
+                selectedPassenger.notDisplayedReason
+              }}</span>
+            </div>
+          }
+          <div class="favorite-content">
+            <span>Favorite: </span>
+            <button
+              mat-icon-button
+              disableRipple
+              (click)="toggleFavoritePassenger(selectedPassenger.id)"
+            >
+              @let icon =
+                isFavoritePassenger(selectedPassenger.id)
+                  ? "favorite"
+                  : "favorite_outline";
+              <mat-icon>{{ icon }}</mat-icon>
+            </button>
+          </div>
+          @if (selectedPassengerVehicle !== null) {
+            <span
+              tabindex="0"
+              class="clickable"
+              [matTooltip]="'Click to select the vehicle'"
+              (click)="selectVehicle(selectedPassengerVehicle.id)"
+              (keydown.enter)="selectVehicle(selectedPassengerVehicle.id)"
+              >Vehicle: {{ selectedPassengerVehicle.id }}</span
+            >
+          }
+        </div>
+      }
+
+      @if (selectedVehicle !== null) {
+        @let selectedVehiclePassengers = selectedVehiclePassengersSignal();
+        <mat-card-title>Selected Vehicle</mat-card-title>
+        <div class="flex-column">
+          <span>Id: {{ selectedVehicle.id }}</span>
+          @if (selectedVehicle.mode !== null) {
+            <span>Mode: {{ selectedVehicle.mode }}</span>
+          }
+          <span>Status: {{ selectedVehicle.status }}</span>
+          @if (selectedVehicle.notDisplayedReason !== null) {
+            <div>
+              <span>Not displayed: </span>
+              <span class="light">{{
+                selectedVehicle.notDisplayedReason
+              }}</span>
+            </div>
+          }
+          <div class="favorite-content">
+            <span>Favorite: </span>
+            <button
+              mat-icon-button
+              disableRipple
+              (click)="toggleFavoriteVehicle(selectedVehicle.id)"
+            >
+              @let icon =
+                isFavoriteVehicle(selectedVehicle.id)
+                  ? "favorite"
+                  : "favorite_outline";
+              <mat-icon>{{ icon }}</mat-icon>
+            </button>
+          </div>
+          @if (selectedVehiclePassengers.length > 0) {
+            <span>Passengers:</span>
+          }
+          @for (passenger of selectedVehiclePassengers; track passenger.id) {
+            <span
+              tabindex="0"
+              class="clickable"
+              [matTooltip]="'Click to select the passenger'"
+              (click)="selectPassenger(passenger.id)"
+              (keydown.enter)="selectPassenger(passenger.id)"
+              >{{ passenger.id }}</span
+            >
+          }
+        </div>
+      } -->
+    </mat-card-content>
+  </mat-card>
+
+  <!-- MARK: Control Bar
+  -->
+  <app-simulation-control-bar
+    class="enable-pointer-events"
+    [simulation]="simulation"
+    (leaveVisualization)="leaveVisualization()"
+  />
+
+  <!-- MARK: Control Panel
+  -->
+  @let isSimulationRunning = isSimulationRunningSignal();
+  @if (isSimulationRunning) {
+    <app-simulation-control-panel
+      class="enable-pointer-events"
+      [simulation]="simulation"
+      (pauseSimulation)="pauseSimulation($event)"
+      (resumeSimulation)="resumeSimulation($event)"
+      (stopSimulation)="stopSimulation($event)"
+      (editSimulationConfiguration)="editSimulationConfiguration($event)"
+    />
+  }
+
+  <!-- MARK: Loading
+-->
+  @let isLoading = isLoadingSignal();
+  @if (isLoading) {
+    <mat-chip class="loading background-gray text-gray enable-pointer-events">
+      <div class="flex-row align-center gap-0-5-rem">
+        <mat-icon class="spin">autorenew</mat-icon>
+        Loading visualization data...
+      </div>
+    </mat-chip>
+  }
 }
