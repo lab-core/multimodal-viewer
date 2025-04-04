@@ -4,10 +4,12 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { FavoriteEntitiesService } from '../../services/favorite-entities.service';
 import { AnimationService } from '../../services/animation.service';
+import { VisualizationService } from '../../services/visualization.service';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'app-favorite-entities',
-  imports: [MatCardModule, MatChipsModule, MatIconModule],
+  imports: [MatCardModule, MatChipsModule, MatIconModule, MatTooltipModule],
   templateUrl: './favorite-entities.component.html',
   styleUrl: './favorite-entities.component.css',
 })
@@ -15,8 +17,27 @@ export class FavoriteEntitiesComponent {
   favVehicleIds: Signal<Set<string>>;
   favPassengerIds: Signal<Set<string>>;
 
+  isVehicleInEnvironment(id: string) {
+    const visualizationEnvironment =
+      this.visualizationService.visualizationEnvironmentSignal();
+    if (!visualizationEnvironment) return false;
+
+    if (visualizationEnvironment.currentState.vehicles[id]) return true;
+    else return false;
+  }
+
+  isPassengerInEnvironment(id: string) {
+    const visualizationEnvironment =
+      this.visualizationService.visualizationEnvironmentSignal();
+    if (!visualizationEnvironment) return false;
+
+    if (visualizationEnvironment.currentState.passengers[id]) return true;
+    else return false;
+  }
+
   constructor(
     private readonly favoriteEntitiesService: FavoriteEntitiesService,
+    private readonly visualizationService: VisualizationService,
     private readonly animationService: AnimationService,
   ) {
     this.favVehicleIds = favoriteEntitiesService.favVehicleIds;
