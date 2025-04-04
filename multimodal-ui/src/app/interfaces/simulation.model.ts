@@ -233,7 +233,24 @@ export interface Stop {
   arrivalTime: number;
   departureTime: number | null; // null means infinite
   position: Position;
+  capacity: number;
+  label: string;
 }
+
+export interface AnimatedStop
+  extends Omit<Stop, 'arrivalTime' | 'departureTime'> {
+  /**
+   * Passengers that are waiting at the stop.
+   */
+  passengerIds: string[];
+
+  /**
+   * Vehicles that are waiting at the stop.
+   */
+  vehicleIds: string[];
+}
+
+export const DEFAULT_STOP_CAPACITY = 10;
 
 export interface Vehicle {
   id: string;
@@ -242,6 +259,8 @@ export interface Vehicle {
   previousStops: Stop[];
   currentStop: Stop | null;
   nextStops: Stop[];
+  capacity: number;
+  name: string;
 }
 
 export interface VehicleStatusUpdate {
@@ -364,7 +383,7 @@ export interface AnimatedPassenger extends displayed<Passenger> {
 
 export interface AnimatedVehicle extends displayed<Vehicle> {
   animationData: AnyVehicleAnimationData[];
-  passengerCount: number;
+  passengerIds: string[];
   currentLineIndex: number | null;
 }
 
@@ -374,7 +393,6 @@ export interface AnimatedVehicle extends displayed<Vehicle> {
 export interface SimulationEnvironment {
   passengers: Record<string, Passenger>;
   vehicles: Record<string, Vehicle>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   statistic: Statistic;
 
   /**
@@ -393,6 +411,7 @@ export interface AnimatedSimulationEnvironment {
   currentState: SimulationEnvironment & {
     passengers: Record<string, AnimatedPassenger>;
     vehicles: Record<string, AnimatedVehicle>;
+    stops: Record<string, AnimatedStop>;
   };
 
   /**
@@ -412,7 +431,6 @@ export interface RawSimulationEnvironment
   extends Pick<SimulationEnvironment, 'timestamp' | 'order'> {
   passengers: Passenger[];
   vehicles: Vehicle[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   statistic: Statistic;
 }
 
@@ -486,4 +504,8 @@ export function getAllStops(vehicle: Vehicle): Stop[] {
     vehicle.currentStop === null ? [] : [vehicle.currentStop],
     vehicle.nextStops,
   );
+}
+
+export function getId(stop: { position: Position }): string {
+  return `${stop.position.latitude},${stop.position.longitude}`;
 }

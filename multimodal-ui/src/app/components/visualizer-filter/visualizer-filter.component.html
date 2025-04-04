@@ -40,6 +40,10 @@
           <mat-radio-button checked value="all">All</mat-radio-button>
           <mat-radio-button value="favorites">Favorites</mat-radio-button>
         </mat-radio-group>
+
+        <mat-slide-toggle (change)="onShouldShowCompleteChange($event)"
+          >Show complete</mat-slide-toggle
+        >
       </section>
     </div>
   </mat-card-content>

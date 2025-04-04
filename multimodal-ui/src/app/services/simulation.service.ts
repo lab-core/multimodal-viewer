@@ -10,6 +10,7 @@ import randomName from 'node-random-name';
 import {
   AllPolylines,
   AnySimulationUpdate,
+  DEFAULT_STOP_CAPACITY,
   Leg,
   Passenger,
   PASSENGER_STATUSES,
@@ -537,6 +538,18 @@ export class SimulationService {
       return null;
     }
 
+    const capacity = data.capacity;
+    if (capacity === undefined) {
+      console.error('Vehicle capacity not found: ', capacity);
+      return null;
+    }
+
+    const name = data.name;
+    if (name === undefined) {
+      console.error('Vehicle name not found: ', name);
+      return null;
+    }
+
     return {
       id,
       mode,
@@ -544,6 +557,8 @@ export class SimulationService {
       previousStops,
       currentStop,
       nextStops,
+      capacity,
+      name,
     };
   }
 
@@ -643,7 +658,20 @@ export class SimulationService {
       return null;
     }
 
-    return { arrivalTime, departureTime, position };
+    const capacity = data.capacity ?? DEFAULT_STOP_CAPACITY;
+
+    const label = data.label;
+
+    if (label === undefined) {
+      console.error('Stop label not found: ', label);
+      return null;
+    }
+    if (typeof label !== 'string') {
+      console.error('Invalid stop label: ', label);
+      return null;
+    }
+
+    return { arrivalTime, departureTime, position, capacity, label };
   }
 
   private extractSimulationEnvironment(

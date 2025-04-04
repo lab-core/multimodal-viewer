@@ -14,6 +14,10 @@ p {
   overflow-x: hidden;
   overflow-y: auto;
   padding-bottom: 10px; /* Fixes scroll-whell always appearing */
+
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .content {
@@ -24,10 +28,6 @@ p {
 
   max-width: 200px;
   margin-right: 10px;
-}
-
-.content-margin {
-  margin-top: 20px;
 }
 
 mat-chip-option {

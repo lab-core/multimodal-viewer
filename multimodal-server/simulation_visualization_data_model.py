@@ -330,6 +330,8 @@ class VisualizedStop(Serializable):
     departure_time: float | None
     latitude: float | None
     longitude: float | None
+    capacity: int | None
+    label: str
 
     def __init__(
         self,
@@ -337,11 +339,15 @@ class VisualizedStop(Serializable):
         departure_time: float,
         latitude: float | None,
         longitude: float | None,
+        capacity: int | None,
+        label: str,
     ) -> None:
         self.arrival_time = arrival_time
         self.departure_time = departure_time
         self.latitude = latitude
         self.longitude = longitude
+        self.capacity = capacity
+        self.label = label
 
     @classmethod
     def from_stop(cls, stop: Stop) -> "VisualizedStop":
@@ -350,6 +356,8 @@ class VisualizedStop(Serializable):
             stop.departure_time if stop.departure_time != math.inf else None,
             stop.location.lat,
             stop.location.lon,
+            stop.capacity,
+            stop.location.label,
         )
 
     def serialize(self) -> dict:
@@ -364,6 +372,11 @@ class VisualizedStop(Serializable):
                 "longitude": self.longitude,
             }
 
+        if self.capacity is not None:
+            serialized["capacity"] = self.capacity
+
+        serialized["label"] = self.label
+
         return serialized
 
     @staticmethod
@@ -371,7 +384,7 @@ class VisualizedStop(Serializable):
         if isinstance(data, str):
             data = json.loads(data.replace("'", '"'))
 
-        if "arrivalTime" not in data:
+        if "arrivalTime" not in data or "label" not in data:
             raise ValueError("Invalid data for VisualizedStop")
 
         arrival_time = float(data["arrivalTime"])
@@ -386,7 +399,16 @@ class VisualizedStop(Serializable):
             latitude = position.get("latitude", None)
             longitude = position.get("longitude", None)
 
-        return VisualizedStop(arrival_time, departure_time, latitude, longitude)
+        capacity = data.get("capacity", None)
+
+        if capacity is not None:
+            capacity = int(capacity)
+
+            label = data["label"]
+
+        return VisualizedStop(
+            arrival_time, departure_time, latitude, longitude, capacity, label
+        )
 
 
 # MARK: Vehicle
@@ -398,6 +420,8 @@ class VisualizedVehicle(Serializable):
     previous_stops: list[VisualizedStop]
     current_stop: VisualizedStop | None
     next_stops: list[VisualizedStop]
+    capacity: int
+    name: str | None
 
     def __init__(
         self,
@@ -408,6 +432,8 @@ class VisualizedVehicle(Serializable):
         previous_stops: list[VisualizedStop],
         current_stop: VisualizedStop | None,
         next_stops: list[VisualizedStop],
+        capacity: int,
+        name: str | None = None,
     ) -> None:
         self.vehicle_id = str(vehicle_id)
         self.mode = mode
@@ -417,6 +443,9 @@ class VisualizedVehicle(Serializable):
         self.previous_stops = previous_stops
         self.current_stop = current_stop
         self.next_stops = next_stops
+
+        self.capacity = capacity
+        self.name = name
 
     @property
     def all_stops(self) -> list[VisualizedStop]:
@@ -447,6 +476,8 @@ class VisualizedVehicle(Serializable):
             previous_stops,
             current_stop,
             next_stops,
+            vehicle.capacity,
+            vehicle.name,
         )
 
     def serialize(self) -> dict:
@@ -455,6 +486,8 @@ class VisualizedVehicle(Serializable):
             "status": convert_vehicle_status_to_string(self.status),
             "previousStops": [stop.serialize() for stop in self.previous_stops],
             "nextStops": [stop.serialize() for stop in self.next_stops],
+            "capacity": self.capacity,
+            "name": self.name,
         }
 
         if self.mode is not None:
@@ -475,6 +508,8 @@ class VisualizedVehicle(Serializable):
             or "status" not in data
             or "previousStops" not in data
             or "nextStops" not in data
+            or "capacity" not in data
+            or "name" not in data
         ):
             raise ValueError("Invalid data for VisualizedVehicle")
 
@@ -487,13 +522,23 @@ class VisualizedVehicle(Serializable):
         next_stops = [
             VisualizedStop.deserialize(stop_data) for stop_data in data["nextStops"]
         ]
+        capacity = int(data["capacity"])
+        name = data.get("name", None)
 
         current_stop = data.get("currentStop", None)
         if current_stop is not None:
             current_stop = VisualizedStop.deserialize(current_stop)
 
         return VisualizedVehicle(
-            vehicle_id, mode, status, None, previous_stops, current_stop, next_stops
+            vehicle_id,
+            mode,
+            status,
+            None,
+            previous_stops,
+            current_stop,
+            next_stops,
+            capacity,
+            name,
         )
 
 
