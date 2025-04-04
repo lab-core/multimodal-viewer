@@ -8,6 +8,7 @@
         }
         @for (id of favVehicleIds(); track id) {
           <mat-chip
+            [class.disabled]="!isVehicleInEnvironment(id)"
             (click)="selectVehicle(id)"
             (removed)="toggleFavoriteVehicle(id)"
           >
@@ -26,6 +27,7 @@
       >
         @for (id of favPassengerIds(); track id) {
           <mat-chip
+            [class.disabled]="!isPassengerInEnvironment(id)"
             (click)="selectPassenger(id)"
             (removed)="toggleFavoritePassenger(id)"
           >
