@@ -747,6 +747,22 @@ export class AnimationService {
     }
   }
 
+  private followSelectedStop() {
+    const selectedStopId = this._selectedStopIdSignal();
+
+    if (selectedStopId === null) return;
+
+    const stopEntity = this.passengerStopEntitiesByPosition[selectedStopId];
+
+    if (stopEntity === undefined) return;
+
+    const point = this.utils.layerPointToLatLng(
+      new L.Point(stopEntity.sprite.parent.x, stopEntity.sprite.parent.y),
+    );
+
+    this.frame_pointToFollow = point;
+  }
+
   private updateVehiclePassengerCounters() {
     const interpolate = d3InterpolateRgb(this.CAPACITY_COLORS);
 
@@ -1241,6 +1257,7 @@ export class AnimationService {
     this.updateVehiclePassengerCounters();
     this.filterEntities();
     this.updateStopCounters();
+    this.followSelectedStop();
   }
 
   // onClick is called after onEntityPointerdown
