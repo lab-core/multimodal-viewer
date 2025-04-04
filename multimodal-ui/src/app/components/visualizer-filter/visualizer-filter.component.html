@@ -5,12 +5,19 @@
       <section class="entity-filters">
         @let vehicle = "vehicle";
         @let passenger = "passenger";
+        @let stops = "stops";
         @let filterService = visualizationFilterService;
         <mat-chip-option
           [selected]="!filters().has(passenger)"
           (click)="filterService.toggleFilter(passenger)"
           >Passengers</mat-chip-option
         >
+        <mat-chip-option
+          [selected]="!filters().has(stops)"
+          (click)="filterService.toggleFilter(stops)"
+          >Stops</mat-chip-option
+        >
+
         <mat-chip-option
           [selected]="!filters().has(vehicle)"
           (click)="filterService.toggleFilter(vehicle)"

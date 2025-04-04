@@ -14,6 +14,7 @@ import { pixiOverlay } from 'leaflet';
 import { OutlineFilter } from 'pixi-filters';
 import * as PIXI from 'pixi.js';
 import {
+  DualTextEntity,
   Entity,
   EntityFilterMode,
   TextEntity,
@@ -101,10 +102,15 @@ export class AnimationService {
   private readonly LIGHT_GRAY = 0x666666;
 
   private readonly CAPACITY_COLORS = [
-    '#00ff00',
-    '#ffff00',
-    '#ff8000',
-    '#ff0000',
+    '#ffffff',
+    '#ccffcc',
+    // Double yellow and triple orange and red to make it more important
+    '#ffffb3',
+    '#ffffb3',
+    '#ffb980',
+    '#ffb980',
+    '#ff3333',
+    '#ff3333',
   ];
 
   private readonly BITMAP_TEXT_URL = 'bitmap-fonts/custom-sans-serif.xml';
@@ -136,10 +142,10 @@ export class AnimationService {
     Entity<AnimatedPassenger>
   > = {};
 
-  private passengerStopEntities: TextEntity<AnimatedStop>[] = [];
+  private passengerStopEntities: DualTextEntity<AnimatedStop>[] = [];
   private passengerStopEntitiesByPosition: Record<
     string,
-    TextEntity<AnimatedStop>
+    DualTextEntity<AnimatedStop>
   > = {};
 
   private container = new PIXI.Container();
@@ -232,7 +238,7 @@ export class AnimationService {
       );
     }
 
-    this.addStops();
+    this.addPassengerStops();
 
     let isSelectedStopInEnvironment = false;
     const selectedStopId = this._selectedStopIdSignal();
@@ -332,7 +338,7 @@ export class AnimationService {
     this.passengerEntitiesByPassengerId[passenger.id] = entity;
   }
 
-  private addStops(): void {
+  private addPassengerStops(): void {
     this.passengerStopEntities = [];
     this.passengerStopEntitiesByPosition = {};
 
@@ -343,12 +349,20 @@ export class AnimationService {
         if (this.passengerStopEntitiesByPosition[getId(stop)] !== undefined)
           continue;
 
-        // Sprite
         const stopContainer = new PIXI.Container();
+
+        // Sprite
         const sprite = PIXI.Sprite.from('images/sample-walk.png');
         stopContainer.scale.set(1 / this.utils.getScale());
         sprite.anchor.set(0.5, 0.5);
         stopContainer.addChild(sprite);
+
+        // Other sprite (for the stop without passengers)
+        const otherSprite = PIXI.Sprite.from('images/sample-stop.png');
+        otherSprite.scale.set(0.2, 0.2);
+        otherSprite.anchor.set(0.5, 0.5);
+        otherSprite.visible = false;
+        stopContainer.addChild(otherSprite);
 
         // Number of passengers
         const passengerCountText = new PIXI.BitmapText(
@@ -360,7 +374,7 @@ export class AnimationService {
         passengerCountText.y = -sprite.height / 2;
         stopContainer.addChild(passengerCountText);
 
-        const entity: TextEntity<AnimatedStop> = {
+        const entity: DualTextEntity<AnimatedStop> = {
           data: {
             ...stop,
             passengerIds: [],
@@ -368,6 +382,7 @@ export class AnimationService {
             numberOfPassengers: 0,
           },
           sprite,
+          otherSprite,
           text: passengerCountText,
           show: true,
         };
@@ -702,13 +717,16 @@ export class AnimationService {
           passengerEntity.sprite.parent.x = point.x;
           passengerEntity.sprite.parent.y = point.y;
 
-          const animatedStop =
-            this.passengerStopEntitiesByPosition[getId(stop)];
+          if (passenger.status !== 'complete') {
+            const animatedStop =
+              this.passengerStopEntitiesByPosition[getId(stop)];
 
-          if (!animatedStop) return;
-
-          animatedStop.data.passengerIds.push(passenger.id);
-          animatedStop.data.numberOfPassengers += passenger.numberOfPassengers;
+            if (animatedStop) {
+              animatedStop.data.passengerIds.push(passenger.id);
+              animatedStop.data.numberOfPassengers +=
+                passenger.numberOfPassengers;
+            }
+          }
         }
       } else if (
         (animationData as DynamicPassengerAnimationData).isOnBoard === true &&
@@ -788,6 +806,25 @@ export class AnimationService {
         stopEntity.sprite.tint = tint;
       } else {
         console.warn('Color interpolation failed');
+      }
+    }
+
+    if (this.filters.has('stops')) {
+      return;
+    }
+
+    for (const stopEntity of this.passengerStopEntities) {
+      if (!stopEntity.sprite.parent.visible) {
+        // Only show the stop image
+        stopEntity.sprite.parent.visible = true;
+        stopEntity.sprite.visible = false;
+        stopEntity.text.visible = false;
+        stopEntity.otherSprite.visible = true;
+      } else {
+        // Show the passenger image and the text
+        stopEntity.sprite.visible = true;
+        stopEntity.text.visible = true;
+        stopEntity.otherSprite.visible = false;
       }
     }
   }
@@ -963,7 +1000,11 @@ export class AnimationService {
 
     // Distances for all stops
     for (const stop of this.passengerStopEntities) {
-      if (!stop.sprite.parent.visible) continue;
+      if (
+        !stop.sprite.parent.visible ||
+        (!stop.sprite.visible && !stop.otherSprite.visible)
+      )
+        continue;
       const distance = this.distanceBetweenPoints(
         point,
         stop.sprite.parent.position,
