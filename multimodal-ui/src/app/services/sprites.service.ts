@@ -21,7 +21,7 @@ export class SpritesService {
   private _defaultPassengerSprite = this.DEFAULT_PASSENGER_SPRITE;
   private _customSprites: CustomSprite[] = [];
 
-  private _spriteSet = new Map<string, string>();
+  private _spriteMap = new Map<string, string>();
 
   get defaultVehicleSprite(): string {
     return this._defaultVehicleSprite;
@@ -56,7 +56,7 @@ export class SpritesService {
   }
 
   getVehicleSprite(mode: string) {
-    const url = this._spriteSet.get(mode);
+    const url = this._spriteMap.get(mode);
     return url ?? this._defaultVehicleSprite;
   }
 
@@ -73,8 +73,8 @@ export class SpritesService {
     this._defaultPassengerSprite = spriteSaveData.defaultPassengerSprite;
     this._customSprites = spriteSaveData.customSprites;
 
-    this._spriteSet.clear();
+    this._spriteMap.clear();
     for (const customSprite of spriteSaveData.customSprites)
-      this._spriteSet.set(customSprite.mode, customSprite.url);
+      this._spriteMap.set(customSprite.mode, customSprite.url);
   }
 }
