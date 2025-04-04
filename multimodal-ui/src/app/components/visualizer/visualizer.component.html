@@ -223,6 +223,10 @@
                 </span>
               </span>
               <span>Status: {{ selectedPassenger.status }}</span>
+              <span
+                >Number of passengers:
+                {{ selectedPassenger.numberOfPassengers }}</span
+              >
               @if (selectedPassenger.notDisplayedReason !== null) {
                 <div>
                   <span>Not displayed: </span>

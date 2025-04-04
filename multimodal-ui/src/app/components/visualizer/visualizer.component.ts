@@ -417,8 +417,11 @@ export class VisualizerComponent implements OnDestroy {
   showStatusAndCount = false;
   showNotDisplayedEntities = false;
 
-  readonly searchValueSignal: WritableSignal<string | EntitySearch> =
-    signal('');
+  private previousSearchValue: string | EntitySearch | null = null;
+  readonly searchValueSignal: WritableSignal<string | EntitySearch> = signal(
+    '',
+    { equal: (a, b) => JSON.stringify(a) === JSON.stringify(b) },
+  );
 
   readonly searchControl: FormControl<string | EntitySearch | null>;
 
@@ -559,6 +562,14 @@ export class VisualizerComponent implements OnDestroy {
     // MARK: Effects
     effect(() => {
       const searchValue = this.searchValueSignal();
+
+      if (
+        JSON.stringify(searchValue) === JSON.stringify(this.previousSearchValue)
+      ) {
+        return;
+      }
+
+      this.previousSearchValue = searchValue;
 
       if (searchValue === null || typeof searchValue === 'string') {
         return;

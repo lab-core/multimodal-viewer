@@ -309,6 +309,7 @@ export class VisualizationService {
               ...stop,
               passengerIds: [],
               vehicleIds: [],
+              numberOfPassengers: 0,
             };
           }
         }
@@ -340,6 +341,7 @@ export class VisualizationService {
           animationData,
           notDisplayedReason: currentAnimationData?.notDisplayedReason ?? null,
           passengerIds: [],
+          numberOfPassengers: 0,
           currentLineIndex: null,
         };
 
@@ -417,6 +419,7 @@ export class VisualizationService {
 
         if ((currentAnimationData as DynamicPassengerAnimationData).isOnBoard) {
           vehicle.passengerIds.push(passengerId);
+          vehicle.numberOfPassengers += passenger.numberOfPassengers;
         } else if (
           (currentAnimationData as StaticPassengerAnimationData).stopIndex !==
           undefined
@@ -438,7 +441,21 @@ export class VisualizationService {
             continue;
           }
 
-          stops[getId(stop)].passengerIds.push(passengerId);
+          const animatedStop = stops[getId(stop)];
+
+          if (animatedStop === undefined) {
+            console.error(
+              'Animated stop not found for passenger',
+              passenger,
+              currentAnimationData,
+              vehicle,
+              allStops,
+            );
+            continue;
+          }
+
+          animatedStop.passengerIds.push(passengerId);
+          animatedStop.numberOfPassengers += passenger.numberOfPassengers;
         }
       }
 

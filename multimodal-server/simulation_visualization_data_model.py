@@ -227,6 +227,7 @@ class VisualizedPassenger(Serializable):
     passenger_id: str
     name: str | None
     status: PassengerStatus
+    number_of_passengers: int
 
     previous_legs: list[VisualizedLeg]
     current_leg: VisualizedLeg | None
@@ -237,6 +238,7 @@ class VisualizedPassenger(Serializable):
         passenger_id: str,
         name: str | None,
         status: PassengerStatus,
+        number_of_passengers: int,
         previous_legs: list[VisualizedLeg],
         current_leg: VisualizedLeg | None,
         next_legs: list[VisualizedLeg],
@@ -244,6 +246,7 @@ class VisualizedPassenger(Serializable):
         self.passenger_id = passenger_id
         self.name = name
         self.status = status
+        self.number_of_passengers = number_of_passengers
 
         self.previous_legs = previous_legs
         self.current_leg = current_leg
@@ -270,13 +273,20 @@ class VisualizedPassenger(Serializable):
         ]
 
         return cls(
-            trip.id, trip.name, trip.status, previous_legs, current_leg, next_legs
+            trip.id,
+            trip.name,
+            trip.status,
+            trip.nb_passengers,
+            previous_legs,
+            current_leg,
+            next_legs,
         )
 
     def serialize(self) -> dict:
         serialized = {
             "id": self.passenger_id,
             "status": convert_passenger_status_to_string(self.status),
+            "numberOfPassengers": self.number_of_passengers,
         }
 
         if self.name is not None:
@@ -301,12 +311,14 @@ class VisualizedPassenger(Serializable):
             or "status" not in data
             or "previousLegs" not in data
             or "nextLegs" not in data
+            or "numberOfPassengers" not in data
         ):
             raise ValueError("Invalid data for VisualizedPassenger")
 
         passenger_id = str(data["id"])
         name = data.get("name", None)
         status = convert_string_to_passenger_status(data["status"])
+        number_of_passengers = int(data["numberOfPassengers"])
 
         previous_legs = [
             VisualizedLeg.deserialize(leg_data) for leg_data in data["previousLegs"]
@@ -320,7 +332,13 @@ class VisualizedPassenger(Serializable):
             current_leg = VisualizedLeg.deserialize(current_leg)
 
         return VisualizedPassenger(
-            passenger_id, name, status, previous_legs, current_leg, next_legs
+            passenger_id,
+            name,
+            status,
+            number_of_passengers,
+            previous_legs,
+            current_leg,
+            next_legs,
         )
 
 

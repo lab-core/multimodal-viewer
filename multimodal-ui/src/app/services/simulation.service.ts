@@ -355,6 +355,15 @@ export class SimulationService {
       return null;
     }
 
+    const numberOfPassengers = data.numberOfPassengers;
+    if (numberOfPassengers === undefined) {
+      console.error(
+        'Passenger number of passengers not found: ',
+        numberOfPassengers,
+      );
+      return null;
+    }
+
     if (!Array.isArray(data.previousLegs)) {
       console.error('Passenger previous legs not found: ', data.previousLegs);
       return null;
@@ -384,7 +393,15 @@ export class SimulationService {
       return null;
     }
 
-    return { id, name, status, previousLegs, currentLeg, nextLegs };
+    return {
+      id,
+      name,
+      status,
+      previousLegs,
+      currentLeg,
+      nextLegs,
+      numberOfPassengers,
+    };
   }
 
   private extractLeg(data: Leg): Leg | null {

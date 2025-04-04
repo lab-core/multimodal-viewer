@@ -153,6 +153,7 @@ export interface Passenger {
   previousLegs: Leg[];
   currentLeg: Leg | null;
   nextLegs: Leg[];
+  numberOfPassengers: number;
 }
 
 export interface PassengerStatusUpdate {
@@ -248,6 +249,15 @@ export interface AnimatedStop
    * Vehicles that are waiting at the stop.
    */
   vehicleIds: string[];
+
+  /**
+   * The number of passengers that are waiting at the stop.
+   *
+   * This is different from the length of the passengerIds array because
+   * one passenger can account for multiple people and passengerIds contains
+   * only the displayed passengers.
+   */
+  numberOfPassengers: number;
 }
 
 export const DEFAULT_STOP_CAPACITY = 10;
@@ -384,6 +394,13 @@ export interface AnimatedPassenger extends displayed<Passenger> {
 export interface AnimatedVehicle extends displayed<Vehicle> {
   animationData: AnyVehicleAnimationData[];
   passengerIds: string[];
+  /**
+   * The number of passengers that are on board the vehicle.
+   * This is different from the length of the passengerIds array because
+   * one passenger can account for multiple people and passengerIds contains
+   * only the displayed passengers.
+   */
+  numberOfPassengers: number;
   currentLineIndex: number | null;
 }
 

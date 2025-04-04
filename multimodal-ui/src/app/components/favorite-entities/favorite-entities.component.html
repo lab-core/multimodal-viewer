@@ -7,50 +7,60 @@
     @let all = allFavIdsSignal();
     <p class="title">Favorites</p>
     <div class="container">
-      <div class="content">
-        @if (all.size === 0) {
-          <p>You have no favorites in this simulation.</p>
+      @if (all.size === 0) {
+        <p>You have no favorites in this simulation.</p>
+      } @else {
+        @if (vehicles.size > 0) {
+          <div class="content">
+            @for (id of vehicles; track id) {
+              <mat-chip
+                [class.disabled]="!isVehicleInEnvironment(id)"
+                (click)="selectVehicle(id)"
+                (removed)="toggleFavoriteVehicle(id)"
+              >
+                <mat-icon matChipAvatar>directions_car</mat-icon>{{ id }}
+                <button class="remove-btn" matChipRemove>
+                  <mat-icon>favorite</mat-icon>
+                </button>
+              </mat-chip>
+            }
+          </div>
         }
-        @for (id of vehicles; track id) {
-          <mat-chip
-            [class.disabled]="!isVehicleInEnvironment(id)"
-            (click)="selectVehicle(id)"
-            (removed)="toggleFavoriteVehicle(id)"
-          >
-            <mat-icon matChipAvatar>directions_car</mat-icon>{{ id }}
-            <button class="remove-btn" matChipRemove>
-              <mat-icon>favorite</mat-icon>
-            </button>
-          </mat-chip>
+        @if (passengers.size > 0) {
+          <div class="content">
+            @for (id of passengers; track id) {
+              <mat-chip
+                [class.disabled]="!isPassengerInEnvironment(id)"
+                (click)="selectPassenger(id)"
+                (removed)="toggleFavoritePassenger(id)"
+              >
+                <mat-icon matChipAvatar>accessibility</mat-icon
+                ><span class="chip-text">{{ id }}</span>
+                <button class="remove-btn" matChipRemove>
+                  <mat-icon>favorite</mat-icon>
+                </button>
+              </mat-chip>
+            }
+          </div>
         }
-      </div>
-      <div class="content">
-        @for (id of passengers; track id) {
-          <mat-chip
-            [class.disabled]="!isPassengerInEnvironment(id)"
-            (click)="selectPassenger(id)"
-            (removed)="toggleFavoritePassenger(id)"
-          >
-            <mat-icon matChipAvatar>accessibility</mat-icon
-            ><span class="chip-text">{{ id }}</span>
-            <button class="remove-btn" matChipRemove>
-              <mat-icon>favorite</mat-icon>
-            </button>
-          </mat-chip>
-        }
-      </div>
 
-      <div class="content">
-        @for (id of stops; track id) {
-          <mat-chip (click)="selectStop(id)" (removed)="toggleFavoriteStop(id)">
-            <mat-icon matChipAvatar>place</mat-icon
-            ><span class="chip-text">{{ id }}</span>
-            <button class="remove-btn" matChipRemove>
-              <mat-icon>favorite</mat-icon>
-            </button>
-          </mat-chip>
+        @if (stops.size > 0) {
+          <div class="content">
+            @for (id of stops; track id) {
+              <mat-chip
+                (click)="selectStop(id)"
+                (removed)="toggleFavoriteStop(id)"
+              >
+                <mat-icon matChipAvatar>place</mat-icon
+                ><span class="chip-text">{{ id }}</span>
+                <button class="remove-btn" matChipRemove>
+                  <mat-icon>favorite</mat-icon>
+                </button>
+              </mat-chip>
+            }
+          </div>
         }
-      </div>
+      }
     </div>
   </mat-card-content>
 </mat-card>

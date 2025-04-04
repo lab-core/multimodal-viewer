@@ -365,6 +365,7 @@ export class AnimationService {
             ...stop,
             passengerIds: [],
             vehicleIds: [],
+            numberOfPassengers: 0,
           },
           sprite,
           text: passengerCountText,
@@ -485,6 +486,24 @@ export class AnimationService {
     this.utils.getMap().flyToBounds(new L.LatLngBounds(southWest, northEast));
   }
 
+  private isPassengerFiltered(
+    passenger: Entity<AnimatedPassenger>,
+    showPassengers: boolean,
+    showFavoritesOnly: boolean,
+    shouldShowComplete: boolean,
+  ) {
+    return (
+      showPassengers && // Are passengers not filtered
+      passenger && // Is passenger in the environment
+      (!showFavoritesOnly || // Is favorites filter on and is in favorites
+        this.favoriteEntitiesService
+          .favPassengerIds()
+          .has(passenger.data.id)) &&
+      (shouldShowComplete || // Is complete filter on or is not complete
+        passenger.data.status !== 'complete')
+    );
+  }
+
   private filterEntities() {
     const filters = this.filters;
 
@@ -493,7 +512,7 @@ export class AnimationService {
     const showFavoritesOnly = this.filterMode === 'favorites';
     const shouldShowComplete = this.shouldShowComplete;
 
-    for (const vehicle of this.vehicles)
+    for (const vehicle of this.vehicles) {
       vehicle.sprite.parent.visible =
         vehicle.show &&
         showVehicles && // Are vehicles not filtered
@@ -503,31 +522,39 @@ export class AnimationService {
         (shouldShowComplete || // Is complete filter on or is not complete
           vehicle.data.status !== 'complete');
 
+      vehicle.data.passengerIds = vehicle.data.passengerIds.filter(
+        (passengerId) => {
+          const passenger = this.passengerEntitiesByPassengerId[passengerId];
+          return this.isPassengerFiltered(
+            passenger,
+            showPassengers,
+            showFavoritesOnly,
+            shouldShowComplete,
+          );
+        },
+      );
+    }
+
     for (const passenger of this.passengersEntities)
       passenger.sprite.parent.visible =
         passenger.show &&
-        showPassengers && // Are passengers not filtered
-        (!showFavoritesOnly || // Is favorites filter on and is in favorites
-          this.favoriteEntitiesService
-            .favPassengerIds()
-            .has(passenger.data.id)) &&
-        (shouldShowComplete || // Is complete filter on or is not complete
-          passenger.data.status !== 'complete');
+        this.isPassengerFiltered(
+          passenger,
+          showPassengers,
+          showFavoritesOnly,
+          shouldShowComplete,
+        );
 
     // Same for passengers since these stops are only shown when passengers are waiting
     // Filter the passengers of the stop instead of changing the stop container
     for (const stop of this.passengerStopEntities)
       stop.data.passengerIds = stop.data.passengerIds.filter((passengerId) => {
         const passenger = this.passengerEntitiesByPassengerId[passengerId];
-        return (
-          showPassengers && // Are passengers not filtered
-          passenger && // Is passenger in the environment
-          (!showFavoritesOnly || // Is favorites filter on and is in favorites
-            this.favoriteEntitiesService
-              .favPassengerIds()
-              .has(passenger.data.id)) &&
-          (shouldShowComplete || // Is complete filter on or is not complete
-            passenger.data.status !== 'complete')
+        return this.isPassengerFiltered(
+          passenger,
+          showPassengers,
+          showFavoritesOnly,
+          shouldShowComplete,
         );
       });
   }
@@ -539,6 +566,7 @@ export class AnimationService {
       const vehicle = vehicleEntity.data;
 
       vehicle.passengerIds = [];
+      vehicle.numberOfPassengers = 0;
 
       if (!vehicle.animationData) {
         vehicleEntity.show = false;
@@ -674,9 +702,13 @@ export class AnimationService {
           passengerEntity.sprite.parent.x = point.x;
           passengerEntity.sprite.parent.y = point.y;
 
-          this.passengerStopEntitiesByPosition[
-            getId(stop)
-          ].data.passengerIds.push(passenger.id);
+          const animatedStop =
+            this.passengerStopEntitiesByPosition[getId(stop)];
+
+          if (!animatedStop) return;
+
+          animatedStop.data.passengerIds.push(passenger.id);
+          animatedStop.data.numberOfPassengers += passenger.numberOfPassengers;
         }
       } else if (
         (animationData as DynamicPassengerAnimationData).isOnBoard === true &&
@@ -686,6 +718,7 @@ export class AnimationService {
           this.vehicleEntitiesByVehicleId[animationData.vehicleId];
         if (vehicleEntity) {
           vehicleEntity.data.passengerIds.push(passenger.id);
+          vehicleEntity.data.numberOfPassengers += passenger.numberOfPassengers;
           passengerEntity.sprite.parent.x = vehicleEntity.sprite.parent.x;
           passengerEntity.sprite.parent.y = vehicleEntity.sprite.parent.y;
         }
@@ -713,6 +746,7 @@ export class AnimationService {
     for (const stopEntity of this.passengerStopEntities) {
       stopEntity.data.passengerIds = [];
       stopEntity.data.vehicleIds = [];
+      stopEntity.data.numberOfPassengers = 0;
       stopEntity.text.text = '';
       stopEntity.sprite.tint = this.WHITE;
       stopEntity.sprite.parent.visible = true;
@@ -721,19 +755,30 @@ export class AnimationService {
 
   private updateStopCounters() {
     for (const stopEntity of this.passengerStopEntities) {
-      if (stopEntity.data.passengerIds.length === 0) {
+      const passengers = stopEntity.data.passengerIds
+        .map((passengerId) => this.passengerEntitiesByPassengerId[passengerId])
+        .filter((passenger) => passenger !== undefined);
+
+      const numberOfDisplayedPassengers = passengers.reduce(
+        (acc, passenger) => acc + passenger.data.numberOfPassengers,
+        0,
+      );
+      const numberOfPassengers = stopEntity.data.numberOfPassengers;
+
+      if (numberOfDisplayedPassengers === 0) {
         stopEntity.sprite.parent.visible = false;
         continue;
       }
 
-      stopEntity.text.text = stopEntity.data.passengerIds.length.toString();
+      if (numberOfDisplayedPassengers === numberOfPassengers) {
+        stopEntity.text.text = numberOfPassengers.toString();
+      } else {
+        stopEntity.text.text = `${numberOfDisplayedPassengers} (${numberOfPassengers})`;
+      }
 
       const interpolate = d3InterpolateRgb(this.CAPACITY_COLORS);
 
-      const t = Math.min(
-        1,
-        stopEntity.data.passengerIds.length / stopEntity.data.capacity,
-      );
+      const t = Math.min(1, numberOfPassengers / stopEntity.data.capacity);
 
       const color = d3Color(interpolate(t))?.rgb();
 
@@ -769,12 +814,25 @@ export class AnimationService {
     // eslint-disable-next-line @typescript-eslint/prefer-for-of
     for (let index = 0; index < this.vehicles.length; ++index) {
       const vehicleEntity = this.vehicles[index];
-      const passengerCount = vehicleEntity.data.passengerIds.length;
 
-      if (passengerCount === 0) vehicleEntity.text.text = '';
-      else vehicleEntity.text.text = passengerCount.toString();
+      const passengers = vehicleEntity.data.passengerIds.map(
+        (passengerId) => this.passengerEntitiesByPassengerId[passengerId],
+      );
+      const numberOfDisplayedPassengers = passengers.reduce(
+        (acc, passenger) => acc + passenger.data.numberOfPassengers,
+        0,
+      );
 
-      const t = Math.min(1, passengerCount / vehicleEntity.data.capacity);
+      const numberOfPassengers = vehicleEntity.data.numberOfPassengers;
+
+      if (numberOfDisplayedPassengers === 0) vehicleEntity.text.text = '';
+      else if (numberOfDisplayedPassengers === numberOfPassengers) {
+        vehicleEntity.text.text = numberOfPassengers.toString();
+      } else {
+        vehicleEntity.text.text = `${numberOfDisplayedPassengers} (${numberOfPassengers})`;
+      }
+
+      const t = Math.min(1, numberOfPassengers / vehicleEntity.data.capacity);
       const color = d3Color(interpolate(t))?.rgb();
       if (!color) continue;
 
@@ -1254,8 +1312,8 @@ export class AnimationService {
     this.resetStopCounters();
     this.setVehiclePositions();
     this.setPassengerPositions();
-    this.updateVehiclePassengerCounters();
     this.filterEntities();
+    this.updateVehiclePassengerCounters();
     this.updateStopCounters();
     this.followSelectedStop();
   }
