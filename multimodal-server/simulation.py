@@ -6,16 +6,12 @@ from multimodalsim.observer.environment_observer import EnvironmentObserver
 from multimodalsim.simulator.simulator import Simulator
 from multimodalsim.statistics.data_analyzer import FixedLineDataAnalyzer
 from server_utils import (
-    HOST,
-    PORT,
-    SimulationStatus,
     build_simulation_id,
     get_available_data,
     set_event_on_input,
     verify_simulation_name,
 )
 from simulation_visualization_data_collector import SimulationVisualizationDataCollector
-from socketio import Client
 
 
 def run_simulation(
@@ -27,7 +23,11 @@ def run_simulation(
     data_container = DataContainer()
 
     data_collector = SimulationVisualizationDataCollector(
-        simulation_id, data, max_time, FixedLineDataAnalyzer(data_container), 10
+        "",
+        data,
+        FixedLineDataAnalyzer(data_container),
+        max_time=max_time,
+        simulation_id=simulation_id,
     )
 
     environment_observer = EnvironmentObserver(
