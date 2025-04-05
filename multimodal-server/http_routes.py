@@ -87,7 +87,7 @@ def export_input_data(folder_name):
 @http_routes.route("/api/input_data/<folder_name>", methods=["POST"])
 def import_input_data(folder_name):
     folder_path = os.path.join(data_dir, folder_name)
-    return handle_zip_upload(folder_path, folder_name)
+    return handle_zip_upload(folder_path)
 
 @http_routes.route("/api/input_data/<folder_name>", methods=["DELETE"])
 def delete_input_data(folder_name):
@@ -113,7 +113,7 @@ def export_saved_simulation(folder_name):
 @http_routes.route("/api/simulation/<folder_name>", methods=["POST"])
 def import_saved_simulation(folder_name):
     folder_path = os.path.join(saved_simulations_dir, folder_name)
-    return handle_zip_upload(folder_path, folder_name)
+    return handle_zip_upload(folder_path)
 
 @http_routes.route("/api/simulation/<folder_name>", methods=["DELETE"])
 def delete_saved_simulation(folder_name):

@@ -21,6 +21,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { firstValueFrom } from 'rxjs';
 import {
   AnimatedPassenger,
@@ -407,6 +408,7 @@ export class VisualizerComponent implements OnDestroy {
     private readonly favoriteEntitiesService: FavoriteEntitiesService,
     private readonly formBuilder: FormBuilder,
     private readonly visualizationFilterService: VisualizationFilterService,
+    private snackBar: MatSnackBar,
   ) {
     this.tabControl = new FormControl('');
     this.tabControl.valueChanges.subscribe((value) => {
@@ -811,8 +813,15 @@ export class VisualizerComponent implements OnDestroy {
     this.animationService.unselectEntity();
   }
   copyToClipboard(text: string): void {
-    navigator.clipboard.writeText(text).catch(err => {
+    navigator.clipboard.writeText(text).then(() => {
+      this.snackBar.open('Copied to clipboard!', 'Close', {
+        duration: 2000,
+      });
+    }).catch(err => {
       console.error('Failed to copy text: ', err);
+      this.snackBar.open('Failed to copy!', 'Close', {
+        duration: 2000,
+      });
     });
   }
 

@@ -1227,7 +1227,10 @@ export class AnimationService {
   }
 
   findPassengerName(id: string) {
-    return this.passengerEntitiesByPassengerId[id].data.name as string; 
+    if(!this.passengerEntitiesByPassengerId[id]) {
+      return
+    }
+    return this.passengerEntitiesByPassengerId[id].data.name as string;
   }
 
 }
