@@ -4,10 +4,11 @@
     <div class="container">
       <div class="content">
         @if (favVehicleIds().size === 0 && favPassengerIds().size === 0) {
-          <p>You have no favorites.</p>
+          <p>You have no favorites in this simulation.</p>
         }
         @for (id of favVehicleIds(); track id) {
           <mat-chip
+            [class.disabled]="!isVehicleInEnvironment(id)"
             (click)="selectVehicle(id)"
             (removed)="toggleFavoriteVehicle(id)"
           >
@@ -26,6 +27,7 @@
       >
         @for (id of favPassengerIds(); track id) {
           <mat-chip
+            [class.disabled]="!isPassengerInEnvironment(id)"
             (click)="selectPassenger(id)"
             (removed)="toggleFavoritePassenger(id)"
           >
