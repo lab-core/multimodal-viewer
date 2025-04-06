@@ -88,6 +88,7 @@ export class VisualizerComponent implements OnDestroy {
   @ViewChild('searchInput') searchInput!: ElementRef<HTMLInputElement>;
   // MARK: Properties
   private matDialogRef: MatDialogRef<InformationDialogComponent> | null = null;
+  readonly selectedModeSignal: WritableSignal<string | null> = signal(null);
 
   private readonly visualizerStatusSignal: Signal<VisualizerStatus> = computed(
     () => {
@@ -341,23 +342,23 @@ export class VisualizerComponent implements OnDestroy {
     const searchValue = this.searchValueSignal();
     const entitySearchData = this.entitySearchDataSignal();
     const vehicleModes = this.visualizationFilterService.vehicleModes();
+    const selectedMode = this.selectedModeSignal();
   
-    if (typeof searchValue === 'object' && searchValue.type === 'mode') {
-      const selectedMode = (searchValue.entity as {mode: string}).mode;
-      return entitySearchData.filter(entity => 
-        entity.type === 'vehicle' && 
-        (entity.entity as AnimatedVehicle).mode === selectedMode
-      );
-    }
+    const filteredData = selectedMode !== null
+      ? entitySearchData.filter(entity => 
+          entity.type === 'vehicle' && 
+          (entity.entity as AnimatedVehicle).mode === selectedMode
+        )
+      : entitySearchData;
   
-    if (searchValue === '') {
-      return entitySearchData;
+    if (searchValue === '' || (typeof searchValue === 'object' && searchValue.type === 'mode')) {
+      return filteredData;
     }
   
     if (typeof searchValue === 'string') {
       if (searchValue.toLowerCase().startsWith('mode:')) {
         const modeFilter = searchValue.substring(5).trim().toLowerCase();
-        const modeSuggestions = vehicleModes
+        return vehicleModes
           .filter(mode => mode.toLowerCase().includes(modeFilter))
           .map(mode => ({
             id: `mode:${mode}`,
@@ -365,21 +366,17 @@ export class VisualizerComponent implements OnDestroy {
             type: 'mode' as const,
             entity: { mode }
           }));
-      
-        return [...modeSuggestions];
       }
   
       const searchLower = searchValue.toLowerCase();
-      return entitySearchData.filter((entity) => {
-        // Check if the entity is a passenger and has a name property
+      return filteredData.filter((entity) => {
         if (entity.type === 'passenger') {
           const passenger = entity.entity as AnimatedPassenger;
           return (
             entity.displayedValue.toLowerCase().includes(searchLower) ||
-            (passenger.name && passenger.name.toLowerCase().includes(searchLower)
-          ));
+            (passenger.name && passenger.name.toLowerCase().includes(searchLower))
+          );
         }
-        // For vehicles or other types, just check the displayedValue
         return entity.displayedValue.toLowerCase().includes(searchLower);
       });
     }
@@ -471,16 +468,18 @@ export class VisualizerComponent implements OnDestroy {
     effect(() => {
       const searchValue = this.searchValueSignal();
       
-      
       if (searchValue === null || typeof searchValue === 'string') {
         return;
       }
       
       if (searchValue.type === 'passenger') {
         this.animationService.selectEntity(searchValue.id, 'passenger');
+        this.selectedModeSignal.set(null);
       } else if (searchValue.type === 'vehicle') {
         this.animationService.selectEntity(searchValue.id, 'vehicle');
+        this.selectedModeSignal.set(null);
       } else if (searchValue.type === 'mode') {
+        this.selectedModeSignal.set((searchValue.entity as {mode: string}).mode);
         this.searchControl.setValue(searchValue, { emitEvent: false });
         setTimeout(() => {
           this.searchInput.nativeElement.click();
@@ -766,6 +765,7 @@ export class VisualizerComponent implements OnDestroy {
   /** ***************** */
 
   clearSearch() {
+    this.selectedModeSignal.set(null);
     this.searchControl.setValue(null);
   }
 

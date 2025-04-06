@@ -39,35 +39,41 @@
 
   <!-- MARK: Search Bar
 -->
-  <form
-    class="tab-content fade search-bar"
-    [class.fade-show]="showSearch"
-    [class.enable-pointer-events]="showSearch"
-  >
-    @let filteredEntitySearchData = filteredEntitySearchDataSignal();
-    @let searchValue = searchValueSignal();
-    <mat-form-field class="search-form">
-      <input #searchInput matInput [matAutocomplete]="auto" [formControl]="searchControl" (click)="onSearchInputClick()"/>
-      <mat-label>Search in the simulation</mat-label>
-      @if (searchValue !== null && searchValue !== "") {
-        <button mat-icon-button matSuffix type="button" (click)="clearSearch()">
-          <mat-icon>close</mat-icon>
-        </button>
+<form
+  class="tab-content fade search-bar"
+  [class.fade-show]="showSearch"
+  [class.enable-pointer-events]="showSearch"
+>
+  @let filteredEntitySearchData = filteredEntitySearchDataSignal();
+  @let searchValue = searchValueSignal();
+  <mat-form-field class="search-form">
+    <input #searchInput matInput [matAutocomplete]="auto" [formControl]="searchControl" (click)="onSearchInputClick()"/>
+    <mat-label>
+      @if (selectedModeSignal(); as mode) {
+        Filtering vehicles of mode: {{mode}}
       } @else {
-        <mat-icon matSuffix>search</mat-icon>
+        Search in the simulation
       }
-      <mat-autocomplete
-        #auto="matAutocomplete"
-        [displayWith]="entitySearchDisplayFunction"
-      >
-        @for (entity of filteredEntitySearchData; track entity.displayedValue) {
-          <mat-option [value]="entity">
-            {{ entity.displayedValue }}
-          </mat-option>
-        }
-      </mat-autocomplete>
-    </mat-form-field>
-  </form>
+    </mat-label>
+    @if (searchValue !== null && searchValue !== "") {
+      <button mat-icon-button matSuffix type="button" (click)="clearSearch()">
+        <mat-icon>close</mat-icon>
+      </button>
+    } @else {
+      <mat-icon matSuffix>search</mat-icon>
+    }
+    <mat-autocomplete
+      #auto="matAutocomplete"
+      [displayWith]="entitySearchDisplayFunction"
+    >
+      @for (entity of filteredEntitySearchData; track entity.displayedValue) {
+        <mat-option [value]="entity">
+          {{ entity.displayedValue }}
+        </mat-option>
+      }
+    </mat-autocomplete>
+  </mat-form-field>
+</form>
 
   <!-- MARK: Tab Elements
  -->
