@@ -1289,7 +1289,9 @@ class SimulationVisualizationDataManager:
             )
         )
 
-        all_states_files = os.listdir(folder_path)
+        all_states_files = [
+            path for path in os.listdir(folder_path) if path.endswith(".jsonl")
+        ]  # Filter out lock files
 
         states = []
         for state_file in all_states_files:
@@ -1400,10 +1402,8 @@ class SimulationVisualizationDataManager:
             order, state_timestamp = sorted_states[index]
 
             # If the client already has the state, skip it
-            # unless the simulation is not complete and the state is the last one
-            if order in loaded_state_orders and (
-                is_simulation_complete or index < len(sorted_states) - 1
-            ):
+            # except the last state that might have changed
+            if order in loaded_state_orders and not order == max(loaded_state_orders):
                 state_orders_to_keep.append(order)
 
                 all_state_indexes_in_client.append(index)

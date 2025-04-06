@@ -14,7 +14,7 @@ CLIENT_ROOM = "client"
 SIMULATION_ROOM = "simulation"
 SCRIPT_ROOM = "script"
 
-# Save the state of the simulation every 500 events
+# Save the state of the simulation every STATE_SAVE_STEP events
 STATE_SAVE_STEP = 100
 
 # If the version is identical, the save file can be loaded
