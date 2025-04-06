@@ -936,7 +936,7 @@ export class VisualizerComponent implements OnDestroy {
 
     this.simulationService.editSimulationConfiguration(
       simulation.id,
-      result.configuration.maxTime,
+      result.configuration.maxDuration,
     );
   }
 

@@ -125,7 +125,7 @@ export class DataService {
             lastUpdateOrder: null,
             completion: 1,
             configuration: {
-              maxTime: null,
+              maxDuration: null,
             },
             polylinesVersion: -1,
           };
@@ -198,7 +198,7 @@ export class DataService {
             (simulationEstimatedEndTime - simulationStartTime);
         }
 
-        const maxTime = rawSimulation.configuration?.maxTime ?? null;
+        const maxDuration = rawSimulation.configuration?.maxDuration ?? null;
 
         const polylinesVersion = rawSimulation.polylinesVersion ?? -1;
 
@@ -215,7 +215,7 @@ export class DataService {
           lastUpdateOrder,
           completion,
           configuration: {
-            maxTime,
+            maxDuration,
           },
           polylinesVersion,
         };
@@ -241,5 +241,4 @@ export class DataService {
     }
     return -1;
   }
-
 }

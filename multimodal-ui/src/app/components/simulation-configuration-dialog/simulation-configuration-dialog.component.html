@@ -34,7 +34,9 @@
               formControlName="data"
               (openedChange)="refreshAvailableData()"
             >
-              <mat-option (click)="importInputData()">➕ Import New Folder</mat-option> 
+              <mat-option (click)="importInputData()"
+                >➕ Import New Folder</mat-option
+              >
 
               @for (data of availableSimulationDataSignal(); track data) {
                 <mat-option [value]="data">{{ data }}</mat-option>
@@ -67,11 +69,16 @@
       }
 
       <mat-form-field>
-        <input type="number" matInput formControlName="maxTime" />
-        <mat-label>Maximal Simulation Time</mat-label>
-        @if (maxTimeFormControl.hasError("min")) {
-          <mat-error>Max Time must be greater than 0</mat-error>
+        <input type="number" matInput formControlName="maxDuration" />
+        <mat-label>Maximal Simulation Duration</mat-label>
+        @if (maxDurationFormControl.hasError("min")) {
+          <mat-error>Max duration must be greater than 0</mat-error>
         }
+        <span matTextSuffix>h</span>
+        <mat-hint>
+          The simulation will stop after this in-simulation duration, even if
+          not finished (0.5 = 30min)
+        </mat-hint>
       </mat-form-field>
     </div>
   </form>

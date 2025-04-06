@@ -77,7 +77,7 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
 
   readonly nameFormControl: FormControl<string | null>;
   readonly dataFormControl: FormControl<string | null>;
-  readonly maxTimeFormControl: FormControl<number | null>;
+  readonly maxDurationFormControl: FormControl<number | null>;
   readonly shouldRunInBackgroundFormControl: FormControl<boolean | null>;
 
   private readonly unsubscribe$ = new Subject<void>();
@@ -112,7 +112,7 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
 
     this.shouldRunInBackgroundFormControl = this.formBuilder.control(false);
 
-    this.maxTimeFormControl = this.formBuilder.control(null, [
+    this.maxDurationFormControl = this.formBuilder.control(null, [
       Validators.min(0),
     ]);
 
@@ -123,7 +123,7 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     });
 
     this.configurationFormGroup = this.formBuilder.group({
-      maxTime: this.maxTimeFormControl,
+      maxDuration: this.maxDurationFormControl,
     });
 
     this.formGroup = this.formBuilder.group({
@@ -133,7 +133,11 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
 
     // Prefill form
     if (this.data.mode === 'edit' && this.data.currentConfiguration) {
-      this.maxTimeFormControl.setValue(this.data.currentConfiguration.maxTime);
+      this.maxDurationFormControl.setValue(
+        this.data.currentConfiguration.maxDuration === null
+          ? null
+          : this.data.currentConfiguration.maxDuration / 3600,
+      );
     }
 
     // Disable fields if data is not provided
@@ -188,17 +192,19 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
         shouldRunInBackground: !!this.shouldRunInBackgroundFormControl.value,
       },
       configuration: {
-        maxTime: this.maxTimeFormControl.value,
+        maxDuration: Math.ceil(
+          (this.maxDurationFormControl.value as number) * 3600,
+        ),
       },
     };
   }
 
   private disableConfigurationFields() {
-    this.maxTimeFormControl.disable();
+    this.maxDurationFormControl.disable();
   }
 
   private enableConfigurationFields() {
-    this.maxTimeFormControl.enable();
+    this.maxDurationFormControl.enable();
   }
 
   private validateName(): ValidatorFn {

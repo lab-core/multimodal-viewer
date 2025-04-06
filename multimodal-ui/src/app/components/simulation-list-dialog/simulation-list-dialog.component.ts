@@ -3,7 +3,6 @@ import { Component, computed, Signal } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import JSZip from 'jszip';
 import {
   MatDialogActions,
   MatDialogClose,
@@ -17,6 +16,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import JSZip from 'jszip';
 import { firstValueFrom } from 'rxjs';
 import {
   RUNNING_SIMULATION_STATUSES,
@@ -25,8 +25,8 @@ import {
 import { CommunicationService } from '../../services/communication.service';
 import { DataService } from '../../services/data.service';
 import { DialogService } from '../../services/dialog.service';
-import { SimulationService } from '../../services/simulation.service';
 import { HttpService } from '../../services/http.service';
+import { SimulationService } from '../../services/simulation.service';
 
 export type SimulationListDialogData = null;
 
@@ -132,7 +132,7 @@ export class SimulationListDialogComponent {
 
     this.simulationService.editSimulationConfiguration(
       simulation.id,
-      result.configuration.maxTime,
+      result.configuration.maxDuration,
     );
   }
 
@@ -175,75 +175,82 @@ export class SimulationListDialogComponent {
   }
 
   importSimulation() {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.webkitdirectory = true;
-      input.multiple = true;
-  
-      const handleFileChange = async (event: Event) => {
-          const files = (event.target as HTMLInputElement).files;
-          if (!files || files.length === 0) {
-              return;
-          }
-  
-          const zip = new JSZip();
-          const baseFolder = files[0].webkitRelativePath.split('/')[0]; 
-  
-          for (const file of Array.from(files)) {
-              const relativePath = file.webkitRelativePath.replace(baseFolder + '/', '');
-              zip.file(relativePath, file);
-          }
-  
-          const blob = await zip.generateAsync({ type: 'blob' });
-          const formData = new FormData();
-          formData.append('file', blob, 'folder.zip');
-  
-          this.httpService.importFolder('simulation', baseFolder, formData).subscribe({
-            next: (response: { message?: string; error?: string }) => {
-              if (response.message) {
-                console.log('Upload successful:', response.message);
-                this.communicationService.emit('get-simulations');
-              } else if (response.error) {
-                console.error('Upload failed:', response.error);
-              }
-            },
-            error: (err) => {
-              console.error('HTTP error during upload:', err);
-            },
-          });
-      };
-  
-      input.addEventListener('change', (event: Event) => {
-          handleFileChange(event).catch(error => {
-              console.error('Error handling file change:', error);
-          });
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.webkitdirectory = true;
+    input.multiple = true;
+
+    const handleFileChange = async (event: Event) => {
+      const files = (event.target as HTMLInputElement).files;
+      if (!files || files.length === 0) {
+        return;
+      }
+
+      const zip = new JSZip();
+      const baseFolder = files[0].webkitRelativePath.split('/')[0];
+
+      for (const file of Array.from(files)) {
+        const relativePath = file.webkitRelativePath.replace(
+          baseFolder + '/',
+          '',
+        );
+        zip.file(relativePath, file);
+      }
+
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const formData = new FormData();
+      formData.append('file', blob, 'folder.zip');
+
+      this.httpService
+        .importFolder('simulation', baseFolder, formData)
+        .subscribe({
+          next: (response: { message?: string; error?: string }) => {
+            if (response.message) {
+              console.log('Upload successful:', response.message);
+              this.communicationService.emit('get-simulations');
+            } else if (response.error) {
+              console.error('Upload failed:', response.error);
+            }
+          },
+          error: (err) => {
+            console.error('HTTP error during upload:', err);
+          },
+        });
+    };
+
+    input.addEventListener('change', (event: Event) => {
+      handleFileChange(event).catch((error) => {
+        console.error('Error handling file change:', error);
       });
-  
-      input.click();
-    }
+    });
+
+    input.click();
+  }
 
   exportSimulation(simulationId: string) {
-    const folderContents = 'simulation'
-    this.httpService.exportFolder(folderContents, simulationId).subscribe((response: Blob) => {
-      const blob = new Blob([response], { type: 'application/zip' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = simulationId + '.zip';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    });
+    const folderContents = 'simulation';
+    this.httpService
+      .exportFolder(folderContents, simulationId)
+      .subscribe((response: Blob) => {
+        const blob = new Blob([response], { type: 'application/zip' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = simulationId + '.zip';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      });
   }
 
   async deleteSimulation(simulationId: string, simulationName: string) {
-    const isConfirmed = await this.confirmDeletion(simulationName)
+    const isConfirmed = await this.confirmDeletion(simulationName);
 
     if (!isConfirmed) {
       return;
     }
-    
+
     const folderContents = 'simulation';
     this.httpService.deleteFolder(folderContents, simulationId).subscribe({
       next: (response: { message?: string; error?: string }) => {
@@ -263,16 +270,15 @@ export class SimulationListDialogComponent {
   async confirmDeletion(simulationName: string) {
     return await firstValueFrom(
       this.dialogService
-      .openInformationDialog({
-        title: 'Deleting Saved Simulation',
-        message:
-            `Are you sure you want to delete the simulation "${simulationName}"? This action cannot be undone.`,
+        .openInformationDialog({
+          title: 'Deleting Saved Simulation',
+          message: `Are you sure you want to delete the simulation "${simulationName}"? This action cannot be undone.`,
           type: 'warning',
           confirmButtonOverride: null,
           cancelButtonOverride: null,
           canCancel: true,
         })
         .afterClosed(),
-      );
+    );
   }
 }

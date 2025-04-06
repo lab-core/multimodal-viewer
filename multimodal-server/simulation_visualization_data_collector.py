@@ -65,7 +65,9 @@ class SimulationVisualizationDataCollector(DataCollector):
     visualized_environment: VisualizedEnvironment
     simulation_information: SimulationInformation
     current_save_file_path: str
-    max_time: float | None
+
+    max_duration: float | None
+    "Maximum duration of the simulation in in-simulation time (seconds). The simulation will stop if it exceeds this duration."
 
     # Special events
     last_queued_event_time: float
@@ -87,6 +89,9 @@ class SimulationVisualizationDataCollector(DataCollector):
     # Polylines
     saved_polylines_coordinates_pairs: set[str] = set()
 
+    # Estimated end time
+    last_estimated_end_time: float | None = None
+
     def __init__(
         self,
         name: str,
@@ -94,7 +99,7 @@ class SimulationVisualizationDataCollector(DataCollector):
         data_analyzer: DataAnalyzer,
         statistics_delta_time: int = 10,
         simulation_id: str | None = None,
-        max_time: float | None = None,
+        max_duration: float | None = None,
         offline: bool = False,
     ) -> None:
         if simulation_id is None:
@@ -110,7 +115,7 @@ class SimulationVisualizationDataCollector(DataCollector):
 
         self.current_save_file_path = None
 
-        self.max_time = max_time
+        self.max_duration = max_duration
 
         self.passenger_assignment_event_queue = []
         self.vehicle_notification_event_queue = []
@@ -166,14 +171,35 @@ class SimulationVisualizationDataCollector(DataCollector):
                     self.simulation_information.simulation_start_time,
                     self.visualized_environment.timestamp,
                     self.visualized_environment.estimated_end_time,
-                    self.max_time,
+                    self.max_duration,
                     self.status.value,
                 ),
             )
 
         @sio.on("edit-simulation-configuration")
-        def on_edit_simulation_configuration(max_time: float | None):
-            self.max_time = max_time
+        def on_edit_simulation_configuration(max_duration: float | None):
+            self.max_duration = max_duration
+
+            if self.last_estimated_end_time is None:
+                return
+
+            # Notify the server if the estimated end time has changed
+            new_estimated_end_time = min(
+                self.last_estimated_end_time,
+                (
+                    self.simulation_information.simulation_start_time
+                    + self.max_duration
+                    if self.max_duration is not None
+                    else self.last_estimated_end_time
+                ),
+            )
+
+            if new_estimated_end_time != self.visualized_environment.estimated_end_time:
+                self.sio.emit(
+                    "simulation-update-estimated-end-time",
+                    (self.simulation_id, new_estimated_end_time),
+                )
+                self.visualized_environment.estimated_end_time = new_estimated_end_time
 
         self.stop_event = threading.Event()
 
@@ -207,7 +233,11 @@ class SimulationVisualizationDataCollector(DataCollector):
         event_index: Optional[int] = None,
         event_priority: Optional[int] = None,
     ) -> None:
-        env.simulation_config.max_time = self.max_time
+        env.simulation_config.max_time = (
+            self.simulation_information.simulation_start_time
+            if self.simulation_information.simulation_start_time is not None
+            else env.current_time
+        ) + self.max_duration
 
         if current_event is None:
             return
@@ -265,11 +295,13 @@ class SimulationVisualizationDataCollector(DataCollector):
                 )
             self.visualized_environment.timestamp = update.timestamp
 
+        # Remember the last estimated end time in case of max_duration updates
+        self.last_estimated_end_time = environment.estimated_end_time
         estimated_end_time = min(
             environment.estimated_end_time,
             (
-                self.max_time
-                if self.max_time is not None
+                self.simulation_information.simulation_start_time + self.max_duration
+                if self.max_duration is not None
                 else environment.estimated_end_time
             ),
         )

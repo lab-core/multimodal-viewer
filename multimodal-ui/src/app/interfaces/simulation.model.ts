@@ -117,9 +117,9 @@ export interface Simulation {
 
 export interface SimulationConfiguration {
   /**
-   * The time at which the simulation will be automatically stopped
+   * The duration of the simulation in in-simulation time.
    */
-  maxTime: number | null;
+  maxDuration: number | null;
 }
 
 export type PassengerStatus =

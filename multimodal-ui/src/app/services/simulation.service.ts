@@ -190,11 +190,14 @@ export class SimulationService {
     this.communicationService.emit('stop-simulation', simulationId);
   }
 
-  editSimulationConfiguration(simulationId: string, maxTime: number | null) {
+  editSimulationConfiguration(
+    simulationId: string,
+    maxDuration: number | null,
+  ) {
     this.communicationService.emit(
       'edit-simulation-configuration',
       simulationId,
-      maxTime,
+      maxDuration,
     );
   }
 
