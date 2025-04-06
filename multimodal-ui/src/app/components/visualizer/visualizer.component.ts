@@ -116,7 +116,6 @@ export class VisualizerComponent implements OnDestroy {
         return null;
       }
 
-      console.log(environment.currentState.passengers[selectedPassengerId]);
       return environment.currentState.passengers[selectedPassengerId] ?? null;
     },
   );
@@ -291,9 +290,8 @@ export class VisualizerComponent implements OnDestroy {
 
     this.informationTabControl = new FormControl('');
     this.informationTabControl.valueChanges.subscribe((value) => {
-      this.updateInformationTab(value);
+      this.updateInformationTabControl(value);
     });
-    this.informationTabControl.setValue('information');
 
     this.searchControl = this.formBuilder.control('');
     this.searchControl.valueChanges.subscribe((value) => {
@@ -532,31 +530,23 @@ export class VisualizerComponent implements OnDestroy {
   }
 
   // MARK: Handlers
-  updateInformationTab(value: string | null) {
+  updateInformationTabControl(value: string | null) {
+    const values = value as unknown as string[];
+    if (values.length > 1) {
+      const lastSelected = values[values.length - 1];
+      this.informationTabControl.setValue([lastSelected] as unknown as string);
+      return;
+    }
+    const tab = values[0];
+
     this.showSimulationInformation = false;
     this.showStatistic = false;
     this.showEntitiesTab = false;
     this.showSelectedEntitiesTab = false;
-    switch (value) {
-      case 'information': {
-        this.showSimulationInformation = true;
-        break;
-      }
-      case 'statistic': {
-        this.showStatistic = true;
-        break;
-      }
-      case 'entities': {
-        this.showEntitiesTab = true;
-        break;
-      }
-      case 'selectedEntities': {
-        this.showSelectedEntitiesTab = true;
-        break;
-      }
-      default:
-        break;
-    }
+    if (tab === 'information') this.showSimulationInformation = true;
+    else if (tab === 'statistic') this.showStatistic = true;
+    else if (tab === 'entities') this.showEntitiesTab = true;
+    else if (tab === 'selectedEntities') this.showSelectedEntitiesTab = true;
   }
 
   selectPassenger(id: string) {
@@ -567,7 +557,7 @@ export class VisualizerComponent implements OnDestroy {
     this.animationService.selectEntity(id, 'vehicle');
   }
 
-  /** Favorite Entitites */
+  /** Favorite Entities */
   toggleFavoriteVehicle(id: string) {
     this.favoriteEntitiesService.toggleFavoriteVehicle(id);
   }

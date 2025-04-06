@@ -9,7 +9,8 @@
     <section>
       <mat-button-toggle-group
         mat-fab
-        hideSingleSelectionIndicator
+        multiple
+        hideMultipleSelectionIndicator
         name="tools"
         aria-label="tools"
         [formControl]="tabControl"
@@ -32,7 +33,7 @@
 
   <!-- MARK: Search Bar
 -->
-<form
+  <form
     class="tab-content fade search-bar"
     [class.fade-show]="showSearch"
     [class.enable-pointer-events]="showSearch"
@@ -89,7 +90,8 @@
       <mat-button-toggle-group
         class=".information-group"
         mat-fab
-        hideSingleSelectionIndicator
+        multiple
+        hideMultipleSelectionIndicator
         name="tools"
         aria-label="tools"
         [formControl]="informationTabControl"
@@ -106,8 +108,9 @@
         <mat-button-toggle
           value="selectedEntities"
           [disabled]="selectedPassenger === null && selectedVehicle === null"
-          ><mat-icon>touch_app</mat-icon></mat-button-toggle
         >
+          <mat-icon>touch_app</mat-icon>
+        </mat-button-toggle>
       </mat-button-toggle-group>
     </section>
   </div>
