@@ -109,4 +109,8 @@ export class CloseEntitiesMenuComponent {
   onBlur() {
     this.show.set(false);
   }
+
+  getPassengerName(id: string): string {
+    return this.animationService.findPassengerName(id) || id;
+  }
 }

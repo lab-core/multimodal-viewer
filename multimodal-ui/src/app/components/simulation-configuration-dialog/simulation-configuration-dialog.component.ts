@@ -46,6 +46,12 @@ export interface SimulationConfigurationDialogResult {
   configuration: SimulationConfiguration;
 }
 
+export interface ImportFolderResponse {
+  message: string;
+  actual_folder_name?: string;
+  error?: string;
+}
+
 @Component({
   selector: 'app-simulation-configuration-dialog',
   imports: [
@@ -240,11 +246,23 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
       formData.append('file', blob, 'folder.zip');
 
       this.httpService
-        .importFolder(contentType, baseFolder, formData)
-        .subscribe((response) => {
+      .importFolder(contentType, baseFolder, formData)
+      .subscribe({
+        next: (response) => {
           console.log('Upload successful:', response);
-        });
-    };
+          this.refreshAvailableData();
+          const actualFolderName = 'actual_folder_name' in response 
+            ? response.actual_folder_name as string
+            : baseFolder;
+          setTimeout(() => {
+            this.dataFormControl.setValue(actualFolderName);
+          }, 100);
+        },
+        error: (error) => {
+          console.error('Upload failed:', error);
+        }
+      });
+  };
 
     input.addEventListener('change', (event: Event) => {
       handleFileChange(event).catch((error) => {

@@ -31,7 +31,8 @@
             (mouseenter)="selectPassenger(id)"
             (mouseleave)="unselectEntity()"
           >
-            <mat-icon matChipAvatar>accessibility</mat-icon>{{ id }}
+            <mat-icon matChipAvatar>accessibility</mat-icon>
+            {{ getPassengerName(id) }}
           </mat-chip>
         }
       </div>
