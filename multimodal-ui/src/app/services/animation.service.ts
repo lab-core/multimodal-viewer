@@ -258,6 +258,9 @@ export class AnimationService {
         'The stop you selected is not in the environment anymore. It has been deselected.',
       );
     }
+
+    // Call redraw to update the environment.
+    this.onRedraw();
   }
 
   synchronizeTime(
@@ -1333,7 +1336,7 @@ export class AnimationService {
     });
   }
 
-  private onRedraw(event: L.LeafletEvent) {
+  private onRedraw(event?: L.LeafletEvent) {
     if (this.startTimestamp == null || this.endTimestamp == null) return;
 
     if (this.pause) {
@@ -1510,10 +1513,9 @@ export class AnimationService {
   }
 
   findPassengerName(id: string) {
-    if(!this.passengerEntitiesByPassengerId[id]) {
-      return
+    if (!this.passengerEntitiesByPassengerId[id]) {
+      return;
     }
     return this.passengerEntitiesByPassengerId[id].data.name as string;
   }
-
 }
