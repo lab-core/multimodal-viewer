@@ -46,7 +46,7 @@ import { SimulationControlPanelComponent } from '../simulation-control-panel/sim
 import { VisualizerFilterComponent } from '../visualizer-filter/visualizer-filter.component';
 import { RecursiveStatisticComponent } from '../recursive-statistic/recursive-statistic.component';
 import { EntitiesTabComponent } from '../entities-tab/entities-tab.component';
-import { SelectedEntityRouteComponent } from "../selected-entity-route/selected-entity-route.component";
+import { SelectedEntityRouteComponent } from '../selected-entity-route/selected-entity-route.component';
 
 export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 
@@ -79,8 +79,8 @@ export interface EntitySearch {
     MatTabsModule,
     RecursiveStatisticComponent,
     EntitiesTabComponent,
-    SelectedEntityRouteComponent
-],
+    SelectedEntityRouteComponent,
+  ],
   providers: [VisualizationService, VisualizationFilterService],
   templateUrl: './visualizer.component.html',
   styleUrl: './visualizer.component.css',
@@ -269,17 +269,25 @@ export class VisualizerComponent implements OnDestroy {
   ) {
     this.tabControl = new FormControl('');
     this.tabControl.valueChanges.subscribe((value) => {
+      // To make tabs unselectable, we have to allow multiple options
+      // but only keep the last one selected.
+      const values = value as unknown as string[];
+      if (values.length > 1) {
+        const lastSelected = values[values.length - 1];
+        this.tabControl.setValue([lastSelected] as unknown as string);
+        return;
+      }
+
+      const tab = values[0];
       this.showSearch = false;
       this.showFilter = false;
       this.showFavorites = false;
       this.showLayers = false;
-      if (value === 'search') this.showSearch = true;
-      else if (value === 'filter') this.showFilter = true;
-      else if (value === 'favorites') this.showFavorites = true;
-      else if (value === 'layers') this.showLayers = true;
+      if (tab === 'search') this.showSearch = true;
+      else if (tab === 'filter') this.showFilter = true;
+      else if (tab === 'favorites') this.showFavorites = true;
+      else if (tab === 'layers') this.showLayers = true;
     });
-
-    this.tabControl.setValue('search');
 
     this.informationTabControl = new FormControl('');
     this.informationTabControl.valueChanges.subscribe((value) => {
