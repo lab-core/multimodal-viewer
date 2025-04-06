@@ -165,3 +165,48 @@ mat-card-title:not(:first-child) {
   min-width: 20rem;
   resize: horizontal;
 }
+
+button[mat-icon-button] {
+  height: 1em;
+  /* Matches the text size */
+  width: 1em;
+  /* Ensures it's a square */
+  line-height: 1;
+}
+
+.clickable {
+  cursor: pointer;
+  padding: 0.5rem 0;
+  border-radius: 0.5rem;
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.32);
+  }
+}
+
+.clickable-no-padding {
+  cursor: pointer;
+  border-radius: 0.5rem;
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.32);
+  }
+}
+
+.indent {
+  padding-left: 24px;
+}
+
+.selected-entity-information>*:first-child {
+  border-bottom-left-radius: 0px;
+  border-bottom-right-radius: 0px;
+}
+
+.selected-entity-information>*:last-child {
+  border-top-left-radius: 0px;
+  border-top-right-radius: 0px;
+}
+
+.selected-entity-information>*:not(:first-child):not(:last-child) {
+  border-radius: 0px;
+}

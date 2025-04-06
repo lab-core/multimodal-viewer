@@ -103,7 +103,9 @@
         <mat-button-toggle value="entities"
           ><mat-icon><!--TODO icon selection--></mat-icon></mat-button-toggle
         >
-        <mat-button-toggle value="selectedEntities"
+        <mat-button-toggle
+          value="selectedEntities"
+          [disabled]="selectedPassenger === null && selectedVehicle === null"
           ><mat-icon>touch_app</mat-icon></mat-button-toggle
         >
       </mat-button-toggle-group>
@@ -168,96 +170,152 @@
     [class.enable-pointer-events]="showSelectedEntitiesTab"
   >
     <mat-card-content class="flex-1">
-      <mat-card-title>Selected entities</mat-card-title>
-
-      <!-- @if (selectedPassenger !== null) {
+      @if (selectedPassenger !== null) {
         @let selectedPassengerVehicle = selectedPassengerVehicleSignal();
-        <mat-card-title>Selected Passenger</mat-card-title>
-        <div class="flex-column">
-          <span>Id: {{ selectedPassenger.id }}</span>
-          <span>Name: {{ selectedPassenger.name }}</span>
-          <span>Status: {{ selectedPassenger.status }}</span>
-          @if (selectedPassenger.notDisplayedReason !== null) {
-            <div>
-              <span>Not displayed: </span>
-              <span class="light">{{
-                selectedPassenger.notDisplayedReason
-              }}</span>
-            </div>
-          }
-          <div class="favorite-content">
-            <span>Favorite: </span>
-            <button
-              mat-icon-button
-              disableRipple
-              (click)="toggleFavoritePassenger(selectedPassenger.id)"
-            >
-              @let icon =
-                isFavoritePassenger(selectedPassenger.id)
-                  ? "favorite"
-                  : "favorite_outline";
-              <mat-icon>{{ icon }}</mat-icon>
-            </button>
+        <mat-card-title style="display: flex; align-items: center; gap: 8px"
+          >Selected Passenger
+          <button
+            mat-icon-button
+            disableRipple
+            style="padding: 0"
+            [matTooltip]="
+              isFavoritePassenger(selectedPassenger.id)
+                ? 'Remove from favorite'
+                : 'Add to favorite'
+            "
+            (click)="toggleFavoritePassenger(selectedPassenger.id)"
+          >
+            <mat-icon>{{
+              isFavoritePassenger(selectedPassenger.id)
+                ? "favorite"
+                : "favorite_outline"
+            }}</mat-icon>
+          </button>
+        </mat-card-title>
+        <div class="flex-column gap-0-5-rem">
+          <div class="selected-entity-information">
+            <mat-card>
+              <mat-card-content>
+                Id: {{ selectedPassenger.id }}
+              </mat-card-content>
+            </mat-card>
+            <mat-card>
+              <mat-card-content>
+                Name: {{ selectedPassenger.name }}
+              </mat-card-content>
+            </mat-card>
+            <mat-card>
+              <mat-card-content>
+                Status: {{ selectedPassenger.status }}
+              </mat-card-content>
+            </mat-card>
           </div>
+
           @if (selectedPassengerVehicle !== null) {
-            <span
-              tabindex="0"
-              class="clickable"
-              [matTooltip]="'Click to select the vehicle'"
-              (click)="selectVehicle(selectedPassengerVehicle.id)"
-              (keydown.enter)="selectVehicle(selectedPassengerVehicle.id)"
-              >Vehicle: {{ selectedPassengerVehicle.id }}</span
-            >
+            <mat-card>
+              <mat-card-content style="padding: 0px">
+                <div
+                  tabindex="0"
+                  class="clickable-no-padding"
+                  style="padding: 16px"
+                  [matTooltip]="'Click to select the vehicle'"
+                  (click)="selectVehicle(selectedPassengerVehicle.id)"
+                  (keydown.enter)="selectVehicle(selectedPassengerVehicle.id)"
+                >
+                  Vehicle: {{ selectedPassengerVehicle.id }}
+                </div>
+              </mat-card-content>
+            </mat-card>
           }
         </div>
       }
 
       @if (selectedVehicle !== null) {
         @let selectedVehiclePassengers = selectedVehiclePassengersSignal();
-        <mat-card-title>Selected Vehicle</mat-card-title>
-        <div class="flex-column">
-          <span>Id: {{ selectedVehicle.id }}</span>
-          @if (selectedVehicle.mode !== null) {
-            <span>Mode: {{ selectedVehicle.mode }}</span>
-          }
-          <span>Status: {{ selectedVehicle.status }}</span>
-          @if (selectedVehicle.notDisplayedReason !== null) {
-            <div>
-              <span>Not displayed: </span>
-              <span class="light">{{
-                selectedVehicle.notDisplayedReason
-              }}</span>
-            </div>
-          }
-          <div class="favorite-content">
-            <span>Favorite: </span>
-            <button
-              mat-icon-button
-              disableRipple
-              (click)="toggleFavoriteVehicle(selectedVehicle.id)"
-            >
-              @let icon =
-                isFavoriteVehicle(selectedVehicle.id)
-                  ? "favorite"
-                  : "favorite_outline";
-              <mat-icon>{{ icon }}</mat-icon>
-            </button>
+        <mat-card-title style="display: flex; align-items: center; gap: 8px"
+          >Selected Vehicle
+          <button
+            mat-icon-button
+            disableRipple
+            style="padding: 0"
+            [matTooltip]="
+              isFavoriteVehicle(selectedVehicle.id)
+                ? 'Remove from favorite'
+                : 'Add to favorite'
+            "
+            (click)="toggleFavoriteVehicle(selectedVehicle.id)"
+          >
+            <mat-icon>{{
+              isFavoriteVehicle(selectedVehicle.id)
+                ? "favorite"
+                : "favorite_outline"
+            }}</mat-icon>
+          </button>
+        </mat-card-title>
+        <div class="flex-column gap-0-5-rem">
+          <div class="selected-entity-information">
+            <mat-card>
+              <mat-card-content>
+                Id: {{ selectedVehicle.id }}
+              </mat-card-content>
+            </mat-card>
+            @if (selectedVehicle.mode !== null) {
+              <mat-card>
+                <mat-card-content>
+                  Mode: {{ selectedVehicle.mode }}
+                </mat-card-content>
+              </mat-card>
+            }
+            <mat-card>
+              <mat-card-content>
+                Status: {{ selectedVehicle.status }}
+              </mat-card-content>
+            </mat-card>
           </div>
+
           @if (selectedVehiclePassengers.length > 0) {
-            <span>Passengers:</span>
+            <mat-accordion>
+              <mat-expansion-panel>
+                <mat-expansion-panel-header>
+                  <mat-panel-title> Passengers on board </mat-panel-title>
+                </mat-expansion-panel-header>
+                <div class="flex-column gap-0-5-rem">
+                  @for (
+                    passenger of selectedVehiclePassengers;
+                    track passenger.id
+                  ) {
+                    <div
+                      tabindex="0"
+                      class="clickable indent"
+                      [matTooltip]="'Click to select the passenger'"
+                      (click)="selectPassenger(passenger.id)"
+                      (keydown.enter)="selectPassenger(passenger.id)"
+                    >
+                      <span>{{ passenger.name }}</span>
+                    </div>
+                  }
+                </div>
+              </mat-expansion-panel>
+            </mat-accordion>
           }
-          @for (passenger of selectedVehiclePassengers; track passenger.id) {
-            <span
-              tabindex="0"
-              class="clickable"
-              [matTooltip]="'Click to select the passenger'"
-              (click)="selectPassenger(passenger.id)"
-              (keydown.enter)="selectPassenger(passenger.id)"
-              >{{ passenger.id }}</span
-            >
-          }
+
+          <mat-accordion>
+            <mat-expansion-panel>
+              <mat-expansion-panel-header>
+                <mat-panel-title>Vehicle route</mat-panel-title>
+              </mat-expansion-panel-header>
+              <div class="flex-column gap-0-5-rem">
+                <app-selected-entity-route
+                  class="indent"
+                  [previousStops]="selectedVehicle.previousStops"
+                  [currentStop]="selectedVehicle.currentStop"
+                  [nextStops]="selectedVehicle.nextStops"
+                ></app-selected-entity-route>
+              </div>
+            </mat-expansion-panel>
+          </mat-accordion>
         </div>
-      } -->
+      }
     </mat-card-content>
   </mat-card>
 

@@ -1,0 +1,26 @@
+<div class="flex-row center">
+  <div class="flex-column center">
+    <!--Previous stops-->
+    @for (stop of previousStops; track stop.position; let idx = $index) {
+      <span class="dot route-done"></span>
+      @if (previousStops.length - 1 !== idx) {
+        <span class="line route-done"></span>
+      }
+    }
+    <!--Current stop-->
+    @if (currentStop !== null) {
+      @if (previousStops.length > 0) {
+        <span class="line route-done"></span>
+      }
+      <span class="dot route-done"></span>
+    }
+    <!--Next stops-->
+    @for (stop of nextStops; track stop.position) {
+      <span class="line route-left"></span>
+      <span class="dot route-left"></span>
+    }
+  </div>
+  <div class="flex-column space-between">
+    <!--TODO stops name-->
+  </div>
+</div>

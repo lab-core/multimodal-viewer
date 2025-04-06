@@ -46,6 +46,7 @@ import { SimulationControlPanelComponent } from '../simulation-control-panel/sim
 import { VisualizerFilterComponent } from '../visualizer-filter/visualizer-filter.component';
 import { RecursiveStatisticComponent } from '../recursive-statistic/recursive-statistic.component';
 import { EntitiesTabComponent } from '../entities-tab/entities-tab.component';
+import { SelectedEntityRouteComponent } from "../selected-entity-route/selected-entity-route.component";
 
 export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 
@@ -78,7 +79,8 @@ export interface EntitySearch {
     MatTabsModule,
     RecursiveStatisticComponent,
     EntitiesTabComponent,
-  ],
+    SelectedEntityRouteComponent
+],
   providers: [VisualizationService, VisualizationFilterService],
   templateUrl: './visualizer.component.html',
   styleUrl: './visualizer.component.css',
@@ -114,6 +116,7 @@ export class VisualizerComponent implements OnDestroy {
         return null;
       }
 
+      console.log(environment.currentState.passengers[selectedPassengerId]);
       return environment.currentState.passengers[selectedPassengerId] ?? null;
     },
   );
