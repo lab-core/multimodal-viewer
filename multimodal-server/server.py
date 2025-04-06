@@ -50,12 +50,12 @@ def run_server():
 
     # MARK: Client events
     @socketio.on("start-simulation")
-    def on_client_start_simulation(name, data, response_event, max_time):
+    def on_client_start_simulation(name, data, response_event, max_duration):
         log(
-            f"starting simulation {name} with data {data}, response event {response_event} and max time {max_time}",
+            f"starting simulation {name} with data {data}, response event {response_event} and max duration {max_duration}",
             "client",
         )
-        simulation_manager.start_simulation(name, data, response_event, max_time)
+        simulation_manager.start_simulation(name, data, response_event, max_duration)
 
     @socketio.on("stop-simulation")
     def on_client_stop_simulation(simulation_id):
@@ -100,12 +100,12 @@ def run_server():
         simulation_manager.emit_simulation_polylines(simulation_id)
 
     @socketio.on("edit-simulation-configuration")
-    def on_client_edit_simulation_configuration(simulation_id, max_time):
+    def on_client_edit_simulation_configuration(simulation_id, max_duration):
         log(
-            f"editing simulation {simulation_id} configuration with max time {max_time}",
+            f"editing simulation {simulation_id} configuration with max duration {max_duration}",
             "client",
         )
-        simulation_manager.edit_simulation_configuration(simulation_id, max_time)
+        simulation_manager.edit_simulation_configuration(simulation_id, max_duration)
 
     # MARK: Script events
     @socketio.on("terminate")
@@ -180,11 +180,11 @@ def run_server():
         simulation_start_time,
         timestamp,
         estimated_end_time,
-        max_time,
+        max_duration,
         status,
     ):
         log(
-            f"simulation  {simulation_id} identified with data {data}, simulation start time {simulation_start_time}, timestamp {timestamp}, estimated end time {estimated_end_time}, max time {max_time} and status {status}",
+            f"simulation  {simulation_id} identified with data {data}, simulation start time {simulation_start_time}, timestamp {timestamp}, estimated end time {estimated_end_time}, max duration {max_duration} and status {status}",
             "simulation",
         )
         simulation_manager.on_simulation_identification(
@@ -193,7 +193,7 @@ def run_server():
             simulation_start_time,
             timestamp,
             estimated_end_time,
-            max_time,
+            max_duration,
             status,
             get_session_id(),
         )

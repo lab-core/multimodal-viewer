@@ -65,7 +65,7 @@ class SimulationVisualizationDataCollector(DataCollector):
     visualized_environment: VisualizedEnvironment
     simulation_information: SimulationInformation
     current_save_file_path: str
-    max_time: float | None
+    max_duration: float | None
 
     # Special events
     last_queued_event_time: float
@@ -94,7 +94,7 @@ class SimulationVisualizationDataCollector(DataCollector):
         data_analyzer: DataAnalyzer,
         statistics_delta_time: int = 10,
         simulation_id: str | None = None,
-        max_time: float | None = None,
+        max_duration: float | None = None,
         offline: bool = False,
     ) -> None:
         if simulation_id is None:
@@ -110,7 +110,7 @@ class SimulationVisualizationDataCollector(DataCollector):
 
         self.current_save_file_path = None
 
-        self.max_time = max_time
+        self.max_duration = max_duration
 
         self.passenger_assignment_event_queue = []
         self.vehicle_notification_event_queue = []
@@ -166,14 +166,14 @@ class SimulationVisualizationDataCollector(DataCollector):
                     self.simulation_information.simulation_start_time,
                     self.visualized_environment.timestamp,
                     self.visualized_environment.estimated_end_time,
-                    self.max_time,
+                    self.max_duration,
                     self.status.value,
                 ),
             )
 
         @sio.on("edit-simulation-configuration")
-        def on_edit_simulation_configuration(max_time: float | None):
-            self.max_time = max_time
+        def on_edit_simulation_configuration(max_duration: float | None):
+            self.max_duration = max_duration
 
         self.stop_event = threading.Event()
 
@@ -207,7 +207,7 @@ class SimulationVisualizationDataCollector(DataCollector):
         event_index: Optional[int] = None,
         event_priority: Optional[int] = None,
     ) -> None:
-        env.simulation_config.max_time = self.max_time
+        env.simulation_config.max_duration = self.max_duration
 
         if current_event is None:
             return
@@ -268,8 +268,8 @@ class SimulationVisualizationDataCollector(DataCollector):
         estimated_end_time = min(
             environment.estimated_end_time,
             (
-                self.max_time
-                if self.max_time is not None
+                self.simulation_information.simulation_start_time + self.max_duration
+                if self.max_duration is not None
                 else environment.estimated_end_time
             ),
         )

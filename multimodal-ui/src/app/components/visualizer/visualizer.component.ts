@@ -41,10 +41,10 @@ import { VisualizationService } from '../../services/visualization.service';
 import { FavoriteEntitiesComponent } from '../favorite-entities/favorite-entities.component';
 import { InformationDialogComponent } from '../information-dialog/information-dialog.component';
 import { MapLayersComponent } from '../map-tiles/map-tiles.component';
+import { RecursiveStatisticComponent } from '../recursive-statistic/recursive-statistic.component';
 import { SimulationControlBarComponent } from '../simulation-control-bar/simulation-control-bar.component';
 import { SimulationControlPanelComponent } from '../simulation-control-panel/simulation-control-panel.component';
 import { VisualizerFilterComponent } from '../visualizer-filter/visualizer-filter.component';
-import { RecursiveStatisticComponent } from '../recursive-statistic/recursive-statistic.component';
 
 export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 
@@ -748,7 +748,7 @@ export class VisualizerComponent implements OnDestroy {
 
     this.simulationService.editSimulationConfiguration(
       simulation.id,
-      result.configuration.maxTime,
+      result.configuration.maxDuration,
     );
   }
 

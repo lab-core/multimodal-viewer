@@ -117,9 +117,9 @@ export interface Simulation {
 
 export interface SimulationConfiguration {
   /**
-   * The time at which the simulation will be automatically stopped
+   * The duration of the simulation in in-simulation time.
    */
-  maxTime: number | null;
+  maxDuration: number | null;
 }
 
 export type PassengerStatus =
@@ -374,7 +374,6 @@ export interface AnimatedVehicle extends displayed<Vehicle> {
 export interface SimulationEnvironment {
   passengers: Record<string, Passenger>;
   vehicles: Record<string, Vehicle>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   statistic: Statistic;
 
   /**
@@ -412,7 +411,6 @@ export interface RawSimulationEnvironment
   extends Pick<SimulationEnvironment, 'timestamp' | 'order'> {
   passengers: Passenger[];
   vehicles: Vehicle[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   statistic: Statistic;
 }
 
