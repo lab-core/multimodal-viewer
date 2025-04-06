@@ -128,7 +128,9 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     // Prefill form
     if (this.data.mode === 'edit' && this.data.currentConfiguration) {
       this.maxDurationFormControl.setValue(
-        this.data.currentConfiguration.maxDuration,
+        this.data.currentConfiguration.maxDuration === null
+          ? null
+          : this.data.currentConfiguration.maxDuration / 3600,
       );
     }
 
@@ -184,7 +186,9 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
         shouldRunInBackground: !!this.shouldRunInBackgroundFormControl.value,
       },
       configuration: {
-        maxDuration: this.maxDurationFormControl.value,
+        maxDuration: Math.ceil(
+          (this.maxDurationFormControl.value as number) * 3600,
+        ),
       },
     };
   }

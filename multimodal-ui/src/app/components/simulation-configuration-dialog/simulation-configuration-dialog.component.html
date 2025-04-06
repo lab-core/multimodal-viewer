@@ -74,6 +74,11 @@
         @if (maxDurationFormControl.hasError("min")) {
           <mat-error>Max duration must be greater than 0</mat-error>
         }
+        <span matTextSuffix>h</span>
+        <mat-hint>
+          The simulation will stop after this in-simulation duration, even if
+          not finished (0.5 = 30min)
+        </mat-hint>
       </mat-form-field>
     </div>
   </form>
