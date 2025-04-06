@@ -2,9 +2,11 @@ import {
   Component,
   computed,
   effect,
+  ElementRef,
   OnDestroy,
   signal,
   Signal,
+  ViewChild,
   WritableSignal,
 } from '@angular/core';
 import { FormBuilder, FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -83,6 +85,7 @@ export interface EntitySearch {
   styleUrl: './visualizer.component.css',
 })
 export class VisualizerComponent implements OnDestroy {
+  @ViewChild('searchInput') searchInput!: ElementRef<HTMLInputElement>;
   // MARK: Properties
   private matDialogRef: MatDialogRef<InformationDialogComponent> | null = null;
 
@@ -479,6 +482,9 @@ export class VisualizerComponent implements OnDestroy {
         this.animationService.selectEntity(searchValue.id, 'vehicle');
       } else if (searchValue.type === 'mode') {
         this.searchControl.setValue(searchValue, { emitEvent: false });
+        setTimeout(() => {
+          this.searchInput.nativeElement.click();
+        });
       }
     });
 
@@ -818,9 +824,14 @@ export class VisualizerComponent implements OnDestroy {
   }
 
   onSearchInputClick() {
+    const currentValue = this.searchValueSignal();
+    if (typeof currentValue === 'object' && currentValue.type === 'mode') {
+      return;
+    }
     this.searchControl.setValue(null);
     this.animationService.unselectEntity();
   }
+
   copyToClipboard(text: string): void {
     navigator.clipboard.writeText(text).then(() => {
       this.snackBar.open('Copied to clipboard!', 'Close', {
