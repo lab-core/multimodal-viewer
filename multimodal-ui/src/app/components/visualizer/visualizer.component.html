@@ -9,6 +9,7 @@
 
 @let selectedPassenger = selectedPassengerSignal();
 @let selectedVehicle = selectedVehicleSignal();
+@let selectedStop = selectedStopSignal();
 
 @if (isInitializedSignal() && simulation !== null) {
   <div class="tabs enable-pointer-events">
@@ -39,41 +40,47 @@
 
   <!-- MARK: Search Bar
 -->
-<form
-  class="tab-content fade search-bar"
-  [class.fade-show]="showSearch"
-  [class.enable-pointer-events]="showSearch"
->
-  @let filteredEntitySearchData = filteredEntitySearchDataSignal();
-  @let searchValue = searchValueSignal();
-  <mat-form-field class="search-form">
-    <input #searchInput matInput [matAutocomplete]="auto" [formControl]="searchControl" (click)="onSearchInputClick()"/>
-    <mat-label>
-      @if (selectedModeSignal(); as mode) {
-        Filtering vehicles of mode: {{mode}}
+  <form
+    class="tab-content fade search-bar"
+    [class.fade-show]="showSearch"
+    [class.enable-pointer-events]="showSearch"
+  >
+    @let filteredEntitySearchData = filteredEntitySearchDataSignal();
+    @let searchValue = searchValueSignal();
+    <mat-form-field class="search-form">
+      <input
+        #searchInput
+        matInput
+        [matAutocomplete]="auto"
+        [formControl]="searchControl"
+        (click)="onSearchInputClick()"
+      />
+      <mat-label>
+        @if (selectedModeSignal(); as mode) {
+          Filtering vehicles of mode: {{ mode }}
+        } @else {
+          Search in the simulation
+        }
+      </mat-label>
+      @if (searchValue !== null && searchValue !== "") {
+        <button mat-icon-button matSuffix type="button" (click)="clearSearch()">
+          <mat-icon>close</mat-icon>
+        </button>
       } @else {
-        Search in the simulation
+        <mat-icon matSuffix>search</mat-icon>
       }
-    </mat-label>
-    @if (searchValue !== null && searchValue !== "") {
-      <button mat-icon-button matSuffix type="button" (click)="clearSearch()">
-        <mat-icon>close</mat-icon>
-      </button>
-    } @else {
-      <mat-icon matSuffix>search</mat-icon>
-    }
-    <mat-autocomplete
-      #auto="matAutocomplete"
-      [displayWith]="entitySearchDisplayFunction"
-    >
-      @for (entity of filteredEntitySearchData; track entity.displayedValue) {
-        <mat-option [value]="entity">
-          {{ entity.displayedValue }}
-        </mat-option>
-      }
-    </mat-autocomplete>
-  </mat-form-field>
-</form>
+      <mat-autocomplete
+        #auto="matAutocomplete"
+        [displayWith]="entitySearchDisplayFunction"
+      >
+        @for (entity of filteredEntitySearchData; track entity.displayedValue) {
+          <mat-option [value]="entity">
+            {{ entity.displayedValue }}
+          </mat-option>
+        }
+      </mat-autocomplete>
+    </mat-form-field>
+  </form>
 
   <!-- MARK: Tab Elements
  -->
@@ -190,28 +197,36 @@
             <div class="flex-column">
               <span class="row-item">
                 <span class="label">Id: </span>
-                <span #idElement
-                      tabindex="0"
-                      style="cursor: pointer; display: inline-block;"
-                      [matTooltip]="'Click to copy'"
-                      (click)="copyToClipboard(selectedPassenger.id)"
-                      (keydown.enter)="copyToClipboard(selectedPassenger.id)">
+                <span
+                  #idElement
+                  tabindex="0"
+                  style="cursor: pointer; display: inline-block"
+                  [matTooltip]="'Click to copy'"
+                  (click)="copyToClipboard(selectedPassenger.id)"
+                  (keydown.enter)="copyToClipboard(selectedPassenger.id)"
+                >
                   {{ truncateId(selectedPassenger.id) }}
                 </span>
               </span>
-              
+
               <span class="row-item">
                 <span class="label">Name: </span>
-                <span #nameElement
-                      tabindex="0"
-                      style="cursor: pointer; display: inline-block;"
-                      [matTooltip]="'Click to copy'"
-                      (click)="copyToClipboard(selectedPassenger.name!)"
-                      (keydown.enter)="copyToClipboard(selectedPassenger.name!)">
+                <span
+                  #nameElement
+                  tabindex="0"
+                  style="cursor: pointer; display: inline-block"
+                  [matTooltip]="'Click to copy'"
+                  (click)="copyToClipboard(selectedPassenger.name!)"
+                  (keydown.enter)="copyToClipboard(selectedPassenger.name!)"
+                >
                   {{ selectedPassenger.name }}
                 </span>
               </span>
               <span>Status: {{ selectedPassenger.status }}</span>
+              <span
+                >Number of passengers:
+                {{ selectedPassenger.numberOfPassengers }}</span
+              >
               @if (selectedPassenger.notDisplayedReason !== null) {
                 <div>
                   <span>Not displayed: </span>
@@ -244,71 +259,157 @@
                   >Vehicle: {{ selectedPassengerVehicle.id }}</span
                 >
               }
+
+              @let selectedPassengerStop = selectedPassengerStopSignal();
+
+              @if (selectedPassengerStop !== null) {
+                <span
+                  tabindex="0"
+                  class="clickable"
+                  [matTooltip]="'Click to select the stop'"
+                  (click)="selectStop(selectedPassengerStop)"
+                  (keydown.enter)="selectStop(selectedPassengerStop)"
+                  >Stop: {{ selectedPassengerStop.label }}</span
+                >
+              }
             </div>
           }
 
-    @if (selectedVehicle !== null) {
-    @let selectedVehiclePassengers = selectedVehiclePassengersSignal();
-    <mat-card-title>Selected Vehicle</mat-card-title>
-    <div class="flex-column">
-      <span class="row-item">
-        <span class="label">Id: </span>
-        <span #idElement
-              tabindex="0"
-              style="cursor: pointer; display: inline-block;"
-              [matTooltip]="'Click to copy'"
-              (click)="copyToClipboard(selectedVehicle.id)"
-              (keydown.enter)="copyToClipboard(selectedVehicle.id)">
-          {{ truncateId(selectedVehicle.id) }}
-        </span>
-      </span>     
-      @if (selectedVehicle.mode !== null) {
-        <span>Mode: {{ selectedVehicle.mode }}</span>
+          @if (selectedVehicle !== null) {
+            @let selectedVehiclePassengers = selectedVehiclePassengersSignal();
+            <mat-card-title>Selected Vehicle</mat-card-title>
+            <div class="flex-column">
+              <span class="row-item">
+                <span class="label">Id: </span>
+                <span
+                  #idElement
+                  tabindex="0"
+                  style="cursor: pointer; display: inline-block"
+                  [matTooltip]="'Click to copy'"
+                  (click)="copyToClipboard(selectedVehicle.id)"
+                  (keydown.enter)="copyToClipboard(selectedVehicle.id)"
+                >
+                  {{ truncateId(selectedVehicle.id) }}
+                </span>
+                <span>Name: {{ selectedVehicle.name }}</span>
+                <span>Capacity: {{ selectedVehicle.capacity }}</span>
+              </span>
+              @if (selectedVehicle.mode !== null) {
+                <span>Mode: {{ selectedVehicle.mode }}</span>
+              }
+              <span>Status: {{ selectedVehicle.status }}</span>
+              @if (selectedVehicle.notDisplayedReason !== null) {
+                <div>
+                  <span>Not displayed: </span>
+                  <span class="light">{{
+                    selectedVehicle.notDisplayedReason
+                  }}</span>
+                </div>
+              }
+              <div class="favorite-content">
+                <span>Favorite: </span>
+                <button
+                  mat-icon-button
+                  disableRipple
+                  (click)="toggleFavoriteVehicle(selectedVehicle.id)"
+                >
+                  @let icon =
+                    isFavoriteVehicle(selectedVehicle.id)
+                      ? "favorite"
+                      : "favorite_outline";
+                  <mat-icon>{{ icon }}</mat-icon>
+                </button>
+              </div>
+              @if (selectedVehiclePassengers.length > 0) {
+                <span>Passengers:</span>
+              }
+              @for (
+                passenger of selectedVehiclePassengers;
+                track passenger.id
+              ) {
+                <span
+                  tabindex="0"
+                  class="clickable"
+                  [matTooltip]="'Click to select the passenger'"
+                  (click)="selectPassenger(passenger.id)"
+                  (keydown.enter)="selectPassenger(passenger.id)"
+                  >{{ passenger.name }}</span
+                >
+              }
+
+              @let selectedVehicleStop = selectedVehicleStopSignal();
+              @if (selectedVehicleStop !== null) {
+                <span
+                  tabindex="0"
+                  class="clickable"
+                  [matTooltip]="'Click to select the stop'"
+                  (click)="selectStop(selectedVehicleStop)"
+                  (keydown.enter)="selectStop(selectedVehicleStop)"
+                  >Stop: {{ selectedVehicleStop.label }}</span
+                >
+              }
+            </div>
+          }
+
+          @if (selectedStop !== null) {
+            <mat-card-title>Selected Stop</mat-card-title>
+            <div class="flex-column">
+              <span>Label: {{ selectedStop.label }}</span>
+              <span>Capacity: {{ selectedStop.capacity }}</span>
+              <span
+                >Position: {{ selectedStop.position.latitude }},
+                {{ selectedStop.position.longitude }}</span
+              >
+
+              <div class="favorite-content">
+                <span>Favorite: </span>
+                <button
+                  mat-icon-button
+                  disableRipple
+                  (click)="toggleFavoriteStop(selectedStop)"
+                >
+                  @let icon =
+                    isFavoriteStop(selectedStop)
+                      ? "favorite"
+                      : "favorite_outline";
+                  <mat-icon>{{ icon }}</mat-icon>
+                </button>
+              </div>
+
+              @let passengers = selectedStopPassengersSignal();
+              @if (selectedStopPassengersSignal().length > 0) {
+                <span>Passengers:</span>
+              }
+              @for (passenger of passengers; track passenger.id) {
+                <span
+                  tabindex="0"
+                  class="clickable"
+                  [matTooltip]="'Click to select the passenger'"
+                  (click)="selectPassenger(passenger.id)"
+                  (keydown.enter)="selectPassenger(passenger.id)"
+                  >{{ passenger.id }}</span
+                >
+              }
+
+              @let vehicles = selectedStopVehiclesSignal();
+              @if (selectedStopVehiclesSignal().length > 0) {
+                <span>Vehicles:</span>
+              }
+              @for (vehicle of vehicles; track vehicle.id) {
+                <span
+                  tabindex="0"
+                  class="clickable"
+                  [matTooltip]="'Click to select the vehicle'"
+                  (click)="selectVehicle(vehicle.id)"
+                  (keydown.enter)="selectVehicle(vehicle.id)"
+                  >{{ vehicle.id }}</span
+                >
+              }
+            </div>
+          }
+        </mat-card-content>
       }
-      <span>Status: {{ selectedVehicle.status }}</span>
-      @if (selectedVehicle.notDisplayedReason !== null) {
-        <div>
-          <span>Not displayed: </span>
-          <span class="light">{{
-            selectedVehicle.notDisplayedReason
-          }}</span>
-        </div>
-      }
-      <div class="favorite-content">
-        <span>Favorite: </span>
-        <button
-          mat-icon-button
-          disableRipple
-          (click)="toggleFavoriteVehicle(selectedVehicle.id)"
-        >
-          @let icon =
-            isFavoriteVehicle(selectedVehicle.id)
-              ? "favorite"
-              : "favorite_outline";
-          <mat-icon>{{ icon }}</mat-icon>
-        </button>
-      </div>
-      @if (selectedVehiclePassengers.length > 0) {
-        <span>Passengers:</span>
-      }
-      @for (
-        passenger of selectedVehiclePassengers;
-        track passenger.id
-      ) {
-        <span
-          tabindex="0"
-          class="clickable"
-          [matTooltip]="'Click to select the passenger'"
-          (click)="selectPassenger(passenger.id)"
-          (keydown.enter)="selectPassenger(passenger.id)"
-          >{{ passenger.name }}</span
-        >
-      }
-    </div>
-  }
-</mat-card-content>
-}
-  <!--MARK: Not Displayed Entities
+      <!--MARK: Not Displayed Entities
   -->
       @else if (showNotDisplayedEntities) {
         <mat-card-content class="flex-1">

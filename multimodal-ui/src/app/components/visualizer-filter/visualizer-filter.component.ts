@@ -1,12 +1,16 @@
 import { Component, Signal } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { VisualizationFilterService } from '../../services/visualization-filter.service';
-import { MatRadioChange, MatRadioModule } from '@angular/material/radio';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
-import { AnimationService } from '../../services/animation.service';
+import { MatRadioChange, MatRadioModule } from '@angular/material/radio';
+import {
+  MatSlideToggleChange,
+  MatSlideToggleModule,
+} from '@angular/material/slide-toggle';
 import { EntityFilterMode } from '../../interfaces/entity.model';
+import { AnimationService } from '../../services/animation.service';
+import { VisualizationFilterService } from '../../services/visualization-filter.service';
 
 @Component({
   selector: 'app-visualizer-filter',
@@ -16,6 +20,7 @@ import { EntityFilterMode } from '../../interfaces/entity.model';
     MatRadioModule,
     MatChipsModule,
     MatDividerModule,
+    MatSlideToggleModule,
   ],
   templateUrl: './visualizer-filter.component.html',
   styleUrl: './visualizer-filter.component.css',
@@ -36,5 +41,9 @@ export class VisualizerFilterComponent {
 
   onRadioChange(change: MatRadioChange) {
     this.animationService.setFilterMode(change.value as EntityFilterMode);
+  }
+
+  onShouldShowCompleteChange(event: MatSlideToggleChange) {
+    this.animationService.setShouldShowComplete(event.checked);
   }
 }

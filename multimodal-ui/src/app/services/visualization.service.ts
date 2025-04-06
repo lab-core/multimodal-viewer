@@ -11,6 +11,7 @@ import {
 import {
   AnimatedPassenger,
   AnimatedSimulationEnvironment,
+  AnimatedStop,
   AnimatedVehicle,
   AnyPassengerAnimationData,
   AnySimulationUpdate,
@@ -19,6 +20,7 @@ import {
   DynamicPassengerAnimationData,
   DynamicVehicleAnimationData,
   getAllStops,
+  getId,
   Leg,
   Passenger,
   PassengerAnimationData,
@@ -298,32 +300,19 @@ export class VisualizationService {
         return null;
       }
 
-      const passengers: Record<string, AnimatedPassenger> = {};
-      for (const passengerId of Object.keys(environment.passengers)) {
-        const passenger = environment.passengers[passengerId];
-        const animationData =
-          animatedEnvironment.animationData.passengers[passengerId];
-
-        if (animationData === undefined) {
-          console.error(
-            'Passenger animation data not found',
-            passenger,
-            animatedEnvironment,
-          );
-          continue;
+      const stops: Record<string, AnimatedStop> = {};
+      for (const vehicle of Object.values(environment.vehicles)) {
+        const vehicleStops = getAllStops(vehicle);
+        for (const stop of vehicleStops) {
+          if (stops[getId(stop)] === undefined) {
+            stops[getId(stop)] = {
+              ...stop,
+              passengerIds: [],
+              vehicleIds: [],
+              numberOfPassengers: 0,
+            };
+          }
         }
-
-        const currentAnimationData = animationData.find(
-          (data) =>
-            data.startTimestamp <= environment.timestamp &&
-            data.endTimestamp! >= environment.timestamp,
-        );
-
-        passengers[passengerId] = {
-          ...passenger,
-          animationData,
-          notDisplayedReason: currentAnimationData?.notDisplayedReason ?? null,
-        };
       }
 
       const vehicles: Record<string, AnimatedVehicle> = {};
@@ -351,9 +340,123 @@ export class VisualizationService {
           ...vehicle,
           animationData,
           notDisplayedReason: currentAnimationData?.notDisplayedReason ?? null,
-          passengerCount: 0,
+          passengerIds: [],
+          numberOfPassengers: 0,
           currentLineIndex: null,
         };
+
+        if (currentAnimationData === undefined) {
+          continue;
+        }
+
+        if (
+          (currentAnimationData as StaticVehicleAnimationData).position !==
+          undefined
+        ) {
+          const staticAnimationData =
+            currentAnimationData as StaticVehicleAnimationData;
+          const stopId = getId(staticAnimationData);
+
+          const stop = stops[stopId];
+
+          if (stop === undefined) {
+            console.error(
+              'Stop not found for vehicle',
+              vehicle,
+              currentAnimationData,
+            );
+            continue;
+          }
+
+          stop.vehicleIds.push(vehicleId);
+        }
+      }
+
+      const passengers: Record<string, AnimatedPassenger> = {};
+      for (const passengerId of Object.keys(environment.passengers)) {
+        const passenger = environment.passengers[passengerId];
+        const animationData =
+          animatedEnvironment.animationData.passengers[passengerId];
+
+        if (animationData === undefined) {
+          console.error(
+            'Passenger animation data not found',
+            passenger,
+            animatedEnvironment,
+          );
+          continue;
+        }
+
+        const currentAnimationData = animationData.find(
+          (data) =>
+            data.startTimestamp <= environment.timestamp &&
+            data.endTimestamp! >= environment.timestamp,
+        );
+
+        passengers[passengerId] = {
+          ...passenger,
+          animationData,
+          notDisplayedReason: currentAnimationData?.notDisplayedReason ?? null,
+        };
+
+        if (
+          currentAnimationData === undefined ||
+          currentAnimationData.vehicleId === null
+        ) {
+          continue;
+        }
+
+        const vehicle = vehicles[currentAnimationData.vehicleId];
+
+        if (vehicle === undefined) {
+          console.error(
+            'Vehicle not found for passenger',
+            passenger,
+            currentAnimationData,
+          );
+          continue;
+        }
+
+        if ((currentAnimationData as DynamicPassengerAnimationData).isOnBoard) {
+          vehicle.passengerIds.push(passengerId);
+          vehicle.numberOfPassengers += passenger.numberOfPassengers;
+        } else if (
+          (currentAnimationData as StaticPassengerAnimationData).stopIndex !==
+          undefined
+        ) {
+          const allStops = getAllStops(vehicle);
+          const staticAnimationData =
+            currentAnimationData as StaticPassengerAnimationData;
+
+          const stop = allStops[staticAnimationData.stopIndex];
+
+          if (stop === undefined) {
+            console.error(
+              'Stop not found for passenger',
+              passenger,
+              currentAnimationData,
+              vehicle,
+              allStops,
+            );
+            continue;
+          }
+
+          const animatedStop = stops[getId(stop)];
+
+          if (animatedStop === undefined) {
+            console.error(
+              'Animated stop not found for passenger',
+              passenger,
+              currentAnimationData,
+              vehicle,
+              allStops,
+            );
+            continue;
+          }
+
+          animatedStop.passengerIds.push(passengerId);
+          animatedStop.numberOfPassengers += passenger.numberOfPassengers;
+        }
       }
 
       return {
@@ -362,6 +465,7 @@ export class VisualizationService {
           ...environment,
           passengers,
           vehicles,
+          stops,
         },
       };
     });
@@ -789,6 +893,7 @@ export class VisualizationService {
       currentState: null as unknown as SimulationEnvironment & {
         passengers: Record<string, AnimatedPassenger>;
         vehicles: Record<string, AnimatedVehicle>;
+        stops: Record<string, AnimatedStop>;
       }, // Will be overwritten
       animationData: {
         passengers: {},
@@ -847,9 +952,10 @@ export class VisualizationService {
       leg = passenger.currentLeg;
     } else if (passenger.nextLegs.length > 0) {
       leg = passenger.nextLegs[0];
+    } else if (passenger.previousLegs.length > 0) {
+      leg = passenger.previousLegs[0];
     } else {
-      basicAnimationData.notDisplayedReason =
-        'Passenger has no current and next legs';
+      basicAnimationData.notDisplayedReason = 'Passenger has no leg';
       return basicAnimationData;
     }
 
@@ -1543,7 +1649,7 @@ export class VisualizationService {
       return null;
     }
 
-    const polylineId = `${stop.position.latitude},${stop.position.longitude},${nextStop.position.latitude},${nextStop.position.longitude}`;
+    const polylineId = `${getId(stop)},${getId(nextStop)}`;
     return polylines[polylineId] ?? null;
   }
 }
