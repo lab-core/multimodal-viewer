@@ -4,7 +4,10 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AnimationService } from '../../services/animation.service';
-import { FavoriteEntitiesService } from '../../services/favorite-entities.service';
+import {
+  FavoriteEntitiesService,
+  FavoriteInfo,
+} from '../../services/favorite-entities.service';
 import { VisualizationService } from '../../services/visualization.service';
 
 @Component({
@@ -14,18 +17,17 @@ import { VisualizationService } from '../../services/visualization.service';
   styleUrl: './favorite-entities.component.css',
 })
 export class FavoriteEntitiesComponent {
-  favVehicleIds: Signal<Set<string>>;
-  favPassengerIds: Signal<Set<string>>;
-  favStopIds: Signal<Set<string>>;
+  favVehicles: Signal<FavoriteInfo[]>;
+  favPassengers: Signal<FavoriteInfo[]>;
+  favStops: Signal<FavoriteInfo[]>;
 
-  readonly allFavIdsSignal: Signal<Set<string>> = computed(
-    () =>
-      new Set([
-        ...this.favVehicleIds(),
-        ...this.favPassengerIds(),
-        ...this.favStopIds(),
-      ]),
-  );
+  readonly favoriteCount: Signal<number> = computed(() => {
+    return (
+      this.favVehicles().length +
+      this.favPassengers().length +
+      this.favStops().length
+    );
+  });
 
   isVehicleInEnvironment(id: string) {
     const visualizationEnvironment =
@@ -50,17 +52,17 @@ export class FavoriteEntitiesComponent {
     private readonly visualizationService: VisualizationService,
     private readonly animationService: AnimationService,
   ) {
-    this.favVehicleIds = favoriteEntitiesService.favVehicleIds;
-    this.favPassengerIds = favoriteEntitiesService.favPassengerIds;
-    this.favStopIds = favoriteEntitiesService.favStopIds;
+    this.favVehicles = favoriteEntitiesService.favVehicleArray;
+    this.favPassengers = favoriteEntitiesService.favPassengersArray;
+    this.favStops = favoriteEntitiesService.favStopsArray;
   }
 
-  toggleFavoriteVehicle(id: string) {
-    this.favoriteEntitiesService.toggleFavoriteVehicle(id);
+  toggleFavoriteVehicle(id: string, name: string) {
+    this.favoriteEntitiesService.toggleFavoriteVehicle(id, name);
   }
 
-  toggleFavoritePassenger(id: string) {
-    this.favoriteEntitiesService.toggleFavoritePassenger(id);
+  toggleFavoritePassenger(id: string, name: string) {
+    this.favoriteEntitiesService.toggleFavoritePassenger(id, name);
   }
 
   toggleFavoriteStop(id: string) {

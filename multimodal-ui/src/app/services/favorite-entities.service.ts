@@ -9,9 +9,15 @@ import {
 import { SimulationService } from './simulation.service';
 
 interface FavoritesSaveData {
-  vehicles: string[];
-  passengers: string[];
-  stops: string[];
+  version: number;
+  vehicles: FavoriteInfo[];
+  passengers: FavoriteInfo[];
+  stops: FavoriteInfo[];
+}
+
+export interface FavoriteInfo {
+  id: string;
+  name: string;
 }
 
 @Injectable({
@@ -21,11 +27,12 @@ export class FavoriteEntitiesService {
   // Arrays to have them sorted
   // Sets to quickly search
 
+  readonly VERSION = 1;
   private readonly KEY_FAVORITES_PREFIX = 'multimodal.favorites.';
 
-  private _favVehicleArray: WritableSignal<string[]> = signal([]);
-  private _favPassengersArray: WritableSignal<string[]> = signal([]);
-  private _favStopsArray: WritableSignal<string[]> = signal([]);
+  private _favVehicleArray: WritableSignal<FavoriteInfo[]> = signal([]);
+  private _favPassengersArray: WritableSignal<FavoriteInfo[]> = signal([]);
+  private _favStopsArray: WritableSignal<FavoriteInfo[]> = signal([]);
 
   private _simulationFavKey: Signal<string | null> = computed(() => {
     const simulation = this.simulationService.activeSimulationSignal();
@@ -33,14 +40,26 @@ export class FavoriteEntitiesService {
     return `${this.KEY_FAVORITES_PREFIX}${simulation.id}`;
   });
 
+  get favVehicleArray(): Signal<FavoriteInfo[]> {
+    return this._favVehicleArray;
+  }
+
+  get favPassengersArray(): Signal<FavoriteInfo[]> {
+    return this._favPassengersArray;
+  }
+
+  get favStopsArray(): Signal<FavoriteInfo[]> {
+    return this._favStopsArray;
+  }
+
   favVehicleIds: Signal<Set<string>> = computed(
-    () => new Set(this._favVehicleArray()),
+    () => new Set(this._favVehicleArray().map((favorite) => favorite.id)),
   );
   favPassengerIds: Signal<Set<string>> = computed(
-    () => new Set(this._favPassengersArray()),
+    () => new Set(this.favPassengersArray().map((favorite) => favorite.id)),
   );
   favStopIds: Signal<Set<string>> = computed(
-    () => new Set(this._favStopsArray()),
+    () => new Set(this._favStopsArray().map((favorite) => favorite.id)),
   );
 
   constructor(private simulationService: SimulationService) {
@@ -53,34 +72,34 @@ export class FavoriteEntitiesService {
     });
   }
 
-  toggleFavoriteVehicle(id: string) {
+  toggleFavoriteVehicle(id: string, name: string) {
     this._favVehicleArray.update((favVehicleArray) => {
-      return this.toggleFavoriteEntity(favVehicleArray, id);
+      return this.toggleFavoriteEntity(favVehicleArray, id, name);
     });
   }
 
-  toggleFavoritePassenger(id: string) {
+  toggleFavoritePassenger(id: string, name: string) {
     this._favPassengersArray.update((favPassengerArray) => {
-      return this.toggleFavoriteEntity(favPassengerArray, id);
+      return this.toggleFavoriteEntity(favPassengerArray, id, name);
     });
   }
 
   toggleFavoriteStop(id: string) {
     this._favStopsArray.update((favStopsArray) => {
-      return this.toggleFavoriteEntity(favStopsArray, id);
+      return this.toggleFavoriteEntity(favStopsArray, id, id);
     });
   }
 
-  toggleFavoriteEntity(entities: string[], id: string) {
+  toggleFavoriteEntity(favorites: FavoriteInfo[], id: string, name: string) {
     // If is in the list
-    if (entities.find((_id) => _id === id)) {
+    if (favorites.find((favorite) => favorite.id === id)) {
       // Remove from list
-      entities = entities.filter((_id) => _id !== id);
+      favorites = favorites.filter((favorite) => favorite.id !== id);
     } else {
-      entities.push(id);
-      entities.sort();
+      favorites.push({ id, name });
+      favorites.sort((a, b) => a.name.localeCompare(b.name));
     }
-    return [...entities];
+    return [...favorites];
   }
 
   private loadFavoritesFromLocalStorage() {
@@ -88,6 +107,7 @@ export class FavoriteEntitiesService {
     if (simulationFavKey === null) {
       this._favVehicleArray.set([]);
       this._favPassengersArray.set([]);
+      this._favStopsArray.set([]);
       return;
     }
 
@@ -97,6 +117,12 @@ export class FavoriteEntitiesService {
     const favoritesSaveData = JSON.parse(
       favoritesSaveDataJson,
     ) as FavoritesSaveData;
+
+    if (
+      !favoritesSaveData.version ||
+      favoritesSaveData.version !== this.VERSION
+    )
+      return;
 
     this._favVehicleArray.set(favoritesSaveData.vehicles);
     this._favPassengersArray.set(favoritesSaveData.passengers);
@@ -108,6 +134,7 @@ export class FavoriteEntitiesService {
     if (simulationFavKey === null) return;
 
     const favoritesSaveData: FavoritesSaveData = {
+      version: this.VERSION,
       vehicles: this._favVehicleArray(),
       passengers: this._favPassengersArray(),
       stops: this._favStopsArray(),
