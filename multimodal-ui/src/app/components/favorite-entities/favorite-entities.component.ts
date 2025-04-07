@@ -1,11 +1,11 @@
-import { Component, Signal } from '@angular/core';
+import { Component, computed, Signal } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
-import { FavoriteEntitiesService } from '../../services/favorite-entities.service';
-import { AnimationService } from '../../services/animation.service';
-import { VisualizationService } from '../../services/visualization.service';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { AnimationService } from '../../services/animation.service';
+import { FavoriteEntitiesService } from '../../services/favorite-entities.service';
+import { VisualizationService } from '../../services/visualization.service';
 
 @Component({
   selector: 'app-favorite-entities',
@@ -16,6 +16,16 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 export class FavoriteEntitiesComponent {
   favVehicleIds: Signal<Set<string>>;
   favPassengerIds: Signal<Set<string>>;
+  favStopIds: Signal<Set<string>>;
+
+  readonly allFavIdsSignal: Signal<Set<string>> = computed(
+    () =>
+      new Set([
+        ...this.favVehicleIds(),
+        ...this.favPassengerIds(),
+        ...this.favStopIds(),
+      ]),
+  );
 
   isVehicleInEnvironment(id: string) {
     const visualizationEnvironment =
@@ -42,6 +52,7 @@ export class FavoriteEntitiesComponent {
   ) {
     this.favVehicleIds = favoriteEntitiesService.favVehicleIds;
     this.favPassengerIds = favoriteEntitiesService.favPassengerIds;
+    this.favStopIds = favoriteEntitiesService.favStopIds;
   }
 
   toggleFavoriteVehicle(id: string) {
@@ -52,11 +63,19 @@ export class FavoriteEntitiesComponent {
     this.favoriteEntitiesService.toggleFavoritePassenger(id);
   }
 
+  toggleFavoriteStop(id: string) {
+    this.favoriteEntitiesService.toggleFavoriteStop(id);
+  }
+
   selectVehicle(id: string) {
     this.animationService.selectEntity(id, 'vehicle');
   }
 
   selectPassenger(id: string) {
     this.animationService.selectEntity(id, 'passenger');
+  }
+
+  selectStop(id: string) {
+    this.animationService.selectEntity(id, 'stop');
   }
 }

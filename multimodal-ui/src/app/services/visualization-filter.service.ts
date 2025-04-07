@@ -11,7 +11,9 @@ import { VisualizationService } from './visualization.service';
 
 @Injectable()
 export class VisualizationFilterService {
-  private _filters: WritableSignal<Set<string>> = signal(new Set<string>());
+  private _filters: WritableSignal<Set<string>> = signal(
+    new Set<string>(['stops']),
+  );
 
   private _vehicleModes: WritableSignal<string[]> = signal([]);
 

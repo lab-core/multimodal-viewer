@@ -180,7 +180,7 @@ button[mat-icon-button] {
   border-radius: 0.5rem;
 
   &:hover {
-    background-color: rgba(0, 0, 0, 0.32);
+    background-color: color(srgb 0.101961 0.105882 0.121569 / 0.08);
   }
 }
 
@@ -189,7 +189,7 @@ button[mat-icon-button] {
   border-radius: 0.5rem;
 
   &:hover {
-    background-color: rgba(0, 0, 0, 0.32);
+    background-color: color(srgb 0.101961 0.105882 0.121569 / 0.08);
   }
 }
 
