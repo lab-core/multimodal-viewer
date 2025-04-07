@@ -198,6 +198,37 @@
           <mat-icon>restart_alt</mat-icon>
         </button>
       </div>
+
+      <!-- Stop -->
+      <div class="custom-item">
+        <div class="custom-icon stop-icon">
+          <img width="40" alt="icon" [src]="stopTextureUrl()" />
+        </div>
+
+        <button
+          mat-icon-button
+          matTooltip="Upload image"
+          (click)="uploadDefaultTexture('stop')"
+        >
+          <mat-icon>upload</mat-icon>
+        </button>
+
+        <mat-form-field
+          class="compact-input"
+          appearance="outline"
+          subscriptSizing="dynamic"
+        >
+          <input matInput disabled value="Stop Icon" />
+        </mat-form-field>
+
+        <button
+          mat-icon-button
+          matTooltip="Reset icon"
+          (click)="resetDefaultTexture('stop')"
+        >
+          <mat-icon>restart_alt</mat-icon>
+        </button>
+      </div>
     </section>
   </div>
 </mat-dialog-content>

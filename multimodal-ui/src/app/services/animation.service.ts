@@ -362,7 +362,7 @@ export class AnimationService {
         stopContainer.addChild(sprite);
 
         // Other sprite (for the stop without passengers)
-        const otherSprite = PIXI.Sprite.from('images/sample-stop.png');
+        const otherSprite = PIXI.Sprite.from(this.spriteService.stopTexture);
         otherSprite.scale.set(0.25);
         otherSprite.anchor.set(0.5, 0.5);
         otherSprite.visible = false;

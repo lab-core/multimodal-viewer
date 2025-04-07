@@ -38,6 +38,10 @@ p {
   justify-content: center;
 }
 
+.stop-icon {
+  scale: 0.3;
+}
+
 .file-upload {
   display: none;
 }

@@ -16,6 +16,8 @@ export interface TextureSaveData {
   zoomOutVehicleTextureUrl: string;
   zoomOutPassengerTextureUrl: string;
 
+  stopTextureUrl: string;
+
   vehicleModeTextures: CustomTexture[];
 }
 
@@ -23,7 +25,7 @@ export interface TextureSaveData {
   providedIn: 'root',
 })
 export class SpritesService {
-  readonly VERSION = 1;
+  readonly VERSION = 2;
   readonly SPRITE_SIZE = 40;
 
   private readonly KEY_TEXTURES = 'multimodal.textures';
@@ -33,7 +35,8 @@ export class SpritesService {
   readonly DEFAULT_ZOOM_OUT_VEHICLE_TEXTURE_URL =
     '/images/zoom-out-vehicle.png';
   readonly DEFAULT_ZOOM_OUT_PASSENGER_TEXTURE_URL =
-    'images/zoom-out-passenger.png';
+    '/images/zoom-out-passenger.png';
+  readonly DEFAULT_STOP_TEXTURE_URL = '/images/sample-stop.png';
 
   private _useZoomedOutSprites = false;
   private _vehicleSpriteScale = 1;
@@ -41,12 +44,15 @@ export class SpritesService {
 
   private _vehicleTexture = Texture.from(this.DEFAULT_VEHICLE_TEXTURE_URL);
   private _passengerTexture = Texture.from(this.DEFAULT_PASSENGER_TEXTURE_URL);
+
   private _zoomOutVehicleTexture = Texture.from(
     this.DEFAULT_ZOOM_OUT_VEHICLE_TEXTURE_URL,
   );
   private _zoomOutPassengerTexture = Texture.from(
     this.DEFAULT_ZOOM_OUT_PASSENGER_TEXTURE_URL,
   );
+
+  private _stopTexture = Texture.from(this.DEFAULT_STOP_TEXTURE_URL);
 
   private _vehicleModeTextures: CustomTexture[] = [];
 
@@ -79,6 +85,10 @@ export class SpritesService {
 
   get zoomOutPassengerTexture(): Texture {
     return this._zoomOutPassengerTexture;
+  }
+
+  get stopTexture(): Texture {
+    return this._stopTexture;
   }
   ///////////
 
@@ -120,16 +130,18 @@ export class SpritesService {
     vehicleTextureUrl: string,
     passengerTextureUrl: string,
     zoomOutVehicleTextureUrl: string,
-    zoomOutPassengerSpriteUrl: string,
+    zoomOutPassengerTextureUrl: string,
+    stopTextureUrl: string,
     vehicleModeTextures: CustomTexture[],
   ) {
     const saveData: TextureSaveData = {
       version: this.VERSION,
-      vehicleTextureUrl: vehicleTextureUrl,
-      passengerTextureUrl: passengerTextureUrl,
-      zoomOutVehicleTextureUrl: zoomOutVehicleTextureUrl,
-      zoomOutPassengerTextureUrl: zoomOutPassengerSpriteUrl,
-      vehicleModeTextures: vehicleModeTextures,
+      vehicleTextureUrl,
+      passengerTextureUrl,
+      zoomOutVehicleTextureUrl,
+      zoomOutPassengerTextureUrl,
+      stopTextureUrl,
+      vehicleModeTextures,
     };
 
     localStorage.setItem(this.KEY_TEXTURES, JSON.stringify(saveData));
@@ -179,6 +191,8 @@ export class SpritesService {
     this._zoomOutPassengerTexture = Texture.from(
       textureSaveData.zoomOutPassengerTextureUrl,
     );
+
+    this._stopTexture = Texture.from(textureSaveData.stopTextureUrl);
 
     this._vehicleModeTextures = textureSaveData.vehicleModeTextures;
     this._textureMap.clear();
