@@ -24,6 +24,8 @@ import { CustomSprite } from '../../interfaces/entity.model';
 import { SpriteSaveData, SpritesService } from '../../services/sprites.service';
 import { MatDividerModule } from '@angular/material/divider';
 import { Jimp } from 'jimp';
+import { MatSliderModule } from '@angular/material/slider';
+import { ImageResource } from 'pixi.js';
 
 export type EditMapIconsDialogData = null;
 
@@ -50,6 +52,7 @@ export interface EditMapIconsDialogResult {
     MatIconModule,
     MatDividerModule,
     MatTooltipModule,
+    MatSliderModule,
   ],
   templateUrl: './edit-map-icons-dialog.component.html',
   styleUrl: './edit-map-icons-dialog.component.css',
@@ -79,8 +82,18 @@ export class EditMapIconsDialogComponent {
     private readonly spritesService: SpritesService,
   ) {
     this.SPRITE_SIZE = this.spritesService.SPRITE_SIZE;
-    this.defaultVehicleSprite.set(this.spritesService.defaultVehicleSprite);
-    this.defaultPassengerSprite.set(this.spritesService.defaultPassengerSprite);
+
+    // Safe to assume its an ImageResource with a url because they are all loaded from a url.
+    this.defaultVehicleSprite.set(
+      (this.spritesService.vehicleSprite.baseTexture.resource as ImageResource)
+        .url,
+    );
+    this.defaultPassengerSprite.set(
+      (
+        this.spritesService.passengerSprite.baseTexture
+          .resource as ImageResource
+      ).url,
+    );
     this.customSprites.set(this.spritesService.customSprites);
   }
 
@@ -129,12 +142,12 @@ export class EditMapIconsDialogComponent {
           reader.result as string,
         ) as SpriteSaveData;
 
-        if (!spriteSaveData.defaultVehicleSprite) {
+        if (!spriteSaveData.vehicleSprite) {
           this.currentError = 'JSON has missing data: defaultVehicleSprite';
           return;
         }
 
-        if (!spriteSaveData.defaultPassengerSprite) {
+        if (!spriteSaveData.passengerSprite) {
           this.currentError = 'JSON has missing data: defaultPassengerSprite';
           return;
         }
@@ -144,8 +157,8 @@ export class EditMapIconsDialogComponent {
           return;
         }
 
-        this.defaultVehicleSprite.set(spriteSaveData.defaultVehicleSprite);
-        this.defaultPassengerSprite.set(spriteSaveData.defaultPassengerSprite);
+        this.defaultVehicleSprite.set(spriteSaveData.vehicleSprite);
+        this.defaultPassengerSprite.set(spriteSaveData.passengerSprite);
         this.customSprites.set(spriteSaveData.customSprites);
 
         this.currentError = '';
@@ -206,8 +219,9 @@ export class EditMapIconsDialogComponent {
 
   exportSprites() {
     const saveData: SpriteSaveData = {
-      defaultVehicleSprite: this.defaultVehicleSprite(),
-      defaultPassengerSprite: this.defaultPassengerSprite(),
+      version: this.spritesService.VERSION,
+      vehicleSprite: this.defaultVehicleSprite(),
+      passengerSprite: this.defaultPassengerSprite(),
       customSprites: this.customSprites(),
     };
 

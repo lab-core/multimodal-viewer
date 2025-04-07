@@ -32,7 +32,7 @@ class SimulationHandler:
     simulation_time: float | None
     simulation_estimated_end_time: float | None
 
-    max_time: float | None
+    max_duration: float | None
 
     polylines_version: int | None
 
@@ -43,7 +43,7 @@ class SimulationHandler:
         start_time: float,
         data: str,
         status: SimulationStatus,
-        max_time: float | None,
+        max_duration: float | None,
         process: multiprocessing.Process | None,
     ) -> None:
         self.simulation_id = simulation_id
@@ -60,7 +60,7 @@ class SimulationHandler:
         self.simulation_time = None
         self.simulation_estimated_end_time = None
 
-        self.max_time = max_time
+        self.max_duration = max_duration
 
         self.polylines_version = None
 
@@ -72,12 +72,12 @@ class SimulationManager:
         self.simulations = {}
 
     def start_simulation(
-        self, name: str, data: str, response_event: str, max_time: float | None
+        self, name: str, data: str, response_event: str, max_duration: float | None
     ) -> SimulationHandler:
         simulation_id, start_time = build_simulation_id(name)
 
         simulation_process = multiprocessing.Process(
-            target=run_simulation, args=(simulation_id, data, max_time)
+            target=run_simulation, args=(simulation_id, data, max_duration)
         )
 
         simulation_handler = SimulationHandler(
@@ -86,7 +86,7 @@ class SimulationManager:
             start_time,
             data,
             SimulationStatus.STARTING,
-            max_time,
+            max_duration,
             simulation_process,
         )
 
@@ -189,7 +189,7 @@ class SimulationManager:
         self.emit_simulations()
 
     def edit_simulation_configuration(
-        self, simulation_id: str, max_time: float | None
+        self, simulation_id: str, max_duration: float | None
     ) -> None:
         if simulation_id not in self.simulations:
             log(
@@ -201,14 +201,14 @@ class SimulationManager:
 
         simulation = self.simulations[simulation_id]
 
-        simulation.max_time = max_time
+        simulation.max_duration = max_duration
 
-        emit("edit-simulation-configuration", (max_time,), to=simulation.socket_id)
+        emit("edit-simulation-configuration", (max_duration,), to=simulation.socket_id)
 
         self.emit_simulations()
 
         log(
-            f"Emitted simulations with new max time {max_time} for simulation {simulation_id}",
+            f"Emitted simulations with new max duration {max_duration} for simulation {simulation_id}",
             "server",
             logging.WARN,
         )
@@ -303,7 +303,7 @@ class SimulationManager:
         simulation_start_time,
         simulation_time,
         simulation_estimated_end_time,
-        max_time,
+        max_duration,
         status,
         socket_id,
     ):
@@ -326,7 +326,7 @@ class SimulationManager:
                 start_time,
                 data,
                 SimulationStatus(status),
-                max_time,
+                max_duration,
                 None,
             )
 
@@ -338,7 +338,7 @@ class SimulationManager:
         simulation.simulation_start_time = simulation_start_time
         simulation.simulation_time = simulation_time
         simulation.simulation_estimated_end_time = simulation_estimated_end_time
-        simulation.max_time = max_time
+        simulation.max_duration = max_duration
         simulation.status = SimulationStatus(status)
         simulation.socket_id = socket_id
 
@@ -382,9 +382,9 @@ class SimulationManager:
                     simulation.simulation_estimated_end_time
                 )
 
-            if simulation.max_time is not None:
+            if simulation.max_duration is not None:
                 serialized_simulation["configuration"] = {
-                    "maxTime": simulation.max_time
+                    "maxDuration": simulation.max_duration
                 }
 
             if simulation.polylines_version is not None:
@@ -392,7 +392,6 @@ class SimulationManager:
 
             serialized_simulations.append(serialized_simulation)
 
-        
         emit(
             "simulations",
             serialized_simulations,
@@ -488,24 +487,20 @@ class SimulationManager:
         )
 
         for simulation_id, _ in list(self.simulations.items()):
-            if (
-                simulation_id not in all_simulation_ids
-                and self.simulations[simulation_id].status
-                not in [
-                    SimulationStatus.RUNNING,
-                    SimulationStatus.PAUSED,
-                    SimulationStatus.STOPPING,
-                    SimulationStatus.STARTING,
-                    SimulationStatus.LOST,
-                ]
-            ):
+            if simulation_id not in all_simulation_ids and self.simulations[
+                simulation_id
+            ].status not in [
+                SimulationStatus.RUNNING,
+                SimulationStatus.PAUSED,
+                SimulationStatus.STOPPING,
+                SimulationStatus.STARTING,
+                SimulationStatus.LOST,
+            ]:
                 del self.simulations[simulation_id]
 
         for simulation_id in all_simulation_ids:
             # Non valid save files might throw an exception
             self.query_simulation(simulation_id)
-
-        
 
     def query_simulation(self, simulation_id) -> None:
         if simulation_id in self.simulations and self.simulations[

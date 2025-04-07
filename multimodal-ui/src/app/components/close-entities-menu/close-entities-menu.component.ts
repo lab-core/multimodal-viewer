@@ -8,10 +8,10 @@ import {
   viewChild,
 } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
-import { AnimationService } from '../../services/animation.service';
-import { Point } from 'pixi.js';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
+import { Point } from 'pixi.js';
+import { AnimationService } from '../../services/animation.service';
 
 @Component({
   selector: 'app-close-entities-menu',
@@ -29,8 +29,9 @@ export class CloseEntitiesMenuComponent {
   container = viewChild.required<ElementRef<HTMLDivElement>>('container');
   cardContent = viewChild.required<ElementRef<HTMLDivElement>>('cardContent');
 
-  nearVehicles: Signal<string[]>;
-  nearPassengers: Signal<string[]>;
+  nearVehiclesSignal: Signal<string[]>;
+  nearPassengersSignal: Signal<string[]>;
+  nearStopsSignal: Signal<string[]>;
 
   show = signal(false);
 
@@ -64,8 +65,9 @@ export class CloseEntitiesMenuComponent {
 
   constructor(private readonly animationService: AnimationService) {
     this.clickPositionSignal = animationService.clickPositionSignal;
-    this.nearVehicles = animationService.nearVehiclesSignal;
-    this.nearPassengers = animationService.nearPassengersSignal;
+    this.nearVehiclesSignal = animationService.nearVehiclesSignal;
+    this.nearPassengersSignal = animationService.nearPassengersSignal;
+    this.nearStopsSignal = animationService.nearStopsSignal;
 
     // Show menu when click position triggered
     effect(() => {
@@ -93,12 +95,22 @@ export class CloseEntitiesMenuComponent {
     this.animationService.selectEntity(id, 'passenger');
   }
 
+  onClickStop(id: string) {
+    this.selectedEntity = true;
+    this.show.set(false);
+    this.animationService.selectEntity(id, 'stop');
+  }
+
   selectVehicle(id: string) {
     this.animationService.selectEntity(id, 'vehicle');
   }
 
   selectPassenger(id: string) {
     this.animationService.selectEntity(id, 'passenger');
+  }
+
+  selectStop(id: string) {
+    this.animationService.selectEntity(id, 'stop');
   }
 
   unselectEntity() {
@@ -108,5 +120,9 @@ export class CloseEntitiesMenuComponent {
 
   onBlur() {
     this.show.set(false);
+  }
+
+  getPassengerName(id: string): string {
+    return this.animationService.findPassengerName(id) || id;
   }
 }

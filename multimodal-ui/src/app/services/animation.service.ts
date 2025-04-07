@@ -8,20 +8,27 @@ import {
   WritableSignal,
 } from '@angular/core';
 import { color as d3Color } from 'd3-color';
-import { interpolateRgb as d3InterpolateRgb } from 'd3-interpolate';
+import { interpolateRgbBasis as d3InterpolateRgb } from 'd3-interpolate';
 import * as L from 'leaflet';
 import { pixiOverlay } from 'leaflet';
 import { OutlineFilter } from 'pixi-filters';
 import * as PIXI from 'pixi.js';
-import { Entity, EntityFilterMode } from '../interfaces/entity.model';
+import {
+  DualTextEntity,
+  Entity,
+  EntityFilterMode,
+  TextEntity,
+} from '../interfaces/entity.model';
 import {
   AnimatedPassenger,
   AnimatedSimulationEnvironment,
+  AnimatedStop,
   AnimatedVehicle,
   DisplayedPolylines,
   DynamicPassengerAnimationData,
   DynamicVehicleAnimationData,
   getAllStops,
+  getId,
   Polyline,
   StaticPassengerAnimationData,
   StaticVehicleAnimationData,
@@ -40,12 +47,16 @@ export class AnimationService {
   private readonly _selectedPassengerIdSignal: WritableSignal<string | null> =
     signal(null);
 
+  private readonly _selectedStopIdSignal: WritableSignal<string | null> =
+    signal(null);
+
   private readonly _clickPositionSignal: WritableSignal<PIXI.Point> = signal(
     new PIXI.Point(0, 0),
   );
 
   private readonly _nearVehiclesSignal: WritableSignal<string[]> = signal([]);
   private readonly _nearPassengersSignal: WritableSignal<string[]> = signal([]);
+  private readonly _nearStopsSignal: WritableSignal<string[]> = signal([]);
 
   get nearVehiclesSignal(): Signal<string[]> {
     return this._nearVehiclesSignal;
@@ -55,12 +66,20 @@ export class AnimationService {
     return this._nearPassengersSignal;
   }
 
+  get nearStopsSignal(): Signal<string[]> {
+    return this._nearStopsSignal;
+  }
+
   get selectedVehicleIdSignal(): Signal<string | null> {
     return this._selectedVehicleIdSignal;
   }
 
   get selectedPassengerIdSignal(): Signal<string | null> {
     return this._selectedPassengerIdSignal;
+  }
+
+  get selectedStopIdSignal(): Signal<string | null> {
+    return this._selectedStopIdSignal;
   }
 
   get clickPositionSignal(): Signal<PIXI.Point> {
@@ -83,27 +102,29 @@ export class AnimationService {
   private readonly KELLY_GREEN = 0x028a0f;
   private readonly LIGHT_GRAY = 0x666666;
 
-  private readonly BITMAPTEXT_URL = 'bitmap-fonts/custom-sans-serif.xml';
-  private readonly BITMAPTEXT_STYLE: Partial<PIXI.IBitmapTextStyle> = {
+  private readonly CAPACITY_COLORS = [
+    '#ffffff',
+    '#ccffcc',
+    // Double yellow and triple orange and red to make it more important
+    '#ffffb3',
+    '#ffffb3',
+    '#ffb980',
+    '#ffb980',
+    '#ff3333',
+    '#ff3333',
+  ];
+
+  private readonly BITMAP_TEXT_URL = 'bitmap-fonts/custom-sans-serif.xml';
+  private readonly BITMAP_TEXT_STYLE: Partial<PIXI.IBitmapTextStyle> = {
     fontName: 'custom-sans-serif',
     fontSize: 18,
   };
-
-  private readonly TEXT_STYLE = new PIXI.TextStyle({
-    fontFamily: 'Arial',
-    fontSize: 18,
-    fontWeight: 'bold',
-    fill: '#ffffff',
-    stroke: '#333333',
-    strokeThickness: 5,
-    lineJoin: 'round',
-  });
 
   private pause = false;
   private animationVisualizationTime = 0;
   private lastVisualisationTime = 0;
 
-  private vehicles: Entity<AnimatedVehicle>[] = [];
+  private vehicles: TextEntity<AnimatedVehicle>[] = [];
   private vehicleEntitiesByVehicleId: Record<string, Entity<AnimatedVehicle>> =
     {};
   private passengersEntities: Entity<AnimatedPassenger>[] = [];
@@ -111,14 +132,20 @@ export class AnimationService {
     string,
     Entity<AnimatedPassenger>
   > = {};
+
+  private passengerStopEntities: DualTextEntity<AnimatedStop>[] = [];
+  private passengerStopEntitiesByPosition: Record<
+    string,
+    DualTextEntity<AnimatedStop>
+  > = {};
+
   private container = new PIXI.Container();
 
   private startTimestamp: number | null = null;
   private endTimestamp: number | null = null;
 
   private lastScale = 0;
-  private vehicleSpriteScales = 1;
-  private passengerSpriteScales = 1;
+
   private utils!: L.PixiOverlayUtils;
 
   private selectedEntityPolyline: PIXI.Graphics = new PIXI.Graphics();
@@ -132,6 +159,7 @@ export class AnimationService {
   // Filters
   private filters: Set<string> = new Set<string>();
   private filterMode: EntityFilterMode = 'all';
+  private shouldShowComplete = false;
 
   private speed = 1;
   private readonly _shouldFollowEntitySignal: WritableSignal<boolean> =
@@ -145,7 +173,7 @@ export class AnimationService {
     private readonly favoriteEntitiesService: FavoriteEntitiesService,
     private readonly spriteService: SpritesService,
   ) {
-    void PIXI.Assets.load(this.BITMAPTEXT_URL);
+    void PIXI.Assets.load(this.BITMAP_TEXT_URL);
   }
 
   synchronizeEnvironment(simulationEnvironment: AnimatedSimulationEnvironment) {
@@ -173,7 +201,7 @@ export class AnimationService {
       this.addVehicle(vehicle);
       if (selectedVehicleId !== null && vehicle.id == selectedVehicleId) {
         isSelectedVehicleInEnvironment = true;
-        this.hightlightEntityId(vehicle.id, 'vehicle');
+        this.highlightEntityId(vehicle.id, 'vehicle');
       }
     }
 
@@ -192,7 +220,7 @@ export class AnimationService {
       this.addPassenger(passenger);
       if (selectedPassengerId !== null && passenger.id == selectedPassengerId) {
         isSelectedPassengerInEnvironment = true;
-        this.hightlightEntityId(passenger.id, 'passenger');
+        this.highlightEntityId(passenger.id, 'passenger');
       }
     }
 
@@ -203,8 +231,29 @@ export class AnimationService {
       );
     }
 
-    this.previousVehiclesEntities = this.vehicles;
-    this.previousPassengerEntities = this.passengersEntities;
+    this.addPassengerStops();
+
+    let isSelectedStopInEnvironment = false;
+    const selectedStopId = this._selectedStopIdSignal();
+    for (const stop of Object.values(
+      simulationEnvironment.currentState.stops,
+    )) {
+      const stopId = getId(stop);
+      if (selectedStopId !== null && stopId == selectedStopId) {
+        isSelectedStopInEnvironment = true;
+        this.highlightEntityId(stopId, 'stop');
+      }
+    }
+
+    if (selectedStopId !== null && !isSelectedStopInEnvironment) {
+      this.unselectStop();
+      console.warn(
+        'The stop you selected is not in the environment anymore. It has been deselected.',
+      );
+    }
+
+    // Call redraw to update the environment.
+    this.onRedraw();
   }
 
   synchronizeTime(
@@ -239,16 +288,17 @@ export class AnimationService {
     const sprite = PIXI.Sprite.from(
       this.spriteService.getVehicleSprite(vehicle.mode ?? ''),
     );
-    vehicleContainer.scale.set(this.vehicleSpriteScales);
+    vehicleContainer.scale.set(this.spriteService.vehicleSpriteScale);
     sprite.anchor.set(0.5, 0.5); // Center texture on coordinate
     vehicleContainer.addChild(sprite);
 
-    const passengerCountText = new PIXI.BitmapText('', this.BITMAPTEXT_STYLE);
-    passengerCountText.anchor.set(0, 0.5); // Center y on coordinate y
-    passengerCountText.x = sprite.width / 2; // Move text to the right-end of the container
+    const passengerCountText = new PIXI.BitmapText('', this.BITMAP_TEXT_STYLE);
+    // Position at the top right corner of the vehicle
+    passengerCountText.x = sprite.width / 2;
+    passengerCountText.y = -sprite.height / 2;
     vehicleContainer.addChild(passengerCountText);
 
-    const entity: Entity<AnimatedVehicle> = {
+    const entity: TextEntity<AnimatedVehicle> = {
       data: vehicle,
       sprite,
       text: passengerCountText,
@@ -261,9 +311,18 @@ export class AnimationService {
   }
 
   private addPassenger(passenger: AnimatedPassenger): void {
-    const sprite = PIXI.Sprite.from(this.spriteService.defaultPassengerSprite);
+    const sprite = PIXI.Sprite.from(this.spriteService.getPassengerSprite());
     sprite.anchor.set(0.5, 0.5); // Center texture on coordinate
-    sprite.scale.set(this.passengerSpriteScales);
+    sprite.scale.set(this.spriteService.passengerSpriteScale);
+    const passengerContainer = new PIXI.Container();
+    passengerContainer.addChild(sprite);
+
+    // Counter of passengers in a stop
+    const passengerCountText = new PIXI.BitmapText('', this.BITMAP_TEXT_STYLE);
+    // Position at the top right corner of the passenger
+    passengerCountText.x = sprite.width / 2;
+    passengerCountText.y = -sprite.height / 2;
+    passengerContainer.addChild(passengerCountText);
 
     const entity: Entity<AnimatedPassenger> = {
       data: passenger,
@@ -271,10 +330,77 @@ export class AnimationService {
       show: true,
     };
 
-    this.container.addChild(sprite);
+    this.container.addChild(passengerContainer);
     this.passengersEntities.push(entity);
 
     this.passengerEntitiesByPassengerId[passenger.id] = entity;
+  }
+
+  private addPassengerStops(): void {
+    this.passengerStopEntities = [];
+    this.passengerStopEntitiesByPosition = {};
+
+    for (const vehicleEntity of this.vehicles) {
+      const vehicle = vehicleEntity.data;
+      const allStops = getAllStops(vehicle);
+      for (const stop of allStops) {
+        if (this.passengerStopEntitiesByPosition[getId(stop)] !== undefined)
+          continue;
+
+        const stopContainer = new PIXI.Container();
+        stopContainer.scale.set(this.spriteService.passengerSpriteScale);
+
+        // Sprite
+        const sprite = PIXI.Sprite.from(
+          this.spriteService.getPassengerSprite(),
+        );
+        sprite.anchor.set(0.5, 0.5);
+        stopContainer.addChild(sprite);
+
+        // Other sprite (for the stop without passengers)
+        const otherSprite = PIXI.Sprite.from('images/sample-stop.png');
+        otherSprite.scale.set(0.25);
+        otherSprite.anchor.set(0.5, 0.5);
+        otherSprite.visible = false;
+        stopContainer.addChild(otherSprite);
+
+        // Number of passengers
+        const passengerCountText = new PIXI.BitmapText(
+          '',
+          this.BITMAP_TEXT_STYLE,
+        );
+        // Position at the top right corner of the stop
+        passengerCountText.x = sprite.width / 2;
+        passengerCountText.y = -sprite.height / 2;
+        stopContainer.addChild(passengerCountText);
+
+        const entity: DualTextEntity<AnimatedStop> = {
+          data: {
+            ...stop,
+            passengerIds: [],
+            vehicleIds: [],
+            numberOfPassengers: 0,
+          },
+          sprite,
+          otherSprite,
+          text: passengerCountText,
+          show: true,
+        };
+
+        // Position
+        const point = this.utils.latLngToLayerPoint([
+          stop.position.latitude,
+          stop.position.longitude,
+        ]);
+        stopContainer.x = point.x;
+        stopContainer.y = point.y;
+
+        this.container.addChild(stopContainer);
+        this.passengerStopEntities.push(entity);
+
+        this.passengerStopEntitiesByPosition[getId(stop)] = entity;
+      }
+    }
   }
 
   clearAnimations() {
@@ -300,6 +426,10 @@ export class AnimationService {
     this.filterMode = filterMode;
   }
 
+  setShouldShowComplete(shouldShowComplete: boolean) {
+    this.shouldShowComplete = shouldShowComplete;
+  }
+
   centerMap() {
     if (this.vehicles.length == 0) return;
 
@@ -308,31 +438,31 @@ export class AnimationService {
     const allVehicleEntitiesY = this.previousVehiclesEntities
       .filter(
         (vehicle) =>
-          vehicle.sprite.visible &&
-          (vehicle.sprite.y != 0 || vehicle.sprite.x != 0),
+          vehicle.sprite.parent.visible &&
+          (vehicle.sprite.parent.y != 0 || vehicle.sprite.parent.x != 0),
       )
-      .map((vehicle) => vehicle.sprite.y);
+      .map((vehicle) => vehicle.sprite.parent.y);
     const allVehicleEntitiesX = this.previousVehiclesEntities
       .filter(
         (vehicle) =>
-          vehicle.sprite.visible &&
-          (vehicle.sprite.y != 0 || vehicle.sprite.x != 0),
+          vehicle.sprite.parent.visible &&
+          (vehicle.sprite.parent.y != 0 || vehicle.sprite.parent.x != 0),
       )
-      .map((vehicle) => vehicle.sprite.x);
+      .map((vehicle) => vehicle.sprite.parent.x);
     const allPassengerEntitiesY = this.previousPassengerEntities
       .filter(
         (passenger) =>
-          passenger.sprite.visible &&
-          (passenger.sprite.y != 0 || passenger.sprite.x != 0),
+          passenger.sprite.parent.visible &&
+          (passenger.sprite.parent.y != 0 || passenger.sprite.parent.x != 0),
       )
-      .map((passenger) => passenger.sprite.y);
+      .map((passenger) => passenger.sprite.parent.y);
     const allPassengerEntitiesX = this.previousPassengerEntities
       .filter(
         (passenger) =>
-          passenger.sprite.visible &&
-          (passenger.sprite.y != 0 || passenger.sprite.x != 0),
+          passenger.sprite.parent.visible &&
+          (passenger.sprite.parent.y != 0 || passenger.sprite.parent.x != 0),
       )
-      .map((passenger) => passenger.sprite.x);
+      .map((passenger) => passenger.sprite.parent.x);
 
     const allEntitiesY = allVehicleEntitiesY.concat(allPassengerEntitiesY);
     const allEntitiesX = allVehicleEntitiesX.concat(allPassengerEntitiesX);
@@ -371,29 +501,77 @@ export class AnimationService {
     this.utils.getMap().flyToBounds(new L.LatLngBounds(southWest, northEast));
   }
 
+  private isPassengerFiltered(
+    passenger: Entity<AnimatedPassenger>,
+    showPassengers: boolean,
+    showFavoritesOnly: boolean,
+    shouldShowComplete: boolean,
+  ) {
+    return (
+      showPassengers && // Are passengers not filtered
+      passenger && // Is passenger in the environment
+      (!showFavoritesOnly || // Is favorites filter on and is in favorites
+        this.favoriteEntitiesService
+          .favPassengerIds()
+          .has(passenger.data.id)) &&
+      (shouldShowComplete || // Is complete filter on or is not complete
+        passenger.data.status !== 'complete')
+    );
+  }
+
   private filterEntities() {
     const filters = this.filters;
 
     const showVehicles = !filters.has('vehicle');
     const showPassengers = !filters.has('passenger');
     const showFavoritesOnly = this.filterMode === 'favorites';
+    const shouldShowComplete = this.shouldShowComplete;
 
-    for (const vehicle of this.vehicles)
+    for (const vehicle of this.vehicles) {
       vehicle.sprite.parent.visible =
         vehicle.show &&
         showVehicles && // Are vehicles not filtered
-        !filters.has(vehicle.data.mode ?? 'unknown') && // Is bus mode not filtered
+        !filters.has(vehicle.data.mode ?? 'unknown') && // Is mode not filtered
         (!showFavoritesOnly || // Is favorites filter on and is in favorites
-          this.favoriteEntitiesService.favVehicleIds().has(vehicle.data.id));
+          this.favoriteEntitiesService.favVehicleIds().has(vehicle.data.id)) &&
+        (shouldShowComplete || // Is complete filter on or is not complete
+          vehicle.data.status !== 'complete');
+
+      vehicle.data.passengerIds = vehicle.data.passengerIds.filter(
+        (passengerId) => {
+          const passenger = this.passengerEntitiesByPassengerId[passengerId];
+          return this.isPassengerFiltered(
+            passenger,
+            showPassengers,
+            showFavoritesOnly,
+            shouldShowComplete,
+          );
+        },
+      );
+    }
 
     for (const passenger of this.passengersEntities)
-      passenger.sprite.visible =
+      passenger.sprite.parent.visible =
         passenger.show &&
-        showPassengers && // Are passengers not filtered
-        (!showFavoritesOnly || // Is favorites filter on and is in favorites
-          this.favoriteEntitiesService
-            .favPassengerIds()
-            .has(passenger.data.id));
+        this.isPassengerFiltered(
+          passenger,
+          showPassengers,
+          showFavoritesOnly,
+          shouldShowComplete,
+        );
+
+    // Same for passengers since these stops are only shown when passengers are waiting
+    // Filter the passengers of the stop instead of changing the stop container
+    for (const stop of this.passengerStopEntities)
+      stop.data.passengerIds = stop.data.passengerIds.filter((passengerId) => {
+        const passenger = this.passengerEntitiesByPassengerId[passengerId];
+        return this.isPassengerFiltered(
+          passenger,
+          showPassengers,
+          showFavoritesOnly,
+          shouldShowComplete,
+        );
+      });
   }
 
   private setVehiclePositions() {
@@ -402,7 +580,8 @@ export class AnimationService {
       const vehicleEntity = this.vehicles[index];
       const vehicle = vehicleEntity.data;
 
-      vehicle.passengerCount = 0;
+      vehicle.passengerIds = [];
+      vehicle.numberOfPassengers = 0;
 
       if (!vehicle.animationData) {
         vehicleEntity.show = false;
@@ -422,20 +601,7 @@ export class AnimationService {
         continue;
       }
 
-      switch (animationData.status) {
-        case 'alighting':
-        case 'boarding':
-        case 'idle':
-        case 'release':
-          vehicleEntity.sprite.tint = this.LIGHT_BLUE;
-          break;
-        case 'complete':
-          vehicleEntity.sprite.tint = this.LIGHT_RED;
-          break;
-        case 'enroute':
-          vehicleEntity.sprite.tint = this.WHITE;
-          break;
-      }
+      vehicle.status = animationData.status;
 
       const polylineIndex: number =
         animationData.displayedPolylines.currentPolylineIndex;
@@ -492,7 +658,6 @@ export class AnimationService {
 
       const selectedVehicleId = this._selectedVehicleIdSignal();
       if (
-        vehicleEntity.sprite.visible &&
         selectedVehicleId !== null &&
         selectedVehicleId === vehicle.id &&
         vehicleEntity.data.currentLineIndex !== null &&
@@ -515,10 +680,8 @@ export class AnimationService {
       const passengerEntity = this.passengersEntities[index];
       const passenger = passengerEntity.data;
 
-      if (!passenger.animationData) {
-        passengerEntity.show = false;
-        continue;
-      }
+      // Never show passengers
+      passengerEntity.show = false;
 
       const animationData = passenger.animationData.find(
         (data) =>
@@ -529,31 +692,13 @@ export class AnimationService {
       // Passenger has no animation data
       // This can happen if the passenger is not in the environment yet
       if (!animationData) {
-        passengerEntity.show = false;
         continue;
       }
 
-      switch (animationData.status) {
-        case 'release':
-          passengerEntity.sprite.tint = '0xffff00'; // Yellow
-          break;
-        case 'assigned':
-          passengerEntity.sprite.tint = '0x0000ff'; // Blue
-          break;
-        case 'ready':
-          passengerEntity.sprite.tint = '0x00ff00'; // Green
-          break;
-        case 'onboard':
-          passengerEntity.sprite.tint = '0x00ffff'; // Cyan
-          break;
-        case 'complete':
-          passengerEntity.sprite.tint = '0xff00ff'; // Magenta
-          break;
-      }
+      passenger.status = animationData.status;
 
       if (animationData.notDisplayedReason !== null) {
         // Passenger has an error
-        passengerEntity.show = false;
       } else if (
         (animationData as StaticPassengerAnimationData).stopIndex !==
           undefined &&
@@ -565,13 +710,23 @@ export class AnimationService {
         const stop =
           allStops[(animationData as StaticPassengerAnimationData).stopIndex];
         if (stop !== undefined) {
-          passengerEntity.show = true;
           const point = this.utils.latLngToLayerPoint([
             stop.position.latitude,
             stop.position.longitude,
           ]);
-          passengerEntity.sprite.x = point.x;
-          passengerEntity.sprite.y = point.y;
+          passengerEntity.sprite.parent.x = point.x;
+          passengerEntity.sprite.parent.y = point.y;
+
+          if (passenger.status !== 'complete') {
+            const animatedStop =
+              this.passengerStopEntitiesByPosition[getId(stop)];
+
+            if (animatedStop) {
+              animatedStop.data.passengerIds.push(passenger.id);
+              animatedStop.data.numberOfPassengers +=
+                passenger.numberOfPassengers;
+            }
+          }
         }
       } else if (
         (animationData as DynamicPassengerAnimationData).isOnBoard === true &&
@@ -580,94 +735,147 @@ export class AnimationService {
         const vehicleEntity =
           this.vehicleEntitiesByVehicleId[animationData.vehicleId];
         if (vehicleEntity) {
-          vehicleEntity.data.passengerCount += 1;
-          passengerEntity.show = vehicleEntity.show;
-          passengerEntity.sprite.x = vehicleEntity.sprite.parent.x;
-          passengerEntity.sprite.y = vehicleEntity.sprite.parent.y;
+          vehicleEntity.data.passengerIds.push(passenger.id);
+          vehicleEntity.data.numberOfPassengers += passenger.numberOfPassengers;
+          passengerEntity.sprite.parent.x = vehicleEntity.sprite.parent.x;
+          passengerEntity.sprite.parent.y = vehicleEntity.sprite.parent.y;
         }
       } else {
         // Passenger has an unknown error
-        passengerEntity.show = false;
       }
 
       const selectedPassengerId = this._selectedPassengerIdSignal();
       if (
-        passengerEntity.show &&
-        passengerEntity.sprite.visible &&
         selectedPassengerId !== null &&
         selectedPassengerId === passenger.id
       ) {
         this.frame_pointToFollow = this.utils.layerPointToLatLng(
-          new L.Point(passengerEntity.sprite.x, passengerEntity.sprite.y),
+          new L.Point(
+            passengerEntity.sprite.parent.x,
+            passengerEntity.sprite.parent.y,
+          ),
         );
         this.redrawPassengerPolyline();
       }
     }
+  }
 
-    //   if (animationData.notDisplayedReason !== null) {
-    //     // Passenger has an error
-    //     passenger.show = false;
-    //   } else if (
-    //     (animationData as StaticPassengerAnimationData).position !== undefined
-    //   ) {
-    //     passenger.show = true;
-    //     const staticPassengerAnimationData =
-    //       animationData as StaticPassengerAnimationData;
-    //     const point = this.utils.latLngToLayerPoint([
-    //       staticPassengerAnimationData.position.latitude,
-    //       staticPassengerAnimationData.position.longitude,
-    //     ]);
-    //     passenger.sprite.x = point.x;
-    //     passenger.sprite.y = point.y;
-    //   } else if (animationData.vehicleId !== null) {
-    //     passenger.show = true;
-    //     const vehicleEntity =
-    //       this.vehicleEntitiesByVehicleId[animationData.vehicleId];
-    //     if (vehicleEntity) {
-    //       passenger.show = vehicleEntity.show;
-    //       passenger.sprite.x = vehicleEntity.sprite.x;
-    //       passenger.sprite.y = vehicleEntity.sprite.y;
-    //     }
-    //   } else {
-    //     // Passenger has an unknown error
-    //     passenger.show = false;
-    //   }
-    //   const selectedPassengerId = this._selectedPassengerIdSignal();
-    //   if (
-    //     passenger.sprite.visible &&
-    //     selectedPassengerId !== null &&
-    //     selectedPassengerId === passenger.data.id
-    //   ) {
-    //     this.frame_pointToFollow = this.utils.layerPointToLatLng(
-    //       new L.Point(passenger.sprite.x, passenger.sprite.y),
-    //     );
-    //   }
-    // }
+  private resetStopCounters() {
+    for (const stopEntity of this.passengerStopEntities) {
+      stopEntity.data.passengerIds = [];
+      stopEntity.data.vehicleIds = [];
+      stopEntity.data.numberOfPassengers = 0;
+      stopEntity.text.text = '';
+      stopEntity.sprite.tint = this.WHITE;
+      stopEntity.sprite.parent.visible = true;
+    }
+  }
+
+  private updateStopCounters() {
+    for (const stopEntity of this.passengerStopEntities) {
+      const passengers = stopEntity.data.passengerIds
+        .map((passengerId) => this.passengerEntitiesByPassengerId[passengerId])
+        .filter((passenger) => passenger !== undefined);
+
+      const numberOfDisplayedPassengers = passengers.reduce(
+        (acc, passenger) => acc + passenger.data.numberOfPassengers,
+        0,
+      );
+      const numberOfPassengers = stopEntity.data.numberOfPassengers;
+
+      if (numberOfDisplayedPassengers === 0) {
+        stopEntity.sprite.parent.visible = false;
+        continue;
+      }
+
+      if (numberOfDisplayedPassengers === numberOfPassengers) {
+        stopEntity.text.text = numberOfPassengers.toString();
+      } else {
+        stopEntity.text.text = `${numberOfDisplayedPassengers} (${numberOfPassengers})`;
+      }
+
+      const interpolate = d3InterpolateRgb(this.CAPACITY_COLORS);
+
+      const t = Math.min(1, numberOfPassengers / stopEntity.data.capacity);
+
+      const color = d3Color(interpolate(t))?.rgb();
+
+      if (color) {
+        const tint = 256 * (color.r * 256 + color.g) + color.b;
+        stopEntity.text.tint = tint;
+        stopEntity.sprite.tint = tint;
+      } else {
+        console.warn('Color interpolation failed');
+      }
+    }
+
+    if (this.filters.has('stops')) {
+      return;
+    }
+
+    for (const stopEntity of this.passengerStopEntities) {
+      if (!stopEntity.sprite.parent.visible) {
+        // Only show the stop image
+        stopEntity.sprite.parent.visible = true;
+        stopEntity.sprite.visible = false;
+        stopEntity.text.visible = false;
+        stopEntity.otherSprite.visible = true;
+      } else {
+        // Show the passenger image and the text
+        stopEntity.sprite.visible = true;
+        stopEntity.text.visible = true;
+        stopEntity.otherSprite.visible = false;
+      }
+    }
+  }
+
+  private followSelectedStop() {
+    const selectedStopId = this._selectedStopIdSignal();
+
+    if (selectedStopId === null) return;
+
+    const stopEntity = this.passengerStopEntitiesByPosition[selectedStopId];
+
+    if (stopEntity === undefined) return;
+
+    const point = this.utils.layerPointToLatLng(
+      new L.Point(stopEntity.sprite.parent.x, stopEntity.sprite.parent.y),
+    );
+
+    this.frame_pointToFollow = point;
   }
 
   private updateVehiclePassengerCounters() {
-    const MAX_PASSENGER_COUNT_VALUE = 50;
-    const MIN_COLOR = '#ffffff'; // WHITE
-    const MAX_COLOR = '#ff0000'; // RED
-
-    const interpolate = d3InterpolateRgb(MIN_COLOR, MAX_COLOR);
+    const interpolate = d3InterpolateRgb(this.CAPACITY_COLORS);
 
     // eslint-disable-next-line @typescript-eslint/prefer-for-of
     for (let index = 0; index < this.vehicles.length; ++index) {
       const vehicleEntity = this.vehicles[index];
-      const passengerCount = vehicleEntity.data.passengerCount;
 
-      if (passengerCount === 0) vehicleEntity.text!.text = '';
-      else vehicleEntity.text!.text = passengerCount.toString();
+      const passengers = vehicleEntity.data.passengerIds.map(
+        (passengerId) => this.passengerEntitiesByPassengerId[passengerId],
+      );
+      const numberOfDisplayedPassengers = passengers.reduce(
+        (acc, passenger) => acc + passenger.data.numberOfPassengers,
+        0,
+      );
 
-      const t =
-        Math.min(passengerCount, MAX_PASSENGER_COUNT_VALUE) /
-        MAX_PASSENGER_COUNT_VALUE;
+      const numberOfPassengers = vehicleEntity.data.numberOfPassengers;
+
+      if (numberOfDisplayedPassengers === 0) vehicleEntity.text.text = '';
+      else if (numberOfDisplayedPassengers === numberOfPassengers) {
+        vehicleEntity.text.text = numberOfPassengers.toString();
+      } else {
+        vehicleEntity.text.text = `${numberOfDisplayedPassengers} (${numberOfPassengers})`;
+      }
+
+      const t = Math.min(1, numberOfPassengers / vehicleEntity.data.capacity);
       const color = d3Color(interpolate(t))?.rgb();
       if (!color) continue;
 
       const tint = 256 * (color.r * 256 + color.g) + color.b;
-      vehicleEntity.text!.tint = tint;
+      vehicleEntity.text.tint = tint;
+      vehicleEntity.sprite.tint = tint;
     }
   }
 
@@ -768,6 +976,7 @@ export class AnimationService {
 
     const nearVehicles = [];
     const nearPassengers = [];
+    const nearStops = [];
 
     // Distances for all vehicles
     for (const vehicle of this.vehicles) {
@@ -781,25 +990,45 @@ export class AnimationService {
 
     // Distances for all passengers
     for (const passenger of this.passengersEntities) {
-      if (!passenger.sprite.visible) continue;
+      if (!passenger.sprite.parent.visible) continue;
       const distance = this.distanceBetweenPoints(
         point,
-        passenger.sprite.position,
+        passenger.sprite.parent.position,
       );
       if (distance <= minVisualDistance) nearPassengers.push(passenger.data.id);
     }
 
+    // Distances for all stops
+    for (const stop of this.passengerStopEntities) {
+      if (
+        !stop.sprite.parent.visible ||
+        (!stop.sprite.visible && !stop.otherSprite.visible)
+      )
+        continue;
+      const distance = this.distanceBetweenPoints(
+        point,
+        stop.sprite.parent.position,
+      );
+      if (distance <= minVisualDistance) nearStops.push(getId(stop.data));
+    }
+
+    const allNearEntities = [...nearVehicles, ...nearPassengers, ...nearStops];
+
     // No entities
-    if (nearVehicles.length + nearPassengers.length === 0) {
+    if (allNearEntities.length === 0) {
       this.unselectEntity();
     }
     // One vehicle
-    else if (nearVehicles.length === 1 && nearPassengers.length === 0) {
+    else if (allNearEntities.length === 1 && nearVehicles.length === 1) {
       this.selectVehicle(nearVehicles[0]);
     }
     // One passenger
-    else if (nearVehicles.length === 0 && nearPassengers.length === 1) {
+    else if (allNearEntities.length === 1 && nearPassengers.length === 1) {
       this.selectPassenger(nearPassengers[0]);
+    }
+    // One stop
+    else if (allNearEntities.length === 1 && nearStops.length === 1) {
+      this.selectStop(nearStops[0]);
     }
     // More than one
     else {
@@ -808,6 +1037,7 @@ export class AnimationService {
       );
       this._nearVehiclesSignal.set(nearVehicles);
       this._nearPassengersSignal.set(nearPassengers);
+      this._nearStopsSignal.set(nearStops);
     }
   }
 
@@ -901,7 +1131,7 @@ export class AnimationService {
     this.redrawPolyline(
       calculatedPolylineNo,
       lineNo,
-      new L.Point(passenger.sprite.x, passenger.sprite.y),
+      new L.Point(passenger.sprite.parent.x, passenger.sprite.parent.y),
       polylines,
     );
   }
@@ -922,6 +1152,7 @@ export class AnimationService {
 
     // Draw all polylines before the polylineNo
     for (let i = 0; i < polylineNo; ++i) {
+      if (i >= polylines.length) break;
       const polyline = polylines[i];
       if (polyline.polyline.length === 0) continue;
       const firstPoint = polyline.polyline[0];
@@ -1081,7 +1312,7 @@ export class AnimationService {
   // Called once when Pixi layer is added.
   private onAdd(utils: L.PixiOverlayUtils) {
     this.lastScale = utils.getScale();
-    this.calculateSpriteScales();
+    this.spriteService.calculateSpriteScales(utils);
   }
 
   private onMoveEnd(event: L.LeafletEvent) {
@@ -1091,40 +1322,29 @@ export class AnimationService {
   }
 
   private onZoomEnd(event: L.LeafletEvent) {
-    this.calculateSpriteScales();
+    this.spriteService.calculateSpriteScales(this.utils);
+
+    const passengerTexture = this.spriteService.getPassengerSprite();
 
     this.vehicles.forEach((entity) => {
-      entity.sprite.parent.scale.set(this.vehicleSpriteScales);
+      entity.sprite.parent.scale.set(this.spriteService.vehicleSpriteScale);
+      entity.sprite.texture = this.spriteService.getVehicleSprite(
+        entity.data.mode,
+      );
     });
+
     this.passengersEntities.forEach((entity) => {
-      entity.sprite.scale.set(this.passengerSpriteScales);
+      entity.sprite.parent.scale.set(this.spriteService.passengerSpriteScale);
+      entity.sprite.texture = passengerTexture;
+    });
+
+    this.passengerStopEntities.forEach((entity) => {
+      entity.sprite.parent.scale.set(this.spriteService.passengerSpriteScale);
+      entity.sprite.texture = passengerTexture;
     });
   }
 
-  private calculateSpriteScales() {
-    const MAX_SPRITE_SCALE = 1;
-    const MIN_SPRITE_SCALE = 0.2;
-
-    const MAX_SPRITE_ZOOM = 15;
-    const SCALE_POWER = 1.15;
-
-    const map = this.utils.getMap();
-    const maxZoom = MAX_SPRITE_ZOOM;
-    const currentZoom = map.getZoom();
-
-    const zoomPow = maxZoom - currentZoom;
-
-    let wantedRelativeScale = Math.pow(SCALE_POWER, -zoomPow);
-    wantedRelativeScale = Math.min(
-      Math.max(wantedRelativeScale, MIN_SPRITE_SCALE),
-      MAX_SPRITE_SCALE,
-    );
-
-    this.vehicleSpriteScales = wantedRelativeScale / this.utils.getScale();
-    this.passengerSpriteScales = this.vehicleSpriteScales * 0.75;
-  }
-
-  private onRedraw(event: L.LeafletEvent) {
+  private onRedraw(event?: L.LeafletEvent) {
     if (this.startTimestamp == null || this.endTimestamp == null) return;
 
     if (this.pause) {
@@ -1141,10 +1361,13 @@ export class AnimationService {
       this.animationVisualizationTime = this.endTimestamp;
     }
 
+    this.resetStopCounters();
     this.setVehiclePositions();
     this.setPassengerPositions();
-    this.updateVehiclePassengerCounters();
     this.filterEntities();
+    this.updateVehiclePassengerCounters();
+    this.updateStopCounters();
+    this.followSelectedStop();
   }
 
   // onClick is called after onEntityPointerdown
@@ -1153,15 +1376,21 @@ export class AnimationService {
   }
 
   private selectVehicle(vehicleId: string) {
-    this.unselectPassenger();
-    this.hightlightEntityId(vehicleId, 'vehicle');
+    this.unselectEntity();
+    this.highlightEntityId(vehicleId, 'vehicle');
     this._selectedVehicleIdSignal.set(vehicleId);
   }
 
   private selectPassenger(passengerId: string) {
-    this.unselectVehicle();
-    this.hightlightEntityId(passengerId, 'passenger');
+    this.unselectEntity();
+    this.highlightEntityId(passengerId, 'passenger');
     this._selectedPassengerIdSignal.set(passengerId);
+  }
+
+  private selectStop(stopId: string) {
+    this.unselectEntity();
+    this.highlightEntityId(stopId, 'stop');
+    this._selectedStopIdSignal.set(stopId);
   }
 
   private unselectVehicle() {
@@ -1176,43 +1405,77 @@ export class AnimationService {
     this.selectedEntityPolyline.clear();
   }
 
-  private hightlightEntityId(entityId: string, type: 'vehicle' | 'passenger') {
-    const entitiesById =
-      type === 'vehicle'
-        ? this.vehicleEntitiesByVehicleId
-        : this.passengerEntitiesByPassengerId;
-    const entity = entitiesById[entityId];
-    if (entity)
-      entity.sprite.filters = [
+  private unselectStop() {
+    this.unhighlightEntityId(this._selectedStopIdSignal(), 'stop');
+    this._selectedStopIdSignal.set(null);
+    this.selectedEntityPolyline.clear();
+  }
+
+  private highlightEntityId(
+    entityId: string,
+    type: 'vehicle' | 'passenger' | 'stop',
+  ) {
+    let entity;
+    switch (type) {
+      case 'vehicle':
+        entity = this.vehicleEntitiesByVehicleId[entityId];
+        break;
+      case 'passenger':
+        entity = this.passengerEntitiesByPassengerId[entityId];
+        break;
+      case 'stop':
+        entity = this.passengerStopEntitiesByPosition[entityId];
+        break;
+    }
+
+    if (entity) {
+      entity.sprite.parent.filters = [
         new OutlineFilter(1, 0xffffff),
         new OutlineFilter(2, 0xffff00),
       ];
+    }
   }
 
   private unhighlightEntityId(
     entityId: string | null,
-    type: 'vehicle' | 'passenger',
+    type: 'vehicle' | 'passenger' | 'stop',
   ) {
     if (!entityId) return;
-    const entitiesById =
-      type === 'vehicle'
-        ? this.vehicleEntitiesByVehicleId
-        : this.passengerEntitiesByPassengerId;
-    const entity = entitiesById[entityId];
-    if (entity) entity.sprite.filters = null;
+    let entity;
+    switch (type) {
+      case 'vehicle':
+        entity = this.vehicleEntitiesByVehicleId[entityId];
+        break;
+      case 'passenger':
+        entity = this.passengerEntitiesByPassengerId[entityId];
+        break;
+      case 'stop':
+        entity = this.passengerStopEntitiesByPosition[entityId];
+        break;
+    }
+    if (entity) entity.sprite.parent.filters = null;
   }
 
-  selectEntity(entityId: string, type: 'vehicle' | 'passenger') {
-    if (type == 'vehicle') {
-      this.selectVehicle(entityId);
-    } else if (type == 'passenger') {
-      this.selectPassenger(entityId);
+  selectEntity(entityId: string, type: 'vehicle' | 'passenger' | 'stop') {
+    this.unselectEntity();
+
+    switch (type) {
+      case 'vehicle':
+        this.selectVehicle(entityId);
+        break;
+      case 'passenger':
+        this.selectPassenger(entityId);
+        break;
+      case 'stop':
+        this.selectStop(entityId);
+        break;
     }
   }
 
   unselectEntity() {
     this.unselectVehicle();
     this.unselectPassenger();
+    this.unselectStop();
   }
 
   addPixiOverlay(map: L.Map) {
@@ -1255,5 +1518,12 @@ export class AnimationService {
     this._shouldFollowEntitySignal.update(
       (shouldFollowEntity) => !shouldFollowEntity,
     );
+  }
+
+  findPassengerName(id: string) {
+    if (!this.passengerEntitiesByPassengerId[id]) {
+      return;
+    }
+    return this.passengerEntitiesByPassengerId[id].data.name as string;
   }
 }

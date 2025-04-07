@@ -227,6 +227,7 @@ class VisualizedPassenger(Serializable):
     passenger_id: str
     name: str | None
     status: PassengerStatus
+    number_of_passengers: int
 
     previous_legs: list[VisualizedLeg]
     current_leg: VisualizedLeg | None
@@ -237,6 +238,7 @@ class VisualizedPassenger(Serializable):
         passenger_id: str,
         name: str | None,
         status: PassengerStatus,
+        number_of_passengers: int,
         previous_legs: list[VisualizedLeg],
         current_leg: VisualizedLeg | None,
         next_legs: list[VisualizedLeg],
@@ -244,6 +246,7 @@ class VisualizedPassenger(Serializable):
         self.passenger_id = passenger_id
         self.name = name
         self.status = status
+        self.number_of_passengers = number_of_passengers
 
         self.previous_legs = previous_legs
         self.current_leg = current_leg
@@ -270,13 +273,20 @@ class VisualizedPassenger(Serializable):
         ]
 
         return cls(
-            trip.id, trip.name, trip.status, previous_legs, current_leg, next_legs
+            trip.id,
+            trip.name,
+            trip.status,
+            trip.nb_passengers,
+            previous_legs,
+            current_leg,
+            next_legs,
         )
 
     def serialize(self) -> dict:
         serialized = {
             "id": self.passenger_id,
             "status": convert_passenger_status_to_string(self.status),
+            "numberOfPassengers": self.number_of_passengers,
         }
 
         if self.name is not None:
@@ -301,12 +311,14 @@ class VisualizedPassenger(Serializable):
             or "status" not in data
             or "previousLegs" not in data
             or "nextLegs" not in data
+            or "numberOfPassengers" not in data
         ):
             raise ValueError("Invalid data for VisualizedPassenger")
 
         passenger_id = str(data["id"])
         name = data.get("name", None)
         status = convert_string_to_passenger_status(data["status"])
+        number_of_passengers = int(data["numberOfPassengers"])
 
         previous_legs = [
             VisualizedLeg.deserialize(leg_data) for leg_data in data["previousLegs"]
@@ -320,7 +332,13 @@ class VisualizedPassenger(Serializable):
             current_leg = VisualizedLeg.deserialize(current_leg)
 
         return VisualizedPassenger(
-            passenger_id, name, status, previous_legs, current_leg, next_legs
+            passenger_id,
+            name,
+            status,
+            number_of_passengers,
+            previous_legs,
+            current_leg,
+            next_legs,
         )
 
 
@@ -330,6 +348,8 @@ class VisualizedStop(Serializable):
     departure_time: float | None
     latitude: float | None
     longitude: float | None
+    capacity: int | None
+    label: str
 
     def __init__(
         self,
@@ -337,11 +357,15 @@ class VisualizedStop(Serializable):
         departure_time: float,
         latitude: float | None,
         longitude: float | None,
+        capacity: int | None,
+        label: str,
     ) -> None:
         self.arrival_time = arrival_time
         self.departure_time = departure_time
         self.latitude = latitude
         self.longitude = longitude
+        self.capacity = capacity
+        self.label = label
 
     @classmethod
     def from_stop(cls, stop: Stop) -> "VisualizedStop":
@@ -350,6 +374,8 @@ class VisualizedStop(Serializable):
             stop.departure_time if stop.departure_time != math.inf else None,
             stop.location.lat,
             stop.location.lon,
+            stop.capacity,
+            stop.location.label,
         )
 
     def serialize(self) -> dict:
@@ -364,6 +390,11 @@ class VisualizedStop(Serializable):
                 "longitude": self.longitude,
             }
 
+        if self.capacity is not None:
+            serialized["capacity"] = self.capacity
+
+        serialized["label"] = self.label
+
         return serialized
 
     @staticmethod
@@ -371,7 +402,7 @@ class VisualizedStop(Serializable):
         if isinstance(data, str):
             data = json.loads(data.replace("'", '"'))
 
-        if "arrivalTime" not in data:
+        if "arrivalTime" not in data or "label" not in data:
             raise ValueError("Invalid data for VisualizedStop")
 
         arrival_time = float(data["arrivalTime"])
@@ -386,7 +417,16 @@ class VisualizedStop(Serializable):
             latitude = position.get("latitude", None)
             longitude = position.get("longitude", None)
 
-        return VisualizedStop(arrival_time, departure_time, latitude, longitude)
+        capacity = data.get("capacity", None)
+
+        if capacity is not None:
+            capacity = int(capacity)
+
+            label = data["label"]
+
+        return VisualizedStop(
+            arrival_time, departure_time, latitude, longitude, capacity, label
+        )
 
 
 # MARK: Vehicle
@@ -398,6 +438,8 @@ class VisualizedVehicle(Serializable):
     previous_stops: list[VisualizedStop]
     current_stop: VisualizedStop | None
     next_stops: list[VisualizedStop]
+    capacity: int
+    name: str | None
 
     def __init__(
         self,
@@ -408,6 +450,8 @@ class VisualizedVehicle(Serializable):
         previous_stops: list[VisualizedStop],
         current_stop: VisualizedStop | None,
         next_stops: list[VisualizedStop],
+        capacity: int,
+        name: str | None = None,
     ) -> None:
         self.vehicle_id = str(vehicle_id)
         self.mode = mode
@@ -417,6 +461,9 @@ class VisualizedVehicle(Serializable):
         self.previous_stops = previous_stops
         self.current_stop = current_stop
         self.next_stops = next_stops
+
+        self.capacity = capacity
+        self.name = name
 
     @property
     def all_stops(self) -> list[VisualizedStop]:
@@ -447,6 +494,8 @@ class VisualizedVehicle(Serializable):
             previous_stops,
             current_stop,
             next_stops,
+            vehicle.capacity,
+            vehicle.name,
         )
 
     def serialize(self) -> dict:
@@ -455,6 +504,8 @@ class VisualizedVehicle(Serializable):
             "status": convert_vehicle_status_to_string(self.status),
             "previousStops": [stop.serialize() for stop in self.previous_stops],
             "nextStops": [stop.serialize() for stop in self.next_stops],
+            "capacity": self.capacity,
+            "name": self.name,
         }
 
         if self.mode is not None:
@@ -475,6 +526,8 @@ class VisualizedVehicle(Serializable):
             or "status" not in data
             or "previousStops" not in data
             or "nextStops" not in data
+            or "capacity" not in data
+            or "name" not in data
         ):
             raise ValueError("Invalid data for VisualizedVehicle")
 
@@ -487,13 +540,23 @@ class VisualizedVehicle(Serializable):
         next_stops = [
             VisualizedStop.deserialize(stop_data) for stop_data in data["nextStops"]
         ]
+        capacity = int(data["capacity"])
+        name = data.get("name", None)
 
         current_stop = data.get("currentStop", None)
         if current_stop is not None:
             current_stop = VisualizedStop.deserialize(current_stop)
 
         return VisualizedVehicle(
-            vehicle_id, mode, status, None, previous_stops, current_stop, next_stops
+            vehicle_id,
+            mode,
+            status,
+            None,
+            previous_stops,
+            current_stop,
+            next_stops,
+            capacity,
+            name,
         )
 
 
@@ -1226,7 +1289,9 @@ class SimulationVisualizationDataManager:
             )
         )
 
-        all_states_files = os.listdir(folder_path)
+        all_states_files = [
+            path for path in os.listdir(folder_path) if path.endswith(".jsonl")
+        ]  # Filter out lock files
 
         states = []
         for state_file in all_states_files:
@@ -1337,10 +1402,8 @@ class SimulationVisualizationDataManager:
             order, state_timestamp = sorted_states[index]
 
             # If the client already has the state, skip it
-            # unless the simulation is not complete and the state is the last one
-            if order in loaded_state_orders and (
-                is_simulation_complete or index < len(sorted_states) - 1
-            ):
+            # except the last state that might have changed
+            if order in loaded_state_orders and not order == max(loaded_state_orders):
                 state_orders_to_keep.append(order)
 
                 all_state_indexes_in_client.append(index)

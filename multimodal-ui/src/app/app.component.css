@@ -47,8 +47,8 @@
 
 app-connection-status {
   position: absolute;
-  /* 44px for the zoom control and a gap of 10px */
-  right: calc(44px + 10px);
+  /* 44px for the zoom control and a gap of 5px */
+  right: calc(44px + 5px);
   bottom: 10px;
 
   z-index: 500;

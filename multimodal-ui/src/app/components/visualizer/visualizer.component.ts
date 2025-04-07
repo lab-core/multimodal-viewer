@@ -2,9 +2,11 @@ import {
   Component,
   computed,
   effect,
+  ElementRef,
   OnDestroy,
   signal,
   Signal,
+  ViewChild,
   WritableSignal,
 } from '@angular/core';
 import { FormBuilder, FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -18,13 +20,16 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import {
   AnimatedPassenger,
+  AnimatedStop,
   AnimatedVehicle,
+  getId,
   RUNNING_SIMULATION_STATUSES,
   Simulation,
   SimulationStatus,
@@ -41,18 +46,18 @@ import { VisualizationService } from '../../services/visualization.service';
 import { FavoriteEntitiesComponent } from '../favorite-entities/favorite-entities.component';
 import { InformationDialogComponent } from '../information-dialog/information-dialog.component';
 import { MapLayersComponent } from '../map-tiles/map-tiles.component';
+import { RecursiveStatisticComponent } from '../recursive-statistic/recursive-statistic.component';
 import { SimulationControlBarComponent } from '../simulation-control-bar/simulation-control-bar.component';
 import { SimulationControlPanelComponent } from '../simulation-control-panel/simulation-control-panel.component';
 import { VisualizerFilterComponent } from '../visualizer-filter/visualizer-filter.component';
-import { RecursiveStatisticComponent } from '../recursive-statistic/recursive-statistic.component';
 
 export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 
 export interface EntitySearch {
   id: string;
   displayedValue: string;
-  type: 'passenger' | 'vehicle';
-  entity: AnimatedPassenger | AnimatedVehicle;
+  type: 'passenger' | 'vehicle' | 'mode';
+  entity: AnimatedPassenger | AnimatedVehicle | { mode: string };
 }
 
 @Component({
@@ -76,14 +81,16 @@ export interface EntitySearch {
     MatButtonToggleModule,
     MatTabsModule,
     RecursiveStatisticComponent,
-],
+  ],
   providers: [VisualizationService, VisualizationFilterService],
   templateUrl: './visualizer.component.html',
   styleUrl: './visualizer.component.css',
 })
 export class VisualizerComponent implements OnDestroy {
+  @ViewChild('searchInput') searchInput!: ElementRef<HTMLInputElement>;
   // MARK: Properties
   private matDialogRef: MatDialogRef<InformationDialogComponent> | null = null;
+  readonly selectedModeSignal: WritableSignal<string | null> = signal(null);
 
   private readonly visualizerStatusSignal: Signal<VisualizerStatus> = computed(
     () => {
@@ -246,6 +253,18 @@ export class VisualizerComponent implements OnDestroy {
     },
   );
 
+  readonly selectedStopSignal: Signal<AnimatedStop | null> = computed(() => {
+    const selectedStopId = this.animationService.selectedStopIdSignal();
+    const environment =
+      this.visualizationService.visualizationEnvironmentSignal();
+
+    if (environment === null || selectedStopId === null) {
+      return null;
+    }
+
+    return environment.currentState.stops[selectedStopId] ?? null;
+  });
+
   readonly selectedPassengerVehicleSignal: Signal<AnimatedVehicle | null> =
     computed(() => {
       const selectedPassenger = this.selectedPassengerSignal();
@@ -269,6 +288,24 @@ export class VisualizerComponent implements OnDestroy {
       return selectedVehicle ?? null;
     });
 
+  readonly selectedPassengerStopSignal: Signal<AnimatedStop | null> = computed(
+    () => {
+      const selectedPassenger = this.selectedPassengerSignal();
+      const environment =
+        this.visualizationService.visualizationEnvironmentSignal();
+
+      if (selectedPassenger === null || environment === null) {
+        return null;
+      }
+
+      return (
+        Object.values(environment.currentState.stops).find((stop) =>
+          stop.passengerIds.includes(selectedPassenger.id),
+        ) ?? null
+      );
+    },
+  );
+
   readonly selectedVehiclePassengersSignal: Signal<AnimatedPassenger[]> =
     computed(() => {
       const selectedVehicle = this.selectedVehicleSignal();
@@ -279,16 +316,66 @@ export class VisualizerComponent implements OnDestroy {
         return [];
       }
 
-      const passengers = Object.values(
-        environment.currentState.passengers,
-      ).filter(
-        (passenger) =>
-          passenger.currentLeg !== null &&
-          passenger.currentLeg.assignedVehicleId === selectedVehicle.id,
+      const passengers = selectedVehicle.passengerIds.map(
+        (passengerId) => environment.currentState.passengers[passengerId],
       );
 
       return passengers;
     });
+
+  readonly selectedVehicleStopSignal: Signal<AnimatedStop | null> = computed(
+    () => {
+      const selectedVehicle = this.selectedVehicleSignal();
+      const environment =
+        this.visualizationService.visualizationEnvironmentSignal();
+
+      if (selectedVehicle === null || environment === null) {
+        return null;
+      }
+
+      return (
+        Object.values(environment.currentState.stops).find((stop) =>
+          stop.vehicleIds.includes(selectedVehicle.id),
+        ) ?? null
+      );
+    },
+  );
+
+  readonly selectedStopPassengersSignal: Signal<AnimatedPassenger[]> = computed(
+    () => {
+      const selectedStop = this.selectedStopSignal();
+      const environment =
+        this.visualizationService.visualizationEnvironmentSignal();
+
+      if (selectedStop === null || environment === null) {
+        return [];
+      }
+
+      const passengers = selectedStop.passengerIds.map(
+        (passengerId) => environment.currentState.passengers[passengerId],
+      );
+
+      return passengers;
+    },
+  );
+
+  readonly selectedStopVehiclesSignal: Signal<AnimatedVehicle[]> = computed(
+    () => {
+      const selectedStop = this.selectedStopSignal();
+      const environment =
+        this.visualizationService.visualizationEnvironmentSignal();
+
+      if (selectedStop === null || environment === null) {
+        return [];
+      }
+
+      const vehicles = selectedStop.vehicleIds.map(
+        (vehicleId) => environment.currentState.vehicles[vehicleId],
+      );
+
+      return vehicles;
+    },
+  );
 
   readonly entitySearchDataSignal: Signal<EntitySearch[]> = computed(() => {
     const environment =
@@ -300,7 +387,7 @@ export class VisualizerComponent implements OnDestroy {
     const passengers = Object.values(environment.currentState.passengers).map(
       (passenger) => ({
         id: passenger.id,
-        displayedValue: `[PASSENGER] ${passenger.id}`,
+        displayedValue: `[PASSENGER] ${passenger.name ? passenger.name + ' (' + passenger.id + ')' : passenger.id}`,
         type: 'passenger' as const,
         entity: passenger,
       }),
@@ -330,8 +417,11 @@ export class VisualizerComponent implements OnDestroy {
   showStatusAndCount = false;
   showNotDisplayedEntities = false;
 
-  readonly searchValueSignal: WritableSignal<string | EntitySearch> =
-    signal('');
+  private previousSearchValue: string | EntitySearch | null = null;
+  readonly searchValueSignal: WritableSignal<string | EntitySearch> = signal(
+    '',
+    { equal: (a, b) => JSON.stringify(a) === JSON.stringify(b) },
+  );
 
   readonly searchControl: FormControl<string | EntitySearch | null>;
 
@@ -339,18 +429,53 @@ export class VisualizerComponent implements OnDestroy {
     () => {
       const searchValue = this.searchValueSignal();
       const entitySearchData = this.entitySearchDataSignal();
+      const vehicleModes = this.visualizationFilterService.vehicleModes();
+      const selectedMode = this.selectedModeSignal();
 
-      if (searchValue === '') {
-        return entitySearchData;
+      const filteredData =
+        selectedMode !== null
+          ? entitySearchData.filter(
+              (entity) =>
+                entity.type === 'vehicle' &&
+                (entity.entity as AnimatedVehicle).mode === selectedMode,
+            )
+          : entitySearchData;
+
+      if (
+        searchValue === '' ||
+        (typeof searchValue === 'object' && searchValue.type === 'mode')
+      ) {
+        return filteredData;
       }
 
-      if (typeof searchValue === 'object') {
-        return [searchValue];
+      if (typeof searchValue === 'string') {
+        if (searchValue.toLowerCase().startsWith('mode:')) {
+          const modeFilter = searchValue.substring(5).trim().toLowerCase();
+          return vehicleModes
+            .filter((mode) => mode.toLowerCase().includes(modeFilter))
+            .map((mode) => ({
+              id: `mode:${mode}`,
+              displayedValue: `[MODE] ${mode}`,
+              type: 'mode' as const,
+              entity: { mode },
+            }));
+        }
+
+        const searchLower = searchValue.toLowerCase();
+        return filteredData.filter((entity) => {
+          if (entity.type === 'passenger') {
+            const passenger = entity.entity as AnimatedPassenger;
+            return (
+              entity.displayedValue.toLowerCase().includes(searchLower) ||
+              (passenger.name &&
+                passenger.name.toLowerCase().includes(searchLower))
+            );
+          }
+          return entity.displayedValue.toLowerCase().includes(searchLower);
+        });
       }
 
-      return entitySearchData.filter((entity) =>
-        entity.displayedValue.toLowerCase().includes(searchValue.toLowerCase()),
-      );
+      return [searchValue];
     },
   );
 
@@ -377,19 +502,30 @@ export class VisualizerComponent implements OnDestroy {
     private readonly visualizationService: VisualizationService,
     private readonly favoriteEntitiesService: FavoriteEntitiesService,
     private readonly formBuilder: FormBuilder,
+    private readonly visualizationFilterService: VisualizationFilterService,
+    private snackBar: MatSnackBar,
   ) {
     this.tabControl = new FormControl('');
     this.tabControl.valueChanges.subscribe((value) => {
+      // To make tabs unselectable, we have to allow multiple options
+      // but only keep the last one selected.
+      const values = value as unknown as string[];
+      if (values.length > 1) {
+        const lastSelected = values[values.length - 1];
+        this.tabControl.setValue([lastSelected] as unknown as string);
+        return;
+      }
+
+      const tab = values[0];
       this.showSearch = false;
       this.showFilter = false;
       this.showFavorites = false;
       this.showLayers = false;
-      if (value === 'search') this.showSearch = true;
-      else if (value === 'filter') this.showFilter = true;
-      else if (value === 'favorites') this.showFavorites = true;
-      else if (value === 'layers') this.showLayers = true;
+      if (tab === 'search') this.showSearch = true;
+      else if (tab === 'filter') this.showFilter = true;
+      else if (tab === 'favorites') this.showFavorites = true;
+      else if (tab === 'layers') this.showLayers = true;
     });
-    this.tabControl.setValue('search');
 
     this.informationTabControl = new FormControl('');
     this.informationTabControl.valueChanges.subscribe((value) => {
@@ -427,14 +563,32 @@ export class VisualizerComponent implements OnDestroy {
     effect(() => {
       const searchValue = this.searchValueSignal();
 
+      if (
+        JSON.stringify(searchValue) === JSON.stringify(this.previousSearchValue)
+      ) {
+        return;
+      }
+
+      this.previousSearchValue = searchValue;
+
       if (searchValue === null || typeof searchValue === 'string') {
         return;
       }
 
       if (searchValue.type === 'passenger') {
-        this.selectPassenger(searchValue.id);
+        this.animationService.selectEntity(searchValue.id, 'passenger');
+        this.selectedModeSignal.set(null);
       } else if (searchValue.type === 'vehicle') {
-        this.selectVehicle(searchValue.id);
+        this.animationService.selectEntity(searchValue.id, 'vehicle');
+        this.selectedModeSignal.set(null);
+      } else if (searchValue.type === 'mode') {
+        this.selectedModeSignal.set(
+          (searchValue.entity as { mode: string }).mode,
+        );
+        this.searchControl.setValue(searchValue, { emitEvent: false });
+        setTimeout(() => {
+          this.searchInput.nativeElement.click();
+        });
       }
     });
 
@@ -467,6 +621,35 @@ export class VisualizerComponent implements OnDestroy {
       const isVisualizationPausedSignal =
         this.visualizationService.isVisualizationPausedSignal();
       this.animationService.setPause(isVisualizationPausedSignal);
+    });
+
+    effect(() => {
+      const selectedPassenger = this.selectedPassengerSignal();
+      const selectedVehicle = this.selectedVehicleSignal();
+      const entitySearchData = this.entitySearchDataSignal();
+
+      const selectedEntity = selectedPassenger || selectedVehicle;
+
+      if (selectedEntity) {
+        const type = selectedPassenger ? 'passenger' : 'vehicle';
+        const entitySearchItem = entitySearchData.find(
+          (entity) => entity.type === type && entity.id === selectedEntity.id,
+        );
+
+        if (entitySearchItem) {
+          if (this.searchControl.value !== entitySearchItem) {
+            this.searchControl.setValue(entitySearchItem, { emitEvent: false });
+          }
+          return;
+        }
+      }
+
+      if (
+        this.searchControl.value &&
+        typeof this.searchControl.value !== 'string'
+      ) {
+        this.searchControl.setValue('', { emitEvent: false });
+      }
     });
 
     // Handle the visualization status
@@ -671,6 +854,11 @@ export class VisualizerComponent implements OnDestroy {
     this.animationService.selectEntity(id, 'vehicle');
   }
 
+  selectStop(stop: AnimatedStop) {
+    const id = getId(stop);
+    this.animationService.selectEntity(id, 'stop');
+  }
+
   /** Favorite Entitites */
   toggleFavoriteVehicle(id: string) {
     this.favoriteEntitiesService.toggleFavoriteVehicle(id);
@@ -680,6 +868,10 @@ export class VisualizerComponent implements OnDestroy {
     this.favoriteEntitiesService.toggleFavoritePassenger(id);
   }
 
+  toggleFavoriteStop(stop: AnimatedStop) {
+    this.favoriteEntitiesService.toggleFavoriteStop(getId(stop));
+  }
+
   isFavoriteVehicle(id: string) {
     return this.favoriteEntitiesService.favVehicleIds().has(id);
   }
@@ -687,9 +879,14 @@ export class VisualizerComponent implements OnDestroy {
   isFavoritePassenger(id: string) {
     return this.favoriteEntitiesService.favPassengerIds().has(id);
   }
+
+  isFavoriteStop(stop: AnimatedStop) {
+    return this.favoriteEntitiesService.favStopIds().has(getId(stop));
+  }
   /** ***************** */
 
   clearSearch() {
+    this.selectedModeSignal.set(null);
     this.searchControl.setValue(null);
   }
 
@@ -739,11 +936,41 @@ export class VisualizerComponent implements OnDestroy {
 
     this.simulationService.editSimulationConfiguration(
       simulation.id,
-      result.configuration.maxTime,
+      result.configuration.maxDuration,
     );
   }
 
   async leaveVisualization() {
     await this.router.navigate(['home']);
+  }
+
+  onSearchInputClick() {
+    const currentValue = this.searchValueSignal();
+    if (typeof currentValue === 'object' && currentValue.type === 'mode') {
+      return;
+    }
+    this.searchControl.setValue(null);
+    this.animationService.unselectEntity();
+  }
+
+  copyToClipboard(text: string): void {
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        this.snackBar.open('Copied to clipboard!', 'Close', {
+          duration: 2000,
+        });
+      })
+      .catch((err) => {
+        console.error('Failed to copy text: ', err);
+        this.snackBar.open('Failed to copy!', 'Close', {
+          duration: 2000,
+        });
+      });
+  }
+
+  truncateId(id: string): string {
+    const maxLength = 20;
+    return id.length > maxLength ? `${id.slice(0, maxLength)}...` : id;
   }
 }

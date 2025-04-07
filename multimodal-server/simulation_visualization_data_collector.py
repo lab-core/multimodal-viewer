@@ -33,7 +33,13 @@ from multimodalsim.simulator.vehicle_event import (
     VehicleWaiting,
 )
 from multimodalsim.statistics.data_analyzer import DataAnalyzer
-from server_utils import HOST, PORT, STATE_SAVE_STEP, SimulationStatus
+from server_utils import (
+    HOST,
+    PORT,
+    STATE_SAVE_STEP,
+    SimulationStatus,
+    build_simulation_id,
+)
 from simulation_visualization_data_model import (
     PassengerLegsUpdate,
     PassengerStatusUpdate,
@@ -57,55 +63,74 @@ class SimulationVisualizationDataCollector(DataCollector):
     simulation_id: str
     update_counter: int
     visualized_environment: VisualizedEnvironment
-    sio: Client
     simulation_information: SimulationInformation
     current_save_file_path: str
-    max_time: float | None
-    last_queued_event_time: float
 
+    max_duration: float | None
+    "Maximum duration of the simulation in in-simulation time (seconds). The simulation will stop if it exceeds this duration."
+
+    # Special events
+    last_queued_event_time: float
     passenger_assignment_event_queue: list[PassengerAssignment]
     vehicle_notification_event_queue: list[VehicleNotification]
-    data_analyzer: DataAnalyzer
-    delta_time: int
-    last_update_stats_time: int
 
+    # Statistics
+    data_analyzer: DataAnalyzer
+    statistics_delta_time: int
+    last_statistics_update_time: int
+
+    # Communication
+    sio: Client | None = None
+    stop_event: threading.Event | None = None
+    connection_thread: threading.Thread | None = None
     _simulation: Simulation | None = None
     status: SimulationStatus | None = None
 
-    stop_event: threading.Event | None = None
-    connection_thread: threading.Thread | None = None
-
+    # Polylines
     saved_polylines_coordinates_pairs: set[str] = set()
+
+    # Estimated end time
+    last_estimated_end_time: float | None = None
 
     def __init__(
         self,
-        simulation_id: str,
-        data: str,
-        max_time: float | None,
+        name: str,
+        input_data_description: str,
         data_analyzer: DataAnalyzer,
-        delta_time: int = 10,
+        statistics_delta_time: int = 10,
+        simulation_id: str | None = None,
+        max_duration: float | None = None,
+        offline: bool = False,
     ) -> None:
+        if simulation_id is None:
+            simulation_id, _ = build_simulation_id(name)
+
         self.simulation_id = simulation_id
         self.update_counter = 0
         self.visualized_environment = VisualizedEnvironment()
 
         self.simulation_information = SimulationInformation(
-            simulation_id, data, None, None, None, None
+            simulation_id, input_data_description, None, None, None, None
         )
 
         self.current_save_file_path = None
 
-        self.max_time = max_time
+        self.max_duration = max_duration
 
         self.passenger_assignment_event_queue = []
         self.vehicle_notification_event_queue = []
         self.last_queued_event_time = 0
 
         self.data_analyzer = data_analyzer
-        self.delta_time = delta_time
-        self.last_update_stats_time = None
+        self.statistics_delta_time = statistics_delta_time
+        self.last_statistics_update_time = None
 
-        self.initialize_communication()
+        if not offline:
+            self.initialize_communication()
+
+    @property
+    def isConnected(self) -> bool:
+        return self.sio is not None and self.sio.connected
 
     # MARK: +- Communication
     def initialize_communication(self) -> None:
@@ -119,7 +144,7 @@ class SimulationVisualizationDataCollector(DataCollector):
             if self._simulation is not None:
                 self._simulation.pause()
                 self.status = SimulationStatus.PAUSED
-                if self.sio.connected:
+                if self.isConnected:
                     self.sio.emit("simulation-pause", self.simulation_id)
 
         @sio.on("resume-simulation")
@@ -127,7 +152,7 @@ class SimulationVisualizationDataCollector(DataCollector):
             if self._simulation is not None:
                 self._simulation.resume()
                 self.status = SimulationStatus.RUNNING
-                if self.sio.connected:
+                if self.isConnected:
                     self.sio.emit("simulation-resume", self.simulation_id)
 
         @sio.on("stop-simulation")
@@ -146,14 +171,35 @@ class SimulationVisualizationDataCollector(DataCollector):
                     self.simulation_information.simulation_start_time,
                     self.visualized_environment.timestamp,
                     self.visualized_environment.estimated_end_time,
-                    self.max_time,
+                    self.max_duration,
                     self.status.value,
                 ),
             )
 
         @sio.on("edit-simulation-configuration")
-        def on_edit_simulation_configuration(max_time: float | None):
-            self.max_time = max_time
+        def on_edit_simulation_configuration(max_duration: float | None):
+            self.max_duration = max_duration
+
+            if self.last_estimated_end_time is None:
+                return
+
+            # Notify the server if the estimated end time has changed
+            new_estimated_end_time = min(
+                self.last_estimated_end_time,
+                (
+                    self.simulation_information.simulation_start_time
+                    + self.max_duration
+                    if self.max_duration is not None
+                    else self.last_estimated_end_time
+                ),
+            )
+
+            if new_estimated_end_time != self.visualized_environment.estimated_end_time:
+                self.sio.emit(
+                    "simulation-update-estimated-end-time",
+                    (self.simulation_id, new_estimated_end_time),
+                )
+                self.visualized_environment.estimated_end_time = new_estimated_end_time
 
         self.stop_event = threading.Event()
 
@@ -187,7 +233,18 @@ class SimulationVisualizationDataCollector(DataCollector):
         event_index: Optional[int] = None,
         event_priority: Optional[int] = None,
     ) -> None:
-        env.simulation_config.max_time = self.max_time
+        env.simulation_config.max_time = (
+            (
+                (
+                    self.simulation_information.simulation_start_time
+                    if self.simulation_information.simulation_start_time is not None
+                    else env.current_time
+                )
+                + self.max_duration
+            )
+            if self.max_duration is not None
+            else env.simulation_config.max_time
+        )
 
         if current_event is None:
             return
@@ -195,14 +252,15 @@ class SimulationVisualizationDataCollector(DataCollector):
         message = self.process_event(current_event, env)
         register_log(self.simulation_id, message)
 
-        if self.sio.connected:
+        if self.isConnected:
             self.sio.emit("log", (self.simulation_id, message))
 
         if (
-            self.last_update_stats_time == None
-            or current_event.time >= self.last_update_stats_time + self.delta_time
+            self.last_statistics_update_time == None
+            or current_event.time
+            >= self.last_statistics_update_time + self.statistics_delta_time
         ):
-            self.last_update_stats_time = current_event.time
+            self.last_statistics_update_time = current_event.time
             self.add_update(
                 Update(
                     UpdateType.UPDATE_STATISTIC,
@@ -227,14 +285,14 @@ class SimulationVisualizationDataCollector(DataCollector):
             )
 
             # Notify the server that the simulation has started and send the simulation start time
-            if self.sio.connected:
+            if self.isConnected:
                 self.sio.emit(
                     "simulation-start", (self.simulation_id, update.timestamp)
                 )
 
         if self.visualized_environment.timestamp != update.timestamp:
             # Notify the server that the simulation time has been updated
-            if self.sio.connected:
+            if self.isConnected:
                 self.sio.emit(
                     "simulation-update-time",
                     (
@@ -244,17 +302,19 @@ class SimulationVisualizationDataCollector(DataCollector):
                 )
             self.visualized_environment.timestamp = update.timestamp
 
+        # Remember the last estimated end time in case of max_duration updates
+        self.last_estimated_end_time = environment.estimated_end_time
         estimated_end_time = min(
             environment.estimated_end_time,
             (
-                self.max_time
-                if self.max_time is not None
+                self.simulation_information.simulation_start_time + self.max_duration
+                if self.max_duration is not None
                 else environment.estimated_end_time
             ),
         )
         if estimated_end_time != self.visualized_environment.estimated_end_time:
             # Notify the server that the simulation estimated end time has been updated
-            if self.sio.connected:
+            if self.isConnected:
                 self.sio.emit(
                     "simulation-update-estimated-end-time",
                     (self.simulation_id, estimated_end_time),
@@ -357,7 +417,7 @@ class SimulationVisualizationDataCollector(DataCollector):
                 self.simulation_id, polylines_to_save
             )
 
-        if self.sio.connected:
+        if self.isConnected:
             self.sio.emit(
                 "simulation-update-polylines-version",
                 self.simulation_id,
@@ -685,7 +745,8 @@ class SimulationVisualizationDataCollector(DataCollector):
         if self.connection_thread is not None:
             self.connection_thread.join()
 
-        if self.sio.connected:
+        if self.isConnected:
             self.sio.disconnect()
 
-        self.sio.wait()
+        if self.sio is not None:
+            self.sio.wait()
