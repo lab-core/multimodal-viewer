@@ -293,6 +293,7 @@ export class AnimationService {
     vehicleContainer.addChild(sprite);
 
     const passengerCountText = new PIXI.BitmapText('', this.BITMAP_TEXT_STYLE);
+    passengerCountText.visible = !this.spriteService.useZoomedOutSprites;
     // Position at the top right corner of the vehicle
     passengerCountText.x = sprite.width / 2;
     passengerCountText.y = -sprite.height / 2;
@@ -319,6 +320,7 @@ export class AnimationService {
 
     // Counter of passengers in a stop
     const passengerCountText = new PIXI.BitmapText('', this.BITMAP_TEXT_STYLE);
+    passengerCountText.visible = !this.spriteService.useZoomedOutSprites;
     // Position at the top right corner of the passenger
     passengerCountText.x = sprite.width / 2;
     passengerCountText.y = -sprite.height / 2;
@@ -369,6 +371,7 @@ export class AnimationService {
           '',
           this.BITMAP_TEXT_STYLE,
         );
+        passengerCountText.visible = !this.spriteService.useZoomedOutSprites;
         // Position at the top right corner of the stop
         passengerCountText.x = sprite.width / 2;
         passengerCountText.y = -sprite.height / 2;
@@ -813,6 +816,7 @@ export class AnimationService {
       return;
     }
 
+    const showText = !this.spriteService.useZoomedOutSprites;
     for (const stopEntity of this.passengerStopEntities) {
       if (!stopEntity.sprite.parent.visible) {
         // Only show the stop image
@@ -823,7 +827,7 @@ export class AnimationService {
       } else {
         // Show the passenger image and the text
         stopEntity.sprite.visible = true;
-        stopEntity.text.visible = true;
+        stopEntity.text.visible = showText;
         stopEntity.otherSprite.visible = false;
       }
     }
@@ -1325,12 +1329,14 @@ export class AnimationService {
     this.spriteService.calculateSpriteScales(this.utils);
 
     const passengerTexture = this.spriteService.getPassengerSprite();
+    const showText = !this.spriteService.useZoomedOutSprites;
 
     this.vehicles.forEach((entity) => {
       entity.sprite.parent.scale.set(this.spriteService.vehicleSpriteScale);
       entity.sprite.texture = this.spriteService.getVehicleSprite(
         entity.data.mode,
       );
+      entity.text.visible = showText;
     });
 
     this.passengersEntities.forEach((entity) => {
@@ -1341,6 +1347,7 @@ export class AnimationService {
     this.passengerStopEntities.forEach((entity) => {
       entity.sprite.parent.scale.set(this.spriteService.passengerSpriteScale);
       entity.sprite.texture = passengerTexture;
+      entity.text.visible = showText;
     });
   }
 

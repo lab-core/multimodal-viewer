@@ -107,7 +107,7 @@ export class SpritesService {
     );
 
     this._vehicleSpriteScale = wantedRelativeScale / utils.getScale();
-    this._passengerSpriteScale = this._vehicleSpriteScale;
+    this._passengerSpriteScale = this._vehicleSpriteScale * 0.75;
   }
 
   saveSpriteData(
