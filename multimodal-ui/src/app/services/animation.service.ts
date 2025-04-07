@@ -177,6 +177,14 @@ export class AnimationService {
   }
 
   synchronizeEnvironment(simulationEnvironment: AnimatedSimulationEnvironment) {
+    // We need to interpolate the animation time to quickly join the current visualization time if there is
+    // a continuous animation data between the last and the current visualization time, or else
+    // set the animation time to the current visualization time.
+    this.synchronizeTime(
+      simulationEnvironment,
+      simulationEnvironment.currentState.timestamp,
+    );
+
     this.selectedEntityPolyline.clear();
     this.container.removeChildren();
     this.container.addChild(this.selectedEntityPolyline);
@@ -256,7 +264,7 @@ export class AnimationService {
     this.onRedraw();
   }
 
-  synchronizeTime(
+  private synchronizeTime(
     animatedSimulationEnvironment: AnimatedSimulationEnvironment,
     visualizationTime: number,
   ) {
