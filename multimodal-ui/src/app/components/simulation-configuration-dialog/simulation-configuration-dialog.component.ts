@@ -192,9 +192,10 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
         shouldRunInBackground: !!this.shouldRunInBackgroundFormControl.value,
       },
       configuration: {
-        maxDuration: Math.ceil(
-          (this.maxDurationFormControl.value as number) * 3600,
-        ),
+        maxDuration:
+          this.maxDurationFormControl.value === null
+            ? null
+            : Math.ceil(this.maxDurationFormControl.value * 3600),
       },
     };
   }
@@ -252,23 +253,24 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
       formData.append('file', blob, 'folder.zip');
 
       this.httpService
-      .importFolder(contentType, baseFolder, formData)
-      .subscribe({
-        next: (response) => {
-          console.log('Upload successful:', response);
-          this.refreshAvailableData();
-          const actualFolderName = 'actual_folder_name' in response 
-            ? response.actual_folder_name as string
-            : baseFolder;
-          setTimeout(() => {
-            this.dataFormControl.setValue(actualFolderName);
-          }, 100);
-        },
-        error: (error) => {
-          console.error('Upload failed:', error);
-        }
-      });
-  };
+        .importFolder(contentType, baseFolder, formData)
+        .subscribe({
+          next: (response) => {
+            console.log('Upload successful:', response);
+            this.refreshAvailableData();
+            const actualFolderName =
+              'actual_folder_name' in response
+                ? (response.actual_folder_name as string)
+                : baseFolder;
+            setTimeout(() => {
+              this.dataFormControl.setValue(actualFolderName);
+            }, 100);
+          },
+          error: (error) => {
+            console.error('Upload failed:', error);
+          },
+        });
+    };
 
     input.addEventListener('change', (event: Event) => {
       handleFileChange(event).catch((error) => {

@@ -234,10 +234,17 @@ class SimulationVisualizationDataCollector(DataCollector):
         event_priority: Optional[int] = None,
     ) -> None:
         env.simulation_config.max_time = (
-            self.simulation_information.simulation_start_time
-            if self.simulation_information.simulation_start_time is not None
-            else env.current_time
-        ) + self.max_duration
+            (
+                (
+                    self.simulation_information.simulation_start_time
+                    if self.simulation_information.simulation_start_time is not None
+                    else env.current_time
+                )
+                + self.max_duration
+            )
+            if self.max_duration is not None
+            else env.simulation_config.max_time
+        )
 
         if current_event is None:
             return
