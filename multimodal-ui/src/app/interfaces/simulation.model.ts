@@ -514,8 +514,6 @@ export interface SimulationStates {
   } | null;
 }
 
-export const STATE_SAVE_STEP = 500;
-
 export function getAllStops(vehicle: Vehicle): Stop[] {
   return vehicle.previousStops.concat(
     vehicle.currentStop === null ? [] : [vehicle.currentStop],

@@ -5,8 +5,8 @@ import {
   Signal,
   WritableSignal,
 } from '@angular/core';
-import { decode } from 'polyline';
 import randomName from 'node-random-name';
+import { decode } from 'polyline';
 import {
   AllPolylines,
   AnySimulationUpdate,
@@ -342,7 +342,7 @@ export class SimulationService {
       return null;
     }
 
-    let  name = data.name ?? null;
+    let name = data.name ?? null;
 
     if (name === id || name === null) {
       name = (randomName as (args?: { seed: string }) => string)({ seed: id });
