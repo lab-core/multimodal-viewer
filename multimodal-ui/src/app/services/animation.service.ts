@@ -35,6 +35,7 @@ import {
   Vehicle,
 } from '../interfaces/simulation.model';
 import { FavoriteEntitiesService } from './favorite-entities.service';
+import { SpritesService } from './sprites.service';
 
 @Injectable({
   providedIn: 'root',
@@ -119,16 +120,6 @@ export class AnimationService {
     fontSize: 18,
   };
 
-  private readonly TEXT_STYLE = new PIXI.TextStyle({
-    fontFamily: 'Arial',
-    fontSize: 18,
-    fontWeight: 'bold',
-    fill: '#ffffff',
-    stroke: '#333333',
-    strokeThickness: 5,
-    lineJoin: 'round',
-  });
-
   private pause = false;
   private animationVisualizationTime = 0;
   private lastVisualisationTime = 0;
@@ -154,6 +145,7 @@ export class AnimationService {
   private endTimestamp: number | null = null;
 
   private lastScale = 0;
+
   private utils!: L.PixiOverlayUtils;
 
   private selectedEntityPolyline: PIXI.Graphics = new PIXI.Graphics();
@@ -179,6 +171,7 @@ export class AnimationService {
 
   constructor(
     private readonly favoriteEntitiesService: FavoriteEntitiesService,
+    private readonly spriteService: SpritesService,
   ) {
     void PIXI.Assets.load(this.BITMAP_TEXT_URL);
   }
@@ -290,14 +283,17 @@ export class AnimationService {
     this.lastVisualisationTime = visualizationTime;
   }
 
-  private addVehicle(vehicle: AnimatedVehicle, type = 'sample-bus'): void {
+  private addVehicle(vehicle: AnimatedVehicle): void {
     const vehicleContainer = new PIXI.Container();
-    const sprite = PIXI.Sprite.from(`images/${type}.png`);
-    vehicleContainer.scale.set(1 / this.utils.getScale());
+    const sprite = PIXI.Sprite.from(
+      this.spriteService.getCurrentVehicleTexture(vehicle.mode ?? ''),
+    );
+    vehicleContainer.scale.set(this.spriteService.vehicleSpriteScale);
     sprite.anchor.set(0.5, 0.5); // Center texture on coordinate
     vehicleContainer.addChild(sprite);
 
     const passengerCountText = new PIXI.BitmapText('', this.BITMAP_TEXT_STYLE);
+    passengerCountText.visible = !this.spriteService.useZoomedOutSprites;
     // Position at the top right corner of the vehicle
     passengerCountText.x = sprite.width / 2;
     passengerCountText.y = -sprite.height / 2;
@@ -316,14 +312,17 @@ export class AnimationService {
   }
 
   private addPassenger(passenger: AnimatedPassenger): void {
-    const passengerContainer = new PIXI.Container();
-    const sprite = PIXI.Sprite.from('images/sample-walk.png');
-    passengerContainer.scale.set(1 / this.utils.getScale());
+    const sprite = PIXI.Sprite.from(
+      this.spriteService.getCurrentPassengerTexture(),
+    );
     sprite.anchor.set(0.5, 0.5); // Center texture on coordinate
+    sprite.scale.set(this.spriteService.passengerSpriteScale);
+    const passengerContainer = new PIXI.Container();
     passengerContainer.addChild(sprite);
 
     // Counter of passengers in a stop
     const passengerCountText = new PIXI.BitmapText('', this.BITMAP_TEXT_STYLE);
+    passengerCountText.visible = !this.spriteService.useZoomedOutSprites;
     // Position at the top right corner of the passenger
     passengerCountText.x = sprite.width / 2;
     passengerCountText.y = -sprite.height / 2;
@@ -353,16 +352,18 @@ export class AnimationService {
           continue;
 
         const stopContainer = new PIXI.Container();
+        stopContainer.scale.set(this.spriteService.passengerSpriteScale);
 
         // Sprite
-        const sprite = PIXI.Sprite.from('images/sample-walk.png');
-        stopContainer.scale.set(1 / this.utils.getScale());
+        const sprite = PIXI.Sprite.from(
+          this.spriteService.getCurrentPassengerTexture(),
+        );
         sprite.anchor.set(0.5, 0.5);
         stopContainer.addChild(sprite);
 
         // Other sprite (for the stop without passengers)
-        const otherSprite = PIXI.Sprite.from('images/sample-stop.png');
-        otherSprite.scale.set(0.2, 0.2);
+        const otherSprite = PIXI.Sprite.from(this.spriteService.stopTexture);
+        otherSprite.scale.set(0.25);
         otherSprite.anchor.set(0.5, 0.5);
         otherSprite.visible = false;
         stopContainer.addChild(otherSprite);
@@ -372,6 +373,7 @@ export class AnimationService {
           '',
           this.BITMAP_TEXT_STYLE,
         );
+        passengerCountText.visible = !this.spriteService.useZoomedOutSprites;
         // Position at the top right corner of the stop
         passengerCountText.x = sprite.width / 2;
         passengerCountText.y = -sprite.height / 2;
@@ -816,6 +818,7 @@ export class AnimationService {
       return;
     }
 
+    const showText = !this.spriteService.useZoomedOutSprites;
     for (const stopEntity of this.passengerStopEntities) {
       if (!stopEntity.sprite.parent.visible) {
         // Only show the stop image
@@ -826,7 +829,7 @@ export class AnimationService {
       } else {
         // Show the passenger image and the text
         stopEntity.sprite.visible = true;
-        stopEntity.text.visible = true;
+        stopEntity.text.visible = showText;
         stopEntity.otherSprite.visible = false;
       }
     }
@@ -1151,7 +1154,7 @@ export class AnimationService {
     const width = Math.max(BASE_LINE_WIDTH / this.utils?.getScale(), MIN_WIDTH);
     const graphics = this.selectedEntityPolyline;
     graphics.clear();
-    graphics.lineStyle(width, this.KELLY_GREEN, ALPHA);
+    graphics.lineStyle(width, this.LIGHT_GRAY, ALPHA);
 
     // Draw all polylines before the polylineNo
     for (let i = 0; i < polylineNo; ++i) {
@@ -1200,7 +1203,7 @@ export class AnimationService {
       graphics.lineTo(interpolatedPoint.x, interpolatedPoint.y);
 
       // Change color
-      graphics.lineStyle(width, this.LIGHT_GRAY, ALPHA);
+      graphics.lineStyle(width, this.KELLY_GREEN, ALPHA);
 
       // Draw rest of lines of polylineNo
       for (let j = lineNo + 1; j < currentPolyline.polyline.length; ++j) {
@@ -1213,7 +1216,7 @@ export class AnimationService {
       }
     }
 
-    graphics.lineStyle(width, this.LIGHT_GRAY, ALPHA);
+    graphics.lineStyle(width, this.KELLY_GREEN, ALPHA);
 
     // Draw rest of polylines
     for (let i = polylineNo + 1; i < polylines.length; ++i) {
@@ -1235,7 +1238,7 @@ export class AnimationService {
       }
     }
 
-    graphics.lineStyle(width, this.KELLY_GREEN, ALPHA);
+    graphics.lineStyle(width, this.LIGHT_GRAY, ALPHA);
 
     let firstStopHasBeenDrawn = false;
 
@@ -1268,7 +1271,7 @@ export class AnimationService {
     }
 
     // Draw stops that are not completed
-    graphics.lineStyle(width, this.LIGHT_GRAY, ALPHA);
+    graphics.lineStyle(width, this.KELLY_GREEN, ALPHA);
 
     for (let i = Math.max(polylineNo, 0); i < polylines.length; ++i) {
       const polyline = polylines[i];
@@ -1315,6 +1318,7 @@ export class AnimationService {
   // Called once when Pixi layer is added.
   private onAdd(utils: L.PixiOverlayUtils) {
     this.lastScale = utils.getScale();
+    this.spriteService.calculateSpriteScales(utils);
   }
 
   private onMoveEnd(event: L.LeafletEvent) {
@@ -1324,15 +1328,28 @@ export class AnimationService {
   }
 
   private onZoomEnd(event: L.LeafletEvent) {
-    const invScale = 1 / this.utils.getScale();
+    this.spriteService.calculateSpriteScales(this.utils);
+
+    const passengerTexture = this.spriteService.getCurrentPassengerTexture();
+    const showText = !this.spriteService.useZoomedOutSprites;
+
     this.vehicles.forEach((entity) => {
-      entity.sprite.parent.scale.set(invScale);
+      entity.sprite.parent.scale.set(this.spriteService.vehicleSpriteScale);
+      entity.sprite.texture = this.spriteService.getCurrentVehicleTexture(
+        entity.data.mode,
+      );
+      entity.text.visible = showText;
     });
+
     this.passengersEntities.forEach((entity) => {
-      entity.sprite.parent.scale.set(invScale);
+      entity.sprite.parent.scale.set(this.spriteService.passengerSpriteScale);
+      entity.sprite.texture = passengerTexture;
     });
+
     this.passengerStopEntities.forEach((entity) => {
-      entity.sprite.parent.scale.set(invScale);
+      entity.sprite.parent.scale.set(this.spriteService.passengerSpriteScale);
+      entity.sprite.texture = passengerTexture;
+      entity.text.visible = showText;
     });
   }
 

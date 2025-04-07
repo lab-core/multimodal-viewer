@@ -20,6 +20,11 @@ import {
   AddMapTileDialogData,
   AddMapTileDialogResult,
 } from '../components/add-map-tile-dialog/add-map-tile-dialog.component';
+import {
+  EditMapIconsDialogComponent,
+  EditMapIconsDialogData,
+  EditMapIconsDialogResult,
+} from '../components/edit-map-icons-dialog/edit-map-icons-dialog.component';
 
 @Injectable({
   providedIn: 'root',
@@ -97,6 +102,23 @@ export class DialogService {
       maxWidth: '80vw',
       maxHeight: '80vh',
       minWidth: '600px',
+    });
+  }
+
+  openEditMapIconsDialog(): MatDialogRef<
+    EditMapIconsDialogComponent,
+    EditMapIconsDialogResult
+  > {
+    return this.matDialog.open<
+      EditMapIconsDialogComponent,
+      EditMapIconsDialogData,
+      EditMapIconsDialogResult
+    >(EditMapIconsDialogComponent, {
+      data: null,
+      disableClose: true,
+      autoFocus: false,
+      maxWidth: '80vw',
+      maxHeight: '80vh',
     });
   }
 }
