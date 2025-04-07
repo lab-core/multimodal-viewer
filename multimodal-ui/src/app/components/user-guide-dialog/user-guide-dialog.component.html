@@ -1,0 +1,161 @@
+<h2 mat-dialog-title>Multimodal Simulation Visualization</h2>
+
+<mat-dialog-content>
+  <section class="flex-column">
+    <h1>Getting Started</h1>
+    <p>Welcome to the Multimodal Simulation Visualization This guide will help you understand how to use all the features.</p>
+  </section>
+
+  <section class="flex-column">
+    <h3>Starting a simulation</h3>
+    <p>To start a new simulation, click the Start Simulation from the main menu. You will be bresented with the simulation configuration window where you will have 
+      to input a few parameters. 
+    </p>
+    <p>First, you need to name your simulation. We suggest chosing a unique name. It is not necessary, but might lead to confusion later
+      if you will want to replay a simulation and it will have the same name as an already existing one. 
+    </p>
+    <p>Next, you need to chose the input data. You can chose one of the existing presets, or use the import option to add your own. The import option is the
+      first one in the dropdown menu when selecting the data source. Your import folder does not have to be a zipped. We will do that for you. We will also 
+      add an index to your imported folder if one by the same name exists already.
+    </p>
+    <p>
+      If you wish to run a simulation to get the output logs, but do not care about seeing it, ou can check the "Ren in the background" option. That will 
+      launch the simulation and redirect you to the main menu. You can always visualise any running simulation at any moment by finding it in the "Available Simulations"
+      window.
+    </p>
+    <p>
+      Optionally, define a maximul simulation time. This deines the maximum amount of in simulation ??Hours?? for which the events will be calculated.
+      You can enter the time in format TODO. By default, the simulation will continue untill it runs out of events.
+    </p>
+  </section>
+
+  <section class="flex-column">
+    <h3>Viewing Existing Simulations</h3>
+    <p>
+      In order to access saved or background simulation, you can click the Browse Simulations button in the main menu. This will show you a list of available 
+      simulations as well as their state.
+    </p>
+    <p>
+      Here you can stop running simulation as well as delete, import and export finished ones. The rules for importing simulations are the same as for the starting data.
+      No need to zip the folders, we'll do it for you. Again, try avoiding importing simulations with the same name. It will make hard to understand which one
+      you are trying to run.
+    </p>
+  </section>
+
+  <section class="flex-column">
+    <h1>Interacting with a simulation</h1>
+    <p>Now that you have launched a simulation, let's learn how to control it.</p>
+  </section>
+
+  <section class="flex-column">
+    <h3>Main Control Bar</h3>
+    <p>
+      This bar allows you to control the current simulation visualization. No matter what you do within this bar, it will not affect the speed at which the 
+      simulation events are calculated and processed.
+    </p>
+    <img src="/images/control-bar.png" alt="control-bar.png">
+    <p>
+      Most of the buttons here are self explanatory. Still, here is a quick rundown:
+    </p>
+    <p>
+      1. The classic pause / play button. It does not affect the simulation processing, only the visualisation.
+    </p>
+    <p>
+      2. Visualisation speed setting. This defines how fast are things happenig. Adjust it to speed up or slow down your visualisation. Note that entety 
+      movements might become janky if you go above x32 speed.
+    </p>
+    <p>
+      3. These are the time skip buttons. They will move you a number of second forwards or backwards in the simulation. 
+      The number of seconds is the same as the speed multiplier.
+    </p>
+    <p>
+      4. This button allows you to toggle the visualization direction. you can play it forwards or backwards.
+    </p>
+    <p>
+      5. The map center button allows you to center the map on the enteties in case you wonder off on the map.
+    </p>
+    <p>
+      6. The entety follow button allows you to follow the selected entety on the map without losing focus.
+    </p>
+    <p>
+      7. The scroll bar allows you to instantly skip to a time within the simulation. However, if you are activelly running a simulation, you can only jump
+      to a timestamp within the blue part of the bar, as anything past that is yet to be calculated. If you are replaying a saved simulation, you can
+      jump to any timestamp at any time. 
+    </p>
+    <p>
+      8. The main menu button will send you back to ... the main menu. If you are activelly running a simulation, it will continue to run in the background. 
+      If you are replaying a saved simulation, it will stop running.
+    </p>
+  </section>
+
+  <section class="flex-column">
+    <h3>The Simulation Status Control</h3>
+    <div style="display: flex; align-items: flex-start; gap: 20px;">
+        <img src="/images/simulation-control-bar.png" alt="Simulation Control Bar" style="max-width: 300px; height: auto;">
+        <div>
+            <p>
+                This is the control bar for the actual simulation happening on the backend. This little window allows you to pause the simulation processing, 
+                adjust the maximum simulation time, or stop the simulation compleately. 
+            </p>
+            <p>
+                Note that a stop and a pause are not the same. A stopped simulation is effectively compleated and can not be resumed, only replayed.
+            </p>
+        </div>
+    </div>
+  </section>
+
+  <section class="flex-column">
+    <h3>The Information Panel</h3>
+    <p>
+      This pannel displays usefull information avout your current simulation. You can access it by clicking the<mat-icon>info</mat-icon>icon in the top
+      left corner of your screen. Here you can check the simulation name and source files, see the statistics, access enteties that are not displayed on 
+      the map and check detailed information about the entety you have selected.
+    </p>
+  </section>
+
+  <section class="flex-column">
+    <h3>Searching and Entety Selection</h3>
+    <p>
+      There are a few ways you can select an entety such as a passenger or a vehicule. The easiest way would be by simply clicking it on the map.
+      If multiple enteties are clumped together, a small dialog will pop up allowing you to make a more precice choice. 
+      Your selected entety will be highlighted in yellow and you will see it's past and future legs if they exist. 
+    </p>
+    <p>
+      You can also select an entety by using the search bar. To open the bar, click on the magnifying glass in the top right corner of your screen. You can 
+      search any entety by typing it's ID and select it among the autocompleate suggestions. For passengers, you can also find them using their names.
+    </p>
+    <p>
+      Pro Tip: if you are looking for a vehicule with a specific "mode", you can start a search with "mode:". This will prompt you to select a vehicule mode and 
+      only vehicules matching this mode will be shown in the autocomplete suggestions.
+    </p>
+    <p>
+      Once you have selected an entety, you can navigate to the status section of the information pannel to view details such as the enteties' ID, name, status,
+      route, etc. In this very section you can also set the entety as a favourite by clicking the<mat-icon>favorite</mat-icon>icon. To see the full list of you favorite click on 
+      the<mat-icon>star</mat-icon>in the top right corner.
+    </p>
+  </section>
+
+  <section class="flex-column">
+    <h3>Display Options</h3>
+    <p>
+      You have access to a few filters and themes in the top right corner of your simulation. You can decide which enteties to display, select a theme for your map, and 
+      even change the icons. TODO: Complete the icons
+    </p>
+  </section>
+
+  <section class="flex-column">
+    <h1>Folder Structure</h1>
+    <p>
+      While we do allow imports and exports of important folders, you might still want to access the raw data without having to deal with creating a copy
+      on your machine. 
+    </p>
+    <p>
+      All the input data used to launch a simulation is located in the /data folder within the root directory of your project.
+    </p>
+    <p>
+      The completed and saved simulations are located in the /multimodal-server/saved-simulation folder within the root directory of your project.
+    </p>
+  </section>
+
+</mat-dialog-content>
+

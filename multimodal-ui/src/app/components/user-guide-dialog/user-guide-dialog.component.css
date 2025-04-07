@@ -1,0 +1,65 @@
+@import "../../../styles/flex.styles.css";
+@import "../../../styles/color.styles.css";
+
+mat-dialog-content {
+  max-height: 80vh; 
+  height: 80vh; 
+  overflow-y: auto; 
+  padding: 16px;
+}
+
+mat-icon {
+  font-size: 1.2em;
+  height: auto;
+  width: auto;
+  vertical-align: middle;
+  margin: 0 2px; /* Optional: adds small spacing around icon */
+}
+
+/* Section styling */
+.flex-column {
+  margin-bottom: 0.5rem;
+}
+
+/* Image styling */
+.guide-image {
+  max-width: 100%;
+  margin: 1rem 0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+h1 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  color: var(--primary-color);
+}
+
+h3 {
+  font-size: 1.2rem;
+  margin-bottom: 0.8rem;
+  color: var(--secondary-color);
+}
+
+p {
+  margin: 0.5rem 0;
+}
+
+/* Utility classes */
+.align-self-end {
+  margin-inline-start: auto;
+}
+
+.light {
+  font-weight: 300;
+}
+
+.bold {
+  font-weight: 500;
+}
+
+/* Remove unnecessary styles */
+.list-item, .actions {
+  display: none;
+}
+
