@@ -12,6 +12,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { Point } from 'pixi.js';
 import { AnimationService } from '../../services/animation.service';
+import { EntityInfo } from '../../interfaces/entity.model';
 
 @Component({
   selector: 'app-close-entities-menu',
@@ -29,9 +30,9 @@ export class CloseEntitiesMenuComponent {
   container = viewChild.required<ElementRef<HTMLDivElement>>('container');
   cardContent = viewChild.required<ElementRef<HTMLDivElement>>('cardContent');
 
-  nearVehiclesSignal: Signal<string[]>;
-  nearPassengersSignal: Signal<string[]>;
-  nearStopsSignal: Signal<string[]>;
+  nearVehiclesSignal: Signal<EntityInfo[]>;
+  nearPassengersSignal: Signal<EntityInfo[]>;
+  nearStopsSignal: Signal<EntityInfo[]>;
 
   show = signal(false);
 

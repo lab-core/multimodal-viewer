@@ -21,32 +21,32 @@
       [style.max-height]="maxHeight()"
     >
       <div class="content">
-        @for (id of nearVehicles; track id) {
+        @for (vehicle of nearVehicles; track vehicle.id) {
           <mat-chip
-            (click)="onClickVehicle(id)"
-            (mouseenter)="selectVehicle(id)"
+            (click)="onClickVehicle(vehicle.id)"
+            (mouseenter)="selectVehicle(vehicle.id)"
             (mouseleave)="unselectEntity()"
           >
-            <mat-icon matChipAvatar>directions_car</mat-icon>{{ id }}
+            <mat-icon matChipAvatar>directions_car</mat-icon>{{ vehicle.name }}
           </mat-chip>
         }
-        @for (id of nearPassengers; track id) {
+        @for (passenger of nearPassengers; track passenger.id) {
           <mat-chip
-            (click)="onClickPassenger(id)"
-            (mouseenter)="selectPassenger(id)"
+            (click)="onClickPassenger(passenger.id)"
+            (mouseenter)="selectPassenger(passenger.id)"
             (mouseleave)="unselectEntity()"
           >
             <mat-icon matChipAvatar>accessibility</mat-icon>
-            {{ getPassengerName(id) }}
+            {{ passenger.name }}
           </mat-chip>
         }
-        @for (id of nearStops; track id) {
+        @for (stop of nearStops; track stop.id) {
           <mat-chip
-            (click)="onClickStop(id)"
-            (mouseenter)="selectStop(id)"
+            (click)="onClickStop(stop.id)"
+            (mouseenter)="selectStop(stop.id)"
             (mouseleave)="unselectEntity()"
           >
-            <mat-icon matChipAvatar>place</mat-icon>{{ id }}
+            <mat-icon matChipAvatar>place</mat-icon>{{ stop.name }}
           </mat-chip>
         }
       </div>

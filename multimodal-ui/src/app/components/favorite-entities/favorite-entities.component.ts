@@ -4,11 +4,9 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AnimationService } from '../../services/animation.service';
-import {
-  FavoriteEntitiesService,
-  FavoriteInfo,
-} from '../../services/favorite-entities.service';
+import { FavoriteEntitiesService } from '../../services/favorite-entities.service';
 import { VisualizationService } from '../../services/visualization.service';
+import { EntityInfo } from '../../interfaces/entity.model';
 
 @Component({
   selector: 'app-favorite-entities',
@@ -17,9 +15,9 @@ import { VisualizationService } from '../../services/visualization.service';
   styleUrl: './favorite-entities.component.css',
 })
 export class FavoriteEntitiesComponent {
-  favVehicles: Signal<FavoriteInfo[]>;
-  favPassengers: Signal<FavoriteInfo[]>;
-  favStops: Signal<FavoriteInfo[]>;
+  favVehicles: Signal<EntityInfo[]>;
+  favPassengers: Signal<EntityInfo[]>;
+  favStops: Signal<EntityInfo[]>;
 
   readonly favoriteCount: Signal<number> = computed(() => {
     return (

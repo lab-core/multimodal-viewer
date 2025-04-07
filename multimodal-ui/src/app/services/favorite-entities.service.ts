@@ -7,17 +7,13 @@ import {
   WritableSignal,
 } from '@angular/core';
 import { SimulationService } from './simulation.service';
+import { EntityInfo } from '../interfaces/entity.model';
 
 interface FavoritesSaveData {
   version: number;
-  vehicles: FavoriteInfo[];
-  passengers: FavoriteInfo[];
-  stops: FavoriteInfo[];
-}
-
-export interface FavoriteInfo {
-  id: string;
-  name: string;
+  vehicles: EntityInfo[];
+  passengers: EntityInfo[];
+  stops: EntityInfo[];
 }
 
 @Injectable({
@@ -30,9 +26,9 @@ export class FavoriteEntitiesService {
   readonly VERSION = 1;
   private readonly KEY_FAVORITES_PREFIX = 'multimodal.favorites.';
 
-  private _favVehicleArray: WritableSignal<FavoriteInfo[]> = signal([]);
-  private _favPassengersArray: WritableSignal<FavoriteInfo[]> = signal([]);
-  private _favStopsArray: WritableSignal<FavoriteInfo[]> = signal([]);
+  private _favVehicleArray: WritableSignal<EntityInfo[]> = signal([]);
+  private _favPassengersArray: WritableSignal<EntityInfo[]> = signal([]);
+  private _favStopsArray: WritableSignal<EntityInfo[]> = signal([]);
 
   private _simulationFavKey: Signal<string | null> = computed(() => {
     const simulation = this.simulationService.activeSimulationSignal();
@@ -40,15 +36,15 @@ export class FavoriteEntitiesService {
     return `${this.KEY_FAVORITES_PREFIX}${simulation.id}`;
   });
 
-  get favVehicleArray(): Signal<FavoriteInfo[]> {
+  get favVehicleArray(): Signal<EntityInfo[]> {
     return this._favVehicleArray;
   }
 
-  get favPassengersArray(): Signal<FavoriteInfo[]> {
+  get favPassengersArray(): Signal<EntityInfo[]> {
     return this._favPassengersArray;
   }
 
-  get favStopsArray(): Signal<FavoriteInfo[]> {
+  get favStopsArray(): Signal<EntityInfo[]> {
     return this._favStopsArray;
   }
 
@@ -90,7 +86,7 @@ export class FavoriteEntitiesService {
     });
   }
 
-  toggleFavoriteEntity(favorites: FavoriteInfo[], id: string, name: string) {
+  toggleFavoriteEntity(favorites: EntityInfo[], id: string, name: string) {
     // If is in the list
     if (favorites.find((favorite) => favorite.id === id)) {
       // Remove from list
