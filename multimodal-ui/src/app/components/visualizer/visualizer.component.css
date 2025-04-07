@@ -197,16 +197,16 @@ button[mat-icon-button] {
   padding-left: 24px;
 }
 
-.selected-entity-information>*:first-child {
+.mat-card-group>*:first-child {
   border-bottom-left-radius: 0px;
   border-bottom-right-radius: 0px;
 }
 
-.selected-entity-information>*:last-child {
+.mat-card-group>*:last-child {
   border-top-left-radius: 0px;
   border-top-right-radius: 0px;
 }
 
-.selected-entity-information>*:not(:first-child):not(:last-child) {
+.mat-card-group>*:not(:first-child):not(:last-child) {
   border-radius: 0px;
 }
