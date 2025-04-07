@@ -7,10 +7,11 @@ export interface SpriteSaveData {
   version: number;
 
   vehicleSprite: string;
-  // zoomOutVehicleSprite: string;
-
   passengerSprite: string;
-  //zoomOutPassengerSprite: string;
+
+  zoomOutVehicleSprite: string;
+  zoomOutPassengerSprite: string;
+
   customSprites: CustomSprite[];
 }
 
@@ -18,7 +19,7 @@ export interface SpriteSaveData {
   providedIn: 'root',
 })
 export class SpritesService {
-  readonly VERSION = 0;
+  readonly VERSION = 1;
   readonly SPRITE_SIZE = 40;
 
   readonly DEFAULT_VEHICLE_SPRITE = '/images/sample-bus.png';
@@ -112,12 +113,16 @@ export class SpritesService {
   saveSpriteData(
     vehicleSprite: string,
     passengerSprite: string,
+    zoomOutVehicleSprite: string,
+    zoomOutPassengerSprite: string,
     customSprites: CustomSprite[],
   ) {
     const saveData: SpriteSaveData = {
       version: this.VERSION,
       vehicleSprite,
       passengerSprite,
+      zoomOutVehicleSprite,
+      zoomOutPassengerSprite,
       customSprites,
     };
 
@@ -154,8 +159,14 @@ export class SpritesService {
 
   private applySpritesData(spriteSaveData: SpriteSaveData) {
     this._vehicleSprite = Texture.from(spriteSaveData.vehicleSprite);
-
     this._passengerSprite = Texture.from(spriteSaveData.passengerSprite);
+
+    this._zoomOutVehicleSprite = Texture.from(
+      spriteSaveData.zoomOutVehicleSprite,
+    );
+    this._zoomOutPassengerSprite = Texture.from(
+      spriteSaveData.zoomOutPassengerSprite,
+    );
 
     this._customSprites = spriteSaveData.customSprites;
     this._spriteMap.clear();

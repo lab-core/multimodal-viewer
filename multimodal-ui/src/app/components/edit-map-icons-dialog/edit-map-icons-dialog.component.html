@@ -75,6 +75,7 @@
 
       <mat-divider></mat-divider>
 
+      <!-- Default Vehicle -->
       <div class="custom-item">
         <div class="custom-icon">
           <img width="40" alt="icon" [src]="defaultVehicleSprite()" />
@@ -105,6 +106,7 @@
         </button>
       </div>
 
+      <!-- Default Passenger -->
       <div class="custom-item">
         <div class="custom-icon">
           <img width="40" alt="icon" [src]="defaultPassengerSprite()" />
@@ -130,6 +132,68 @@
           mat-icon-button
           matTooltip="Reset icon"
           (click)="resetDefaultSprite('passenger')"
+        >
+          <mat-icon>restart_alt</mat-icon>
+        </button>
+      </div>
+
+      <!-- Default Zoomed Out Vehicle-->
+      <div class="custom-item">
+        <div class="custom-icon">
+          <img width="40" alt="icon" [src]="zoomOutVehicleSprite()" />
+        </div>
+
+        <button
+          mat-icon-button
+          matTooltip="Upload image"
+          (click)="uploadDefaultSprite('zoom-out-vehicle')"
+        >
+          <mat-icon>upload</mat-icon>
+        </button>
+
+        <mat-form-field
+          class="compact-input"
+          appearance="outline"
+          subscriptSizing="dynamic"
+        >
+          <input matInput disabled value="Far Vehicle Icon" />
+        </mat-form-field>
+
+        <button
+          mat-icon-button
+          matTooltip="Reset icon"
+          (click)="resetDefaultSprite('zoom-out-vehicle')"
+        >
+          <mat-icon>restart_alt</mat-icon>
+        </button>
+      </div>
+
+      <!-- Default Zoomed Out Passenger-->
+      <div class="custom-item">
+        <div class="custom-icon">
+          <img width="40" alt="icon" [src]="zoomOutPassengerSprite()" />
+        </div>
+
+        <button
+          mat-icon-button
+          matTooltip="Upload image"
+          (click)="uploadDefaultSprite('zoom-out-passenger')"
+        >
+          <mat-icon>upload</mat-icon>
+        </button>
+
+        <mat-form-field
+          class="compact-input"
+          appearance="outline"
+          subscriptSizing="dynamic"
+        >
+          <input matInput disabled value="Far Passenger Icon" />
+        </mat-form-field>
+
+        <button
+          mat-icon-button
+          matTooltip="Reset icon"
+          (click)="resetDefaultSprite('zoom-out-passenger')"
         >
           <mat-icon>restart_alt</mat-icon>
         </button>

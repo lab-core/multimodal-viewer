@@ -29,6 +29,12 @@ import { ImageResource } from 'pixi.js';
 
 export type EditMapIconsDialogData = null;
 
+type EditableDefaultIconTypes =
+  | 'vehicle'
+  | 'passenger'
+  | 'zoom-out-vehicle'
+  | 'zoom-out-passenger';
+
 export interface EditMapIconsDialogResult {
   name: string;
   url: string;
@@ -65,14 +71,16 @@ export class EditMapIconsDialogComponent {
   customSprites: WritableSignal<CustomSprite[]> = signal([]);
 
   defaultVehicleSprite: WritableSignal<string> = signal('');
+  zoomOutVehicleSprite: WritableSignal<string> = signal('');
 
   defaultPassengerSprite: WritableSignal<string> = signal('');
+  zoomOutPassengerSprite: WritableSignal<string> = signal('');
 
   uploadButton =
     viewChild.required<ElementRef<HTMLButtonElement>>('fileUpload');
 
   private selectedSpriteIndex = 0;
-  private selectedDefaultSprite: 'vehicle' | 'passenger' = 'vehicle';
+  private selectedDefaultSprite: EditableDefaultIconTypes = 'vehicle';
 
   constructor(
     private readonly dialogRef: MatDialogRef<
@@ -84,16 +92,33 @@ export class EditMapIconsDialogComponent {
     this.SPRITE_SIZE = this.spritesService.SPRITE_SIZE;
 
     // Safe to assume its an ImageResource with a url because they are all loaded from a url.
+
     this.defaultVehicleSprite.set(
       (this.spritesService.vehicleSprite.baseTexture.resource as ImageResource)
         .url,
     );
+
+    this.zoomOutVehicleSprite.set(
+      (
+        this.spritesService.zoomOutVehicleSprite.baseTexture
+          .resource as ImageResource
+      ).url,
+    );
+
     this.defaultPassengerSprite.set(
       (
         this.spritesService.passengerSprite.baseTexture
           .resource as ImageResource
       ).url,
     );
+
+    this.zoomOutPassengerSprite.set(
+      (
+        this.spritesService.zoomOutPassengerSprite.baseTexture
+          .resource as ImageResource
+      ).url,
+    );
+
     this.customSprites.set(this.spritesService.customSprites);
   }
 
@@ -112,10 +137,9 @@ export class EditMapIconsDialogComponent {
         if (this.selectedSpriteIndex !== -1) {
           this.setCustomSprite(this.selectedSpriteIndex, base64url);
         } else {
-          if (this.selectedDefaultSprite === 'vehicle')
-            this.defaultVehicleSprite.set(base64url);
-          else if (this.selectedDefaultSprite === 'passenger')
-            this.defaultPassengerSprite.set(base64url);
+          this.getDefaultSpriteSignal(this.selectedDefaultSprite).set(
+            base64url,
+          );
         }
 
         this.currentError = '';
@@ -159,6 +183,8 @@ export class EditMapIconsDialogComponent {
 
         this.defaultVehicleSprite.set(spriteSaveData.vehicleSprite);
         this.defaultPassengerSprite.set(spriteSaveData.passengerSprite);
+        this.zoomOutVehicleSprite.set(spriteSaveData.zoomOutVehicleSprite);
+        this.zoomOutPassengerSprite.set(spriteSaveData.zoomOutPassengerSprite);
         this.customSprites.set(spriteSaveData.customSprites);
 
         this.currentError = '';
@@ -172,19 +198,48 @@ export class EditMapIconsDialogComponent {
     reader.readAsText(input.files[0]);
   }
 
-  uploadDefaultSprite(type: 'vehicle' | 'passenger') {
+  uploadDefaultSprite(type: EditableDefaultIconTypes) {
     this.selectedSpriteIndex = -1;
     this.selectedDefaultSprite = type;
     this.uploadButton().nativeElement.click();
   }
 
-  resetDefaultSprite(type: 'vehicle' | 'passenger') {
-    if (type === 'vehicle')
-      this.defaultVehicleSprite.set(this.spritesService.DEFAULT_VEHICLE_SPRITE);
-    else if (type === 'passenger')
-      this.defaultPassengerSprite.set(
-        this.spritesService.DEFAULT_PASSENGER_SPRITE,
-      );
+  getDefaultSpriteSignal(type: EditableDefaultIconTypes) {
+    switch (type) {
+      case 'vehicle':
+        return this.defaultVehicleSprite;
+      case 'passenger':
+        return this.defaultPassengerSprite;
+      case 'zoom-out-vehicle':
+        return this.zoomOutVehicleSprite;
+      case 'zoom-out-passenger':
+        return this.zoomOutPassengerSprite;
+    }
+  }
+
+  resetDefaultSprite(type: EditableDefaultIconTypes) {
+    switch (type) {
+      case 'vehicle':
+        this.defaultVehicleSprite.set(
+          this.spritesService.DEFAULT_VEHICLE_SPRITE,
+        );
+        break;
+      case 'passenger':
+        this.defaultPassengerSprite.set(
+          this.spritesService.DEFAULT_PASSENGER_SPRITE,
+        );
+        break;
+      case 'zoom-out-vehicle':
+        this.zoomOutVehicleSprite.set(
+          this.spritesService.DEFAULT_ZOOM_OUT_VEHICLE_SPRITE,
+        );
+        break;
+      case 'zoom-out-passenger':
+        this.zoomOutPassengerSprite.set(
+          this.spritesService.DEFAULT_ZOOM_OUT_PASSENGER_SPRITE,
+        );
+        break;
+    }
   }
 
   uploadCustomSprite(index: number) {
@@ -222,6 +277,8 @@ export class EditMapIconsDialogComponent {
       version: this.spritesService.VERSION,
       vehicleSprite: this.defaultVehicleSprite(),
       passengerSprite: this.defaultPassengerSprite(),
+      zoomOutVehicleSprite: this.zoomOutVehicleSprite(),
+      zoomOutPassengerSprite: this.zoomOutPassengerSprite(),
       customSprites: this.customSprites(),
     };
 
@@ -241,6 +298,8 @@ export class EditMapIconsDialogComponent {
     this.spritesService.saveSpriteData(
       this.defaultVehicleSprite(),
       this.defaultPassengerSprite(),
+      this.zoomOutVehicleSprite(),
+      this.zoomOutPassengerSprite(),
       this.customSprites(),
     );
     this.dialogRef.close();
