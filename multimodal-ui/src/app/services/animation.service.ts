@@ -286,7 +286,7 @@ export class AnimationService {
   private addVehicle(vehicle: AnimatedVehicle): void {
     const vehicleContainer = new PIXI.Container();
     const sprite = PIXI.Sprite.from(
-      this.spriteService.getVehicleSprite(vehicle.mode ?? ''),
+      this.spriteService.getCurrentVehicleTexture(vehicle.mode ?? ''),
     );
     vehicleContainer.scale.set(this.spriteService.vehicleSpriteScale);
     sprite.anchor.set(0.5, 0.5); // Center texture on coordinate
@@ -312,7 +312,9 @@ export class AnimationService {
   }
 
   private addPassenger(passenger: AnimatedPassenger): void {
-    const sprite = PIXI.Sprite.from(this.spriteService.getPassengerSprite());
+    const sprite = PIXI.Sprite.from(
+      this.spriteService.getCurrentPassengerTexture(),
+    );
     sprite.anchor.set(0.5, 0.5); // Center texture on coordinate
     sprite.scale.set(this.spriteService.passengerSpriteScale);
     const passengerContainer = new PIXI.Container();
@@ -354,7 +356,7 @@ export class AnimationService {
 
         // Sprite
         const sprite = PIXI.Sprite.from(
-          this.spriteService.getPassengerSprite(),
+          this.spriteService.getCurrentPassengerTexture(),
         );
         sprite.anchor.set(0.5, 0.5);
         stopContainer.addChild(sprite);
@@ -1328,12 +1330,12 @@ export class AnimationService {
   private onZoomEnd(event: L.LeafletEvent) {
     this.spriteService.calculateSpriteScales(this.utils);
 
-    const passengerTexture = this.spriteService.getPassengerSprite();
+    const passengerTexture = this.spriteService.getCurrentPassengerTexture();
     const showText = !this.spriteService.useZoomedOutSprites;
 
     this.vehicles.forEach((entity) => {
       entity.sprite.parent.scale.set(this.spriteService.vehicleSpriteScale);
-      entity.sprite.texture = this.spriteService.getVehicleSprite(
+      entity.sprite.texture = this.spriteService.getCurrentVehicleTexture(
         entity.data.mode,
       );
       entity.text.visible = showText;

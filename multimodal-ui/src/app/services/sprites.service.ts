@@ -1,18 +1,22 @@
 import * as L from 'leaflet';
 import { Injectable } from '@angular/core';
-import { CustomSprite } from '../interfaces/entity.model';
 import { Texture } from '@pixi/core';
 
-export interface SpriteSaveData {
+export interface CustomTexture {
+  mode: string;
+  url: string;
+}
+
+export interface TextureSaveData {
   version: number;
 
-  vehicleSprite: string;
-  passengerSprite: string;
+  vehicleTextureUrl: string;
+  passengerTextureUrl: string;
 
-  zoomOutVehicleSprite: string;
-  zoomOutPassengerSprite: string;
+  zoomOutVehicleTextureUrl: string;
+  zoomOutPassengerTextureUrl: string;
 
-  customSprites: CustomSprite[];
+  vehicleModeTextures: CustomTexture[];
 }
 
 @Injectable({
@@ -22,29 +26,31 @@ export class SpritesService {
   readonly VERSION = 1;
   readonly SPRITE_SIZE = 40;
 
-  readonly DEFAULT_VEHICLE_SPRITE = '/images/sample-bus.png';
-  readonly DEFAULT_PASSENGER_SPRITE = '/images/sample-wait.png';
-  readonly DEFAULT_ZOOM_OUT_VEHICLE_SPRITE = '/images/zoom-out-vehicle.png';
-  readonly DEFAULT_ZOOM_OUT_PASSENGER_SPRITE = 'images/zoom-out-passenger.png';
+  private readonly KEY_TEXTURES = 'multimodal.textures';
+
+  readonly DEFAULT_VEHICLE_TEXTURE_URL = '/images/sample-bus.png';
+  readonly DEFAULT_PASSENGER_TEXTURE_URL = '/images/sample-wait.png';
+  readonly DEFAULT_ZOOM_OUT_VEHICLE_TEXTURE_URL =
+    '/images/zoom-out-vehicle.png';
+  readonly DEFAULT_ZOOM_OUT_PASSENGER_TEXTURE_URL =
+    'images/zoom-out-passenger.png';
 
   private _useZoomedOutSprites = false;
   private _vehicleSpriteScale = 1;
   private _passengerSpriteScale = 1;
 
-  private readonly KEY_SPRITES: string = 'multimodal.sprites';
-
-  private _vehicleSprite = Texture.from(this.DEFAULT_VEHICLE_SPRITE);
-  private _passengerSprite = Texture.from(this.DEFAULT_PASSENGER_SPRITE);
-  private _zoomOutVehicleSprite = Texture.from(
-    this.DEFAULT_ZOOM_OUT_VEHICLE_SPRITE,
+  private _vehicleTexture = Texture.from(this.DEFAULT_VEHICLE_TEXTURE_URL);
+  private _passengerTexture = Texture.from(this.DEFAULT_PASSENGER_TEXTURE_URL);
+  private _zoomOutVehicleTexture = Texture.from(
+    this.DEFAULT_ZOOM_OUT_VEHICLE_TEXTURE_URL,
   );
-  private _zoomOutPassengerSprite = Texture.from(
-    this.DEFAULT_ZOOM_OUT_PASSENGER_SPRITE,
+  private _zoomOutPassengerTexture = Texture.from(
+    this.DEFAULT_ZOOM_OUT_PASSENGER_TEXTURE_URL,
   );
 
-  private _customSprites: CustomSprite[] = [];
+  private _vehicleModeTextures: CustomTexture[] = [];
 
-  private _spriteMap = new Map<string, Texture>();
+  private _textureMap = new Map<string, Texture>();
 
   // Getters
   get useZoomedOutSprites(): boolean {
@@ -59,29 +65,29 @@ export class SpritesService {
     return this._passengerSpriteScale;
   }
 
-  get vehicleSprite(): Texture {
-    return this._vehicleSprite;
+  get vehicleTexture(): Texture {
+    return this._vehicleTexture;
   }
 
-  get passengerSprite(): Texture {
-    return this._passengerSprite;
+  get passengerTexture(): Texture {
+    return this._passengerTexture;
   }
 
-  get zoomOutVehicleSprite(): Texture {
-    return this._zoomOutVehicleSprite;
+  get zoomOutVehicleTexture(): Texture {
+    return this._zoomOutVehicleTexture;
   }
 
-  get zoomOutPassengerSprite(): Texture {
-    return this._zoomOutPassengerSprite;
+  get zoomOutPassengerTexture(): Texture {
+    return this._zoomOutPassengerTexture;
   }
   ///////////
 
-  get customSprites(): CustomSprite[] {
-    return structuredClone(this._customSprites);
+  get vehicleModeTextures(): CustomTexture[] {
+    return structuredClone(this._vehicleModeTextures);
   }
 
   constructor() {
-    this.loadSpritesData();
+    this.loadTexturesData();
   }
 
   calculateSpriteScales(utils: L.PixiOverlayUtils) {
@@ -110,67 +116,76 @@ export class SpritesService {
     this._passengerSpriteScale = this._vehicleSpriteScale * 0.75;
   }
 
-  saveSpriteData(
-    vehicleSprite: string,
-    passengerSprite: string,
-    zoomOutVehicleSprite: string,
-    zoomOutPassengerSprite: string,
-    customSprites: CustomSprite[],
+  saveTextureData(
+    vehicleTextureUrl: string,
+    passengerTextureUrl: string,
+    zoomOutVehicleTextureUrl: string,
+    zoomOutPassengerSpriteUrl: string,
+    vehicleModeTextures: CustomTexture[],
   ) {
-    const saveData: SpriteSaveData = {
+    const saveData: TextureSaveData = {
       version: this.VERSION,
-      vehicleSprite,
-      passengerSprite,
-      zoomOutVehicleSprite,
-      zoomOutPassengerSprite,
-      customSprites,
+      vehicleTextureUrl: vehicleTextureUrl,
+      passengerTextureUrl: passengerTextureUrl,
+      zoomOutVehicleTextureUrl: zoomOutVehicleTextureUrl,
+      zoomOutPassengerTextureUrl: zoomOutPassengerSpriteUrl,
+      vehicleModeTextures: vehicleModeTextures,
     };
 
-    localStorage.setItem(this.KEY_SPRITES, JSON.stringify(saveData));
+    localStorage.setItem(this.KEY_TEXTURES, JSON.stringify(saveData));
 
-    this.applySpritesData(saveData);
+    this.applyTexturesData(saveData);
   }
 
-  getVehicleSprite(mode: string | null) {
-    if (this._useZoomedOutSprites) return this._zoomOutVehicleSprite;
-    const url = this._spriteMap.get(mode ?? '');
-    return url ?? this._vehicleSprite;
+  /**
+   * Vehicle texture respective of the map zoom.
+   */
+  getCurrentVehicleTexture(mode: string | null) {
+    if (this._useZoomedOutSprites) return this._zoomOutVehicleTexture;
+    const url = this._textureMap.get(mode ?? '');
+    return url ?? this._vehicleTexture;
   }
 
-  getPassengerSprite() {
+  /**
+   * Passenger texture respective of the map zoom.
+   */
+  getCurrentPassengerTexture() {
     return this._useZoomedOutSprites
-      ? this._zoomOutPassengerSprite
-      : this._passengerSprite;
+      ? this._zoomOutPassengerTexture
+      : this._passengerTexture;
   }
 
-  private loadSpritesData() {
-    const savedSpritesJson = localStorage.getItem(this.KEY_SPRITES);
-    if (!savedSpritesJson) return;
+  private loadTexturesData() {
+    const savedTexturesJson = localStorage.getItem(this.KEY_TEXTURES);
+    if (!savedTexturesJson) return;
 
-    const savedSpritesData = JSON.parse(savedSpritesJson) as SpriteSaveData;
+    const savedTexturesData = JSON.parse(savedTexturesJson) as TextureSaveData;
     if (
-      savedSpritesData.version === undefined ||
-      savedSpritesData.version !== this.VERSION
+      savedTexturesData.version === undefined ||
+      savedTexturesData.version !== this.VERSION
     )
       return;
 
-    this.applySpritesData(savedSpritesData);
+    this.applyTexturesData(savedTexturesData);
   }
 
-  private applySpritesData(spriteSaveData: SpriteSaveData) {
-    this._vehicleSprite = Texture.from(spriteSaveData.vehicleSprite);
-    this._passengerSprite = Texture.from(spriteSaveData.passengerSprite);
+  private applyTexturesData(textureSaveData: TextureSaveData) {
+    this._vehicleTexture = Texture.from(textureSaveData.vehicleTextureUrl);
+    this._passengerTexture = Texture.from(textureSaveData.passengerTextureUrl);
 
-    this._zoomOutVehicleSprite = Texture.from(
-      spriteSaveData.zoomOutVehicleSprite,
+    this._zoomOutVehicleTexture = Texture.from(
+      textureSaveData.zoomOutVehicleTextureUrl,
     );
-    this._zoomOutPassengerSprite = Texture.from(
-      spriteSaveData.zoomOutPassengerSprite,
+    this._zoomOutPassengerTexture = Texture.from(
+      textureSaveData.zoomOutPassengerTextureUrl,
     );
 
-    this._customSprites = spriteSaveData.customSprites;
-    this._spriteMap.clear();
-    for (const customSprite of spriteSaveData.customSprites)
-      this._spriteMap.set(customSprite.mode, Texture.from(customSprite.url));
+    this._vehicleModeTextures = textureSaveData.vehicleModeTextures;
+    this._textureMap.clear();
+    for (const vehicleModeTexture of textureSaveData.vehicleModeTextures)
+      this._textureMap.set(
+        vehicleModeTexture.mode,
+        Texture.from(vehicleModeTexture.url),
+      );
   }
 }

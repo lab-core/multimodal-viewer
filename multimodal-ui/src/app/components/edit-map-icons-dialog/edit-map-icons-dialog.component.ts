@@ -20,8 +20,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { CustomSprite } from '../../interfaces/entity.model';
-import { SpriteSaveData, SpritesService } from '../../services/sprites.service';
+import {
+  TextureSaveData,
+  SpritesService,
+  CustomTexture,
+} from '../../services/sprites.service';
 import { MatDividerModule } from '@angular/material/divider';
 import { Jimp } from 'jimp';
 import { MatSliderModule } from '@angular/material/slider';
@@ -68,19 +71,19 @@ export class EditMapIconsDialogComponent {
 
   currentError = '';
 
-  customSprites: WritableSignal<CustomSprite[]> = signal([]);
+  vehicleModeTextures: WritableSignal<CustomTexture[]> = signal([]);
 
-  defaultVehicleSprite: WritableSignal<string> = signal('');
-  zoomOutVehicleSprite: WritableSignal<string> = signal('');
+  vehicleTextureUrl: WritableSignal<string> = signal('');
+  zoomOutVehicleTextureUrl: WritableSignal<string> = signal('');
 
-  defaultPassengerSprite: WritableSignal<string> = signal('');
-  zoomOutPassengerSprite: WritableSignal<string> = signal('');
+  passengerTextureUrl: WritableSignal<string> = signal('');
+  zoomOutPassengerTextureUrl: WritableSignal<string> = signal('');
 
   uploadButton =
     viewChild.required<ElementRef<HTMLButtonElement>>('fileUpload');
 
-  private selectedSpriteIndex = 0;
-  private selectedDefaultSprite: EditableDefaultIconTypes = 'vehicle';
+  private selectedTextureIndex = 0;
+  private selectedDefaultTextureType: EditableDefaultIconTypes = 'vehicle';
 
   constructor(
     private readonly dialogRef: MatDialogRef<
@@ -91,35 +94,35 @@ export class EditMapIconsDialogComponent {
   ) {
     this.SPRITE_SIZE = this.spritesService.SPRITE_SIZE;
 
-    // Safe to assume its an ImageResource with a url because they are all loaded from a url.
+    // Safe to assume it's an ImageResource with a url because they are all loaded from a url.
 
-    this.defaultVehicleSprite.set(
-      (this.spritesService.vehicleSprite.baseTexture.resource as ImageResource)
+    this.vehicleTextureUrl.set(
+      (this.spritesService.vehicleTexture.baseTexture.resource as ImageResource)
         .url,
     );
 
-    this.zoomOutVehicleSprite.set(
+    this.zoomOutVehicleTextureUrl.set(
       (
-        this.spritesService.zoomOutVehicleSprite.baseTexture
+        this.spritesService.zoomOutVehicleTexture.baseTexture
           .resource as ImageResource
       ).url,
     );
 
-    this.defaultPassengerSprite.set(
+    this.passengerTextureUrl.set(
       (
-        this.spritesService.passengerSprite.baseTexture
+        this.spritesService.passengerTexture.baseTexture
           .resource as ImageResource
       ).url,
     );
 
-    this.zoomOutPassengerSprite.set(
+    this.zoomOutPassengerTextureUrl.set(
       (
-        this.spritesService.zoomOutPassengerSprite.baseTexture
+        this.spritesService.zoomOutPassengerTexture.baseTexture
           .resource as ImageResource
       ).url,
     );
 
-    this.customSprites.set(this.spritesService.customSprites);
+    this.vehicleModeTextures.set(this.spritesService.vehicleModeTextures);
   }
 
   onFileSelected(event: Event) {
@@ -134,10 +137,10 @@ export class EditMapIconsDialogComponent {
         const image = await Jimp.read(reader.result);
         image.resize({ w: this.SPRITE_SIZE });
         const base64url = await image.getBase64('image/png');
-        if (this.selectedSpriteIndex !== -1) {
-          this.setCustomSprite(this.selectedSpriteIndex, base64url);
+        if (this.selectedTextureIndex !== -1) {
+          this.setVehicleModeTexture(this.selectedTextureIndex, base64url);
         } else {
-          this.getDefaultSpriteSignal(this.selectedDefaultSprite).set(
+          this.getTextureUrlSignal(this.selectedDefaultTextureType).set(
             base64url,
           );
         }
@@ -164,28 +167,40 @@ export class EditMapIconsDialogComponent {
       try {
         const spriteSaveData = JSON.parse(
           reader.result as string,
-        ) as SpriteSaveData;
+        ) as TextureSaveData;
 
-        if (!spriteSaveData.vehicleSprite) {
-          this.currentError = 'JSON has missing data: defaultVehicleSprite';
+        if (
+          !spriteSaveData.version ||
+          spriteSaveData.version !== this.spritesService.VERSION
+        ) {
+          this.currentError = 'Import data format is outdated.';
           return;
         }
 
-        if (!spriteSaveData.passengerSprite) {
-          this.currentError = 'JSON has missing data: defaultPassengerSprite';
+        if (!spriteSaveData.vehicleTextureUrl) {
+          this.currentError = 'JSON has missing data: vehicleTextureUrl';
           return;
         }
 
-        if (!spriteSaveData.customSprites) {
-          this.currentError = 'JSON has missing data: customSprites';
+        if (!spriteSaveData.passengerTextureUrl) {
+          this.currentError = 'JSON has missing data: passengerTextureUrl';
           return;
         }
 
-        this.defaultVehicleSprite.set(spriteSaveData.vehicleSprite);
-        this.defaultPassengerSprite.set(spriteSaveData.passengerSprite);
-        this.zoomOutVehicleSprite.set(spriteSaveData.zoomOutVehicleSprite);
-        this.zoomOutPassengerSprite.set(spriteSaveData.zoomOutPassengerSprite);
-        this.customSprites.set(spriteSaveData.customSprites);
+        if (!spriteSaveData.vehicleModeTextures) {
+          this.currentError = 'JSON has missing data: vehicleModeTextures';
+          return;
+        }
+
+        this.vehicleTextureUrl.set(spriteSaveData.vehicleTextureUrl);
+        this.passengerTextureUrl.set(spriteSaveData.passengerTextureUrl);
+        this.zoomOutVehicleTextureUrl.set(
+          spriteSaveData.zoomOutVehicleTextureUrl,
+        );
+        this.zoomOutPassengerTextureUrl.set(
+          spriteSaveData.zoomOutPassengerTextureUrl,
+        );
+        this.vehicleModeTextures.set(spriteSaveData.vehicleModeTextures);
 
         this.currentError = '';
       } catch {
@@ -198,88 +213,88 @@ export class EditMapIconsDialogComponent {
     reader.readAsText(input.files[0]);
   }
 
-  uploadDefaultSprite(type: EditableDefaultIconTypes) {
-    this.selectedSpriteIndex = -1;
-    this.selectedDefaultSprite = type;
+  uploadDefaultTexture(type: EditableDefaultIconTypes) {
+    this.selectedTextureIndex = -1;
+    this.selectedDefaultTextureType = type;
     this.uploadButton().nativeElement.click();
   }
 
-  getDefaultSpriteSignal(type: EditableDefaultIconTypes) {
+  getTextureUrlSignal(type: EditableDefaultIconTypes) {
     switch (type) {
       case 'vehicle':
-        return this.defaultVehicleSprite;
+        return this.vehicleTextureUrl;
       case 'passenger':
-        return this.defaultPassengerSprite;
+        return this.passengerTextureUrl;
       case 'zoom-out-vehicle':
-        return this.zoomOutVehicleSprite;
+        return this.zoomOutVehicleTextureUrl;
       case 'zoom-out-passenger':
-        return this.zoomOutPassengerSprite;
+        return this.zoomOutPassengerTextureUrl;
     }
   }
 
-  resetDefaultSprite(type: EditableDefaultIconTypes) {
+  resetDefaultTexture(type: EditableDefaultIconTypes) {
     switch (type) {
       case 'vehicle':
-        this.defaultVehicleSprite.set(
-          this.spritesService.DEFAULT_VEHICLE_SPRITE,
+        this.vehicleTextureUrl.set(
+          this.spritesService.DEFAULT_VEHICLE_TEXTURE_URL,
         );
         break;
       case 'passenger':
-        this.defaultPassengerSprite.set(
-          this.spritesService.DEFAULT_PASSENGER_SPRITE,
+        this.passengerTextureUrl.set(
+          this.spritesService.DEFAULT_PASSENGER_TEXTURE_URL,
         );
         break;
       case 'zoom-out-vehicle':
-        this.zoomOutVehicleSprite.set(
-          this.spritesService.DEFAULT_ZOOM_OUT_VEHICLE_SPRITE,
+        this.zoomOutVehicleTextureUrl.set(
+          this.spritesService.DEFAULT_ZOOM_OUT_VEHICLE_TEXTURE_URL,
         );
         break;
       case 'zoom-out-passenger':
-        this.zoomOutPassengerSprite.set(
-          this.spritesService.DEFAULT_ZOOM_OUT_PASSENGER_SPRITE,
+        this.zoomOutPassengerTextureUrl.set(
+          this.spritesService.DEFAULT_ZOOM_OUT_PASSENGER_TEXTURE_URL,
         );
         break;
     }
   }
 
-  uploadCustomSprite(index: number) {
-    this.selectedSpriteIndex = index;
+  uploadVehicleModeTexture(index: number) {
+    this.selectedTextureIndex = index;
     this.uploadButton().nativeElement.click();
   }
 
-  addCustomSprite() {
-    this.customSprites.update((customSprites) => {
+  addVehicleModeTexture() {
+    this.vehicleModeTextures.update((vehicleModeTexture) => {
       return [
-        ...customSprites,
-        { mode: '', url: this.spritesService.DEFAULT_VEHICLE_SPRITE },
+        ...vehicleModeTexture,
+        { mode: '', url: this.spritesService.DEFAULT_VEHICLE_TEXTURE_URL },
       ];
     });
   }
 
-  removeCustomSprite(index: number) {
-    if (index >= this.customSprites().length) return;
-    this.customSprites.update((customSprites) => {
-      customSprites.splice(index, 1);
-      return [...customSprites];
+  removeVehicleModeTexture(index: number) {
+    if (index >= this.vehicleModeTextures().length) return;
+    this.vehicleModeTextures.update((vehicleModeTexture) => {
+      vehicleModeTexture.splice(index, 1);
+      return [...vehicleModeTexture];
     });
   }
 
-  setCustomSprite(index: number, url: string) {
-    if (index >= this.customSprites().length) return;
-    this.customSprites.update((customSprites) => {
-      customSprites[index].url = url;
-      return [...customSprites];
+  setVehicleModeTexture(index: number, url: string) {
+    if (index >= this.vehicleModeTextures().length) return;
+    this.vehicleModeTextures.update((vehicleModeTexture) => {
+      vehicleModeTexture[index].url = url;
+      return [...vehicleModeTexture];
     });
   }
 
-  exportSprites() {
-    const saveData: SpriteSaveData = {
+  exportTextures() {
+    const saveData: TextureSaveData = {
       version: this.spritesService.VERSION,
-      vehicleSprite: this.defaultVehicleSprite(),
-      passengerSprite: this.defaultPassengerSprite(),
-      zoomOutVehicleSprite: this.zoomOutVehicleSprite(),
-      zoomOutPassengerSprite: this.zoomOutPassengerSprite(),
-      customSprites: this.customSprites(),
+      vehicleTextureUrl: this.vehicleTextureUrl(),
+      passengerTextureUrl: this.passengerTextureUrl(),
+      zoomOutVehicleTextureUrl: this.zoomOutVehicleTextureUrl(),
+      zoomOutPassengerTextureUrl: this.zoomOutPassengerTextureUrl(),
+      vehicleModeTextures: this.vehicleModeTextures(),
     };
 
     const blob = new Blob([JSON.stringify(saveData, null, 2)], {
@@ -295,12 +310,12 @@ export class EditMapIconsDialogComponent {
   }
 
   onSave() {
-    this.spritesService.saveSpriteData(
-      this.defaultVehicleSprite(),
-      this.defaultPassengerSprite(),
-      this.zoomOutVehicleSprite(),
-      this.zoomOutPassengerSprite(),
-      this.customSprites(),
+    this.spritesService.saveTextureData(
+      this.vehicleTextureUrl(),
+      this.passengerTextureUrl(),
+      this.zoomOutVehicleTextureUrl(),
+      this.zoomOutPassengerTextureUrl(),
+      this.vehicleModeTextures(),
     );
     this.dialogRef.close();
   }

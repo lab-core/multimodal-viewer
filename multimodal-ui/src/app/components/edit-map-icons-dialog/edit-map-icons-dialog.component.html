@@ -27,26 +27,26 @@
     </div>
 
     <div class="add-container">
-      <button class="add-button" mat-button (click)="addCustomSprite()">
+      <button class="add-button" mat-button (click)="addVehicleModeTexture()">
         Add Custom Icon
       </button>
     </div>
 
-    @if (customSprites().length === 0) {
+    @if (vehicleModeTextures().length === 0) {
       <p>You have no custom icons.</p>
     }
 
     <section class="custom-icon-list">
-      @for (customSprites of customSprites(); track $index) {
+      @for (vehicleModeTexture of vehicleModeTextures(); track $index) {
         <div class="custom-item">
           <div class="custom-icon">
-            <img width="40" alt="icon" [src]="customSprites.url" />
+            <img width="40" alt="icon" [src]="vehicleModeTexture.url" />
           </div>
 
           <button
             mat-icon-button
             matTooltip="Upload image"
-            (click)="uploadCustomSprite($index)"
+            (click)="uploadVehicleModeTexture($index)"
           >
             <mat-icon>upload</mat-icon>
           </button>
@@ -59,14 +59,14 @@
             <input
               matInput
               placeholder="Type a vehicle mode..."
-              [(ngModel)]="customSprites.mode"
+              [(ngModel)]="vehicleModeTexture.mode"
             />
           </mat-form-field>
 
           <button
             mat-icon-button
             [matTooltip]="'Remove custom icon'"
-            (click)="removeCustomSprite($index)"
+            (click)="removeVehicleModeTexture($index)"
           >
             <mat-icon>cancel</mat-icon>
           </button>
@@ -78,13 +78,13 @@
       <!-- Default Vehicle -->
       <div class="custom-item">
         <div class="custom-icon">
-          <img width="40" alt="icon" [src]="defaultVehicleSprite()" />
+          <img width="40" alt="icon" [src]="vehicleTextureUrl()" />
         </div>
 
         <button
           mat-icon-button
           matTooltip="Upload image"
-          (click)="uploadDefaultSprite('vehicle')"
+          (click)="uploadDefaultTexture('vehicle')"
         >
           <mat-icon>upload</mat-icon>
         </button>
@@ -100,7 +100,7 @@
         <button
           mat-icon-button
           matTooltip="Reset icon"
-          (click)="resetDefaultSprite('vehicle')"
+          (click)="resetDefaultTexture('vehicle')"
         >
           <mat-icon>restart_alt</mat-icon>
         </button>
@@ -109,13 +109,13 @@
       <!-- Default Passenger -->
       <div class="custom-item">
         <div class="custom-icon">
-          <img width="40" alt="icon" [src]="defaultPassengerSprite()" />
+          <img width="40" alt="icon" [src]="passengerTextureUrl()" />
         </div>
 
         <button
           mat-icon-button
           matTooltip="Upload image"
-          (click)="uploadDefaultSprite('passenger')"
+          (click)="uploadDefaultTexture('passenger')"
         >
           <mat-icon>upload</mat-icon>
         </button>
@@ -131,7 +131,7 @@
         <button
           mat-icon-button
           matTooltip="Reset icon"
-          (click)="resetDefaultSprite('passenger')"
+          (click)="resetDefaultTexture('passenger')"
         >
           <mat-icon>restart_alt</mat-icon>
         </button>
@@ -140,13 +140,13 @@
       <!-- Default Zoomed Out Vehicle-->
       <div class="custom-item">
         <div class="custom-icon">
-          <img width="40" alt="icon" [src]="zoomOutVehicleSprite()" />
+          <img width="40" alt="icon" [src]="zoomOutVehicleTextureUrl()" />
         </div>
 
         <button
           mat-icon-button
           matTooltip="Upload image"
-          (click)="uploadDefaultSprite('zoom-out-vehicle')"
+          (click)="uploadDefaultTexture('zoom-out-vehicle')"
         >
           <mat-icon>upload</mat-icon>
         </button>
@@ -162,7 +162,7 @@
         <button
           mat-icon-button
           matTooltip="Reset icon"
-          (click)="resetDefaultSprite('zoom-out-vehicle')"
+          (click)="resetDefaultTexture('zoom-out-vehicle')"
         >
           <mat-icon>restart_alt</mat-icon>
         </button>
@@ -171,13 +171,13 @@
       <!-- Default Zoomed Out Passenger-->
       <div class="custom-item">
         <div class="custom-icon">
-          <img width="40" alt="icon" [src]="zoomOutPassengerSprite()" />
+          <img width="40" alt="icon" [src]="zoomOutPassengerTextureUrl()" />
         </div>
 
         <button
           mat-icon-button
           matTooltip="Upload image"
-          (click)="uploadDefaultSprite('zoom-out-passenger')"
+          (click)="uploadDefaultTexture('zoom-out-passenger')"
         >
           <mat-icon>upload</mat-icon>
         </button>
@@ -193,7 +193,7 @@
         <button
           mat-icon-button
           matTooltip="Reset icon"
-          (click)="resetDefaultSprite('zoom-out-passenger')"
+          (click)="resetDefaultTexture('zoom-out-passenger')"
         >
           <mat-icon>restart_alt</mat-icon>
         </button>
@@ -204,7 +204,7 @@
 
 <mat-dialog-actions>
   <div class="file-porters">
-    <button mat-icon-button matTooltip="Export JSON" (click)="exportSprites()">
+    <button mat-icon-button matTooltip="Export JSON" (click)="exportTextures()">
       <mat-icon>download_for_offline</mat-icon>
     </button>
     <button

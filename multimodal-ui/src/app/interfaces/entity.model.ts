@@ -17,8 +17,3 @@ export interface DualEntity<T> extends Entity<T> {
 export interface DualTextEntity<T> extends DualEntity<T>, TextEntity<T> {}
 
 export type EntityFilterMode = 'all' | 'favorites';
-
-export interface CustomSprite {
-  mode: string;
-  url: string;
-}
