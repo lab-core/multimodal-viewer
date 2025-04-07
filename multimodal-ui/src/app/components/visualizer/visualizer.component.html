@@ -109,22 +109,25 @@
         aria-label="tools"
         [formControl]="informationTabControl"
       >
-        <mat-button-toggle value="information"
+        <mat-button-toggle
+          value="information"
+          [matTooltip]="'Information panel'"
           ><mat-icon>info</mat-icon></mat-button-toggle
         >
-        <mat-button-toggle value="statistic"
+        <mat-button-toggle value="statistic" [matTooltip]="'Statistic panel'"
           ><mat-icon>bar_chart</mat-icon></mat-button-toggle
         >
-        <mat-button-toggle value="entities"
+        <mat-button-toggle value="entities" [matTooltip]="'Entities panel'"
           ><mat-icon><!--TODO icon selection--></mat-icon></mat-button-toggle
         >
         <mat-button-toggle
-          value="selectedEntities"
+          value="selectedEntity"
           [disabled]="
             selectedPassenger === null &&
             selectedVehicle === null &&
             selectedStop === null
           "
+          [matTooltip]="'Selected entity panel'"
         >
           <mat-icon>touch_app</mat-icon>
         </mat-button-toggle>
@@ -190,7 +193,8 @@
     [class.enable-pointer-events]="showSelectedEntityTab"
   >
     <mat-card-content class="flex-1">
-      <!--Passenger-->
+      <!--MARK: Selected Passenger
+      -->
       @if (selectedPassenger !== null) {
         <mat-card-title style="display: flex; align-items: center; gap: 8px"
           >Selected Passenger
@@ -282,7 +286,8 @@
         </div>
       }
 
-      <!--Vehicle-->
+      <!--MARK: Selected Vehicle
+      -->
       @if (selectedVehicle !== null) {
         <mat-card-title style="display: flex; align-items: center; gap: 8px"
           >Selected Vehicle
@@ -396,7 +401,8 @@
         </div>
       }
 
-      <!--Stop-->
+      <!--MARK: Selected Stop
+      -->
       @if (selectedStop !== null) {
         <mat-card-title style="display: flex; align-items: center; gap: 8px"
           >Selected Stop
@@ -473,9 +479,9 @@
                     <div
                       tabindex="0"
                       class="clickable indent"
-                      [matTooltip]="'Click to select the passenger'"
-                      (click)="selectPassenger(vehicle.id)"
-                      (keydown.enter)="selectPassenger(vehicle.id)"
+                      [matTooltip]="'Click to select the vehicle'"
+                      (click)="selectVehicle(vehicle.id)"
+                      (keydown.enter)="selectVehicle(vehicle.id)"
                     >
                       <span>{{ vehicle.name }}</span>
                     </div>

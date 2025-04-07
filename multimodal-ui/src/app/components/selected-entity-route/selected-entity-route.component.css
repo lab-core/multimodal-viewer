@@ -6,7 +6,7 @@
 }
 
 .line {
-    height: 0.5rem;
+    height: 0.75rem;
     width: 2px;
     display: inline-block;
 }
@@ -16,6 +16,8 @@
     flex-direction: row;
     height: 100%;
     gap: 5px;
+    justify-content: start;
+    align-items: center;
 }
 
 .flex-column {
@@ -34,9 +36,18 @@
 }
 
 .route-done {
-    background-color: #028a0f;
+    background-color: #666666;
 }
 
 .route-left {
-    background-color: #666666;
+    background-color: #028a0f;
+}
+
+.clickable-no-padding {
+    cursor: pointer;
+    border-radius: 0.5rem;
+
+    &:hover {
+        background-color: color(srgb 0.101961 0.105882 0.121569 / 0.08);
+    }
 }

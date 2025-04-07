@@ -437,7 +437,7 @@ export class VisualizerComponent implements OnDestroy {
         selectedVehicle === null &&
         selectedStop === null
       ) {
-        this.updateInformationTabControl('selectedEntities');
+        this.updateInformationTabControl('selectedEntity');
       }
     });
 
@@ -735,7 +735,7 @@ export class VisualizerComponent implements OnDestroy {
     if (tab === 'information') this.showSimulationInformation = true;
     else if (tab === 'statistic') this.showStatistic = true;
     else if (tab === 'entities') this.showEntitiesTab = true;
-    else if (tab === 'selectedEntities') this.showSelectedEntityTab = true;
+    else if (tab === 'selectedEntity') this.showSelectedEntityTab = true;
   }
 
   selectPassenger(id: string) {
