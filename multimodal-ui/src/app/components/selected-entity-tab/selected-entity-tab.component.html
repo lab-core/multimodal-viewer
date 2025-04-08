@@ -12,7 +12,7 @@
           ? 'Remove from favorite'
           : 'Add to favorite'
       "
-      (click)="toggleFavoritePassenger(selectedPassenger.id)"
+      (click)="toggleFavoritePassenger(selectedPassenger.id, selectPassenger.name)"
     >
       <mat-icon>{{
         isFavoritePassenger(selectedPassenger.id)
@@ -105,7 +105,7 @@
           ? 'Remove from favorite'
           : 'Add to favorite'
       "
-      (click)="toggleFavoriteVehicle(selectedVehicle.id)"
+      (click)="toggleFavoriteVehicle(selectedVehicle.id, selectVehicle.name)"
     >
       <mat-icon>{{
         isFavoriteVehicle(selectedVehicle.id) ? "favorite" : "favorite_outline"

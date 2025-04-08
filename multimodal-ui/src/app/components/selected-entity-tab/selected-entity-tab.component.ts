@@ -71,16 +71,16 @@ export class SelectedEntityTabComponent {
     return this.favoriteEntitiesService.favPassengerIds().has(id);
   }
 
-  toggleFavoritePassenger(id: string) {
-    this.favoriteEntitiesService.toggleFavoritePassenger(id);
+  toggleFavoritePassenger(id: string, name: string | null) {
+    this.favoriteEntitiesService.toggleFavoritePassenger(id, name ?? id);
   }
 
   isFavoriteVehicle(id: string) {
     return this.favoriteEntitiesService.favVehicleIds().has(id);
   }
 
-  toggleFavoriteVehicle(id: string) {
-    this.favoriteEntitiesService.toggleFavoriteVehicle(id);
+  toggleFavoriteVehicle(id: string, name: string) {
+    this.favoriteEntitiesService.toggleFavoriteVehicle(id, name);
   }
 
   isFavoriteStop(stop: AnimatedStop) {
