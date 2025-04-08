@@ -118,7 +118,7 @@
           ><mat-icon>bar_chart</mat-icon></mat-button-toggle
         >
         <mat-button-toggle value="entities" [matTooltip]="'Entities panel'"
-          ><mat-icon><!--TODO icon selection--></mat-icon></mat-button-toggle
+          ><mat-icon>toc</mat-icon></mat-button-toggle
         >
         <mat-button-toggle
           value="selectedEntity"
@@ -336,7 +336,12 @@
               </mat-card-content>
             </mat-card>
             <mat-card>
-              <mat-card-content>
+              <mat-card-content
+                class="clickable-no-padding"
+                [matTooltip]="'Click to copy'"
+                (click)="copyToClipboard(selectedVehicle.name)"
+                (keydown.enter)="copyToClipboard(selectedVehicle.name)"
+              >
                 <b>Name:</b> {{ selectedVehicle.name }}
               </mat-card-content>
             </mat-card>
