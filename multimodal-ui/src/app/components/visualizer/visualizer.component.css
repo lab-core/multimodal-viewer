@@ -166,14 +166,6 @@ mat-card-title:not(:first-child) {
   resize: horizontal;
 }
 
-button[mat-icon-button] {
-  height: 1em;
-  /* Matches the text size */
-  width: 1em;
-  /* Ensures it's a square */
-  line-height: 1;
-}
-
 .clickable {
   cursor: pointer;
   padding: 0.5rem 0;

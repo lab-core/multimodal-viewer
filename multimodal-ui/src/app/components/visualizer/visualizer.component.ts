@@ -20,7 +20,6 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { firstValueFrom } from 'rxjs';
@@ -28,7 +27,6 @@ import {
   AnimatedPassenger,
   AnimatedStop,
   AnimatedVehicle,
-  getId,
   RUNNING_SIMULATION_STATUSES,
   Simulation,
   SimulationStatus,
@@ -50,8 +48,8 @@ import { SimulationControlBarComponent } from '../simulation-control-bar/simulat
 import { SimulationControlPanelComponent } from '../simulation-control-panel/simulation-control-panel.component';
 import { VisualizerFilterComponent } from '../visualizer-filter/visualizer-filter.component';
 import { EntitiesTabComponent } from '../entities-tab/entities-tab.component';
-import { SelectedEntityRouteComponent } from '../selected-entity-route/selected-entity-route.component';
 import { Router } from '@angular/router';
+import { SelectedEntityTabComponent } from "../selected-entity-tab/selected-entity-tab.component";
 
 export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 
@@ -84,8 +82,8 @@ export interface EntitySearch {
     MatTabsModule,
     RecursiveStatisticComponent,
     EntitiesTabComponent,
-    SelectedEntityRouteComponent,
-  ],
+    SelectedEntityTabComponent
+],
   providers: [VisualizationService, VisualizationFilterService],
   templateUrl: './visualizer.component.html',
   styleUrl: './visualizer.component.css',
@@ -391,7 +389,6 @@ export class VisualizerComponent implements OnDestroy {
     private readonly favoriteEntitiesService: FavoriteEntitiesService,
     private readonly formBuilder: FormBuilder,
     private readonly visualizationFilterService: VisualizationFilterService,
-    private snackBar: MatSnackBar,
   ) {
     this.tabControl = new FormControl('');
     this.tabControl.valueChanges.subscribe((value) => {
@@ -738,45 +735,6 @@ export class VisualizerComponent implements OnDestroy {
     else if (tab === 'selectedEntity') this.showSelectedEntityTab = true;
   }
 
-  selectPassenger(id: string) {
-    this.animationService.selectEntity(id, 'passenger');
-  }
-
-  selectVehicle(id: string) {
-    this.animationService.selectEntity(id, 'vehicle');
-  }
-
-  selectStop(stop: AnimatedStop) {
-    const id = getId(stop);
-    this.animationService.selectEntity(id, 'stop');
-  }
-
-  /** Favorite Entities */
-  toggleFavoriteVehicle(id: string) {
-    this.favoriteEntitiesService.toggleFavoriteVehicle(id);
-  }
-
-  toggleFavoritePassenger(id: string) {
-    this.favoriteEntitiesService.toggleFavoritePassenger(id);
-  }
-
-  toggleFavoriteStop(stop: AnimatedStop) {
-    this.favoriteEntitiesService.toggleFavoriteStop(getId(stop));
-  }
-
-  isFavoriteVehicle(id: string) {
-    return this.favoriteEntitiesService.favVehicleIds().has(id);
-  }
-
-  isFavoritePassenger(id: string) {
-    return this.favoriteEntitiesService.favPassengerIds().has(id);
-  }
-
-  isFavoriteStop(stop: AnimatedStop) {
-    return this.favoriteEntitiesService.favStopIds().has(getId(stop));
-  }
-  /** ***************** */
-
   clearSearch() {
     this.selectedModeSignal.set(null);
     this.searchControl.setValue(null);
@@ -843,26 +801,5 @@ export class VisualizerComponent implements OnDestroy {
     }
     this.searchControl.setValue(null);
     this.animationService.unselectEntity();
-  }
-
-  copyToClipboard(text: string): void {
-    navigator.clipboard
-      .writeText(text)
-      .then(() => {
-        this.snackBar.open('Copied to clipboard!', 'Close', {
-          duration: 2000,
-        });
-      })
-      .catch((err) => {
-        console.error('Failed to copy text: ', err);
-        this.snackBar.open('Failed to copy!', 'Close', {
-          duration: 2000,
-        });
-      });
-  }
-
-  truncateId(id: string): string {
-    const maxLength = 20;
-    return id.length > maxLength ? `${id.slice(0, maxLength)}...` : id;
   }
 }
