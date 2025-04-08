@@ -1,0 +1,252 @@
+<h2 mat-dialog-title>Edit Map Icons</h2>
+
+<mat-dialog-content>
+  <input
+    #fileUpload
+    type="file"
+    class="file-upload"
+    accept=".png, .jpg, .jpeg, .bmp"
+    (change)="onFileSelected($event)"
+  />
+  <input
+    #importUpload
+    type="file"
+    class="file-upload"
+    accept=".json"
+    (change)="onFileImport($event)"
+  />
+  <div>
+    <div class="text-content">
+      <p>The icons should not be too wide or too thin.</p>
+      <p>
+        The uploaded icons will be rescaled to {{ SPRITE_SIZE }}px in width.
+      </p>
+      @if (currentError !== "") {
+        <mat-error>{{ currentError }}</mat-error>
+      }
+    </div>
+
+    <div class="add-container">
+      <button class="add-button" mat-button (click)="addVehicleModeTexture()">
+        Add Custom Icon
+      </button>
+    </div>
+
+    @if (vehicleModeTextures().length === 0) {
+      <p>You have no custom icons.</p>
+    }
+
+    <section class="custom-icon-list">
+      @for (vehicleModeTexture of vehicleModeTextures(); track $index) {
+        <div class="custom-item">
+          <div class="custom-icon">
+            <img width="40" alt="icon" [src]="vehicleModeTexture.url" />
+          </div>
+
+          <button
+            mat-icon-button
+            matTooltip="Upload image"
+            (click)="uploadVehicleModeTexture($index)"
+          >
+            <mat-icon>upload</mat-icon>
+          </button>
+
+          <mat-form-field
+            class="compact-input"
+            appearance="outline"
+            subscriptSizing="dynamic"
+          >
+            <input
+              matInput
+              placeholder="Type a vehicle mode..."
+              [(ngModel)]="vehicleModeTexture.mode"
+            />
+          </mat-form-field>
+
+          <button
+            mat-icon-button
+            [matTooltip]="'Remove custom icon'"
+            (click)="removeVehicleModeTexture($index)"
+          >
+            <mat-icon>cancel</mat-icon>
+          </button>
+        </div>
+      }
+
+      <mat-divider></mat-divider>
+
+      <!-- Default Vehicle -->
+      <div class="custom-item">
+        <div class="custom-icon">
+          <img width="40" alt="icon" [src]="vehicleTextureUrl()" />
+        </div>
+
+        <button
+          mat-icon-button
+          matTooltip="Upload image"
+          (click)="uploadDefaultTexture('vehicle')"
+        >
+          <mat-icon>upload</mat-icon>
+        </button>
+
+        <mat-form-field
+          class="compact-input"
+          appearance="outline"
+          subscriptSizing="dynamic"
+        >
+          <input matInput disabled value="Default Vehicle Icon" />
+        </mat-form-field>
+
+        <button
+          mat-icon-button
+          matTooltip="Reset icon"
+          (click)="resetDefaultTexture('vehicle')"
+        >
+          <mat-icon>restart_alt</mat-icon>
+        </button>
+      </div>
+
+      <!-- Default Passenger -->
+      <div class="custom-item">
+        <div class="custom-icon">
+          <img width="40" alt="icon" [src]="passengerTextureUrl()" />
+        </div>
+
+        <button
+          mat-icon-button
+          matTooltip="Upload image"
+          (click)="uploadDefaultTexture('passenger')"
+        >
+          <mat-icon>upload</mat-icon>
+        </button>
+
+        <mat-form-field
+          class="compact-input"
+          appearance="outline"
+          subscriptSizing="dynamic"
+        >
+          <input matInput disabled value="Default Passenger Icon" />
+        </mat-form-field>
+
+        <button
+          mat-icon-button
+          matTooltip="Reset icon"
+          (click)="resetDefaultTexture('passenger')"
+        >
+          <mat-icon>restart_alt</mat-icon>
+        </button>
+      </div>
+
+      <!-- Default Zoomed Out Vehicle-->
+      <div class="custom-item">
+        <div class="custom-icon">
+          <img width="40" alt="icon" [src]="zoomOutVehicleTextureUrl()" />
+        </div>
+
+        <button
+          mat-icon-button
+          matTooltip="Upload image"
+          (click)="uploadDefaultTexture('zoom-out-vehicle')"
+        >
+          <mat-icon>upload</mat-icon>
+        </button>
+
+        <mat-form-field
+          class="compact-input"
+          appearance="outline"
+          subscriptSizing="dynamic"
+        >
+          <input matInput disabled value="Far Vehicle Icon" />
+        </mat-form-field>
+
+        <button
+          mat-icon-button
+          matTooltip="Reset icon"
+          (click)="resetDefaultTexture('zoom-out-vehicle')"
+        >
+          <mat-icon>restart_alt</mat-icon>
+        </button>
+      </div>
+
+      <!-- Default Zoomed Out Passenger-->
+      <div class="custom-item">
+        <div class="custom-icon">
+          <img width="40" alt="icon" [src]="zoomOutPassengerTextureUrl()" />
+        </div>
+
+        <button
+          mat-icon-button
+          matTooltip="Upload image"
+          (click)="uploadDefaultTexture('zoom-out-passenger')"
+        >
+          <mat-icon>upload</mat-icon>
+        </button>
+
+        <mat-form-field
+          class="compact-input"
+          appearance="outline"
+          subscriptSizing="dynamic"
+        >
+          <input matInput disabled value="Far Passenger Icon" />
+        </mat-form-field>
+
+        <button
+          mat-icon-button
+          matTooltip="Reset icon"
+          (click)="resetDefaultTexture('zoom-out-passenger')"
+        >
+          <mat-icon>restart_alt</mat-icon>
+        </button>
+      </div>
+
+      <!-- Stop -->
+      <div class="custom-item">
+        <div class="custom-icon stop-icon">
+          <img width="40" alt="icon" [src]="stopTextureUrl()" />
+        </div>
+
+        <button
+          mat-icon-button
+          matTooltip="Upload image"
+          (click)="uploadDefaultTexture('stop')"
+        >
+          <mat-icon>upload</mat-icon>
+        </button>
+
+        <mat-form-field
+          class="compact-input"
+          appearance="outline"
+          subscriptSizing="dynamic"
+        >
+          <input matInput disabled value="Stop Icon" />
+        </mat-form-field>
+
+        <button
+          mat-icon-button
+          matTooltip="Reset icon"
+          (click)="resetDefaultTexture('stop')"
+        >
+          <mat-icon>restart_alt</mat-icon>
+        </button>
+      </div>
+    </section>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions>
+  <div class="file-porters">
+    <button mat-icon-button matTooltip="Export JSON" (click)="exportTextures()">
+      <mat-icon>download_for_offline</mat-icon>
+    </button>
+    <button
+      mat-icon-button
+      matTooltip="Import JSON"
+      (click)="importUpload.click()"
+    >
+      <mat-icon>upload_file</mat-icon>
+    </button>
+  </div>
+
+  <button mat-button mat-dialog-close>Cancel</button>
+  <button mat-button (click)="onSave()">Save</button>
+</mat-dialog-actions>

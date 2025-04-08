@@ -54,4 +54,14 @@ export class MapLayersComponent {
 
     this.mapService.addMapTile(result.name, result.url, result.attribution);
   }
+
+  async editMapIcons() {
+    const result = await firstValueFrom(
+      this.dialogService.openEditMapIconsDialog().afterClosed(),
+    );
+
+    if (!result) {
+      return;
+    }
+  }
 }
