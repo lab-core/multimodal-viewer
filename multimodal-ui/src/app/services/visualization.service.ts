@@ -734,7 +734,8 @@ export class VisualizationService {
         continue;
       }
 
-      const lastFirstAnimationData = firstPassengerAnimationData.slice(-1)[0];
+      const lastFirstAnimationData =
+        firstPassengerAnimationData[firstPassengerAnimationData.length - 1];
       const firstSecondAnimationData = secondPassengerAnimationData[0];
 
       const {
@@ -799,7 +800,8 @@ export class VisualizationService {
         continue;
       }
 
-      const lastFirstAnimationData = firstVehicleAnimationData.slice(-1)[0];
+      const lastFirstAnimationData =
+        firstVehicleAnimationData[firstVehicleAnimationData.length - 1];
       const firstSecondAnimationData = secondVehicleAnimationData[0];
 
       const {

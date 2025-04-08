@@ -1165,7 +1165,8 @@ export class SimulationService {
       index: firstStateIndex,
     };
 
-    const lastContinuousUpdate = lastState.updates.slice(-1)[0];
+    const lastContinuousUpdate =
+      lastState.updates[lastState.updates.length - 1];
 
     const lastContinuousState = {
       timestamp: lastContinuousUpdate?.timestamp ?? lastState.timestamp,
@@ -1181,8 +1182,7 @@ export class SimulationService {
     if (currentStateIndex + 1 <= lastStateIndex) {
       endTimestamp = sortedStates[currentStateIndex + 1].timestamp;
     } else {
-      endTimestamp =
-        currentState.updates.slice(-1)[0]?.timestamp ?? currentState.timestamp;
+      endTimestamp = lastContinuousUpdate?.timestamp ?? currentState.timestamp;
     }
 
     return {
@@ -1419,7 +1419,7 @@ export class SimulationService {
 
     // Vehicle is moving
     if (vehicle.previousStops.length > 0 && vehicle.nextStops.length > 0) {
-      const stop = vehicle.previousStops.slice(-1)[0];
+      const stop = vehicle.previousStops[vehicle.previousStops.length - 1];
       const nextStop = vehicle.nextStops[0];
 
       const polyline = this.getPolylineForStops(stop, nextStop, polylines);
@@ -1488,7 +1488,8 @@ export class SimulationService {
       return;
     }
 
-    const lastAnimationData = passengerAnimationData.slice(-1)[0];
+    const lastAnimationData =
+      passengerAnimationData[passengerAnimationData.length - 1];
 
     if (lastAnimationData.startTimestamp === update.timestamp) {
       lastAnimationData.status = status;
@@ -1526,7 +1527,8 @@ export class SimulationService {
 
     const passenger = animatedSimulationState.passengers[passengerId];
 
-    const lastAnimationData = passengerAnimationData.slice(-1)[0];
+    const lastAnimationData =
+      passengerAnimationData[passengerAnimationData.length - 1];
 
     const newAnimationData = this.getPassengerAnimationDataFromPassenger(
       passenger,
@@ -1581,7 +1583,8 @@ export class SimulationService {
       return;
     }
 
-    const lastAnimationData = vehicleAnimationData.slice(-1)[0];
+    const lastAnimationData =
+      vehicleAnimationData[vehicleAnimationData.length - 1];
 
     if (lastAnimationData.startTimestamp === update.timestamp) {
       lastAnimationData.status = status;
@@ -1620,7 +1623,8 @@ export class SimulationService {
 
     const vehicle = animatedSimulationState.vehicles[vehicleId];
 
-    const lastAnimationData = vehicleAnimationData.slice(-1)[0];
+    const lastAnimationData =
+      vehicleAnimationData[vehicleAnimationData.length - 1];
 
     const newAnimationData = this.getVehicleAnimationDataFromVehicle(
       vehicle,
@@ -1649,7 +1653,7 @@ export class SimulationService {
         continue;
       }
 
-      passengerAnimationData.slice(-1)[0].endTimestamp =
+      passengerAnimationData[passengerAnimationData.length - 1].endTimestamp =
         animatedSimulationState.animationData.endTimestamp;
     }
 
@@ -1660,7 +1664,7 @@ export class SimulationService {
         continue;
       }
 
-      vehicleAnimationData.slice(-1)[0].endTimestamp =
+      vehicleAnimationData[vehicleAnimationData.length - 1].endTimestamp =
         animatedSimulationState.animationData.endTimestamp;
     }
   }
@@ -1676,7 +1680,7 @@ export class SimulationService {
       vehicle.previousStops.length > 0 &&
       vehicle.nextStops.length > 0;
     const currentPolylineStartTime = isVehicleTravelling
-      ? vehicle.previousStops.slice(-1)[0].departureTime
+      ? vehicle.previousStops[vehicle.previousStops.length - 1].departureTime
       : null;
     const currentPolylineEndTime = isVehicleTravelling
       ? vehicle.nextStops[0].arrivalTime
