@@ -1118,7 +1118,8 @@ class SimulationVisualizationDataManager:
     __STATES_TIMESTAMP_MINIMUM_LENGTH = 8
 
     # Only send a maximum of __MAX_STATES_AT_ONCE states at once
-    __MAX_STATES_AT_ONCE = 4
+    # This should be at least 2
+    __MAX_STATES_AT_ONCE = 2
 
     # The client keeps a maximum of __MAX_STATES_IN_CLIENT_BEFORE_NECESSARY + __MAX_STATES_IN_CLIENT_AFTER_NECESSARY + 1
     # states in memory

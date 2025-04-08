@@ -342,7 +342,7 @@ export type displayed<T> = T & {
   notDisplayedReason: string | null;
 };
 
-export interface AnimationData {
+export interface EntityAnimationData {
   startTimestamp: number;
   startOrder: number;
   endTimestamp: number | null;
@@ -350,7 +350,7 @@ export interface AnimationData {
   notDisplayedReason: string | null; // null when the data is the last one and the animated environment is not fully built
 }
 
-export interface PassengerAnimationData extends AnimationData {
+export interface PassengerAnimationData extends EntityAnimationData {
   vehicleId: string | null;
   status: PassengerStatus;
 }
@@ -368,7 +368,7 @@ export type AnyPassengerAnimationData =
   | DynamicPassengerAnimationData
   | PassengerAnimationData; // For not displayed passengers
 
-export interface VehicleAnimationData extends AnimationData {
+export interface VehicleAnimationData extends EntityAnimationData {
   status: VehicleStatus;
 
   displayedPolylines: DisplayedPolylines;
@@ -423,27 +423,6 @@ export interface SimulationEnvironment {
   order: number;
 }
 
-export interface AnimatedSimulationEnvironment {
-  finalState: SimulationEnvironment;
-  currentState: SimulationEnvironment & {
-    passengers: Record<string, AnimatedPassenger>;
-    vehicles: Record<string, AnimatedVehicle>;
-    stops: Record<string, AnimatedStop>;
-  };
-
-  /**
-   * A data structure to speed up the animation
-   */
-  animationData: {
-    passengers: Record<string, AnyPassengerAnimationData[]>;
-    vehicles: Record<string, AnyVehicleAnimationData[]>;
-    startTimestamp: number;
-    endTimestamp: number;
-    startOrder: number;
-    endOrder: number;
-  };
-}
-
 export interface RawSimulationEnvironment
   extends Pick<SimulationEnvironment, 'timestamp' | 'order'> {
   passengers: Passenger[];
@@ -459,11 +438,37 @@ export interface SimulationState extends SimulationEnvironment {
   updates: AnySimulationUpdate[];
 }
 
-export interface SimulationStates {
+export interface AnimationData {
+  passengers: Record<string, AnyPassengerAnimationData[]>;
+  vehicles: Record<string, AnyVehicleAnimationData[]>;
+  startTimestamp: number;
+  endTimestamp: number;
+  startOrder: number;
+  endOrder: number;
+}
+
+export interface AnimatedSimulationState extends SimulationState {
+  /**
+   * A data structure to speed up the animation
+   */
+  animationData: AnimationData;
+}
+
+export interface AnimatedSimulationEnvironment extends SimulationEnvironment {
+  /**
+   * A data structure to speed up the animation
+   */
+  animationData: AnimationData;
+  passengers: Record<string, AnimatedPassenger>;
+  vehicles: Record<string, AnimatedVehicle>;
+  stops: Record<string, AnimatedStop>;
+}
+
+export interface AnimatedSimulationStates {
   /**
    * All loaded states
    */
-  states: SimulationState[];
+  states: AnimatedSimulationState[];
 
   /**
    * If true, the client will continue to request more states
