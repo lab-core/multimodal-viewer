@@ -143,8 +143,13 @@
     [class.enable-pointer-events]="showSimulationInformation"
   >
     <mat-card-content class="flex-1">
-      <mat-card-title>Simulation: {{ simulation.name }}</mat-card-title>
+      <mat-card-title>Simulation information</mat-card-title>
       <div class="mat-card-group">
+        <mat-card>
+          <mat-card-content>
+            <b>Visualization name:</b> {{simulation.name}}
+          </mat-card-content>
+        </mat-card>
         <mat-card>
           <mat-card-content>
             <b>Source:</b> {{ simulation.data }}

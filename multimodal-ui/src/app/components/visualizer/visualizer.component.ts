@@ -34,7 +34,6 @@ import {
 import { AnimationService } from '../../services/animation.service';
 import { CommunicationService } from '../../services/communication.service';
 import { DialogService } from '../../services/dialog.service';
-import { FavoriteEntitiesService } from '../../services/favorite-entities.service';
 import { LoadingService } from '../../services/loading.service';
 import { SimulationService } from '../../services/simulation.service';
 import { UserInterfaceService } from '../../services/user-interface.service';
@@ -386,7 +385,6 @@ export class VisualizerComponent implements OnDestroy {
     private readonly animationService: AnimationService,
     private readonly loadingService: LoadingService,
     private readonly visualizationService: VisualizationService,
-    private readonly favoriteEntitiesService: FavoriteEntitiesService,
     private readonly formBuilder: FormBuilder,
     private readonly visualizationFilterService: VisualizationFilterService,
   ) {
