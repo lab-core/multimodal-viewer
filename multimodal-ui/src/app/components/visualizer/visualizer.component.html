@@ -335,6 +335,11 @@
                 <b>Id:</b> {{ truncateId(selectedVehicle.id) }}
               </mat-card-content>
             </mat-card>
+            <mat-card>
+              <mat-card-content>
+                <b>Name:</b> {{ selectedVehicle.name }}
+              </mat-card-content>
+            </mat-card>
             @if (selectedVehicle.mode !== null) {
               <mat-card>
                 <mat-card-content>
@@ -345,6 +350,11 @@
             <mat-card>
               <mat-card-content>
                 <b>Status:</b> {{ selectedVehicle.status }}
+              </mat-card-content>
+            </mat-card>
+            <mat-card>
+              <mat-card-content>
+                <b>Capacity:</b> {{ selectedVehicle.capacity }}
               </mat-card-content>
             </mat-card>
             @let selectedVehicleStop = selectedVehicleStopSignal();
