@@ -13,22 +13,6 @@ import {
   viewChild,
   WritableSignal,
 } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
-import { MatIconModule } from '@angular/material/icon';
-import { MatSliderModule } from '@angular/material/slider';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import hotkeys from 'hotkeys-js';
-import {
-  Simulation,
-  SimulationStates,
-} from '../../interfaces/simulation.model';
-import { SimulationTimePipe } from '../../pipes/simulation-time.pipe';
-import { AnimationService } from '../../services/animation.service';
-import { SimulationService } from '../../services/simulation.service';
-import { VisualizationService } from '../../services/visualization.service';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatMenuModule } from '@angular/material/menu';
 import {
   AbstractControl,
   FormControl,
@@ -37,7 +21,23 @@ import {
   ValidationErrors,
   ValidatorFn,
 } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInput, MatInputModule } from '@angular/material/input';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatSliderModule } from '@angular/material/slider';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import hotkeys from 'hotkeys-js';
+import {
+  AnimatedSimulationStates,
+  Simulation,
+} from '../../interfaces/simulation.model';
+import { SimulationTimePipe } from '../../pipes/simulation-time.pipe';
+import { AnimationService } from '../../services/animation.service';
+import { SimulationService } from '../../services/simulation.service';
+import { VisualizationService } from '../../services/visualization.service';
 
 @Component({
   selector: 'app-simulation-control-bar',
@@ -216,7 +216,7 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
     return this.visualizationService.isVisualizationPausedSignal;
   }
 
-  get simulationStatesSignal(): Signal<SimulationStates> {
+  get simulationStatesSignal(): Signal<AnimatedSimulationStates> {
     return this.simulationService.simulationStatesSignal;
   }
 

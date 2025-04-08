@@ -118,7 +118,7 @@ export class VisualizerComponent implements OnDestroy {
         return [];
       }
 
-      return Object.values(environment.currentState.passengers).filter(
+      return Object.values(environment.passengers).filter(
         (passenger) => passenger.notDisplayedReason === null,
       );
     },
@@ -132,7 +132,7 @@ export class VisualizerComponent implements OnDestroy {
       return [];
     }
 
-    return Object.values(environment.currentState.vehicles).filter(
+    return Object.values(environment.vehicles).filter(
       (vehicle) => vehicle.notDisplayedReason === null,
     );
   });
@@ -149,7 +149,7 @@ export class VisualizerComponent implements OnDestroy {
       return [];
     }
 
-    const passengers = Object.values(environment.currentState.passengers);
+    const passengers = Object.values(environment.passengers);
     const counts: Record<string, number> = {};
 
     for (const passenger of passengers) {
@@ -178,7 +178,7 @@ export class VisualizerComponent implements OnDestroy {
       return [];
     }
 
-    const vehicles = Object.values(environment.currentState.vehicles);
+    const vehicles = Object.values(environment.vehicles);
     const counts: Record<string, number> = {};
 
     for (const vehicle of vehicles) {
@@ -204,7 +204,7 @@ export class VisualizerComponent implements OnDestroy {
         return [];
       }
 
-      return Object.values(environment.currentState.passengers).filter(
+      return Object.values(environment.passengers).filter(
         (passenger) => passenger.notDisplayedReason !== null,
       );
     },
@@ -219,7 +219,7 @@ export class VisualizerComponent implements OnDestroy {
         return [];
       }
 
-      return Object.values(environment.currentState.vehicles).filter(
+      return Object.values(environment.vehicles).filter(
         (vehicle) => vehicle.notDisplayedReason !== null,
       );
     },
@@ -235,7 +235,7 @@ export class VisualizerComponent implements OnDestroy {
         return null;
       }
 
-      return environment.currentState.passengers[selectedPassengerId] ?? null;
+      return environment.passengers[selectedPassengerId] ?? null;
     },
   );
 
@@ -249,7 +249,7 @@ export class VisualizerComponent implements OnDestroy {
         return null;
       }
 
-      return environment.currentState.vehicles[selectedVehicleId] ?? null;
+      return environment.vehicles[selectedVehicleId] ?? null;
     },
   );
 
@@ -262,7 +262,7 @@ export class VisualizerComponent implements OnDestroy {
       return null;
     }
 
-    return environment.currentState.stops[selectedStopId] ?? null;
+    return environment.stops[selectedStopId] ?? null;
   });
 
   readonly selectedPassengerVehicleSignal: Signal<AnimatedVehicle | null> =
@@ -281,9 +281,7 @@ export class VisualizerComponent implements OnDestroy {
       }
 
       const selectedVehicle =
-        environment.currentState.vehicles[
-          selectedPassenger.currentLeg.assignedVehicleId
-        ];
+        environment.vehicles[selectedPassenger.currentLeg.assignedVehicleId];
 
       return selectedVehicle ?? null;
     });
@@ -299,7 +297,7 @@ export class VisualizerComponent implements OnDestroy {
       }
 
       return (
-        Object.values(environment.currentState.stops).find((stop) =>
+        Object.values(environment.stops).find((stop) =>
           stop.passengerIds.includes(selectedPassenger.id),
         ) ?? null
       );
@@ -317,7 +315,7 @@ export class VisualizerComponent implements OnDestroy {
       }
 
       const passengers = selectedVehicle.passengerIds.map(
-        (passengerId) => environment.currentState.passengers[passengerId],
+        (passengerId) => environment.passengers[passengerId],
       );
 
       return passengers;
@@ -334,7 +332,7 @@ export class VisualizerComponent implements OnDestroy {
       }
 
       return (
-        Object.values(environment.currentState.stops).find((stop) =>
+        Object.values(environment.stops).find((stop) =>
           stop.vehicleIds.includes(selectedVehicle.id),
         ) ?? null
       );
@@ -352,7 +350,7 @@ export class VisualizerComponent implements OnDestroy {
       }
 
       const passengers = selectedStop.passengerIds.map(
-        (passengerId) => environment.currentState.passengers[passengerId],
+        (passengerId) => environment.passengers[passengerId],
       );
 
       return passengers;
@@ -370,7 +368,7 @@ export class VisualizerComponent implements OnDestroy {
       }
 
       const vehicles = selectedStop.vehicleIds.map(
-        (vehicleId) => environment.currentState.vehicles[vehicleId],
+        (vehicleId) => environment.vehicles[vehicleId],
       );
 
       return vehicles;
@@ -384,7 +382,7 @@ export class VisualizerComponent implements OnDestroy {
       return [];
     }
 
-    const passengers = Object.values(environment.currentState.passengers).map(
+    const passengers = Object.values(environment.passengers).map(
       (passenger) => ({
         id: passenger.id,
         displayedValue: `[PASSENGER] ${passenger.name ? passenger.name + ' (' + passenger.id + ')' : passenger.id}`,
@@ -393,14 +391,12 @@ export class VisualizerComponent implements OnDestroy {
       }),
     );
 
-    const vehicles = Object.values(environment.currentState.vehicles).map(
-      (vehicle) => ({
-        id: vehicle.id,
-        displayedValue: `[VEHICLE] ${vehicle.id}`,
-        type: 'vehicle' as const,
-        entity: vehicle,
-      }),
-    );
+    const vehicles = Object.values(environment.vehicles).map((vehicle) => ({
+      id: vehicle.id,
+      displayedValue: `[VEHICLE] ${vehicle.id}`,
+      type: 'vehicle' as const,
+      entity: vehicle,
+    }));
 
     return [...passengers, ...vehicles];
   });
@@ -809,7 +805,7 @@ export class VisualizerComponent implements OnDestroy {
       if (!environment) {
         return {};
       }
-      return environment.currentState.statistic;
+      return environment.statistic;
     });
   }
 

@@ -200,9 +200,7 @@ export class AnimationService {
     const selectedVehicleId = this._selectedVehicleIdSignal();
     const selectedPassengerId = this._selectedPassengerIdSignal();
 
-    for (const vehicle of Object.values(
-      simulationEnvironment.currentState.vehicles,
-    )) {
+    for (const vehicle of Object.values(simulationEnvironment.vehicles)) {
       this.addVehicle(vehicle);
       if (selectedVehicleId !== null && vehicle.id == selectedVehicleId) {
         isSelectedVehicleInEnvironment = true;
@@ -219,9 +217,7 @@ export class AnimationService {
 
     let isSelectedPassengerInEnvironment = false;
 
-    for (const passenger of Object.values(
-      simulationEnvironment.currentState.passengers,
-    )) {
+    for (const passenger of Object.values(simulationEnvironment.passengers)) {
       this.addPassenger(passenger);
       if (selectedPassengerId !== null && passenger.id == selectedPassengerId) {
         isSelectedPassengerInEnvironment = true;
@@ -240,9 +236,7 @@ export class AnimationService {
 
     let isSelectedStopInEnvironment = false;
     const selectedStopId = this._selectedStopIdSignal();
-    for (const stop of Object.values(
-      simulationEnvironment.currentState.stops,
-    )) {
+    for (const stop of Object.values(simulationEnvironment.stops)) {
       const stopId = getId(stop);
       if (selectedStopId !== null && stopId == selectedStopId) {
         isSelectedStopInEnvironment = true;
@@ -266,9 +260,7 @@ export class AnimationService {
     visualizationTime: number,
   ) {
     // Don't sync if we don't have the right state
-    if (
-      animatedSimulationEnvironment.currentState.timestamp != visualizationTime
-    ) {
+    if (animatedSimulationEnvironment.timestamp != visualizationTime) {
       console.warn(
         "Animation not synced: simulation timestamp doesn't match visualisation time",
       );

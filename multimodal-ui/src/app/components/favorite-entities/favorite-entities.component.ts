@@ -3,10 +3,10 @@ import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { EntityInfo } from '../../interfaces/entity.model';
 import { AnimationService } from '../../services/animation.service';
 import { FavoriteEntitiesService } from '../../services/favorite-entities.service';
 import { VisualizationService } from '../../services/visualization.service';
-import { EntityInfo } from '../../interfaces/entity.model';
 
 @Component({
   selector: 'app-favorite-entities',
@@ -32,7 +32,7 @@ export class FavoriteEntitiesComponent {
       this.visualizationService.visualizationEnvironmentSignal();
     if (!visualizationEnvironment) return false;
 
-    if (visualizationEnvironment.currentState.vehicles[id]) return true;
+    if (visualizationEnvironment.vehicles[id]) return true;
     else return false;
   }
 
@@ -41,7 +41,7 @@ export class FavoriteEntitiesComponent {
       this.visualizationService.visualizationEnvironmentSignal();
     if (!visualizationEnvironment) return false;
 
-    if (visualizationEnvironment.currentState.passengers[id]) return true;
+    if (visualizationEnvironment.passengers[id]) return true;
     else return false;
   }
 
