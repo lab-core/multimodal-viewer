@@ -48,7 +48,7 @@ import { SimulationControlPanelComponent } from '../simulation-control-panel/sim
 import { VisualizerFilterComponent } from '../visualizer-filter/visualizer-filter.component';
 import { EntitiesTabComponent } from '../entities-tab/entities-tab.component';
 import { Router } from '@angular/router';
-import { SelectedEntityTabComponent } from "../selected-entity-tab/selected-entity-tab.component";
+import { SelectedEntityTabComponent } from '../selected-entity-tab/selected-entity-tab.component';
 
 export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 
@@ -81,8 +81,8 @@ export interface EntitySearch {
     MatTabsModule,
     RecursiveStatisticComponent,
     EntitiesTabComponent,
-    SelectedEntityTabComponent
-],
+    SelectedEntityTabComponent,
+  ],
   providers: [VisualizationService, VisualizationFilterService],
   templateUrl: './visualizer.component.html',
   styleUrl: './visualizer.component.css',
@@ -119,7 +119,6 @@ export class VisualizerComponent implements OnDestroy {
       if (environment === null || selectedPassengerId === null) {
         return null;
       }
-
       return environment.currentState.passengers[selectedPassengerId] ?? null;
     },
   );
@@ -296,7 +295,7 @@ export class VisualizerComponent implements OnDestroy {
   showFavorites = false;
   showLayers = false;
 
-  readonly informationTabControl: FormControl<string | null>;
+  readonly informationTabControl: FormControl<string[] | null>;
   showSimulationInformation = false;
   showStatistic = false;
   showEntitiesTab = false;
@@ -410,9 +409,27 @@ export class VisualizerComponent implements OnDestroy {
       else if (tab === 'layers') this.showLayers = true;
     });
 
-    this.informationTabControl = new FormControl('');
+    this.informationTabControl = new FormControl(['']);
     this.informationTabControl.valueChanges.subscribe((value) => {
-      this.updateInformationTabControl(value);
+      if (this.informationTabControl.value !== null) {
+        if (this.informationTabControl.value.length > 1) {
+          this.informationTabControl.setValue([
+            this.informationTabControl.value[
+              this.informationTabControl.value.length - 1
+            ],
+          ]);
+          return;
+        }
+
+        this.showSimulationInformation =
+          this.informationTabControl.value[0] === 'information';
+        this.showStatistic =
+          this.informationTabControl.value[0] === 'statistic';
+        this.showEntitiesTab =
+          this.informationTabControl.value[0] === 'entities';
+        this.showSelectedEntityTab =
+          this.informationTabControl.value[0] === 'selectedEntity';
+      }
     });
 
     this.searchControl = this.formBuilder.control('');
@@ -432,7 +449,7 @@ export class VisualizerComponent implements OnDestroy {
         selectedVehicle === null &&
         selectedStop === null
       ) {
-        this.updateInformationTabControl('selectedEntity');
+        this.informationTabControl.setValue(['']);
       }
     });
 
@@ -714,25 +731,6 @@ export class VisualizerComponent implements OnDestroy {
   }
 
   // MARK: Handlers
-  updateInformationTabControl(value: string | null) {
-    const values = value as unknown as string[];
-    if (values.length > 1) {
-      const lastSelected = values[values.length - 1];
-      this.informationTabControl.setValue([lastSelected] as unknown as string);
-      return;
-    }
-    const tab = values[0];
-
-    this.showSimulationInformation = false;
-    this.showStatistic = false;
-    this.showEntitiesTab = false;
-    this.showSelectedEntityTab = false;
-    if (tab === 'information') this.showSimulationInformation = true;
-    else if (tab === 'statistic') this.showStatistic = true;
-    else if (tab === 'entities') this.showEntitiesTab = true;
-    else if (tab === 'selectedEntity') this.showSelectedEntityTab = true;
-  }
-
   clearSearch() {
     this.selectedModeSignal.set(null);
     this.searchControl.setValue(null);
