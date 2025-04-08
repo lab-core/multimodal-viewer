@@ -1,24 +1,25 @@
 <mat-card appearance="outlined">
   <mat-card-content>
-    @let passengers = favPassengerIds();
-    @let vehicles = favVehicleIds();
-    @let stops = favStopIds();
+    @let passengers = favPassengers();
+    @let vehicles = favVehicles();
+    @let stops = favStops();
 
-    @let all = allFavIdsSignal();
+    @let nbFavorites = favoriteCount();
     <p class="title">Favorites</p>
     <div class="container">
-      @if (all.size === 0) {
+      @if (nbFavorites === 0) {
         <p>You have no favorites in this simulation.</p>
       } @else {
-        @if (vehicles.size > 0) {
+        @if (vehicles.length > 0) {
           <div class="content">
-            @for (id of vehicles; track id) {
+            @for (favorite of vehicles; track favorite.id) {
               <mat-chip
-                [class.disabled]="!isVehicleInEnvironment(id)"
-                (click)="selectVehicle(id)"
-                (removed)="toggleFavoriteVehicle(id)"
+                [class.disabled]="!isVehicleInEnvironment(favorite.id)"
+                (click)="selectVehicle(favorite.id)"
+                (removed)="toggleFavoriteVehicle(favorite.id, favorite.name)"
               >
-                <mat-icon matChipAvatar>directions_car</mat-icon>{{ id }}
+                <mat-icon matChipAvatar>directions_car</mat-icon
+                >{{ favorite.name }}
                 <button class="remove-btn" matChipRemove>
                   <mat-icon>favorite</mat-icon>
                 </button>
@@ -26,16 +27,16 @@
             }
           </div>
         }
-        @if (passengers.size > 0) {
+        @if (passengers.length > 0) {
           <div class="content">
-            @for (id of passengers; track id) {
+            @for (favorite of passengers; track favorite.id) {
               <mat-chip
-                [class.disabled]="!isPassengerInEnvironment(id)"
-                (click)="selectPassenger(id)"
-                (removed)="toggleFavoritePassenger(id)"
+                [class.disabled]="!isPassengerInEnvironment(favorite.id)"
+                (click)="selectPassenger(favorite.id)"
+                (removed)="toggleFavoritePassenger(favorite.id, favorite.name)"
               >
                 <mat-icon matChipAvatar>accessibility</mat-icon
-                ><span class="chip-text">{{ id }}</span>
+                ><span class="chip-text">{{ favorite.name }}</span>
                 <button class="remove-btn" matChipRemove>
                   <mat-icon>favorite</mat-icon>
                 </button>
@@ -44,15 +45,15 @@
           </div>
         }
 
-        @if (stops.size > 0) {
+        @if (stops.length > 0) {
           <div class="content">
-            @for (id of stops; track id) {
+            @for (favorite of stops; track favorite.id) {
               <mat-chip
-                (click)="selectStop(id)"
-                (removed)="toggleFavoriteStop(id)"
+                (click)="selectStop(favorite.id)"
+                (removed)="toggleFavoriteStop(favorite.id)"
               >
                 <mat-icon matChipAvatar>place</mat-icon
-                ><span class="chip-text">{{ id }}</span>
+                ><span class="chip-text">{{ favorite.name }}</span>
                 <button class="remove-btn" matChipRemove>
                   <mat-icon>favorite</mat-icon>
                 </button>

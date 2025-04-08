@@ -860,12 +860,12 @@ export class VisualizerComponent implements OnDestroy {
   }
 
   /** Favorite Entitites */
-  toggleFavoriteVehicle(id: string) {
-    this.favoriteEntitiesService.toggleFavoriteVehicle(id);
+  toggleFavoriteVehicle(id: string, name: string) {
+    this.favoriteEntitiesService.toggleFavoriteVehicle(id, name);
   }
 
-  toggleFavoritePassenger(id: string) {
-    this.favoriteEntitiesService.toggleFavoritePassenger(id);
+  toggleFavoritePassenger(id: string, name: string | null) {
+    this.favoriteEntitiesService.toggleFavoritePassenger(id, name ?? id);
   }
 
   toggleFavoriteStop(stop: AnimatedStop) {

@@ -240,7 +240,12 @@
                 <button
                   mat-icon-button
                   disableRipple
-                  (click)="toggleFavoritePassenger(selectedPassenger.id)"
+                  (click)="
+                    toggleFavoritePassenger(
+                      selectedPassenger.id,
+                      selectedPassenger.name
+                    )
+                  "
                 >
                   @let icon =
                     isFavoritePassenger(selectedPassenger.id)
@@ -311,7 +316,12 @@
                 <button
                   mat-icon-button
                   disableRipple
-                  (click)="toggleFavoriteVehicle(selectedVehicle.id)"
+                  (click)="
+                    toggleFavoriteVehicle(
+                      selectedVehicle.id,
+                      selectedVehicle.name
+                    )
+                  "
                 >
                   @let icon =
                     isFavoriteVehicle(selectedVehicle.id)

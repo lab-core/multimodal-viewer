@@ -17,6 +17,7 @@ import {
   DualTextEntity,
   Entity,
   EntityFilterMode,
+  EntityInfo,
   TextEntity,
 } from '../interfaces/entity.model';
 import {
@@ -54,19 +55,23 @@ export class AnimationService {
     new PIXI.Point(0, 0),
   );
 
-  private readonly _nearVehiclesSignal: WritableSignal<string[]> = signal([]);
-  private readonly _nearPassengersSignal: WritableSignal<string[]> = signal([]);
-  private readonly _nearStopsSignal: WritableSignal<string[]> = signal([]);
+  private readonly _nearVehiclesSignal: WritableSignal<EntityInfo[]> = signal(
+    [],
+  );
+  private readonly _nearPassengersSignal: WritableSignal<EntityInfo[]> = signal(
+    [],
+  );
+  private readonly _nearStopsSignal: WritableSignal<EntityInfo[]> = signal([]);
 
-  get nearVehiclesSignal(): Signal<string[]> {
+  get nearVehiclesSignal(): Signal<EntityInfo[]> {
     return this._nearVehiclesSignal;
   }
 
-  get nearPassengersSignal(): Signal<string[]> {
+  get nearPassengersSignal(): Signal<EntityInfo[]> {
     return this._nearPassengersSignal;
   }
 
-  get nearStopsSignal(): Signal<string[]> {
+  get nearStopsSignal(): Signal<EntityInfo[]> {
     return this._nearStopsSignal;
   }
 
@@ -980,9 +985,9 @@ export class AnimationService {
     const minVisualDistance = 20 / this.utils.getScale();
     const point = this.utils.latLngToLayerPoint(event.latlng);
 
-    const nearVehicles = [];
-    const nearPassengers = [];
-    const nearStops = [];
+    const nearVehicles: EntityInfo[] = [];
+    const nearPassengers: EntityInfo[] = [];
+    const nearStops: EntityInfo[] = [];
 
     // Distances for all vehicles
     for (const vehicle of this.vehicles) {
@@ -991,7 +996,8 @@ export class AnimationService {
         point,
         vehicle.sprite.parent.position,
       );
-      if (distance <= minVisualDistance) nearVehicles.push(vehicle.data.id);
+      if (distance <= minVisualDistance)
+        nearVehicles.push({ id: vehicle.data.id, name: vehicle.data.name });
     }
 
     // Distances for all passengers
@@ -1001,7 +1007,11 @@ export class AnimationService {
         point,
         passenger.sprite.parent.position,
       );
-      if (distance <= minVisualDistance) nearPassengers.push(passenger.data.id);
+      if (distance <= minVisualDistance)
+        nearPassengers.push({
+          id: passenger.data.id,
+          name: passenger.data.name ?? passenger.data.id,
+        });
     }
 
     // Distances for all stops
@@ -1015,7 +1025,10 @@ export class AnimationService {
         point,
         stop.sprite.parent.position,
       );
-      if (distance <= minVisualDistance) nearStops.push(getId(stop.data));
+      if (distance <= minVisualDistance) {
+        const id = getId(stop.data);
+        nearStops.push({ id, name: id });
+      }
     }
 
     const allNearEntities = [...nearVehicles, ...nearPassengers, ...nearStops];
@@ -1026,15 +1039,15 @@ export class AnimationService {
     }
     // One vehicle
     else if (allNearEntities.length === 1 && nearVehicles.length === 1) {
-      this.selectVehicle(nearVehicles[0]);
+      this.selectVehicle(nearVehicles[0].id);
     }
     // One passenger
     else if (allNearEntities.length === 1 && nearPassengers.length === 1) {
-      this.selectPassenger(nearPassengers[0]);
+      this.selectPassenger(nearPassengers[0].id);
     }
     // One stop
     else if (allNearEntities.length === 1 && nearStops.length === 1) {
-      this.selectStop(nearStops[0]);
+      this.selectStop(nearStops[0].id);
     }
     // More than one
     else {
