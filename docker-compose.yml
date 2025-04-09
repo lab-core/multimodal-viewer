@@ -7,13 +7,13 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
     ports:
-      - "4200:80"
+      - "8085:80"
     networks:
       - multimodal-network
     depends_on:
       - backend
     environment:
-      - BACKEND_URL=http://backend:5000
+      - BACKEND_URL=http://backend:8090
 
   backend:
     container_name: backend
@@ -21,7 +21,7 @@ services:
       context: .
       dockerfile: Dockerfile.api
     ports:
-      - "5000:5000"
+      - "8090:8090"
     volumes:
       - ./multimodal-server:/app/multimodal-server
       - ./data:/app/data

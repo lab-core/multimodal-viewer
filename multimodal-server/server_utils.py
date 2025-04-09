@@ -8,7 +8,7 @@ from flask import request
 from flask_socketio import emit
 
 HOST = os.getenv("SERVER_HOST", "127.0.0.1")
-PORT = 5000
+PORT = 8090
 
 CLIENT_ROOM = "client"
 SIMULATION_ROOM = "simulation"
