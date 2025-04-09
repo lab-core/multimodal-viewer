@@ -94,10 +94,10 @@ class SimulationVisualizationDataCollector(DataCollector):
 
     def __init__(
         self,
-        name: str,
-        input_data_description: str,
         data_analyzer: DataAnalyzer,
         statistics_delta_time: int = 10,
+        name: str = "simulation",
+        input_data_description: str = "unknown",
         simulation_id: str | None = None,
         max_duration: float | None = None,
         offline: bool = False,
