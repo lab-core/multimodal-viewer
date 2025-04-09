@@ -20,7 +20,7 @@ import {
   DynamicPassengerAnimationData,
   DynamicVehicleAnimationData,
   getAllStops,
-  getId,
+  getStopId,
   Leg,
   Passenger,
   PASSENGER_STATUSES,
@@ -692,6 +692,8 @@ export class SimulationService {
       return null;
     }
 
+    const id = getStopId(position);
+
     const capacity = data.capacity ?? DEFAULT_STOP_CAPACITY;
 
     const label = data.label;
@@ -705,7 +707,7 @@ export class SimulationService {
       return null;
     }
 
-    return { arrivalTime, departureTime, position, capacity, label };
+    return { arrivalTime, departureTime, position, capacity, label, id };
   }
 
   private extractSimulationEnvironment(
@@ -1412,6 +1414,7 @@ export class SimulationService {
       const staticAnimationData: StaticVehicleAnimationData = {
         ...basicAnimationData,
         position: vehicle.currentStop.position,
+        stopId: vehicle.currentStop.id,
       };
 
       return staticAnimationData;
@@ -1717,7 +1720,7 @@ export class SimulationService {
         continue;
       }
 
-      displayedPolylines.polylines.push({ ...polyline });
+      displayedPolylines.polylines.push(polyline);
     }
 
     return displayedPolylines;
@@ -1732,7 +1735,7 @@ export class SimulationService {
       return null;
     }
 
-    const polylineId = `${getId(stop)},${getId(nextStop)}`;
+    const polylineId = stop.id + ',' + nextStop.id;
     return polylines[polylineId] ?? null;
   }
 }

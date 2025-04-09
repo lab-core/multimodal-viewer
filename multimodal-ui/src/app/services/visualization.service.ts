@@ -17,7 +17,6 @@ import {
   AnimationData,
   DynamicPassengerAnimationData,
   getAllStops,
-  getId,
   PassengerAnimationData,
   RUNNING_SIMULATION_STATUSES,
   Simulation,
@@ -552,8 +551,8 @@ export class VisualizationService {
     for (const vehicle of Object.values(environment.vehicles)) {
       const vehicleStops = getAllStops(vehicle);
       for (const stop of vehicleStops) {
-        if (stops[getId(stop)] === undefined) {
-          stops[getId(stop)] = {
+        if (stops[stop.id] === undefined) {
+          stops[stop.id] = {
             ...stop,
             passengerIds: [],
             vehicleIds: [],
@@ -603,7 +602,7 @@ export class VisualizationService {
       ) {
         const staticAnimationData =
           currentAnimationData as StaticVehicleAnimationData;
-        const stopId = getId(staticAnimationData);
+        const stopId = staticAnimationData.stopId;
 
         const stop = stops[stopId];
 
@@ -670,7 +669,7 @@ export class VisualizationService {
           continue;
         }
 
-        const animatedStop = stops[getId(stop)];
+        const animatedStop = stops[stop.id];
 
         if (animatedStop === undefined) {
           console.error('Animated stop not found for passenger');
