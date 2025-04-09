@@ -184,7 +184,7 @@
       <mat-accordion>
         <mat-expansion-panel>
           <mat-expansion-panel-header>
-            <mat-panel-title> Passengers on board </mat-panel-title>
+            <mat-panel-title> Passengers on board ({{selectedVehiclePassengers.length}})</mat-panel-title>
           </mat-expansion-panel-header>
           <div class="flex-column gap-0-5-rem">
             @for (passenger of selectedVehiclePassengers; track passenger.id) {
@@ -267,7 +267,7 @@
       <mat-accordion>
         <mat-expansion-panel>
           <mat-expansion-panel-header>
-            <mat-panel-title> Passengers at stop </mat-panel-title>
+            <mat-panel-title> Passengers at stop ({{selectedStopPassengers.length}})</mat-panel-title>
           </mat-expansion-panel-header>
           <div class="flex-column gap-0-5-rem">
             @for (passenger of selectedStopPassengers; track passenger.id) {
@@ -286,11 +286,35 @@
       </mat-accordion>
     }
 
+    <!--TODO completed trip list-->
+    <!-- @if (selectedStopPassengersCompleted.length > 0) {
+      <mat-accordion>
+        <mat-expansion-panel>
+          <mat-expansion-panel-header>
+            <mat-panel-title> Trip completed ({{selectedStopPassengersCompleted.length}})</mat-panel-title>
+          </mat-expansion-panel-header>
+          <div class="flex-column gap-0-5-rem">
+            @for (passenger of selectedStopPassengersCompleted; track passenger.id) {
+              <div
+                tabindex="0"
+                class="clickable indent"
+                [matTooltip]="'Select passenger'"
+                (click)="selectPassenger(passenger.id)"
+                (keydown.enter)="selectPassenger(passenger.id)"
+              >
+                <span>{{ passenger.name }}</span>
+              </div>
+            }
+          </div>
+        </mat-expansion-panel>
+      </mat-accordion>
+    } -->
+
     @if (selectedStopVehicles.length > 0) {
       <mat-accordion>
         <mat-expansion-panel>
           <mat-expansion-panel-header>
-            <mat-panel-title> Vehicle at stop </mat-panel-title>
+            <mat-panel-title> Vehicle at stop ({{selectedStopVehicles.length}})</mat-panel-title>
           </mat-expansion-panel-header>
           <div class="flex-column gap-0-5-rem">
             @for (vehicle of selectedStopVehicles; track vehicle.id) {
