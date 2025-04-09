@@ -12,7 +12,9 @@
           ? 'Remove from favorite'
           : 'Add to favorite'
       "
-      (click)="toggleFavoritePassenger(selectedPassenger.id, selectedPassenger.name)"
+      (click)="
+        toggleFavoritePassenger(selectedPassenger.id, selectedPassenger.name)
+      "
     >
       <mat-icon>{{
         isFavoritePassenger(selectedPassenger.id)
@@ -67,7 +69,7 @@
         <mat-card>
           <mat-card-content
             class="clickable-no-padding"
-            [matTooltip]="'Click to select the stop'"
+            [matTooltip]="'Select stop'"
             (click)="selectStop(selectedPassengerStop)"
             (keydown.enter)="selectStop(selectedPassengerStop)"
           >
@@ -79,7 +81,7 @@
         <mat-card>
           <mat-card-content
             class="clickable-no-padding"
-            [matTooltip]="'Click to select the vehicle'"
+            [matTooltip]="'Select vehicle'"
             (click)="selectVehicle(selectedPassengerVehicle.id)"
             (keydown.enter)="selectVehicle(selectedPassengerVehicle.id)"
           >
@@ -137,7 +139,12 @@
       </mat-card>
       @if (selectedVehicle.mode !== null) {
         <mat-card>
-          <mat-card-content>
+          <mat-card-content
+            class="clickable-no-padding"
+            [matTooltip]="'Select stop'"
+            (click)="copyToClipboard(selectedVehicle.mode)"
+            (keydown.enter)="copyToClipboard(selectedVehicle.mode)"
+          >
             <b>Mode:</b> {{ selectedVehicle.mode }}
           </mat-card-content>
         </mat-card>
@@ -156,7 +163,7 @@
         <mat-card>
           <mat-card-content
             class="clickable-no-padding"
-            [matTooltip]="'Click to select the stop'"
+            [matTooltip]="'Select stop'"
             (click)="selectStop(selectedVehicleStop)"
             (keydown.enter)="selectStop(selectedVehicleStop)"
           >
@@ -184,7 +191,7 @@
               <div
                 tabindex="0"
                 class="clickable indent"
-                [matTooltip]="'Click to select the passenger'"
+                [matTooltip]="'Select passenger'"
                 (click)="selectPassenger(passenger.id)"
                 (keydown.enter)="selectPassenger(passenger.id)"
               >
@@ -267,7 +274,7 @@
               <div
                 tabindex="0"
                 class="clickable indent"
-                [matTooltip]="'Click to select the passenger'"
+                [matTooltip]="'Select passenger'"
                 (click)="selectPassenger(passenger.id)"
                 (keydown.enter)="selectPassenger(passenger.id)"
               >
@@ -290,7 +297,7 @@
               <div
                 tabindex="0"
                 class="clickable indent"
-                [matTooltip]="'Click to select the vehicle'"
+                [matTooltip]="'Select vehicle'"
                 (click)="selectVehicle(vehicle.id)"
                 (keydown.enter)="selectVehicle(vehicle.id)"
               >

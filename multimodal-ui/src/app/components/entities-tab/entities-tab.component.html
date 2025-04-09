@@ -24,7 +24,7 @@
                         passenger of passengerStatusAndCount.passengers;
                         track passenger.id
                         ) {
-                        <div tabindex="0" class="clickable indent" [matTooltip]="'Click to select the passenger'"
+                        <div tabindex="0" class="clickable indent" [matTooltip]="'Select passenger'"
                             (click)="selectPassenger(passenger.id)" (keydown.enter)="selectPassenger(passenger.id)">
                             <span>{{ passenger.name }}</span>
                         </div>
@@ -58,7 +58,7 @@
                     </mat-expansion-panel-header>
                     <div class="flex-column gap-0-5-rem">
                         @for (vehicle of vehicleStatusAndCount.vehicles; track vehicle.id) {
-                        <div tabindex="0" class="clickable indent" [matTooltip]="'Click to select the vehicle'"
+                        <div tabindex="0" class="clickable indent" [matTooltip]="'Select vehicle'"
                             (click)="selectVehicle(vehicle.id)" (keydown.enter)="selectVehicle(vehicle.id)">
                             <span>{{ vehicle.id }}</span>
                         </div>
