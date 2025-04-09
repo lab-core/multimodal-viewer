@@ -29,7 +29,6 @@ import {
   AnimatedPassenger,
   AnimatedStop,
   AnimatedVehicle,
-  getId,
   RUNNING_SIMULATION_STATUSES,
   Simulation,
   SimulationStatus,
@@ -851,8 +850,7 @@ export class VisualizerComponent implements OnDestroy {
   }
 
   selectStop(stop: AnimatedStop) {
-    const id = getId(stop);
-    this.animationService.selectEntity(id, 'stop');
+    this.animationService.selectEntity(stop.id, 'stop');
   }
 
   /** Favorite Entitites */
@@ -865,7 +863,7 @@ export class VisualizerComponent implements OnDestroy {
   }
 
   toggleFavoriteStop(stop: AnimatedStop) {
-    this.favoriteEntitiesService.toggleFavoriteStop(getId(stop));
+    this.favoriteEntitiesService.toggleFavoriteStop(stop.id);
   }
 
   isFavoriteVehicle(id: string) {
@@ -877,7 +875,7 @@ export class VisualizerComponent implements OnDestroy {
   }
 
   isFavoriteStop(stop: AnimatedStop) {
-    return this.favoriteEntitiesService.favStopIds().has(getId(stop));
+    return this.favoriteEntitiesService.favStopIds().has(stop.id);
   }
   /** ***************** */
 

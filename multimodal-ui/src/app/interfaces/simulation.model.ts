@@ -234,6 +234,7 @@ export interface Stop {
   arrivalTime: number;
   departureTime: number | null; // null means infinite
   position: Position;
+  id: string;
   capacity: number;
   label: string;
 }
@@ -376,6 +377,7 @@ export interface VehicleAnimationData extends EntityAnimationData {
 
 export interface StaticVehicleAnimationData extends VehicleAnimationData {
   position: Position;
+  stopId: string;
 }
 
 export interface DynamicVehicleAnimationData extends VehicleAnimationData {
@@ -526,6 +528,6 @@ export function getAllStops(vehicle: Vehicle): Stop[] {
   );
 }
 
-export function getId(stop: { position: Position }): string {
-  return `${stop.position.latitude},${stop.position.longitude}`;
+export function getStopId(position: Position): string {
+  return '' + position.latitude + ',' + position.longitude;
 }

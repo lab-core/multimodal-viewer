@@ -29,7 +29,6 @@ import {
   DynamicPassengerAnimationData,
   DynamicVehicleAnimationData,
   getAllStops,
-  getId,
   Polyline,
   StaticPassengerAnimationData,
   StaticVehicleAnimationData,
@@ -237,10 +236,9 @@ export class AnimationService {
     let isSelectedStopInEnvironment = false;
     const selectedStopId = this._selectedStopIdSignal();
     for (const stop of Object.values(simulationEnvironment.stops)) {
-      const stopId = getId(stop);
-      if (selectedStopId !== null && stopId == selectedStopId) {
+      if (selectedStopId !== null && stop.id == selectedStopId) {
         isSelectedStopInEnvironment = true;
-        this.highlightEntityId(stopId, 'stop');
+        this.highlightEntityId(stop.id, 'stop');
       }
     }
 
@@ -345,7 +343,7 @@ export class AnimationService {
       const vehicle = vehicleEntity.data;
       const allStops = getAllStops(vehicle);
       for (const stop of allStops) {
-        if (this.passengerStopEntitiesByPosition[getId(stop)] !== undefined)
+        if (this.passengerStopEntitiesByPosition[stop.id] !== undefined)
           continue;
 
         const stopContainer = new PIXI.Container();
@@ -400,7 +398,7 @@ export class AnimationService {
         this.container.addChild(stopContainer);
         this.passengerStopEntities.push(entity);
 
-        this.passengerStopEntitiesByPosition[getId(stop)] = entity;
+        this.passengerStopEntitiesByPosition[stop.id] = entity;
       }
     }
   }
@@ -720,8 +718,7 @@ export class AnimationService {
           passengerEntity.sprite.parent.y = point.y;
 
           if (passenger.status !== 'complete') {
-            const animatedStop =
-              this.passengerStopEntitiesByPosition[getId(stop)];
+            const animatedStop = this.passengerStopEntitiesByPosition[stop.id];
 
             if (animatedStop) {
               animatedStop.data.passengerIds.push(passenger.id);
@@ -1018,8 +1015,7 @@ export class AnimationService {
         stop.sprite.parent.position,
       );
       if (distance <= minVisualDistance) {
-        const id = getId(stop.data);
-        nearStops.push({ id, name: id });
+        nearStops.push({ id: stop.data.id, name: stop.data.id });
       }
     }
 
