@@ -6,6 +6,7 @@ import {
   OnDestroy,
   signal,
   Signal,
+  untracked,
   ViewChild,
   WritableSignal,
 } from '@angular/core';
@@ -439,18 +440,29 @@ export class VisualizerComponent implements OnDestroy {
 
     // MARK: Effects
     effect(() => {
-      const selectedPassenger = this.selectedPassengerSignal();
-      const selectedVehicle = this.selectedVehicleSignal();
-      const selectedStop = this.selectedStopSignal();
-
-      if (
-        this.showSelectedEntityTab &&
-        selectedPassenger === null &&
-        selectedVehicle === null &&
-        selectedStop === null
-      ) {
-        this.informationTabControl.setValue(['']);
-      }
+      this.animationService.selectedPassengerIdSignal();
+      this.animationService.selectedVehicleIdSignal();
+      this.animationService.selectedStopIdSignal();
+      untracked(() => {
+        const selectedPassenger = this.selectedPassengerSignal();
+        const selectedVehicle = this.selectedVehicleSignal();
+        const selectedStop = this.selectedStopSignal();
+        if (
+          this.showSelectedEntityTab &&
+          selectedPassenger === null &&
+          selectedVehicle === null &&
+          selectedStop === null
+        ) {
+          this.informationTabControl.setValue(['']);
+        } else if (
+          !this.showSelectedEntityTab &&
+          (selectedPassenger !== null ||
+          selectedVehicle !== null ||
+          selectedStop !== null)
+        ) {
+          this.informationTabControl.setValue(['selectedEntity']);
+        }
+      });
     });
 
     effect(() => {
