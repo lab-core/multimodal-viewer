@@ -437,6 +437,7 @@ export class AnimationService {
         entity.sprite.texture = this.spriteService.getCurrentPassengerTexture();
         entity.otherSprite.texture = this.spriteService.stopTexture;
         entity.text.visible = !this.spriteService.useZoomedOutSprites;
+        entity.otherSprite.visible = false;
         entity.data = {
           ...stop,
           passengerIds: [],
@@ -452,8 +453,6 @@ export class AnimationService {
 
         entity.sprite.parent.x = point.x;
         entity.sprite.parent.y = point.y;
-        // stopContainer.x = point.x;
-        // stopContainer.y = point.y;
 
         this.container.addChild(entity.sprite.parent);
         this.passengerStopEntities.push(entity);
