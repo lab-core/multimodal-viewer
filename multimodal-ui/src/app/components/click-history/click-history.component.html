@@ -1,0 +1,14 @@
+<mat-card appearance="outlined">
+  <mat-card-content>
+    <p class="title">History</p>
+    <div class="container">
+      <div class="content">
+        @for (item of history(); track item.id) {
+          <mat-chip>
+            <mat-icon matChipAvatar>directions_car</mat-icon>{{ item.name }}
+          </mat-chip>
+        }
+      </div>
+    </div>
+  </mat-card-content>
+</mat-card>

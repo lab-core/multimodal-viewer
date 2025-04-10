@@ -50,6 +50,7 @@ import { VisualizerFilterComponent } from '../visualizer-filter/visualizer-filte
 import { EntitiesTabComponent } from '../entities-tab/entities-tab.component';
 import { Router } from '@angular/router';
 import { SelectedEntityTabComponent } from '../selected-entity-tab/selected-entity-tab.component';
+import { ClickHistoryComponent } from '../click-history/click-history.component';
 
 export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 
@@ -66,6 +67,7 @@ export interface EntitySearch {
     SimulationControlBarComponent,
     VisualizerFilterComponent,
     FavoriteEntitiesComponent,
+    ClickHistoryComponent,
     MapLayersComponent,
     MatCardModule,
     MatButtonModule,
@@ -294,6 +296,7 @@ export class VisualizerComponent implements OnDestroy {
   showSearch = false;
   showFilter = false;
   showFavorites = false;
+  showClickHistory = false;
   showLayers = false;
 
   readonly informationTabControl: FormControl<string[] | null>;
@@ -403,10 +406,12 @@ export class VisualizerComponent implements OnDestroy {
       this.showSearch = false;
       this.showFilter = false;
       this.showFavorites = false;
+      this.showClickHistory = false;
       this.showLayers = false;
       if (tab === 'search') this.showSearch = true;
       else if (tab === 'filter') this.showFilter = true;
       else if (tab === 'favorites') this.showFavorites = true;
+      else if (tab === 'history') this.showClickHistory = true;
       else if (tab === 'layers') this.showLayers = true;
     });
 
@@ -457,8 +462,8 @@ export class VisualizerComponent implements OnDestroy {
         } else if (
           !this.showSelectedEntityTab &&
           (selectedPassenger !== null ||
-          selectedVehicle !== null ||
-          selectedStop !== null)
+            selectedVehicle !== null ||
+            selectedStop !== null)
         ) {
           this.informationTabControl.setValue(['selectedEntity']);
         }

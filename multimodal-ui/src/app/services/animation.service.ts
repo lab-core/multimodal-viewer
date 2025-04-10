@@ -37,6 +37,7 @@ import {
 } from '../interfaces/simulation.model';
 import { FavoriteEntitiesService } from './favorite-entities.service';
 import { SpritesService } from './sprites.service';
+import { ClickHistoryService } from './click-history.service';
 
 @Injectable({
   providedIn: 'root',
@@ -177,6 +178,7 @@ export class AnimationService {
   constructor(
     private readonly favoriteEntitiesService: FavoriteEntitiesService,
     private readonly spriteService: SpritesService,
+    private readonly clickHistoryService: ClickHistoryService,
   ) {
     void PIXI.Assets.load(this.BITMAP_TEXT_URL);
   }
@@ -1040,14 +1042,26 @@ export class AnimationService {
     // One vehicle
     else if (allNearEntities.length === 1 && nearVehicles.length === 1) {
       this.selectVehicle(nearVehicles[0].id);
+      this.clickHistoryService.addHistory(
+        nearVehicles[0].id,
+        nearVehicles[0].name,
+      );
     }
     // One passenger
     else if (allNearEntities.length === 1 && nearPassengers.length === 1) {
       this.selectPassenger(nearPassengers[0].id);
+      this.clickHistoryService.addHistory(
+        nearVehicles[0].id,
+        nearVehicles[0].name,
+      );
     }
     // One stop
     else if (allNearEntities.length === 1 && nearStops.length === 1) {
       this.selectStop(nearStops[0].id);
+      this.clickHistoryService.addHistory(
+        nearVehicles[0].id,
+        nearVehicles[0].name,
+      );
     }
     // More than one
     else {
