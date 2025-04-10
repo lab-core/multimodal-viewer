@@ -120,7 +120,7 @@ export class VisualizerComponent implements OnDestroy {
       if (environment === null || selectedPassengerId === null) {
         return null;
       }
-      return environment.currentState.passengers[selectedPassengerId] ?? null;
+      return environment.passengers[selectedPassengerId] ?? null;
     },
   );
 
