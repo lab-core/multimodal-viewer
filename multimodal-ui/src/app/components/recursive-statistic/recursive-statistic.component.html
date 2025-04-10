@@ -1,11 +1,11 @@
 <mat-accordion multi="true">
-  @for (key of keys(recursiveDict); track key) {
-    @if (typeof recursiveDict[key] === "number") {
-      <div class="flex-column gap-0-5-rem">
+  @for (key of keys(); track key) {
+    @if (typeof recursiveDict[key] !== "object") {
+      <div class="flex-column gap-0-5-rem indent">
         <span style="white-space: normal">
-          {{ capitalize(key) }} :
+          {{ capitalize(key) }}:
           <span style="white-space: nowrap">
-            {{ formatNumber(recursiveDict[key]) }}
+            {{ formatEntry(recursiveDict[key]) }}
           </span>
         </span>
       </div>
