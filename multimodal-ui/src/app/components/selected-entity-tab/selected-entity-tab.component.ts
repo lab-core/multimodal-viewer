@@ -5,6 +5,7 @@ import {
   AnimatedPassenger,
   AnimatedStop,
   AnimatedVehicle,
+  DataEntity,
   getId,
 } from '../../interfaces/simulation.model';
 import { FavoriteEntitiesService } from '../../services/favorite-entities.service';
@@ -89,6 +90,14 @@ export class SelectedEntityTabComponent {
 
   toggleFavoriteStop(stop: AnimatedStop) {
     this.favoriteEntitiesService.toggleFavoriteStop(getId(stop));
+  }
+
+  preselectEntity(passenger: DataEntity) {
+    this.animationService.preselectEntity(passenger);
+  }
+
+  unpreselectEntity() {
+    this.animationService.preselectEntity(null);
   }
 
   // Select function

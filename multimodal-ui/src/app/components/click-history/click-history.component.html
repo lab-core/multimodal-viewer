@@ -4,11 +4,33 @@
     <div class="container">
       <div class="content">
         @for (item of history(); track item.id) {
-          <mat-chip>
-            <mat-icon matChipAvatar>directions_car</mat-icon>{{ item.name }}
-          </mat-chip>
+          @switch (item.type) {
+            @case ("vehicle") {
+              <mat-chip (click)="selectVehicle(item.id)">
+                <mat-icon matChipAvatar> directions_car</mat-icon
+                >{{ item.name }}
+              </mat-chip>
+            }
+            @case ("passenger") {
+              <mat-chip (click)="selectPassenger(item.id)">
+                <mat-icon matChipAvatar> accessibility</mat-icon>{{ item.name }}
+              </mat-chip>
+            }
+            @case ("stop") {
+              <mat-chip (click)="selectStop(item.id)">
+                <mat-icon matChipAvatar> place</mat-icon>{{ item.name }}
+              </mat-chip>
+            }
+          }
         }
       </div>
     </div>
+    @if (history().length > 0) {
+      <button class="clear-btn" mat-button (click)="clearHistory()">
+        Clear
+      </button>
+    } @else {
+      <p>Your history is empty.</p>
+    }
   </mat-card-content>
 </mat-card>

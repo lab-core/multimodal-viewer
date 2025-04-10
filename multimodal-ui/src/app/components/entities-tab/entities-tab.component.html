@@ -29,6 +29,8 @@
                   class="clickable indent"
                   [matTooltip]="'Select passenger'"
                   (click)="selectPassenger(passenger.id)"
+                  (mouseenter)="preselectEntity(passenger)"
+                  (mouseleave)="unpreselectEntity()"
                   (keydown.enter)="selectPassenger(passenger.id)"
                 >
                   <span>{{ passenger.name }}</span>
@@ -71,6 +73,8 @@
                   class="clickable indent"
                   [matTooltip]="'Select vehicle'"
                   (click)="selectVehicle(vehicle.id)"
+                  (mouseenter)="preselectEntity(vehicle)"
+                  (mouseleave)="unpreselectEntity()"
                   (keydown.enter)="selectVehicle(vehicle.id)"
                 >
                   <span>{{ vehicle.name }}</span>

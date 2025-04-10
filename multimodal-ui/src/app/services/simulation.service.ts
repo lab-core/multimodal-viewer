@@ -11,6 +11,7 @@ import {
   AllPolylines,
   AnySimulationUpdate,
   DEFAULT_STOP_CAPACITY,
+  getId,
   Leg,
   Passenger,
   PASSENGER_STATUSES,
@@ -397,6 +398,7 @@ export class SimulationService {
     }
 
     return {
+      type: 'passenger',
       id,
       name,
       status,
@@ -571,6 +573,7 @@ export class SimulationService {
     }
 
     return {
+      type: 'vehicle',
       id,
       mode,
       status,
@@ -691,7 +694,15 @@ export class SimulationService {
       return null;
     }
 
-    return { arrivalTime, departureTime, position, capacity, label };
+    return {
+      id: getId({ position }),
+      type: 'stop',
+      arrivalTime,
+      departureTime,
+      position,
+      capacity,
+      label,
+    };
   }
 
   private extractSimulationEnvironment(
