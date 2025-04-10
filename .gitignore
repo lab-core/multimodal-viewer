@@ -13,3 +13,7 @@ multimodal-server/saved_simulations
 # Data folder too large
 data/medium-taxi
 data/small-taxi
+
+# Python Package
+multimodal_ui.egg-info
+static
