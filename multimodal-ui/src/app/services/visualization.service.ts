@@ -9,6 +9,7 @@ import {
   WritableSignal,
 } from '@angular/core';
 import {
+  AnimatedLeg,
   AnimatedPassenger,
   AnimatedSimulationEnvironment,
   AnimatedSimulationStates,
@@ -17,6 +18,7 @@ import {
   AnimationData,
   DynamicPassengerAnimationData,
   getAllStops,
+  Leg,
   RUNNING_SIMULATION_STATUSES,
   Simulation,
   SimulationEnvironment,
@@ -628,6 +630,16 @@ export class VisualizationService {
 
       passengers[passengerId] = {
         ...passenger,
+        previousLegs: passenger.previousLegs.map((leg) =>
+          this.buildAnimatedLeg(leg, vehicles),
+        ),
+        currentLeg:
+          passenger.currentLeg === null
+            ? null
+            : this.buildAnimatedLeg(passenger.currentLeg, vehicles),
+        nextLegs: passenger.nextLegs.map((leg) =>
+          this.buildAnimatedLeg(leg, vehicles),
+        ),
         animationData: passengerAnimationData,
         notDisplayedReason: currentAnimationData?.notDisplayedReason ?? null,
       };
@@ -683,5 +695,46 @@ export class VisualizationService {
       stops,
       animationData,
     };
+  }
+
+  private buildAnimatedLeg(
+    leg: Leg,
+    vehicles: Record<string, AnimatedVehicle>,
+  ): AnimatedLeg {
+    const animatedLeg: AnimatedLeg = {
+      ...leg,
+      previousStops: [],
+      currentStop: null,
+      nextStops: [],
+    };
+
+    if (
+      leg.assignedVehicleId === null ||
+      leg.boardingStopIndex === null ||
+      leg.alightingStopIndex === null
+    ) {
+      return animatedLeg;
+    }
+
+    const vehicle = vehicles[leg.assignedVehicleId];
+
+    if (vehicle === undefined) {
+      return animatedLeg;
+    }
+
+    const allStops = getAllStops(vehicle);
+
+    const legStops = allStops.slice(
+      leg.boardingStopIndex,
+      leg.alightingStopIndex + 1,
+    );
+
+    animatedLeg.previousStops = legStops.filter(
+      (stop) => stop.type === 'previous',
+    );
+    animatedLeg.currentStop =
+      legStops.find((stop) => stop.type === 'current') ?? null;
+    animatedLeg.nextStops = legStops.filter((stop) => stop.type === 'next');
+    return animatedLeg;
   }
 }

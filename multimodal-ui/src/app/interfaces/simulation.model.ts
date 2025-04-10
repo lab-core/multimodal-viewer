@@ -146,6 +146,12 @@ export interface Leg {
   assignedTime: number | null;
 }
 
+export interface AnimatedLeg extends Leg {
+  previousStops: Stop[];
+  currentStop: Stop | null;
+  nextStops: Stop[];
+}
+
 export interface Passenger {
   id: string;
   name: string | null;
@@ -239,8 +245,7 @@ export interface Stop {
   label: string;
 }
 
-export interface AnimatedStop
-  extends Omit<Stop, 'arrivalTime' | 'departureTime'> {
+export interface AnimatedStop extends Stop {
   /**
    * Passengers that are waiting at the stop.
    */
@@ -391,6 +396,9 @@ export type AnyVehicleAnimationData =
 
 export interface AnimatedPassenger extends displayed<Passenger> {
   animationData: AnyPassengerAnimationData[];
+  previousLegs: AnimatedLeg[];
+  currentLeg: AnimatedLeg | null;
+  nextLegs: AnimatedLeg[];
 }
 
 export interface AnimatedVehicle extends displayed<Vehicle> {
@@ -523,10 +531,30 @@ export interface AnimatedSimulationStates {
   continuousAnimationData: AnimationData | null;
 }
 
-export function getAllStops(vehicle: Vehicle): Stop[] {
-  return vehicle.previousStops.concat(
-    vehicle.currentStop === null ? [] : [vehicle.currentStop],
-    vehicle.nextStops,
+export function getAllStops(
+  vehicle: Vehicle,
+): (Stop & { type: 'previous' | 'current' | 'next' })[] {
+  const previousStops: (Stop & { type: 'previous' | 'current' | 'next' })[] =
+    vehicle.previousStops.map((stop) => ({
+      ...stop,
+      type: 'previous',
+    }));
+  const nextStops: (Stop & { type: 'previous' | 'current' | 'next' })[] =
+    vehicle.nextStops.map((stop) => ({
+      ...stop,
+      type: 'next',
+    }));
+  const currentStop: (Stop & { type: 'previous' | 'current' | 'next' })[] =
+    vehicle.currentStop ? [{ ...vehicle.currentStop, type: 'current' }] : [];
+  return [...previousStops, ...currentStop, ...nextStops];
+}
+
+export function getAllLegs<P extends Passenger>(
+  passenger: P,
+): P['previousLegs'] {
+  return passenger.previousLegs.concat(
+    passenger.currentLeg === null ? [] : [passenger.currentLeg],
+    passenger.nextLegs,
   );
 }
 
