@@ -102,7 +102,21 @@
               <mat-divider></mat-divider>
             }
             <div class="indent">
-              <b>{{ leg.assignedVehicleId }}</b>
+              @if (environment !== null && leg.assignedVehicleId !== null) {
+                @let vehicle =
+                  environment.currentState.vehicles[leg.assignedVehicleId];
+                <div
+                  tabindex="0"
+                  class="clickable-no-padding"
+                  [matTooltip]="'Select vehicle'"
+                  (click)="selectVehicle(vehicle.id)"
+                  (keydown.enter)="selectVehicle(vehicle.id)"
+                >
+                  Vehicle: {{ vehicle.name }}
+                </div>
+              } @else {
+                <b>{{ leg.assignedVehicleId }}</b>
+              }
             </div>
             <app-selected-entity-route
               class="indent"

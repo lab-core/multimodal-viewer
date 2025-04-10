@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, effect } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -7,6 +7,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   AnimatedPassenger,
+  AnimatedSimulationEnvironment,
   AnimatedStop,
   AnimatedVehicle,
   getAllLegs,
@@ -14,6 +15,7 @@ import {
 import { AnimationService } from '../../services/animation.service';
 import { FavoriteEntitiesService } from '../../services/favorite-entities.service';
 import { SelectedEntityRouteComponent } from '../selected-entity-route/selected-entity-route.component';
+import { VisualizationService } from '../../services/visualization.service';
 
 @Component({
   selector: 'app-selected-entity-tab',
@@ -46,11 +48,20 @@ export class SelectedEntityTabComponent {
   selectedStopCompletedPassengers: AnimatedPassenger[] = [];
   @Input({ required: true }) selectedStopVehicles: AnimatedVehicle[] = [];
 
+  protected environment: AnimatedSimulationEnvironment | null;
+
   constructor(
     private readonly animationService: AnimationService,
     private readonly favoriteEntitiesService: FavoriteEntitiesService,
     private snackBar: MatSnackBar,
-  ) {}
+    private visualizationService: VisualizationService,
+  ) {
+    this.environment = null;
+    effect(() => {
+      this.environment =
+        this.visualizationService.visualizationEnvironmentSignal();
+    });
+  }
 
   get selectedPassengerLegs() {
     const passenger = this.selectedPassenger;

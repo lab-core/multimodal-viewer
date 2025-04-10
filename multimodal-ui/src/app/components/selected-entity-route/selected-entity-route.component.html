@@ -19,8 +19,10 @@
       <span class="dot route-done"></span>
     }
     <!--Next stops-->
-    @for (nextStop of nextStops; track nextStop.label) {
-      <span class="line route-left"></span>
+    @for (nextStop of nextStops; track nextStop.label; let idx = $index) {
+      @if(idx !== 0 || previousStops.length > 0 || currentStop !== null) {
+        <span class="line route-left"></span>
+      }
       <span class="dot route-left"></span>
     }
   </div>
