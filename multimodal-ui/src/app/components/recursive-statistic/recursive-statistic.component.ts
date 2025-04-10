@@ -20,7 +20,6 @@ export class RecursiveStatisticComponent {
     return str.charAt(0).toUpperCase() + str.slice(1);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   keys(): string[] {
     for (const key of Object.keys(this.recursiveDict)) {
       if (this.recursiveDict[key] instanceof Array) {
@@ -48,8 +47,7 @@ export class RecursiveStatisticComponent {
 
       return formatter.format(entry).replace(/,/g, ' ');
     } else if (typeof entry === 'string') {
-      return this.capitalize(entry)
-    }
-    else return ''
+      return this.capitalize(entry);
+    } else return '';
   }
 }
