@@ -17,17 +17,16 @@ from simulation_visualization_data_collector import SimulationVisualizationDataC
 def run_simulation(
     simulation_id: str,
     data: str,
-    max_time: float | None,
+    max_duration: float | None,
     stop_event: threading.Event | None = None,
 ) -> None:
     data_container = DataContainer()
 
     data_collector = SimulationVisualizationDataCollector(
-        "",
-        data,
         FixedLineDataAnalyzer(data_container),
-        max_time=max_time,
+        max_duration=max_duration,
         simulation_id=simulation_id,
+        input_data_description=data,
     )
 
     environment_observer = EnvironmentObserver(
@@ -70,14 +69,14 @@ if __name__ == "__main__":
     parser.add_argument("--name", type=str, help="The name of the simulation")
     parser.add_argument("--data", type=str, help="The data to use for the simulation")
     parser.add_argument(
-        "--max-time", type=float, help="The maximum time to run the simulation"
+        "--max-duration", type=float, help="The maximum duration to run the simulation"
     )
 
     args = parser.parse_args()
 
     name = args.name
     data = args.data
-    max_time = args.max_time
+    max_duration = args.max_duration
 
     name_error = verify_simulation_name(name)
 
@@ -113,7 +112,7 @@ if __name__ == "__main__":
     simulation_id, _ = build_simulation_id(name)
 
     print(
-        f"Running simulation with id: {simulation_id}, data: {data} and {f'max time: {max_time}' if max_time is not None else 'no max time'}"
+        f"Running simulation with id: {simulation_id}, data: {data} and {f'max duration: {max_duration}' if max_duration is not None else 'no max duration'}"
     )
 
     stop_event = threading.Event()
@@ -128,9 +127,9 @@ if __name__ == "__main__":
 
     input_listener_thread.start()
 
-    run_simulation(simulation_id, data, max_time, stop_event)
+    run_simulation(simulation_id, data, max_duration, stop_event)
 
     print("To run a simulation with the same configuration, use the following command:")
     print(
-        f"python simulation.py  --data {data}{f' --max-time {max_time}' if max_time is not None else ''} --name {name}"
+        f"python simulation.py  --data {data}{f' --max-duration {max_duration}' if max_duration is not None else ''} --name {name}"
     )

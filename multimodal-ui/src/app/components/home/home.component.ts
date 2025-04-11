@@ -104,7 +104,7 @@ export class HomeComponent {
           result.general.name,
           result.general.data,
           uniqueId,
-          result.configuration.maxTime,
+          result.configuration.maxDuration,
         );
       });
 

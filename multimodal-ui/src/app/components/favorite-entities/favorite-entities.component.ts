@@ -1,11 +1,12 @@
-import { Component, Signal } from '@angular/core';
+import { Component, computed, Signal } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
-import { FavoriteEntitiesService } from '../../services/favorite-entities.service';
-import { AnimationService } from '../../services/animation.service';
-import { VisualizationService } from '../../services/visualization.service';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { AnimationService } from '../../services/animation.service';
+import { FavoriteEntitiesService } from '../../services/favorite-entities.service';
+import { VisualizationService } from '../../services/visualization.service';
+import { EntityInfo } from '../../interfaces/entity.model';
 
 @Component({
   selector: 'app-favorite-entities',
@@ -14,8 +15,17 @@ import { MatTooltipModule } from '@angular/material/tooltip';
   styleUrl: './favorite-entities.component.css',
 })
 export class FavoriteEntitiesComponent {
-  favVehicleIds: Signal<Set<string>>;
-  favPassengerIds: Signal<Set<string>>;
+  favVehicles: Signal<EntityInfo[]>;
+  favPassengers: Signal<EntityInfo[]>;
+  favStops: Signal<EntityInfo[]>;
+
+  readonly favoriteCount: Signal<number> = computed(() => {
+    return (
+      this.favVehicles().length +
+      this.favPassengers().length +
+      this.favStops().length
+    );
+  });
 
   isVehicleInEnvironment(id: string) {
     const visualizationEnvironment =
@@ -40,16 +50,21 @@ export class FavoriteEntitiesComponent {
     private readonly visualizationService: VisualizationService,
     private readonly animationService: AnimationService,
   ) {
-    this.favVehicleIds = favoriteEntitiesService.favVehicleIds;
-    this.favPassengerIds = favoriteEntitiesService.favPassengerIds;
+    this.favVehicles = favoriteEntitiesService.favVehicleArray;
+    this.favPassengers = favoriteEntitiesService.favPassengersArray;
+    this.favStops = favoriteEntitiesService.favStopsArray;
   }
 
-  toggleFavoriteVehicle(id: string) {
-    this.favoriteEntitiesService.toggleFavoriteVehicle(id);
+  toggleFavoriteVehicle(id: string, name: string) {
+    this.favoriteEntitiesService.toggleFavoriteVehicle(id, name);
   }
 
-  toggleFavoritePassenger(id: string) {
-    this.favoriteEntitiesService.toggleFavoritePassenger(id);
+  toggleFavoritePassenger(id: string, name: string) {
+    this.favoriteEntitiesService.toggleFavoritePassenger(id, name);
+  }
+
+  toggleFavoriteStop(id: string) {
+    this.favoriteEntitiesService.toggleFavoriteStop(id);
   }
 
   selectVehicle(id: string) {
@@ -58,5 +73,9 @@ export class FavoriteEntitiesComponent {
 
   selectPassenger(id: string) {
     this.animationService.selectEntity(id, 'passenger');
+  }
+
+  selectStop(id: string) {
+    this.animationService.selectEntity(id, 'stop');
   }
 }

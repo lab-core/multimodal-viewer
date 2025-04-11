@@ -21,6 +21,11 @@ import {
   AddMapTileDialogResult,
 } from '../components/add-map-tile-dialog/add-map-tile-dialog.component';
 import { UserGuideComponent } from '../components/user-guide-dialog/user-guide-dialog.component';
+import {
+  EditMapIconsDialogComponent,
+  EditMapIconsDialogData,
+  EditMapIconsDialogResult,
+} from '../components/edit-map-icons-dialog/edit-map-icons-dialog.component';
 
 @Injectable({
   providedIn: 'root',
@@ -116,6 +121,23 @@ export class DialogService {
       maxHeight: '90vh',  // Fallback
       maxWidth: '80vw',   // Fallback
       panelClass: 'user-guide-dialog'  // For custom styling
+    });
+  }
+  
+  openEditMapIconsDialog(): MatDialogRef<
+    EditMapIconsDialogComponent,
+    EditMapIconsDialogResult
+  > {
+    return this.matDialog.open<
+      EditMapIconsDialogComponent,
+      EditMapIconsDialogData,
+      EditMapIconsDialogResult
+    >(EditMapIconsDialogComponent, {
+      data: null,
+      disableClose: true,
+      autoFocus: false,
+      maxWidth: '80vw',
+      maxHeight: '80vh',
     });
   }
 }
