@@ -1,43 +1,48 @@
-<h2 mat-dialog-title>Multimodal Simulation Visualization</h2>
+<div class="dialog-header">
+  <h2 mat-dialog-title>Multimodal Simulation Visualization</h2>
+  <mat-dialog-actions>
+    <button mat-button mat-dialog-close>Close</button>
+  </mat-dialog-actions>
+</div>
 
 <mat-dialog-content>
   <section class="flex-column">
     <h1>Getting Started</h1>
-    <p>Welcome to the Multimodal Simulation Visualization This guide will help you understand how to use all the features.</p>
+    <p>Welcome to the Multimodal Simulation Visualization. This guide will help you understand how to use all the features.</p>
   </section>
 
   <section class="flex-column">
     <h3>Starting a simulation</h3>
-    <p>To start a new simulation, click the Start Simulation from the main menu. You will be bresented with the simulation configuration window where you will have 
+    <p>To start a new simulation, click the <strong>Start Simulation</strong> button from the main menu. You will be presented with the simulation configuration window where you will have 
       to input a few parameters. 
     </p>
-    <p>First, you need to name your simulation. We suggest chosing a unique name. It is not necessary, but might lead to confusion later
-      if you will want to replay a simulation and it will have the same name as an already existing one. 
+    <p>First, you need to name your simulation. We suggest choosing a unique name. It is not necessary, but might lead to confusion later
+      if you want to replay a simulation and it has the same name as an already existing one. 
     </p>
-    <p>Next, you need to chose the input data. You can chose one of the existing presets, or use the import option to add your own. The import option is the
-      first one in the dropdown menu when selecting the data source. Your import folder does not have to be a zipped. We will do that for you. We will also 
+    <p>Next, you need to choose the input data. You can choose one of the existing presets or use the import option to add your own. The import option is the
+      first one in the dropdown menu when selecting the data source. Your import folder does not have to be zipped. We will do that for you. We will also 
       add an index to your imported folder if one by the same name exists already.
     </p>
     <p>
-      If you wish to run a simulation to get the output logs, but do not care about seeing it, ou can check the "Ren in the background" option. That will 
-      launch the simulation and redirect you to the main menu. You can always visualise any running simulation at any moment by finding it in the "Available Simulations"
+      If you wish to run a simulation to get the output logs but do not care about seeing it, you can check the <strong>Run in the background</strong> option. That will 
+      launch the simulation and redirect you to the main menu. You can always visualize any running simulation at any moment by finding it in the "Available Simulations"
       window.
     </p>
     <p>
-      Optionally, define a maximul simulation time. This deines the maximum amount of in simulation ??Hours?? for which the events will be calculated.
-      You can enter the time in format TODO. By default, the simulation will continue untill it runs out of events.
+      Optionally, define a simulation duration. This defines the maximum amount of in-simulation hours for which the events will be calculated.
+      By default, the simulation will continue until it runs out of events.
     </p>
   </section>
 
   <section class="flex-column">
     <h3>Viewing Existing Simulations</h3>
     <p>
-      In order to access saved or background simulation, you can click the Browse Simulations button in the main menu. This will show you a list of available 
+      To access saved or background simulations, you can click the <strong>Browse Simulations</strong> button in the main menu. This will show you a list of available 
       simulations as well as their state.
     </p>
     <p>
-      Here you can stop running simulation as well as delete, import and export finished ones. The rules for importing simulations are the same as for the starting data.
-      No need to zip the folders, we'll do it for you. Again, try avoiding importing simulations with the same name. It will make hard to understand which one
+      Here you can stop running simulations as well as delete, import, and export finished ones. The rules for importing simulations are the same as for the starting data.
+      No need to zip the folders—we'll do it for you. Again, try avoiding importing simulations with the same name. It will make it hard to understand which one
       you are trying to run.
     </p>
   </section>
@@ -50,40 +55,40 @@
   <section class="flex-column">
     <h3>Main Control Bar</h3>
     <p>
-      This bar allows you to control the current simulation visualization. No matter what you do within this bar, it will not affect the speed at which the 
-      simulation events are calculated and processed.
+      This bar allows you to control the current simulation visualization. No matter what you do within this bar, it will not affect the calculation and processing of the 
+      simulation events.
     </p>
     <img src="/images/control-bar.png" alt="control-bar.png">
     <p>
-      Most of the buttons here are self explanatory. Still, here is a quick rundown:
+      Most of the buttons here are self-explanatory. Still, here is a quick rundown:
     </p>
     <p>
-      1. The classic pause / play button. It does not affect the simulation processing, only the visualisation.
+      1. The classic pause/play button. It does not affect the simulation processing, only the visualization.
     </p>
     <p>
-      2. Visualisation speed setting. This defines how fast are things happenig. Adjust it to speed up or slow down your visualisation. Note that entety 
+      2. Visualization speed setting. This defines how fast things are happening. Adjust it to speed up or slow down your visualization. Note that entity 
       movements might become janky if you go above x32 speed.
     </p>
     <p>
-      3. These are the time skip buttons. They will move you a number of second forwards or backwards in the simulation. 
+      3. These are the time skip buttons. They will move you a number of seconds forwards or backwards in the simulation. 
       The number of seconds is the same as the speed multiplier.
     </p>
     <p>
-      4. This button allows you to toggle the visualization direction. you can play it forwards or backwards.
+      4. This button allows you to toggle the visualization direction. You can play it forwards or backwards.
     </p>
     <p>
-      5. The map center button allows you to center the map on the enteties in case you wonder off on the map.
+      5. The map center button allows you to center the map on the entities in case you wander off on the map.
     </p>
     <p>
-      6. The entety follow button allows you to follow the selected entety on the map without losing focus.
+      6. The entity follow button allows you to follow the selected entity on the map without losing focus.
     </p>
     <p>
-      7. The scroll bar allows you to instantly skip to a time within the simulation. However, if you are activelly running a simulation, you can only jump
+      7. The scroll bar allows you to instantly skip to a time within the simulation. However, if you are actively running a simulation, you can only jump
       to a timestamp within the blue part of the bar, as anything past that is yet to be calculated. If you are replaying a saved simulation, you can
       jump to any timestamp at any time. 
     </p>
     <p>
-      8. The main menu button will send you back to ... the main menu. If you are activelly running a simulation, it will continue to run in the background. 
+      8. The main menu button will send you back to ... the main menu. If you are actively running a simulation, it will continue to run in the background. 
       If you are replaying a saved simulation, it will stop running.
     </p>
   </section>
@@ -94,12 +99,15 @@
         <img src="/images/simulation-control-bar.png" alt="Simulation Control Bar" style="max-width: 300px; height: auto;">
         <div>
             <p>
-                This is the control bar for the actual simulation happening on the backend. This little window allows you to pause the simulation processing, 
-                adjust the maximum simulation time, or stop the simulation compleately. 
+              This is the control bar for the actual simulation happening on the backend. This little window allows you to pause the simulation processing, 
+              adjust the maximum simulation time, or stop the simulation completely. 
             </p>
             <p>
-                Note that a stop and a pause are not the same. A stopped simulation is effectively compleated and can not be resumed, only replayed.
+              Note that a stop and a pause are not the same. A stopped simulation is effectively completed and cannot be resumed, only replayed.
             </p>
+            <p>
+              The <strong>Estimated end</strong> is the in-simulation time at which the simulation is expected to end. It has nothing to do with the time in real life.
+          </p>
         </div>
     </div>
   </section>
@@ -107,39 +115,60 @@
   <section class="flex-column">
     <h3>The Information Panel</h3>
     <p>
-      This pannel displays usefull information avout your current simulation. You can access it by clicking the<mat-icon>info</mat-icon>icon in the top
-      left corner of your screen. Here you can check the simulation name and source files, see the statistics, access enteties that are not displayed on 
-      the map and check detailed information about the entety you have selected.
+      This panel displays useful information about your current simulation. You can access it by clicking any of the icons in the top
+      left corner of your screen. Here you can check the simulation name and source files, see the statistics, access entities that are not displayed on 
+      the map, and check detailed information about the entity you have selected.
     </p>
   </section>
 
   <section class="flex-column">
-    <h3>Searching and Entety Selection</h3>
+    <h3>Searching and Entity Selection</h3>
     <p>
-      There are a few ways you can select an entety such as a passenger or a vehicule. The easiest way would be by simply clicking it on the map.
-      If multiple enteties are clumped together, a small dialog will pop up allowing you to make a more precice choice. 
-      Your selected entety will be highlighted in yellow and you will see it's past and future legs if they exist. 
+      There are a few ways you can select an entity such as a passenger or a vehicle The easiest way would be by simply clicking it on the map.
+      If multiple entities are clumped together, a small dialog will pop up, allowing you to make a more precise choice. 
+      Your selected entity will be highlighted in yellow, and you will see its past and future legs if they exist. 
     </p>
     <p>
-      You can also select an entety by using the search bar. To open the bar, click on the magnifying glass in the top right corner of your screen. You can 
-      search any entety by typing it's ID and select it among the autocompleate suggestions. For passengers, you can also find them using their names.
+      You can also select an entity by using the search bar. To open the bar, click on the magnifying glass in the top right corner of your screen. You can 
+      search for any entity by typing its ID and select it among the autocomplete suggestions. For passengers, you can also find them using their names.
     </p>
     <p>
-      Pro Tip: if you are looking for a vehicule with a specific "mode", you can start a search with "mode:". This will prompt you to select a vehicule mode and 
-      only vehicules matching this mode will be shown in the autocomplete suggestions.
+      <strong>Pro Tip:</strong> If you are looking for a vehicle with a specific mode, you can start a search with "mode:". This will prompt you to make a selection, and 
+      only vehicles matching your selected mode will be shown in the autocomplete suggestions.
     </p>
     <p>
-      Once you have selected an entety, you can navigate to the status section of the information pannel to view details such as the enteties' ID, name, status,
-      route, etc. In this very section you can also set the entety as a favourite by clicking the<mat-icon>favorite</mat-icon>icon. To see the full list of you favorite click on 
-      the<mat-icon>star</mat-icon>in the top right corner.
+      Once you have selected an entity you can navigate to the selected entity section of the information panel by clicking the <mat-icon>touch_app</mat-icon> icon,
+      and view details such as the entity's ID, name, status, route, etc. In this very section, you can also set the entity as a favorite by clicking the
+      <mat-icon>favorite</mat-icon>. To see the full list of your favorites, click on the <mat-icon>star</mat-icon> in the top right corner.
     </p>
   </section>
 
   <section class="flex-column">
     <h3>Display Options</h3>
     <p>
-      You have access to a few filters and themes in the top right corner of your simulation. You can decide which enteties to display, select a theme for your map, and 
-      even change the icons. TODO: Complete the icons
+      You have access to a few filters and themes in the top right corner of your simulation. You can decide which entities to display, select a theme for your map, and 
+      even change the icons.
+    </p>
+    <p>
+      To filter out what is displayed on the map, click the <mat-icon>filter_list</mat-icon> next to the search section. This will allow you to only show certain 
+      categories of entities, as well as allow you to see the ones that are completed and no longer shown by default.
+    </p>
+    <p>
+      You can change the map theme under the <mat-icon>layers</mat-icon> section. We supply a few themes by default including a dark one, but you are free to add your own. 
+      We suggest using openstreetmap.org to avoid compatibility issues.
+    </p>
+    <p>
+      In the same section, you can change the icons. The icon editor window is pretty self-explanatory when it comes to changing the base icons. However, adding custom 
+      ones might be a bit confusing. When you add a custom icon, you will be prompted to type in a vehicle mode. Make sure you type it in correctly, as the field is 
+      case-sensitive. If a certain vehicle mode does not have its own icon, the default vehicle type (e.g., Bus) icon will be used.
+    </p>
+    <p>
+      When adding new icons, we strongly recommend using transparent or white images with a black outline. Otherwise, the tinting showing the occupancy of a 
+      vehicle or stop might not work as expected.
+    </p>
+    <p>
+      You can export and import icons in bulk. The export button will generate a JSON file with images encoded in base64. You can modify it directly and then import it
+      to change a few icons at a time.
     </p>
   </section>
 
@@ -150,12 +179,10 @@
       on your machine. 
     </p>
     <p>
-      All the input data used to launch a simulation is located in the /data folder within the root directory of your project.
+      All the input data used to launch a simulation is located in the <strong>/data</strong> folder within the root directory of your project.
     </p>
     <p>
-      The completed and saved simulations are located in the /multimodal-server/saved-simulation folder within the root directory of your project.
+      The completed and saved simulations are located in the <strong>/multimodal-server/saved-simulations</strong> folder within the root directory of your project.
     </p>
   </section>
-
 </mat-dialog-content>
-

@@ -13,15 +13,15 @@ mat-icon {
   height: auto;
   width: auto;
   vertical-align: middle;
-  margin: 0 2px; /* Optional: adds small spacing around icon */
+  margin: 0 2px;
 }
 
-/* Section styling */
+
 .flex-column {
   margin-bottom: 0.5rem;
 }
 
-/* Image styling */
+
 .guide-image {
   max-width: 100%;
   margin: 1rem 0;
@@ -45,7 +45,7 @@ p {
   margin: 0.5rem 0;
 }
 
-/* Utility classes */
+
 .align-self-end {
   margin-inline-start: auto;
 }
@@ -58,8 +58,24 @@ p {
   font-weight: 500;
 }
 
-/* Remove unnecessary styles */
+
 .list-item, .actions {
   display: none;
 }
 
+
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0;
+}
+
+.dialog-header mat-dialog-title {
+  margin: 0;
+}
+
+.dialog-header mat-dialog-actions {
+  margin: 0;
+  padding: 10px;
+}

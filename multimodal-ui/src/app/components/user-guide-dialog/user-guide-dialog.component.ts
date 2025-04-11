@@ -5,7 +5,6 @@ import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-user-guide-dialog',
-  standalone: true,  // Add this if you're using standalone components
   imports: [
     MatDialogModule,
     MatButtonModule,
@@ -16,8 +15,4 @@ import { MatIconModule } from '@angular/material/icon';
 })
 export class UserGuideComponent {
   constructor(private dialogRef: MatDialogRef<UserGuideComponent>) {}
-
-  closeDialog() {
-    this.dialogRef.close();
-  }
 }
