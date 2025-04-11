@@ -84,30 +84,15 @@ export interface EditMapIconsDialogResult {
 })
 export class EditMapIconsDialogComponent {
   readonly SPRITE_SIZE;
+  readonly PRESET_LIGHT_COLOR_THEME;
+  readonly PRESET_SATURATED_COLOR_THEME;
 
   private readonly MIN_COLOR_COUNT = 2;
-  private readonly MAX_COLOR_COUNT = 8;
-
-  readonly PRESET_LIGHT_COLOR_THEME = [
-    '#ccffcc',
-    '#ffffb3',
-    '#ffffb3',
-    '#ffb980',
-    '#ffb980',
-    '#ff3333',
-    '#ff3333',
-  ];
-
-  readonly PRESET_SATURATED_COLOR_THEME = [
-    '#00ff00',
-    '#ffff00',
-    '#ff8000',
-    '#ff0000',
-  ];
+  private readonly MAX_COLOR_COUNT = 12;
 
   currentError = '';
 
-  colorSetIndex = 0;
+  colorPresetIndex = 0;
   customColors = signal(['#00ff00', '#ff0000']);
 
   testScaleValue = 0;
@@ -137,6 +122,10 @@ export class EditMapIconsDialogComponent {
     private readonly spritesService: SpritesService,
   ) {
     this.SPRITE_SIZE = this.spritesService.SPRITE_SIZE;
+    this.PRESET_LIGHT_COLOR_THEME =
+      this.spritesService.PRESET_LIGHT_COLOR_THEME;
+    this.PRESET_SATURATED_COLOR_THEME =
+      this.spritesService.PRESET_SATURATED_COLOR_THEME;
 
     // Safe to assume it's an ImageResource with a url because they are all loaded from a url.
 
@@ -172,6 +161,9 @@ export class EditMapIconsDialogComponent {
     );
 
     this.vehicleModeTextures.set(this.spritesService.vehicleModeTextures);
+
+    this.colorPresetIndex = this.spritesService.colorPresetIndex;
+    this.customColors.set(structuredClone(this.spritesService.customColors));
   }
 
   dropCustomColor(event: CdkDragDrop<string[]>) {
@@ -179,6 +171,7 @@ export class EditMapIconsDialogComponent {
       moveItemInArray(customColors, event.previousIndex, event.currentIndex);
       return customColors;
     });
+    this.applyColorGradientTester();
   }
 
   canRemoveColor = computed(
@@ -190,18 +183,24 @@ export class EditMapIconsDialogComponent {
   );
 
   addCustomColor() {
-    if (this.canAddColor())
+    if (this.canAddColor()) {
       this.customColors.update((customColors) => {
         return [...customColors, '#dd0000'];
       });
+
+      this.applyColorGradientTester();
+    }
   }
 
   removeCustomColor() {
-    if (this.canRemoveColor())
+    if (this.canRemoveColor()) {
       this.customColors.update((customColors) => {
         customColors.pop();
         return [...customColors];
       });
+
+      this.applyColorGradientTester();
+    }
   }
 
   onColorChange(index: number, event: Event) {
@@ -211,24 +210,26 @@ export class EditMapIconsDialogComponent {
       return customColors;
     });
 
-    this.aplyColorScale();
+    this.applyColorGradientTester();
   }
 
   onColorSetIndexChange(event: MatRadioChange) {
-    this.aplyColorScale();
+    this.applyColorGradientTester();
   }
 
   onColorScaleChange(event: Event) {
     this.testScaleValue =
       parseInt((event.target as HTMLInputElement).value) / 100;
-    this.aplyColorScale();
+    this.applyColorGradientTester();
   }
 
-  aplyColorScale() {
+  applyColorGradientTester() {
     let colorSet: string[] = [];
-    if (this.colorSetIndex == 0) colorSet = this.PRESET_LIGHT_COLOR_THEME;
-    if (this.colorSetIndex == 1) colorSet = this.PRESET_SATURATED_COLOR_THEME;
-    if (this.colorSetIndex == 2) colorSet = this.customColors();
+    if (this.colorPresetIndex == 0)
+      colorSet = this.spritesService.PRESET_LIGHT_COLOR_THEME;
+    if (this.colorPresetIndex == 1)
+      colorSet = this.spritesService.PRESET_SATURATED_COLOR_THEME;
+    if (this.colorPresetIndex == 2) colorSet = this.customColors();
 
     if (this.testScaleValue === 0) {
       this.testScaleColor = '#ffffff';
@@ -313,6 +314,16 @@ export class EditMapIconsDialogComponent {
           return;
         }
 
+        if (!spriteSaveData.colorPresetIndex) {
+          this.currentError = 'JSON has missing data: colorPresetIndex';
+          return;
+        }
+
+        if (!spriteSaveData.customColors) {
+          this.currentError = 'JSON has missing data: customColors';
+          return;
+        }
+
         this.vehicleTextureUrl.set(spriteSaveData.vehicleTextureUrl);
         this.passengerTextureUrl.set(spriteSaveData.passengerTextureUrl);
         this.zoomOutVehicleTextureUrl.set(
@@ -323,6 +334,10 @@ export class EditMapIconsDialogComponent {
         );
         this.stopTextureUrl.set(spriteSaveData.stopTextureUrl);
         this.vehicleModeTextures.set(spriteSaveData.vehicleModeTextures);
+        this.colorPresetIndex = spriteSaveData.colorPresetIndex;
+
+        if (spriteSaveData.customColors.length >= 2)
+          this.customColors.set(spriteSaveData.customColors);
 
         this.currentError = '';
       } catch {
@@ -422,6 +437,8 @@ export class EditMapIconsDialogComponent {
       zoomOutPassengerTextureUrl: this.zoomOutPassengerTextureUrl(),
       stopTextureUrl: this.stopTextureUrl(),
       vehicleModeTextures: this.vehicleModeTextures(),
+      colorPresetIndex: this.colorPresetIndex,
+      customColors: this.customColors(),
     };
 
     const blob = new Blob([JSON.stringify(saveData, null, 2)], {
@@ -444,6 +461,8 @@ export class EditMapIconsDialogComponent {
       this.zoomOutPassengerTextureUrl(),
       this.stopTextureUrl(),
       this.vehicleModeTextures(),
+      this.colorPresetIndex,
+      this.customColors(),
     );
     this.dialogRef.close();
   }

@@ -53,6 +53,10 @@ p {
   }
 }
 
+.color-title {
+  margin: 0px;
+}
+
 .color-group {
   display: flex;
   justify-content: space-between;

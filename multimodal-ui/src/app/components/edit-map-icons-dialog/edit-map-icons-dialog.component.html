@@ -232,9 +232,11 @@
 
       <mat-divider></mat-divider>
 
+      <h3 class="color-title">Capacity color gradient</h3>
+
       <mat-radio-group
         class="color-group"
-        [(ngModel)]="colorSetIndex"
+        [(ngModel)]="colorPresetIndex"
         (change)="onColorSetIndexChange($event)"
       >
         <mat-radio-button [value]="0">Light</mat-radio-button>
@@ -242,7 +244,7 @@
         <mat-radio-button [value]="2">Custom</mat-radio-button>
       </mat-radio-group>
 
-      @if (colorSetIndex === 0) {
+      @if (colorPresetIndex === 0) {
         <div class="color-list-container">
           <span>Light Preset:</span>
           @for (color of PRESET_LIGHT_COLOR_THEME; track $index) {
@@ -251,7 +253,7 @@
         </div>
       }
 
-      @if (colorSetIndex === 1) {
+      @if (colorPresetIndex === 1) {
         <div class="color-list-container">
           <span>Saturated Preset:</span>
           @for (color of PRESET_SATURATED_COLOR_THEME; track $index) {
@@ -260,7 +262,7 @@
         </div>
       }
 
-      @if (colorSetIndex === 2) {
+      @if (colorPresetIndex === 2) {
         <div class="color-list-container">
           <span>Custom:</span>
           <button
@@ -299,7 +301,10 @@
             <mat-icon>add_circle_outline</mat-icon>
           </button>
         </div>
+        <span>*Click to set their color. Drag to change their order.</span>
       }
+      <span>*Test the color gradient using the slider below.</span>
+
       <div class="color-tester">
         <div class="custom-icon wrapper-icon">
           <img width="40" alt="icon" [src]="vehicleTextureUrl()" />
@@ -343,7 +348,7 @@
           ></div>
         </div>
 
-        <mat-slider min="0" max="100" discrete>
+        <mat-slider min="0" max="100" discrete showTickMarks>
           <input matSliderThumb (input)="onColorScaleChange($event)" />
         </mat-slider>
       </div>
