@@ -1,5 +1,6 @@
 import {
   Component,
+  computed,
   ElementRef,
   signal,
   viewChild,
@@ -29,6 +30,16 @@ import { MatDividerModule } from '@angular/material/divider';
 import { Jimp } from 'jimp';
 import { MatSliderModule } from '@angular/material/slider';
 import { ImageResource } from 'pixi.js';
+import {
+  CdkDragDrop,
+  CdkDragPlaceholder,
+  CdkDropList,
+  CdkDrag,
+  moveItemInArray,
+} from '@angular/cdk/drag-drop';
+import { MatRadioChange, MatRadioModule } from '@angular/material/radio';
+import { color as d3Color } from 'd3-color';
+import { interpolateRgbBasis as d3InterpolateRgb } from 'd3-interpolate';
 
 export type EditMapIconsDialogData = null;
 
@@ -63,6 +74,10 @@ export interface EditMapIconsDialogResult {
     MatDividerModule,
     MatTooltipModule,
     MatSliderModule,
+    MatRadioModule,
+    CdkDragPlaceholder,
+    CdkDropList,
+    CdkDrag,
   ],
   templateUrl: './edit-map-icons-dialog.component.html',
   styleUrl: './edit-map-icons-dialog.component.css',
@@ -70,7 +85,33 @@ export interface EditMapIconsDialogResult {
 export class EditMapIconsDialogComponent {
   readonly SPRITE_SIZE;
 
+  private readonly MIN_COLOR_COUNT = 2;
+  private readonly MAX_COLOR_COUNT = 8;
+
+  readonly PRESET_LIGHT_COLOR_THEME = [
+    '#ccffcc',
+    '#ffffb3',
+    '#ffffb3',
+    '#ffb980',
+    '#ffb980',
+    '#ff3333',
+    '#ff3333',
+  ];
+
+  readonly PRESET_SATURATED_COLOR_THEME = [
+    '#00ff00',
+    '#ffff00',
+    '#ff8000',
+    '#ff0000',
+  ];
+
   currentError = '';
+
+  colorSetIndex = 0;
+  customColors = signal(['#00ff00', '#ff0000']);
+
+  testScaleValue = 0;
+  testScaleColor = '#ffffff';
 
   vehicleModeTextures: WritableSignal<CustomTexture[]> = signal([]);
 
@@ -131,6 +172,73 @@ export class EditMapIconsDialogComponent {
     );
 
     this.vehicleModeTextures.set(this.spritesService.vehicleModeTextures);
+  }
+
+  dropCustomColor(event: CdkDragDrop<string[]>) {
+    this.customColors.update((customColors) => {
+      moveItemInArray(customColors, event.previousIndex, event.currentIndex);
+      return customColors;
+    });
+  }
+
+  canRemoveColor = computed(
+    () => this.customColors().length > this.MIN_COLOR_COUNT,
+  );
+
+  canAddColor = computed(
+    () => this.customColors().length < this.MAX_COLOR_COUNT,
+  );
+
+  addCustomColor() {
+    if (this.canAddColor())
+      this.customColors.update((customColors) => {
+        return [...customColors, '#dd0000'];
+      });
+  }
+
+  removeCustomColor() {
+    if (this.canRemoveColor())
+      this.customColors.update((customColors) => {
+        customColors.pop();
+        return [...customColors];
+      });
+  }
+
+  onColorChange(index: number, event: Event) {
+    const color = (event.target as HTMLInputElement).value;
+    this.customColors.update((customColors) => {
+      customColors[index] = color;
+      return customColors;
+    });
+
+    this.aplyColorScale();
+  }
+
+  onColorSetIndexChange(event: MatRadioChange) {
+    this.aplyColorScale();
+  }
+
+  onColorScaleChange(event: Event) {
+    this.testScaleValue =
+      parseInt((event.target as HTMLInputElement).value) / 100;
+    this.aplyColorScale();
+  }
+
+  aplyColorScale() {
+    let colorSet: string[] = [];
+    if (this.colorSetIndex == 0) colorSet = this.PRESET_LIGHT_COLOR_THEME;
+    if (this.colorSetIndex == 1) colorSet = this.PRESET_SATURATED_COLOR_THEME;
+    if (this.colorSetIndex == 2) colorSet = this.customColors();
+
+    if (this.testScaleValue === 0) {
+      this.testScaleColor = '#ffffff';
+      return;
+    }
+
+    const interpolate = d3InterpolateRgb(colorSet);
+    const color =
+      d3Color(interpolate(this.testScaleValue))?.formatHex() ?? '#ffffff';
+    this.testScaleColor = color;
   }
 
   onFileSelected(event: Event) {
