@@ -24,8 +24,8 @@
         mat-icon-button
         [matTooltip]="
           isVisualizationPaused
-            ? 'Resume the visualization'
-            : 'Pause the visualization'
+            ? 'Resume the visualization (space)'
+            : 'Pause the visualization (space)'
         "
         (click)="toggleVisualizationPause(isVisualizationPaused)"
       >
@@ -39,7 +39,7 @@
       <button
         mat-icon-button
         [matTooltip]="
-          'Rewind the simulation ' + fastForwardStep + ' seconds ago'
+          'Rewind the simulation ' + fastForwardStep + ' seconds ago (ctrl + ←)'
         "
         (click)="rewindTime()"
       >
@@ -61,7 +61,7 @@
       <button
         mat-icon-button
         [matTooltip]="
-          'Fast-forward the simulation ' + fastForwardStep + ' seconds later'
+          'Fast-forward the simulation ' + fastForwardStep + ' seconds later (ctrl + →)'
         "
         (click)="fastForwardTime()"
       >
@@ -71,7 +71,7 @@
       <button
         mat-icon-button
         [matTooltip]="
-          speed > 0 ? 'Reverse the simulation' : 'Forward the simulation'
+          speed > 0 ? 'Reverse the simulation (r)' : 'Forward the simulation (r)'
         "
         [disabled]="speed === 0"
         (click)="toggleSimulationDirection()"
@@ -81,7 +81,7 @@
 
       <button
         mat-icon-button
-        [matTooltip]="'Center the map'"
+        [matTooltip]="'Center the map (c)'"
         (click)="centerMap()"
       >
         <mat-icon>my_location</mat-icon>
@@ -89,7 +89,7 @@
 
       <button
         mat-icon-button
-        [matTooltip]="'Toggle entity follow mode'"
+        [matTooltip]="'Toggle entity follow mode (f)'"
         [class.active]="shouldFollowEntity"
         (click)="toggleShouldFollowEntity()"
       >

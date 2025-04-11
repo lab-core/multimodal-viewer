@@ -23,11 +23,10 @@ def run_simulation(
     data_container = DataContainer()
 
     data_collector = SimulationVisualizationDataCollector(
-        "",
-        data,
         FixedLineDataAnalyzer(data_container),
         max_duration=max_duration,
         simulation_id=simulation_id,
+        input_data_description=data,
     )
 
     environment_observer = EnvironmentObserver(
