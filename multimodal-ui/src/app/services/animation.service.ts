@@ -1502,7 +1502,7 @@ export class AnimationService {
     if (entity) entity.sprite.parent.filters = null;
   }
 
-  preselectEntity(dataEntity: DataEntity | null, showInTab = true) {
+  preselectEntity(dataEntity: DataEntity | null, showInTab = false) {
     this._preselectedEntityIdSignal.set(dataEntity);
     this._showPreselectedInTabSignal.set(showInTab);
     if (dataEntity) this.highlightEntityId(dataEntity.id, dataEntity.type);
