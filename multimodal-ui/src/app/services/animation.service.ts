@@ -14,11 +14,9 @@ import { pixiOverlay } from 'leaflet';
 import { OutlineFilter } from 'pixi-filters';
 import * as PIXI from 'pixi.js';
 import {
-  DualTextEntity,
   Entity,
   EntityFilterMode,
   EntityInfo,
-  TextEntity,
 } from '../interfaces/entity.model';
 import {
   AnimatedPassenger,
@@ -118,7 +116,7 @@ export class AnimationService {
 
   private hasCenteredInitially = false;
 
-  private vehicles: TextEntity<AnimatedVehicle>[] = [];
+  private vehicles: Entity<AnimatedVehicle>[] = [];
   private vehicleEntitiesByVehicleId: Record<string, Entity<AnimatedVehicle>> =
     {};
   private passengersEntities: Entity<AnimatedPassenger>[] = [];
@@ -127,10 +125,10 @@ export class AnimationService {
     Entity<AnimatedPassenger>
   > = {};
 
-  private passengerStopEntities: DualTextEntity<AnimatedStop>[] = [];
+  private passengerStopEntities: Entity<AnimatedStop>[] = [];
   private passengerStopEntitiesByPosition: Record<
     string,
-    DualTextEntity<AnimatedStop>
+    Entity<AnimatedStop>
   > = {};
 
   private container = new PIXI.Container();
@@ -292,10 +290,10 @@ export class AnimationService {
     passengerCountText.y = -sprite.height / 2;
     vehicleContainer.addChild(passengerCountText);
 
-    const entity: TextEntity<AnimatedVehicle> = {
+    const entity: Entity<AnimatedVehicle> = {
       data: vehicle,
-      sprite,
-      text: passengerCountText,
+      sprites: [sprite],
+      texts: [passengerCountText],
       show: true,
     };
 
@@ -313,17 +311,10 @@ export class AnimationService {
     const passengerContainer = new PIXI.Container();
     passengerContainer.addChild(sprite);
 
-    // Counter of passengers in a stop
-    const passengerCountText = new PIXI.BitmapText('', this.BITMAP_TEXT_STYLE);
-    passengerCountText.visible = !this.spriteService.useZoomedOutSprites;
-    // Position at the top right corner of the passenger
-    passengerCountText.x = sprite.width / 2;
-    passengerCountText.y = -sprite.height / 2;
-    passengerContainer.addChild(passengerCountText);
-
     const entity: Entity<AnimatedPassenger> = {
       data: passenger,
-      sprite,
+      sprites: [sprite],
+      texts: [],
       show: true,
     };
 
@@ -372,16 +363,15 @@ export class AnimationService {
         passengerCountText.y = -sprite.height / 2;
         stopContainer.addChild(passengerCountText);
 
-        const entity: DualTextEntity<AnimatedStop> = {
+        const entity: Entity<AnimatedStop> = {
           data: {
             ...stop,
             passengerIds: [],
             vehicleIds: [],
             numberOfPassengers: 0,
           },
-          sprite,
-          otherSprite,
-          text: passengerCountText,
+          sprites: [sprite, otherSprite],
+          texts: [passengerCountText],
           show: true,
         };
 
@@ -437,31 +427,35 @@ export class AnimationService {
     const allVehicleEntitiesY = this.previousVehiclesEntities
       .filter(
         (vehicle) =>
-          vehicle.sprite.parent.visible &&
-          (vehicle.sprite.parent.y != 0 || vehicle.sprite.parent.x != 0),
+          vehicle.sprites[0].parent.visible &&
+          (vehicle.sprites[0].parent.y != 0 ||
+            vehicle.sprites[0].parent.x != 0),
       )
-      .map((vehicle) => vehicle.sprite.parent.y);
+      .map((vehicle) => vehicle.sprites[0].parent.y);
     const allVehicleEntitiesX = this.previousVehiclesEntities
       .filter(
         (vehicle) =>
-          vehicle.sprite.parent.visible &&
-          (vehicle.sprite.parent.y != 0 || vehicle.sprite.parent.x != 0),
+          vehicle.sprites[0].parent.visible &&
+          (vehicle.sprites[0].parent.y != 0 ||
+            vehicle.sprites[0].parent.x != 0),
       )
-      .map((vehicle) => vehicle.sprite.parent.x);
+      .map((vehicle) => vehicle.sprites[0].parent.x);
     const allPassengerEntitiesY = this.previousPassengerEntities
       .filter(
         (passenger) =>
-          passenger.sprite.parent.visible &&
-          (passenger.sprite.parent.y != 0 || passenger.sprite.parent.x != 0),
+          passenger.sprites[0].parent.visible &&
+          (passenger.sprites[0].parent.y != 0 ||
+            passenger.sprites[0].parent.x != 0),
       )
-      .map((passenger) => passenger.sprite.parent.y);
+      .map((passenger) => passenger.sprites[0].parent.y);
     const allPassengerEntitiesX = this.previousPassengerEntities
       .filter(
         (passenger) =>
-          passenger.sprite.parent.visible &&
-          (passenger.sprite.parent.y != 0 || passenger.sprite.parent.x != 0),
+          passenger.sprites[0].parent.visible &&
+          (passenger.sprites[0].parent.y != 0 ||
+            passenger.sprites[0].parent.x != 0),
       )
-      .map((passenger) => passenger.sprite.parent.x);
+      .map((passenger) => passenger.sprites[0].parent.x);
 
     const allEntitiesY = allVehicleEntitiesY.concat(allPassengerEntitiesY);
     const allEntitiesX = allVehicleEntitiesX.concat(allPassengerEntitiesX);
@@ -527,7 +521,7 @@ export class AnimationService {
     const shouldShowComplete = this.shouldShowComplete;
 
     for (const vehicle of this.vehicles) {
-      vehicle.sprite.parent.visible =
+      vehicle.sprites[0].parent.visible =
         vehicle.show &&
         showVehicles && // Are vehicles not filtered
         !filters.has(vehicle.data.mode ?? 'unknown') && // Is mode not filtered
@@ -550,7 +544,7 @@ export class AnimationService {
     }
 
     for (const passenger of this.passengersEntities)
-      passenger.sprite.parent.visible =
+      passenger.sprites[0].parent.visible =
         passenger.show &&
         this.isPassengerFiltered(
           passenger,
@@ -621,8 +615,8 @@ export class AnimationService {
           staticVehicleAnimationData.position.latitude,
           staticVehicleAnimationData.position.longitude,
         ]);
-        vehicleEntity.sprite.parent.x = point.x;
-        vehicleEntity.sprite.parent.y = point.y;
+        vehicleEntity.sprites[0].parent.x = point.x;
+        vehicleEntity.sprites[0].parent.y = point.y;
         vehicleEntity.data.currentLineIndex =
           polylineIndex === -1
             ? 0
@@ -714,8 +708,8 @@ export class AnimationService {
               stop.position.latitude,
               stop.position.longitude,
             ]);
-            passengerEntity.sprite.parent.x = point.x;
-            passengerEntity.sprite.parent.y = point.y;
+            passengerEntity.sprites[0].parent.x = point.x;
+            passengerEntity.sprites[0].parent.y = point.y;
 
             if (passenger.status !== 'complete') {
               const animatedStop =
@@ -740,8 +734,10 @@ export class AnimationService {
         if (vehicleEntity) {
           vehicleEntity.data.passengerIds.push(passenger.id);
           vehicleEntity.data.numberOfPassengers += passenger.numberOfPassengers;
-          passengerEntity.sprite.parent.x = vehicleEntity.sprite.parent.x;
-          passengerEntity.sprite.parent.y = vehicleEntity.sprite.parent.y;
+          passengerEntity.sprites[0].parent.x =
+            vehicleEntity.sprites[0].parent.x;
+          passengerEntity.sprites[0].parent.y =
+            vehicleEntity.sprites[0].parent.y;
         }
       } else {
         // Passenger has an unknown error
@@ -754,8 +750,8 @@ export class AnimationService {
       ) {
         this.frame_pointToFollow = this.utils.layerPointToLatLng(
           new L.Point(
-            passengerEntity.sprite.parent.x,
-            passengerEntity.sprite.parent.y,
+            passengerEntity.sprites[0].parent.x,
+            passengerEntity.sprites[0].parent.y,
           ),
         );
         this.redrawPassengerPolyline();
@@ -768,9 +764,9 @@ export class AnimationService {
       stopEntity.data.passengerIds = [];
       stopEntity.data.vehicleIds = [];
       stopEntity.data.numberOfPassengers = 0;
-      stopEntity.text.text = '';
-      stopEntity.sprite.tint = this.WHITE;
-      stopEntity.sprite.parent.visible = true;
+      stopEntity.texts[0].text = '';
+      stopEntity.sprites[0].tint = this.WHITE;
+      stopEntity.sprites[0].parent.visible = true;
     }
   }
 
@@ -787,19 +783,19 @@ export class AnimationService {
       const numberOfPassengers = stopEntity.data.numberOfPassengers;
 
       if (numberOfDisplayedPassengers === 0) {
-        stopEntity.sprite.parent.visible = false;
+        stopEntity.sprites[0].parent.visible = false;
         continue;
       }
 
       if (numberOfDisplayedPassengers === numberOfPassengers) {
-        stopEntity.text.text = numberOfPassengers.toString();
+        stopEntity.texts[0].text = numberOfPassengers.toString();
       } else {
-        stopEntity.text.text = `${numberOfDisplayedPassengers} (${numberOfPassengers})`;
+        stopEntity.texts[0].text = `${numberOfDisplayedPassengers} (${numberOfPassengers})`;
       }
 
       if (numberOfPassengers === 0) {
-        stopEntity.text.tint = 0xffffff;
-        stopEntity.sprite.tint = 0xffffff;
+        stopEntity.texts[0].tint = 0xffffff;
+        stopEntity.sprites[0].tint = 0xffffff;
       }
 
       const interpolate = d3InterpolateRgb(
@@ -812,8 +808,8 @@ export class AnimationService {
 
       if (color) {
         const tint = 256 * (color.r * 256 + color.g) + color.b;
-        stopEntity.text.tint = tint;
-        stopEntity.sprite.tint = tint;
+        stopEntity.texts[0].tint = tint;
+        stopEntity.sprites[0].tint = tint;
       } else {
         console.warn('Color interpolation failed');
       }
@@ -825,17 +821,17 @@ export class AnimationService {
 
     const showText = !this.spriteService.useZoomedOutSprites;
     for (const stopEntity of this.passengerStopEntities) {
-      if (!stopEntity.sprite.parent.visible) {
+      if (!stopEntity.sprites[0].parent.visible) {
         // Only show the stop image
-        stopEntity.sprite.parent.visible = true;
-        stopEntity.sprite.visible = false;
-        stopEntity.text.visible = false;
-        stopEntity.otherSprite.visible = true;
+        stopEntity.sprites[0].parent.visible = true;
+        stopEntity.sprites[0].visible = false;
+        stopEntity.texts[0].visible = false;
+        stopEntity.sprites[1].visible = true;
       } else {
         // Show the passenger image and the text
-        stopEntity.sprite.visible = true;
-        stopEntity.text.visible = showText;
-        stopEntity.otherSprite.visible = false;
+        stopEntity.sprites[0].visible = true;
+        stopEntity.texts[0].visible = showText;
+        stopEntity.sprites[1].visible = false;
       }
     }
   }
@@ -850,7 +846,10 @@ export class AnimationService {
     if (stopEntity === undefined) return;
 
     const point = this.utils.layerPointToLatLng(
-      new L.Point(stopEntity.sprite.parent.x, stopEntity.sprite.parent.y),
+      new L.Point(
+        stopEntity.sprites[0].parent.x,
+        stopEntity.sprites[0].parent.y,
+      ),
     );
 
     this.frame_pointToFollow = point;
@@ -873,16 +872,16 @@ export class AnimationService {
 
       const numberOfPassengers = vehicleEntity.data.numberOfPassengers;
 
-      if (numberOfDisplayedPassengers === 0) vehicleEntity.text.text = '';
+      if (numberOfDisplayedPassengers === 0) vehicleEntity.texts[0].text = '';
       else if (numberOfDisplayedPassengers === numberOfPassengers) {
-        vehicleEntity.text.text = numberOfPassengers.toString();
+        vehicleEntity.texts[0].text = numberOfPassengers.toString();
       } else {
-        vehicleEntity.text.text = `${numberOfDisplayedPassengers} (${numberOfPassengers})`;
+        vehicleEntity.texts[0].text = `${numberOfDisplayedPassengers} (${numberOfPassengers})`;
       }
 
       if (numberOfPassengers === 0) {
-        vehicleEntity.text.tint = 0xffffff;
-        vehicleEntity.sprite.tint = 0xffffff;
+        vehicleEntity.texts[0].tint = 0xffffff;
+        vehicleEntity.sprites[0].tint = 0xffffff;
         continue;
       }
 
@@ -891,8 +890,8 @@ export class AnimationService {
       if (!color) continue;
 
       const tint = 256 * (color.r * 256 + color.g) + color.b;
-      vehicleEntity.text.tint = tint;
-      vehicleEntity.sprite.tint = tint;
+      vehicleEntity.texts[0].tint = tint;
+      vehicleEntity.sprites[0].tint = tint;
     }
   }
 
@@ -975,13 +974,13 @@ export class AnimationService {
       .multiplyBy(lineProgress)
       .add(pointA.multiplyBy(1 - lineProgress));
 
-    vehicleEntity.sprite.parent.x = interpolatedPosition.x;
-    vehicleEntity.sprite.parent.y = interpolatedPosition.y;
+    vehicleEntity.sprites[0].parent.x = interpolatedPosition.x;
+    vehicleEntity.sprites[0].parent.y = interpolatedPosition.y;
 
     // Set orientation
     const direction = pointB.subtract(pointA);
     const angle = -Math.atan2(direction.x, direction.y) + Math.PI / 2;
-    vehicleEntity.sprite.rotation = angle;
+    vehicleEntity.sprites[0].rotation = angle;
 
     return interpolatedPosition;
   }
@@ -997,10 +996,10 @@ export class AnimationService {
 
     // Distances for all vehicles
     for (const vehicle of this.vehicles) {
-      if (!vehicle.sprite.parent.visible) continue;
+      if (!vehicle.sprites[0].parent.visible) continue;
       const distance = this.distanceBetweenPoints(
         point,
-        vehicle.sprite.parent.position,
+        vehicle.sprites[0].parent.position,
       );
       if (distance <= minVisualDistance)
         nearVehicles.push({ id: vehicle.data.id, name: vehicle.data.name });
@@ -1008,10 +1007,10 @@ export class AnimationService {
 
     // Distances for all passengers
     for (const passenger of this.passengersEntities) {
-      if (!passenger.sprite.parent.visible) continue;
+      if (!passenger.sprites[0].parent.visible) continue;
       const distance = this.distanceBetweenPoints(
         point,
-        passenger.sprite.parent.position,
+        passenger.sprites[0].parent.position,
       );
       if (distance <= minVisualDistance)
         nearPassengers.push({
@@ -1023,13 +1022,13 @@ export class AnimationService {
     // Distances for all stops
     for (const stop of this.passengerStopEntities) {
       if (
-        !stop.sprite.parent.visible ||
-        (!stop.sprite.visible && !stop.otherSprite.visible)
+        !stop.sprites[0].parent.visible ||
+        (!stop.sprites[0].visible && !stop.sprites[1].visible)
       )
         continue;
       const distance = this.distanceBetweenPoints(
         point,
-        stop.sprite.parent.position,
+        stop.sprites[0].parent.position,
       );
       if (distance <= minVisualDistance) {
         nearStops.push({ id: stop.data.id, name: stop.data.id });
@@ -1155,7 +1154,7 @@ export class AnimationService {
     this.redrawPolyline(
       calculatedPolylineNo,
       lineNo,
-      new L.Point(passenger.sprite.parent.x, passenger.sprite.parent.y),
+      new L.Point(passenger.sprites[0].parent.x, passenger.sprites[0].parent.y),
       polylines,
     );
   }
@@ -1352,22 +1351,26 @@ export class AnimationService {
     const showText = !this.spriteService.useZoomedOutSprites;
 
     this.vehicles.forEach((entity) => {
-      entity.sprite.parent.scale.set(this.spriteService.vehicleSpriteScale);
-      entity.sprite.texture = this.spriteService.getCurrentVehicleTexture(
+      entity.sprites[0].parent.scale.set(this.spriteService.vehicleSpriteScale);
+      entity.sprites[0].texture = this.spriteService.getCurrentVehicleTexture(
         entity.data.mode,
       );
-      entity.text.visible = showText;
+      entity.texts[0].visible = showText;
     });
 
     this.passengersEntities.forEach((entity) => {
-      entity.sprite.parent.scale.set(this.spriteService.passengerSpriteScale);
-      entity.sprite.texture = passengerTexture;
+      entity.sprites[0].parent.scale.set(
+        this.spriteService.passengerSpriteScale,
+      );
+      entity.sprites[0].texture = passengerTexture;
     });
 
     this.passengerStopEntities.forEach((entity) => {
-      entity.sprite.parent.scale.set(this.spriteService.passengerSpriteScale);
-      entity.sprite.texture = passengerTexture;
-      entity.text.visible = showText;
+      entity.sprites[0].parent.scale.set(
+        this.spriteService.passengerSpriteScale,
+      );
+      entity.sprites[0].texture = passengerTexture;
+      entity.texts[0].visible = showText;
     });
   }
 
@@ -1515,7 +1518,7 @@ export class AnimationService {
     }
 
     if (entity) {
-      entity.sprite.parent.filters = [
+      entity.sprites[0].parent.filters = [
         new OutlineFilter(1, 0xffffff),
         new OutlineFilter(2, 0xffff00),
       ];
@@ -1539,7 +1542,7 @@ export class AnimationService {
         entity = this.passengerStopEntitiesByPosition[entityId];
         break;
     }
-    if (entity) entity.sprite.parent.filters = null;
+    if (entity) entity.sprites[0].parent.filters = null;
   }
 
   selectEntity(entityId: string, type: 'vehicle' | 'passenger' | 'stop') {
