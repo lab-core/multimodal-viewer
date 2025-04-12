@@ -129,6 +129,8 @@ export class AnimationService {
   private animationVisualizationTime = 0;
   private lastVisualisationTime = 0;
 
+  private hasCenteredInitially = false;
+
   private vehicles: TextEntity<AnimatedVehicle>[] = [];
   private vehicleEntitiesByVehicleId: Record<string, Entity<AnimatedVehicle>> =
     {};
@@ -415,6 +417,7 @@ export class AnimationService {
 
   clearAnimations() {
     this.container.removeChildren();
+    this.hasCenteredInitially = false;
     this.vehicles = [];
     this.vehicleEntitiesByVehicleId = {};
     this.passengersEntities = [];
@@ -1390,6 +1393,56 @@ export class AnimationService {
     this.updateVehiclePassengerCounters();
     this.updateStopCounters();
     this.followSelectedStop();
+
+    if (!this.hasCenteredInitially && this.utils) {
+      let point: L.LatLngExpression | null = null;
+
+      if (point === null) {
+        const vehicle = this.vehicles.find(
+          (vehicle) => vehicle.sprite.parent.visible,
+        );
+        if (vehicle !== undefined) {
+          point = this.utils.layerPointToLatLng(
+            new L.Point(vehicle.sprite.parent.x, vehicle.sprite.parent.y),
+          );
+        }
+      }
+
+      if (point === null) {
+        const passenger = this.passengersEntities.find(
+          (passenger) => passenger.sprite.parent.visible,
+        );
+        if (passenger !== undefined) {
+          point = this.utils.layerPointToLatLng(
+            new L.Point(passenger.sprite.parent.x, passenger.sprite.parent.y),
+          );
+        }
+      }
+
+      if (point === null) {
+        const stop = this.passengerStopEntities.find(
+          (stop) => stop.sprite.parent.visible,
+        );
+        if (stop !== undefined) {
+          point = this.utils.layerPointToLatLng(
+            new L.Point(stop.sprite.parent.x, stop.sprite.parent.y),
+          );
+        }
+      }
+
+      if (point !== null) {
+        this.utils.getMap().setView(point, this.utils.getMap().getZoom(), {
+          animate: true,
+        });
+
+        this.hasCenteredInitially = true;
+        console.log(
+          'Centered map to first visible entity:',
+          point,
+          this.utils.getMap().getZoom(),
+        );
+      }
+    }
   }
 
   // onClick is called after onEntityPointerdown
