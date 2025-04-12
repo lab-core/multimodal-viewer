@@ -1,3 +1,5 @@
+ARG PORT_SERVER
+
 # Use an official Python runtime as a parent image
 FROM python:3.11-slim
 
@@ -30,7 +32,7 @@ WORKDIR /app/multimodal-server
 RUN pip install -r requirements.txt
 
 # Make port 8090 available to the world outside this container
-EXPOSE 8090
+EXPOSE ${PORT_SERVER}
 
 # Run server.py when the container launches
 CMD ["python", "server.py"]

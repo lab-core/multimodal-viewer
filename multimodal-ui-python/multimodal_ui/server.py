@@ -6,7 +6,7 @@ import webbrowser
 from functools import partial
 
 class AngularServer:
-    def __init__(self, static_dir, port=8085, backend_port=8090):
+    def __init__(self, static_dir, port=8085, backend_port=8089):
         self.static_dir = os.path.abspath(static_dir)
         self.port = port
         self.backend_port = backend_port

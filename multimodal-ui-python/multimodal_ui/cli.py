@@ -4,7 +4,7 @@ from .server import serve_angular_app
 def main():
     parser = argparse.ArgumentParser(description='Multimodal UI Application')
     parser.add_argument('--port', type=int, default=8085, help='Port to serve the UI')
-    parser.add_argument('--backend-port', type=int, default=8090, 
+    parser.add_argument('--backend-port', type=int, default=8089, 
                        help='Port where backend server is running')
     args = parser.parse_args()
     
