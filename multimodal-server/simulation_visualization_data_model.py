@@ -1124,8 +1124,8 @@ class SimulationVisualizationDataManager:
     # The client keeps a maximum of __MAX_STATES_IN_CLIENT_BEFORE_NECESSARY + __MAX_STATES_IN_CLIENT_AFTER_NECESSARY + 1
     # states in memory
     # The current one, the previous __MAX_STATES_IN_CLIENT_BEFORE_NECESSARY and the next __MAX_STATES_IN_CLIENT_AFTER_NECESSARY
-    __MAX_STATES_IN_CLIENT_BEFORE_NECESSARY = 24
-    __MAX_STATES_IN_CLIENT_AFTER_NECESSARY = 50
+    # __MAX_STATES_IN_CLIENT_BEFORE_NECESSARY = 24
+    # __MAX_STATES_IN_CLIENT_AFTER_NECESSARY = 50
 
     # MARK: +- Format
     @staticmethod
@@ -1372,30 +1372,42 @@ class SimulationVisualizationDataManager:
         # then the __MAX_STATES_IN_CLIENT_BEFORE_NECESSARY previous states
         indexes_to_load = (
             [necessary_state_index]
+            # + [
+            #     next_state_index
+            #     for next_state_index in range(
+            #         necessary_state_index + 1,
+            #         min(
+            #             necessary_state_index
+            #             + SimulationVisualizationDataManager.__MAX_STATES_IN_CLIENT_AFTER_NECESSARY
+            #             + 1,
+            #             len(sorted_states),
+            #         ),
+            #     )
+            # ]
+            # + [
+            #     previous_state_index
+            #     for previous_state_index in range(
+            #         necessary_state_index - 1,
+            #         max(
+            #             necessary_state_index
+            #             - SimulationVisualizationDataManager.__MAX_STATES_IN_CLIENT_BEFORE_NECESSARY
+            #             - 1,
+            #             -1,
+            #         ),
+            #         -1,
+            #     )
+            # ]
+            # All next states
             + [
                 next_state_index
                 for next_state_index in range(
-                    necessary_state_index + 1,
-                    min(
-                        necessary_state_index
-                        + SimulationVisualizationDataManager.__MAX_STATES_IN_CLIENT_AFTER_NECESSARY
-                        + 1,
-                        len(sorted_states),
-                    ),
+                    necessary_state_index + 1, len(sorted_states)
                 )
             ]
+            # All previous states
             + [
                 previous_state_index
-                for previous_state_index in range(
-                    necessary_state_index - 1,
-                    max(
-                        necessary_state_index
-                        - SimulationVisualizationDataManager.__MAX_STATES_IN_CLIENT_BEFORE_NECESSARY
-                        - 1,
-                        -1,
-                    ),
-                    -1,
-                )
+                for previous_state_index in range(necessary_state_index - 1, -1, -1)
             ]
         )
 
