@@ -554,6 +554,7 @@ export class VisualizationService {
             passengerIds: [],
             vehicleIds: [],
             numberOfPassengers: 0,
+            numberOfCompletePassengers: 0,
           };
         }
       }
@@ -684,7 +685,13 @@ export class VisualizationService {
         }
 
         animatedStop.passengerIds.push(passengerId);
-        animatedStop.numberOfPassengers += passenger.numberOfPassengers;
+
+        if (passenger.status === 'complete') {
+          animatedStop.numberOfCompletePassengers +=
+            passenger.numberOfPassengers;
+        } else {
+          animatedStop.numberOfPassengers += passenger.numberOfPassengers;
+        }
       }
     }
 

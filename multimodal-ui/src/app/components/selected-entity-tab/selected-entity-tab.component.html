@@ -103,8 +103,7 @@
             }
             <div class="indent">
               @if (environment !== null && leg.assignedVehicleId !== null) {
-                @let vehicle =
-                  environment.currentState.vehicles[leg.assignedVehicleId];
+                @let vehicle = environment.vehicles[leg.assignedVehicleId];
                 <div
                   tabindex="0"
                   class="clickable-no-padding"
