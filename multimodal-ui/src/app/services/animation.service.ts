@@ -182,6 +182,14 @@ export class AnimationService {
   }
 
   synchronizeEnvironment(simulationEnvironment: AnimatedSimulationEnvironment) {
+    // We need to interpolate the animation time to quickly join the current visualization time if there is
+    // a continuous animation data between the last and the current visualization time, or else
+    // set the animation time to the current visualization time.
+    this.synchronizeTime(
+      simulationEnvironment,
+      simulationEnvironment.currentState.timestamp,
+    );
+
     this.selectedEntityPolyline.clear();
     this.container.removeChildren();
     this.container.addChild(this.selectedEntityPolyline);
@@ -261,7 +269,7 @@ export class AnimationService {
     this.onRedraw();
   }
 
-  synchronizeTime(
+  private synchronizeTime(
     animatedSimulationEnvironment: AnimatedSimulationEnvironment,
     visualizationTime: number,
   ) {
@@ -716,27 +724,31 @@ export class AnimationService {
       ) {
         const vehicleEntity =
           this.vehicleEntitiesByVehicleId[animationData.vehicleId];
-        const allStops = getAllStops(vehicleEntity.data);
-        const stop =
-          allStops[(animationData as StaticPassengerAnimationData).stopIndex];
-        if (stop !== undefined) {
-          const point = this.utils.latLngToLayerPoint([
-            stop.position.latitude,
-            stop.position.longitude,
-          ]);
-          passengerEntity.sprite.parent.x = point.x;
-          passengerEntity.sprite.parent.y = point.y;
+        if (vehicleEntity !== undefined) {
+          const allStops = getAllStops(vehicleEntity.data);
+          const stop =
+            allStops[(animationData as StaticPassengerAnimationData).stopIndex];
+          if (stop !== undefined) {
+            const point = this.utils.latLngToLayerPoint([
+              stop.position.latitude,
+              stop.position.longitude,
+            ]);
+            passengerEntity.sprite.parent.x = point.x;
+            passengerEntity.sprite.parent.y = point.y;
 
-          if (passenger.status !== 'complete') {
-            const animatedStop =
-              this.passengerStopEntitiesByPosition[getId(stop)];
+            if (passenger.status !== 'complete') {
+              const animatedStop =
+                this.passengerStopEntitiesByPosition[getId(stop)];
 
-            if (animatedStop) {
-              animatedStop.data.passengerIds.push(passenger.id);
-              animatedStop.data.numberOfPassengers +=
-                passenger.numberOfPassengers;
+              if (animatedStop) {
+                animatedStop.data.passengerIds.push(passenger.id);
+                animatedStop.data.numberOfPassengers +=
+                  passenger.numberOfPassengers;
+              }
             }
           }
+        } else {
+          // Unknown bug
         }
       } else if (
         (animationData as DynamicPassengerAnimationData).isOnBoard === true &&
