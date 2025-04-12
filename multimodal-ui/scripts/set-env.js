@@ -1,54 +1,94 @@
 const fs = require('fs');
 const path = require('path');
+require('dotenv').config();
 
-// Path to root .env file
-const envPath = path.join(__dirname, '../../.env');
-// Path to Angular environment files
-const targetPath = path.join(__dirname, '../src/environments/environment.ts');
-const targetProdPath = path.join(__dirname, '../src/environments/environment.prod.ts');
-// Path to angular.json
-const angularJsonPath = path.join(__dirname, '../angular.json');
-
-// Read .env file
-const envConfig = fs.readFileSync(envPath, 'utf8');
-
-// Parse ports from .env
-const portServerMatch = envConfig.match(/PORT_SERVER=(\d+)/);
-const PORT_SERVER = portServerMatch ? portServerMatch[1] : '8089';
-const portClientMatch = envConfig.match(/PORT_CLIENT=(\d+)/);
-const PORT_CLIENT = portClientMatch ? portClientMatch[1] : '8085';
-
-// Update environment files
-const envContent = `export const environment = {
-  production: false,
-  socketUrl: 'http://127.0.0.1:${PORT_SERVER}',
-  apiUrl: 'http://127.0.0.1:${PORT_SERVER}/api/',
-  clientPort: ${PORT_CLIENT}
+// Configuration paths
+const PATHS = {
+  env: [
+    path.join(__dirname, '../../.env'),      // Local development (multimodal-ui/scripts/../../.env)
+    path.join(__dirname, '../../../.env'),   // Alternative local path
+    '/app/.env',                            // Docker build context
+    '/.env'                                 // Docker root
+  ],
+  angular: {
+    dev: path.join(__dirname, '../src/environments/environment.ts'),
+    prod: path.join(__dirname, '../src/environments/environment.prod.ts'),
+    config: path.join(__dirname, '../angular.json')
+  }
 };
-`;
 
-const envProdContent = `export const environment = {
-  production: true,
-  socketUrl: 'http://127.0.0.1:${PORT_SERVER}',
-  apiUrl: 'http://127.0.0.1:${PORT_SERVER}/api/',
-  clientPort: ${PORT_CLIENT}
+// Default values if nothing is found
+const DEFAULTS = {
+  PORT_SERVER: '8089',
+  PORT_CLIENT: '8085'
 };
-`;
 
-// Create environments directory if it doesn't exist
-if (!fs.existsSync(path.dirname(targetPath))) {
-  fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+// Find the first existing .env file
+function locateEnvFile() {
+  for (const envPath of PATHS.env) {
+    if (fs.existsSync(envPath)) {
+      console.log(`Using .env file at: ${envPath}`);
+      return envPath;
+    }
+  }
+  console.warn('No .env file found, using defaults or environment variables');
+  return null;
 }
 
-// Write environment files
-fs.writeFileSync(targetPath, envContent);
-fs.writeFileSync(targetProdPath, envProdContent);
+// Get configuration values from either .env or environment variables
+function getConfig() {
+  const envFile = locateEnvFile();
+  if (envFile) {
+    require('dotenv').config({ path: envFile });
+  }
 
-// Update angular.json
-const angularJson = JSON.parse(fs.readFileSync(angularJsonPath, 'utf8'));
-angularJson.projects['multimodal-ui'].architect.serve.options.port = parseInt(PORT_CLIENT);
-fs.writeFileSync(angularJsonPath, JSON.stringify(angularJson, null, 2));
+  return {
+    PORT_SERVER: process.env.PORT_SERVER || DEFAULTS.PORT_SERVER,
+    PORT_CLIENT: process.env.PORT_CLIENT || DEFAULTS.PORT_CLIENT
+  };
+}
 
-console.log(`Configuration updated:
-- Socket server URL: http://127.0.0.1:${PORT_SERVER}
-- Client port: ${PORT_CLIENT}`);
+// Create environment file content
+function createEnvContent(config, isProd = false) {
+  return `export const environment = {
+  production: ${isProd},
+  socketUrl: 'http://127.0.0.1:${config.PORT_SERVER}',
+  apiUrl: 'http://127.0.0.1:${config.PORT_SERVER}/api/',
+  clientPort: ${config.PORT_CLIENT}
+};
+`;
+}
+
+// Ensure directory exists
+function ensureDirectoryExists(filePath) {
+  const dirname = path.dirname(filePath);
+  if (!fs.existsSync(dirname)) {
+    fs.mkdirSync(dirname, { recursive: true });
+  }
+}
+
+// Main execution
+try {
+  const config = getConfig();
+  
+  // Create environment files
+  ensureDirectoryExists(PATHS.angular.dev);
+  fs.writeFileSync(PATHS.angular.dev, createEnvContent(config));
+  fs.writeFileSync(PATHS.angular.prod, createEnvContent(config, true));
+
+  // Update angular.json port if file exists
+  if (fs.existsSync(PATHS.angular.config)) {
+    const angularJson = JSON.parse(fs.readFileSync(PATHS.angular.config, 'utf8'));
+    angularJson.projects['multimodal-ui'].architect.serve.options.port = parseInt(config.PORT_CLIENT);
+    fs.writeFileSync(PATHS.angular.config, JSON.stringify(angularJson, null, 2));
+  }
+
+  console.log(`Configuration updated:
+- Backend URL: http://127.0.0.1:${config.PORT_SERVER}
+- Client port: ${config.PORT_CLIENT}
+- Production mode: ${process.env.NODE_ENV === 'production'}`);
+
+} catch (error) {
+  console.error('Error during environment setup:', error);
+  process.exit(1);
+}
