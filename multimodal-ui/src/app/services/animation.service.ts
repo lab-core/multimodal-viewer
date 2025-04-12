@@ -186,7 +186,7 @@ export class AnimationService {
     // set the animation time to the current visualization time.
     this.synchronizeTime(
       simulationEnvironment,
-      simulationEnvironment.currentState.timestamp,
+      simulationEnvironment.timestamp,
     );
 
     this.selectedEntityPolyline.clear();
