@@ -52,6 +52,13 @@ import { DataService } from './data.service';
   providedIn: 'root',
 })
 export class SimulationService {
+  // MARK: TODO DELETE
+  private readonly timers: Record<string, number> = {
+    timer1: 0,
+    timer2: 0,
+    timer3: 0,
+  };
+
   // MARK: Properties
   private readonly _activeSimulationIdSignal: WritableSignal<string | null> =
     signal(null);
@@ -63,6 +70,7 @@ export class SimulationService {
       firstContinuousState: null,
       lastContinuousState: null,
       currentState: null,
+      continuousAnimationData: null,
     });
 
   private readonly _simulationPolylinesSignal: WritableSignal<AllPolylines | null> =
@@ -118,7 +126,7 @@ export class SimulationService {
             .filter((state) => state !== null);
 
           return this.mergeStates(
-            states.states,
+            states,
             missingStates,
             stateOrdersToKeep as number[],
             !!shouldRequestMoreStates,
@@ -158,6 +166,7 @@ export class SimulationService {
       firstContinuousState: null,
       lastContinuousState: null,
       currentState: null,
+      continuousAnimationData: null,
     });
 
     this._simulationPolylinesSignal.set(null);
@@ -1066,7 +1075,7 @@ export class SimulationService {
   }
 
   private mergeStates(
-    states: AnimatedSimulationState[],
+    states: AnimatedSimulationStates,
     missingStates: SimulationState[],
     stateOrdersToKeep: number[],
     shouldRequestMoreStates: boolean,
@@ -1098,7 +1107,7 @@ export class SimulationService {
       },
     );
 
-    for (const state of states) {
+    for (const state of states.states) {
       if (stateOrdersToKeep.includes(state.order)) {
         animatedMissingStates.push(state);
       }
@@ -1125,6 +1134,7 @@ export class SimulationService {
       firstContinuousState: null,
       lastContinuousState: null,
       currentState: null,
+      continuousAnimationData: null,
     };
 
     if (firstStateIndex === -1) {
@@ -1187,6 +1197,15 @@ export class SimulationService {
       endTimestamp = lastContinuousUpdate?.timestamp ?? currentState.timestamp;
     }
 
+    const continuousStates = sortedStates.slice(
+      firstContinuousState.index,
+      lastContinuousState.index + 1,
+    );
+
+    const continuousAnimationData = continuousStates.reduce((acc, state) => {
+      return this.mergeAnimationData(acc, state.animationData);
+    }, continuousStates[0].animationData);
+
     return {
       states: sortedStates,
       shouldRequestMoreStates,
@@ -1196,6 +1215,7 @@ export class SimulationService {
         startTimestamp,
         endTimestamp,
       },
+      continuousAnimationData,
     };
   }
 
@@ -1738,4 +1758,213 @@ export class SimulationService {
     const polylineId = stop.id + ',' + nextStop.id;
     return polylines[polylineId] ?? null;
   }
+
+  private mergeAnimationData(
+    firstAnimationData: AnimationData,
+    secondAnimationData: AnimationData,
+  ): AnimationData {
+    // This version really merge the two animation data but is pretty slow.
+    // const mergedPassengerAnimationData: Record<
+    //   string,
+    //   PassengerAnimationData[]
+    // > = {};
+
+    // const allPassengerIds = new Set([
+    //   ...Object.keys(firstAnimationData.passengers),
+    //   ...Object.keys(secondAnimationData.passengers),
+    // ]);
+
+    // for (const passengerId of allPassengerIds) {
+    //   const firstPassengerAnimationData =
+    //     firstAnimationData.passengers[passengerId];
+    //   const secondPassengerAnimationData =
+    //     secondAnimationData.passengers[passengerId];
+
+    //   const firstHasAnimationData =
+    //     firstPassengerAnimationData !== undefined &&
+    //     firstPassengerAnimationData.length > 0;
+    //   const secondHasAnimationData =
+    //     secondPassengerAnimationData !== undefined &&
+    //     secondPassengerAnimationData.length > 0;
+
+    //   if (!firstHasAnimationData && !secondHasAnimationData) {
+    //     continue;
+    //   }
+
+    //   if (!firstHasAnimationData) {
+    //     mergedPassengerAnimationData[passengerId] =
+    //       secondPassengerAnimationData;
+    //     continue;
+    //   }
+
+    //   if (!secondHasAnimationData) {
+    //     mergedPassengerAnimationData[passengerId] = firstPassengerAnimationData;
+    //     continue;
+    //   }
+
+    //   const lastFirstAnimationData =
+    //     firstPassengerAnimationData[firstPassengerAnimationData.length - 1];
+    //   const firstSecondAnimationData = secondPassengerAnimationData[0];
+
+    //   const {
+    //     startOrder: _1,
+    //     startTimestamp: _2,
+    //     endOrder: _3,
+    //     endTimestamp: _4,
+    //     ...firstComparableData
+    //   } = lastFirstAnimationData;
+    //   const {
+    //     startOrder: _5,
+    //     startTimestamp: _6,
+    //     endOrder: _7,
+    //     endTimestamp: _8,
+    //     ...secondComparableData
+    //   } = firstSecondAnimationData;
+
+    //   if (!this.deepCompare(firstComparableData, secondComparableData)) {
+    //     mergedPassengerAnimationData[passengerId] =
+    //       firstPassengerAnimationData.concat(secondPassengerAnimationData);
+    //     continue;
+    //   } else {
+    //     mergedPassengerAnimationData[passengerId] = firstPassengerAnimationData
+    //       .slice(0, -1)
+    //       .concat(secondPassengerAnimationData);
+    //     firstSecondAnimationData.startOrder = lastFirstAnimationData.startOrder;
+    //     firstSecondAnimationData.startTimestamp =
+    //       lastFirstAnimationData.startTimestamp;
+    //   }
+    // }
+
+    // const mergedVehicleAnimationData: Record<string, VehicleAnimationData[]> =
+    //   {};
+
+    // const allVehicleIds = new Set([
+    //   ...Object.keys(firstAnimationData.vehicles),
+    //   ...Object.keys(secondAnimationData.vehicles),
+    // ]);
+
+    // for (const vehicleId of allVehicleIds) {
+    //   const firstVehicleAnimationData = firstAnimationData.vehicles[vehicleId];
+    //   const secondVehicleAnimationData =
+    //     secondAnimationData.vehicles[vehicleId];
+
+    //   const firstHasAnimationData =
+    //     firstVehicleAnimationData !== undefined &&
+    //     firstVehicleAnimationData.length > 0;
+    //   const secondHasAnimationData =
+    //     secondVehicleAnimationData !== undefined &&
+    //     secondVehicleAnimationData.length > 0;
+
+    //   if (!firstHasAnimationData && !secondHasAnimationData) {
+    //     continue;
+    //   }
+
+    //   if (!firstHasAnimationData) {
+    //     mergedVehicleAnimationData[vehicleId] = secondVehicleAnimationData;
+    //     continue;
+    //   }
+
+    //   if (!secondHasAnimationData) {
+    //     mergedVehicleAnimationData[vehicleId] = firstVehicleAnimationData;
+    //     continue;
+    //   }
+
+    //   const lastFirstAnimationData =
+    //     firstVehicleAnimationData[firstVehicleAnimationData.length - 1];
+    //   const firstSecondAnimationData = secondVehicleAnimationData[0];
+
+    //   const {
+    //     startOrder: _1,
+    //     startTimestamp: _2,
+    //     endOrder: _3,
+    //     endTimestamp: _4,
+    //     ...firstComparableData
+    //   } = lastFirstAnimationData;
+    //   const {
+    //     startOrder: _5,
+    //     startTimestamp: _6,
+    //     endOrder: _7,
+    //     endTimestamp: _8,
+    //     ...secondComparableData
+    //   } = firstSecondAnimationData;
+
+    //   if (!this.deepCompare(firstComparableData, secondComparableData)) {
+    //     mergedVehicleAnimationData[vehicleId] =
+    //       firstVehicleAnimationData.concat(secondVehicleAnimationData);
+    //     continue;
+    //   } else {
+    //     mergedVehicleAnimationData[vehicleId] = firstVehicleAnimationData
+    //       .slice(0, -1)
+    //       .concat(secondVehicleAnimationData);
+    //     firstSecondAnimationData.startOrder = lastFirstAnimationData.startOrder;
+    //     firstSecondAnimationData.startTimestamp =
+    //       lastFirstAnimationData.startTimestamp;
+    //   }
+    // }
+
+    // This version only concatenate the two animation data and is much faster.
+    const mergedPassengerAnimationData: Record<
+      string,
+      PassengerAnimationData[]
+    > = {};
+    const mergedVehicleAnimationData: Record<string, VehicleAnimationData[]> =
+      {};
+
+    for (const passengerId in firstAnimationData.passengers) {
+      mergedPassengerAnimationData[passengerId] =
+        firstAnimationData.passengers[passengerId];
+    }
+    for (const vehicleId in firstAnimationData.vehicles) {
+      mergedVehicleAnimationData[vehicleId] =
+        firstAnimationData.vehicles[vehicleId];
+    }
+
+    for (const passengerId in secondAnimationData.passengers) {
+      if (mergedPassengerAnimationData[passengerId] === undefined) {
+        mergedPassengerAnimationData[passengerId] =
+          secondAnimationData.passengers[passengerId];
+      } else {
+        mergedPassengerAnimationData[passengerId] =
+          mergedPassengerAnimationData[passengerId].concat(
+            secondAnimationData.passengers[passengerId],
+          );
+      }
+    }
+    for (const vehicleId in secondAnimationData.vehicles) {
+      if (mergedVehicleAnimationData[vehicleId] === undefined) {
+        mergedVehicleAnimationData[vehicleId] =
+          secondAnimationData.vehicles[vehicleId];
+      } else {
+        mergedVehicleAnimationData[vehicleId] = mergedVehicleAnimationData[
+          vehicleId
+        ].concat(secondAnimationData.vehicles[vehicleId]);
+      }
+    }
+
+    return {
+      passengers: mergedPassengerAnimationData,
+      vehicles: mergedVehicleAnimationData,
+      startTimestamp: firstAnimationData.startTimestamp,
+      startOrder: firstAnimationData.startOrder,
+      endTimestamp: secondAnimationData.endTimestamp,
+      endOrder: secondAnimationData.endOrder,
+    };
+  }
+
+  // private deepCompare(
+  //   a: Record<string, unknown>,
+  //   b: Record<string, unknown>,
+  // ): boolean {
+  //   if (Object.keys(a).length !== Object.keys(b).length) {
+  //     return false;
+  //   }
+
+  //   for (const key in a) {
+  //     if (a[key] !== b[key]) {
+  //       return false;
+  //     }
+  //   }
+
+  //   return true;
+  // }
 }

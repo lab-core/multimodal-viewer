@@ -519,6 +519,8 @@ export interface AnimatedSimulationStates {
      */
     endTimestamp: number;
   } | null;
+
+  continuousAnimationData: AnimationData | null;
 }
 
 export function getAllStops(vehicle: Vehicle): Stop[] {

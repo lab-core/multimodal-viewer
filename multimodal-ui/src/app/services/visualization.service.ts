@@ -17,13 +17,11 @@ import {
   AnimationData,
   DynamicPassengerAnimationData,
   getAllStops,
-  PassengerAnimationData,
   RUNNING_SIMULATION_STATUSES,
   Simulation,
   SimulationEnvironment,
   StaticPassengerAnimationData,
   StaticVehicleAnimationData,
-  VehicleAnimationData,
 } from '../interfaces/simulation.model';
 import { CommunicationService } from './communication.service';
 import { SimulationService } from './simulation.service';
@@ -451,7 +449,8 @@ export class VisualizationService {
 
     if (
       simulationStates.firstContinuousState === null ||
-      simulationStates.lastContinuousState === null
+      simulationStates.lastContinuousState === null ||
+      simulationStates.continuousAnimationData === null
     ) {
       return null;
     }
@@ -470,11 +469,6 @@ export class VisualizationService {
       return null;
     }
 
-    // TODO Merge animation data
-    const mergedAnimationData = continuousStates.reduce((acc, state) => {
-      return this.mergeAnimationData(acc, state.animationData);
-    }, continuousStates[0].animationData);
-
     const environment = this.buildEnvironment(continuousAnimatedStates);
 
     if (environment === null) {
@@ -483,7 +477,7 @@ export class VisualizationService {
 
     const animatedEnvironment = this.completeEnvironment(
       environment,
-      mergedAnimationData,
+      simulationStates.continuousAnimationData,
     );
 
     this.animatedSimulationEnvironment = animatedEnvironment;
@@ -688,174 +682,5 @@ export class VisualizationService {
       stops,
       animationData,
     };
-  }
-
-  // MARK: Animation Data
-  private mergeAnimationData(
-    firstAnimationData: AnimationData,
-    secondAnimationData: AnimationData,
-  ): AnimationData {
-    const mergedPassengerAnimationData: Record<
-      string,
-      PassengerAnimationData[]
-    > = {};
-
-    const allPassengerIds = new Set([
-      ...Object.keys(firstAnimationData.passengers),
-      ...Object.keys(secondAnimationData.passengers),
-    ]);
-
-    for (const passengerId of allPassengerIds) {
-      const firstPassengerAnimationData =
-        firstAnimationData.passengers[passengerId];
-      const secondPassengerAnimationData =
-        secondAnimationData.passengers[passengerId];
-
-      const firstHasAnimationData =
-        firstPassengerAnimationData !== undefined &&
-        firstPassengerAnimationData.length > 0;
-      const secondHasAnimationData =
-        secondPassengerAnimationData !== undefined &&
-        secondPassengerAnimationData.length > 0;
-
-      if (!firstHasAnimationData && !secondHasAnimationData) {
-        continue;
-      }
-
-      if (!firstHasAnimationData) {
-        mergedPassengerAnimationData[passengerId] =
-          secondPassengerAnimationData;
-        continue;
-      }
-
-      if (!secondHasAnimationData) {
-        mergedPassengerAnimationData[passengerId] = firstPassengerAnimationData;
-        continue;
-      }
-
-      const lastFirstAnimationData =
-        firstPassengerAnimationData[firstPassengerAnimationData.length - 1];
-      const firstSecondAnimationData = secondPassengerAnimationData[0];
-
-      const {
-        startOrder: _1,
-        startTimestamp: _2,
-        endOrder: _3,
-        endTimestamp: _4,
-        ...firstComparableData
-      } = lastFirstAnimationData;
-      const {
-        startOrder: _5,
-        startTimestamp: _6,
-        endOrder: _7,
-        endTimestamp: _8,
-        ...secondComparableData
-      } = firstSecondAnimationData;
-
-      if (!this.deepCompare(firstComparableData, secondComparableData)) {
-        mergedPassengerAnimationData[passengerId] =
-          firstPassengerAnimationData.concat(secondPassengerAnimationData);
-        continue;
-      } else {
-        mergedPassengerAnimationData[passengerId] = firstPassengerAnimationData
-          .slice(0, -1)
-          .concat(secondPassengerAnimationData);
-        firstSecondAnimationData.startOrder = lastFirstAnimationData.startOrder;
-        firstSecondAnimationData.startTimestamp =
-          lastFirstAnimationData.startTimestamp;
-      }
-    }
-
-    const mergedVehicleAnimationData: Record<string, VehicleAnimationData[]> =
-      {};
-
-    const allVehicleIds = new Set([
-      ...Object.keys(firstAnimationData.vehicles),
-      ...Object.keys(secondAnimationData.vehicles),
-    ]);
-    for (const vehicleId of allVehicleIds) {
-      const firstVehicleAnimationData = firstAnimationData.vehicles[vehicleId];
-      const secondVehicleAnimationData =
-        secondAnimationData.vehicles[vehicleId];
-
-      const firstHasAnimationData =
-        firstVehicleAnimationData !== undefined &&
-        firstVehicleAnimationData.length > 0;
-      const secondHasAnimationData =
-        secondVehicleAnimationData !== undefined &&
-        secondVehicleAnimationData.length > 0;
-
-      if (!firstHasAnimationData && !secondHasAnimationData) {
-        continue;
-      }
-
-      if (!firstHasAnimationData) {
-        mergedVehicleAnimationData[vehicleId] = secondVehicleAnimationData;
-        continue;
-      }
-
-      if (!secondHasAnimationData) {
-        mergedVehicleAnimationData[vehicleId] = firstVehicleAnimationData;
-        continue;
-      }
-
-      const lastFirstAnimationData =
-        firstVehicleAnimationData[firstVehicleAnimationData.length - 1];
-      const firstSecondAnimationData = secondVehicleAnimationData[0];
-
-      const {
-        startOrder: _1,
-        startTimestamp: _2,
-        endOrder: _3,
-        endTimestamp: _4,
-        ...firstComparableData
-      } = lastFirstAnimationData;
-      const {
-        startOrder: _5,
-        startTimestamp: _6,
-        endOrder: _7,
-        endTimestamp: _8,
-        ...secondComparableData
-      } = firstSecondAnimationData;
-
-      if (!this.deepCompare(firstComparableData, secondComparableData)) {
-        mergedVehicleAnimationData[vehicleId] =
-          firstVehicleAnimationData.concat(secondVehicleAnimationData);
-        continue;
-      } else {
-        mergedVehicleAnimationData[vehicleId] = firstVehicleAnimationData
-          .slice(0, -1)
-          .concat(secondVehicleAnimationData);
-        firstSecondAnimationData.startOrder = lastFirstAnimationData.startOrder;
-        firstSecondAnimationData.startTimestamp =
-          lastFirstAnimationData.startTimestamp;
-      }
-    }
-
-    return {
-      passengers: mergedPassengerAnimationData,
-      vehicles: mergedVehicleAnimationData,
-      startTimestamp: firstAnimationData.startTimestamp,
-      startOrder: firstAnimationData.startOrder,
-      endTimestamp: secondAnimationData.endTimestamp,
-      endOrder: secondAnimationData.endOrder,
-    };
-  }
-
-  private deepCompare(
-    a: Record<string, unknown>,
-    b: Record<string, unknown>,
-  ): boolean {
-    if (Object.keys(a).length !== Object.keys(b).length) {
-      return false;
-    }
-
-    for (const key in a) {
-      if (a[key] !== b[key]) {
-        return false;
-      }
-    }
-
-    return true;
   }
 }
