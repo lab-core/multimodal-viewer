@@ -29,7 +29,6 @@ import {
   DynamicPassengerAnimationData,
   DynamicVehicleAnimationData,
   getAllStops,
-  getId,
   Polyline,
   StaticPassengerAnimationData,
   StaticVehicleAnimationData,
@@ -187,7 +186,7 @@ export class AnimationService {
     // set the animation time to the current visualization time.
     this.synchronizeTime(
       simulationEnvironment,
-      simulationEnvironment.currentState.timestamp,
+      simulationEnvironment.timestamp,
     );
 
     this.selectedEntityPolyline.clear();
@@ -208,9 +207,7 @@ export class AnimationService {
     const selectedVehicleId = this._selectedVehicleIdSignal();
     const selectedPassengerId = this._selectedPassengerIdSignal();
 
-    for (const vehicle of Object.values(
-      simulationEnvironment.currentState.vehicles,
-    )) {
+    for (const vehicle of Object.values(simulationEnvironment.vehicles)) {
       this.addVehicle(vehicle);
       if (selectedVehicleId !== null && vehicle.id == selectedVehicleId) {
         isSelectedVehicleInEnvironment = true;
@@ -227,9 +224,7 @@ export class AnimationService {
 
     let isSelectedPassengerInEnvironment = false;
 
-    for (const passenger of Object.values(
-      simulationEnvironment.currentState.passengers,
-    )) {
+    for (const passenger of Object.values(simulationEnvironment.passengers)) {
       this.addPassenger(passenger);
       if (selectedPassengerId !== null && passenger.id == selectedPassengerId) {
         isSelectedPassengerInEnvironment = true;
@@ -248,13 +243,10 @@ export class AnimationService {
 
     let isSelectedStopInEnvironment = false;
     const selectedStopId = this._selectedStopIdSignal();
-    for (const stop of Object.values(
-      simulationEnvironment.currentState.stops,
-    )) {
-      const stopId = getId(stop);
-      if (selectedStopId !== null && stopId == selectedStopId) {
+    for (const stop of Object.values(simulationEnvironment.stops)) {
+      if (selectedStopId !== null && stop.id == selectedStopId) {
         isSelectedStopInEnvironment = true;
-        this.highlightEntityId(stopId, 'stop');
+        this.highlightEntityId(stop.id, 'stop');
       }
     }
 
@@ -274,9 +266,7 @@ export class AnimationService {
     visualizationTime: number,
   ) {
     // Don't sync if we don't have the right state
-    if (
-      animatedSimulationEnvironment.currentState.timestamp != visualizationTime
-    ) {
+    if (animatedSimulationEnvironment.timestamp != visualizationTime) {
       console.warn(
         "Animation not synced: simulation timestamp doesn't match visualisation time",
       );
@@ -361,7 +351,7 @@ export class AnimationService {
       const vehicle = vehicleEntity.data;
       const allStops = getAllStops(vehicle);
       for (const stop of allStops) {
-        if (this.passengerStopEntitiesByPosition[getId(stop)] !== undefined)
+        if (this.passengerStopEntitiesByPosition[stop.id] !== undefined)
           continue;
 
         const stopContainer = new PIXI.Container();
@@ -416,7 +406,7 @@ export class AnimationService {
         this.container.addChild(stopContainer);
         this.passengerStopEntities.push(entity);
 
-        this.passengerStopEntitiesByPosition[getId(stop)] = entity;
+        this.passengerStopEntitiesByPosition[stop.id] = entity;
       }
     }
   }
@@ -738,7 +728,7 @@ export class AnimationService {
 
             if (passenger.status !== 'complete') {
               const animatedStop =
-                this.passengerStopEntitiesByPosition[getId(stop)];
+                this.passengerStopEntitiesByPosition[stop.id];
 
               if (animatedStop) {
                 animatedStop.data.passengerIds.push(passenger.id);
@@ -1038,8 +1028,7 @@ export class AnimationService {
         stop.sprite.parent.position,
       );
       if (distance <= minVisualDistance) {
-        const id = getId(stop.data);
-        nearStops.push({ id, name: id });
+        nearStops.push({ id: stop.data.id, name: stop.data.id });
       }
     }
 
