@@ -31,7 +31,6 @@ RUN python setup.py install
 WORKDIR /app/multimodal-server
 RUN pip install -r requirements.txt
 
-# Make port 8090 available to the world outside this container
 EXPOSE ${PORT_SERVER}
 
 # Run server.py when the container launches
