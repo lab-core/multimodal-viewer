@@ -366,6 +366,8 @@
                 [matTooltipPosition]="'after'"
                 (click)="selectVehicle(vehicle.id)"
                 (keydown.enter)="selectVehicle(vehicle.id)"
+                (mouseenter)="preselectEntity(vehicle)"
+                (mouseleave)="unpreselectEntity()"
               >
                 <span>{{ vehicle.name }}</span>
               </div>
