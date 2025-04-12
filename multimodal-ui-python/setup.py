@@ -10,6 +10,7 @@ setup(
     },
     install_requires=[
         'port-for>=0.4',
+        'python-dotenv',
     ],
     entry_points={
         'console_scripts': [

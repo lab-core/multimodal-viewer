@@ -22,6 +22,7 @@ const PORT_CLIENT = portClientMatch ? portClientMatch[1] : '8085';
 const envContent = `export const environment = {
   production: false,
   socketUrl: 'http://127.0.0.1:${PORT_SERVER}',
+  apiUrl: 'http://127.0.0.1:${PORT_SERVER}/api/',
   clientPort: ${PORT_CLIENT}
 };
 `;
@@ -29,6 +30,7 @@ const envContent = `export const environment = {
 const envProdContent = `export const environment = {
   production: true,
   socketUrl: 'http://127.0.0.1:${PORT_SERVER}',
+  apiUrl: 'http://127.0.0.1:${PORT_SERVER}/api/',
   clientPort: ${PORT_CLIENT}
 };
 `;
