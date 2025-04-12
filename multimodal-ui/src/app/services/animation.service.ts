@@ -719,27 +719,31 @@ export class AnimationService {
       ) {
         const vehicleEntity =
           this.vehicleEntitiesByVehicleId[animationData.vehicleId];
-        const allStops = getAllStops(vehicleEntity.data);
-        const stop =
-          allStops[(animationData as StaticPassengerAnimationData).stopIndex];
-        if (stop !== undefined) {
-          const point = this.utils.latLngToLayerPoint([
-            stop.position.latitude,
-            stop.position.longitude,
-          ]);
-          passengerEntity.sprite.parent.x = point.x;
-          passengerEntity.sprite.parent.y = point.y;
+        if (vehicleEntity !== undefined) {
+          const allStops = getAllStops(vehicleEntity.data);
+          const stop =
+            allStops[(animationData as StaticPassengerAnimationData).stopIndex];
+          if (stop !== undefined) {
+            const point = this.utils.latLngToLayerPoint([
+              stop.position.latitude,
+              stop.position.longitude,
+            ]);
+            passengerEntity.sprite.parent.x = point.x;
+            passengerEntity.sprite.parent.y = point.y;
 
-          if (passenger.status !== 'complete') {
-            const animatedStop =
-              this.passengerStopEntitiesByPosition[getId(stop)];
+            if (passenger.status !== 'complete') {
+              const animatedStop =
+                this.passengerStopEntitiesByPosition[getId(stop)];
 
-            if (animatedStop) {
-              animatedStop.data.passengerIds.push(passenger.id);
-              animatedStop.data.numberOfPassengers +=
-                passenger.numberOfPassengers;
+              if (animatedStop) {
+                animatedStop.data.passengerIds.push(passenger.id);
+                animatedStop.data.numberOfPassengers +=
+                  passenger.numberOfPassengers;
+              }
             }
           }
+        } else {
+          // Unknown bug
         }
       } else if (
         (animationData as DynamicPassengerAnimationData).isOnBoard === true &&
