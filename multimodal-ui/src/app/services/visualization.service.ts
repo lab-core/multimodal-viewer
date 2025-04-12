@@ -110,16 +110,17 @@ export class VisualizationService {
         wantedVisualizationTime <=
           simulationStates.lastContinuousState.timestamp;
 
-      const hasCurrentStateShifted =
-        simulationStates.currentState === null ||
-        wantedVisualizationTime <
-          simulationStates.currentState.startTimestamp ||
-        wantedVisualizationTime > simulationStates.currentState.endTimestamp;
+      // const hasCurrentStateShifted =
+      //   simulationStates.currentState === null ||
+      //   wantedVisualizationTime <
+      //     simulationStates.currentState.startTimestamp ||
+      //   wantedVisualizationTime > simulationStates.currentState.endTimestamp;
 
       if (
         isCurrentStateAvailable &&
-        !simulationStates.shouldRequestMoreStates &&
-        !hasCurrentStateShifted
+        !simulationStates.shouldRequestMoreStates
+        // &&
+        // !hasCurrentStateShifted
       ) {
         this._isLoadingSignal.set(false);
         return;
