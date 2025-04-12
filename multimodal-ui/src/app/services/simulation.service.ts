@@ -1366,7 +1366,7 @@ export class SimulationService {
     } else if (passenger.nextLegs.length > 0) {
       leg = passenger.nextLegs[0];
     } else if (passenger.previousLegs.length > 0) {
-      leg = passenger.previousLegs[0];
+      leg = passenger.previousLegs.slice(-1)[0];
     } else {
       basicAnimationData.notDisplayedReason = 'Passenger has no leg';
       return basicAnimationData;
