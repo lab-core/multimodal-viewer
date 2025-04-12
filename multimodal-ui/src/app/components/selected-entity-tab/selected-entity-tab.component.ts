@@ -14,8 +14,8 @@ import {
 } from '../../interfaces/simulation.model';
 import { AnimationService } from '../../services/animation.service';
 import { FavoriteEntitiesService } from '../../services/favorite-entities.service';
-import { SelectedEntityRouteComponent } from '../selected-entity-route/selected-entity-route.component';
 import { VisualizationService } from '../../services/visualization.service';
+import { SelectedEntityRouteComponent } from '../selected-entity-route/selected-entity-route.component';
 
 @Component({
   selector: 'app-selected-entity-tab',
@@ -125,5 +125,16 @@ export class SelectedEntityTabComponent {
 
   selectPassenger(id: string) {
     this.animationService.selectEntity(id, 'passenger');
+  }
+
+  // Highlight function
+  highlightLeg(legIndex: number) {
+    if (this.selectedPassenger) {
+      this.animationService.highlightLeg(legIndex);
+    }
+  }
+
+  unhighlightLeg() {
+    this.animationService.unhighlightLeg();
   }
 }

@@ -96,35 +96,38 @@
         <mat-expansion-panel-header>
           <mat-panel-title>Passenger route</mat-panel-title>
         </mat-expansion-panel-header>
-        @for (leg of selectedPassengerLegs; track index; let index = $index) {
-          <div class="flex-column gap-0-5-rem">
-            @if (index !== 0) {
-              <mat-divider></mat-divider>
-            }
-            <div class="indent">
-              @if (environment !== null && leg.assignedVehicleId !== null) {
-                @let vehicle = environment.vehicles[leg.assignedVehicleId];
-                <div
-                  tabindex="0"
-                  class="clickable-no-padding"
-                  [matTooltip]="'Select vehicle'"
-                  (click)="selectVehicle(vehicle.id)"
-                  (keydown.enter)="selectVehicle(vehicle.id)"
-                >
-                  Vehicle: {{ vehicle.name }}
-                </div>
-              } @else {
-                <b>{{ leg.assignedVehicleId }}</b>
-              }
+        <div class="flex-column gap-1-5-rem">
+          @for (leg of selectedPassengerLegs; track index; let index = $index) {
+            <div
+              class="flex-column gap-0-5-rem"
+              (mouseenter)="highlightLeg(index)"
+              (mouseleave)="unhighlightLeg()"
+            >
+              <div class="indent">
+                @if (environment !== null && leg.assignedVehicleId !== null) {
+                  @let vehicle = environment.vehicles[leg.assignedVehicleId];
+                  <div
+                    tabindex="0"
+                    class="clickable-no-padding"
+                    [matTooltip]="'Select vehicle'"
+                    (click)="selectVehicle(vehicle.id)"
+                    (keydown.enter)="selectVehicle(vehicle.id)"
+                  >
+                    Vehicle: {{ vehicle.name }}
+                  </div>
+                } @else {
+                  <b>{{ leg.assignedVehicleId }}</b>
+                }
+              </div>
+              <app-selected-entity-route
+                class="indent"
+                [previousStops]="leg.previousStops"
+                [currentStop]="leg.currentStop"
+                [nextStops]="leg.nextStops"
+              ></app-selected-entity-route>
             </div>
-            <app-selected-entity-route
-              class="indent"
-              [previousStops]="leg.previousStops"
-              [currentStop]="leg.currentStop"
-              [nextStops]="leg.nextStops"
-            ></app-selected-entity-route>
-          </div>
-        }
+          }
+        </div>
       </mat-expansion-panel>
     </mat-accordion>
   </div>

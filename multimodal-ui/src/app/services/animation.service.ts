@@ -140,7 +140,7 @@ export class AnimationService {
 
   private utils!: L.PixiOverlayUtils;
 
-  private selectedEntityPolyline: PIXI.Graphics = new PIXI.Graphics();
+  private selectedEntityPolylines: PIXI.Graphics[] = [];
 
   // Variable that are alive for a single frame (could probably improve)
   private frame_pointToFollow: L.LatLngExpression | null = null;
@@ -161,6 +161,8 @@ export class AnimationService {
     return this._shouldFollowEntitySignal;
   }
 
+  private highlightedLegIndex: number | null = null;
+
   constructor(
     private readonly favoriteEntitiesService: FavoriteEntitiesService,
     private readonly spriteService: SpritesService,
@@ -177,9 +179,11 @@ export class AnimationService {
       simulationEnvironment.timestamp,
     );
 
-    this.selectedEntityPolyline.clear();
+    this.selectedEntityPolylines.forEach((polyline) => polyline.clear());
     this.container.removeChildren();
-    this.container.addChild(this.selectedEntityPolyline);
+    this.selectedEntityPolylines.forEach((polyline) =>
+      this.container.addChild(polyline),
+    );
     this.previousVehiclesEntities = this.vehicles;
     this.previousPassengerEntities = this.passengersEntities;
     this.vehicles = [];
@@ -669,12 +673,20 @@ export class AnimationService {
         vehicleEntity.data.currentLineIndex !== null &&
         point !== null
       ) {
+        if (this.selectedEntityPolylines.length === 0) {
+          this.selectedEntityPolylines.push(new PIXI.Graphics());
+          this.selectedEntityPolylines.forEach((polyline) =>
+            this.container.addChild(polyline),
+          );
+        }
+
         this.frame_pointToFollow = this.utils.layerPointToLatLng(point);
         this.redrawPolyline(
           polylineIndex,
           vehicleEntity.data.currentLineIndex,
           point,
           animationData.displayedPolylines.polylines,
+          this.selectedEntityPolylines[0],
         );
       }
     }
@@ -1146,13 +1158,19 @@ export class AnimationService {
         ]
       : [...passenger.data.previousLegs, ...passenger.data.nextLegs];
 
-    const polylines: Polyline[] = [];
-
-    let calculatedPolylineNo = 0;
-    let lineNo = 0;
+    if (this.selectedEntityPolylines.length === 0) {
+      legs.forEach(() => {
+        this.selectedEntityPolylines.push(new PIXI.Graphics());
+      });
+      this.selectedEntityPolylines.forEach((graphics) =>
+        this.container.addChild(graphics),
+      );
+    }
 
     // Collect all polylines
-    for (const leg of legs) {
+    for (let i = 0; i < legs.length; ++i) {
+      const leg = legs[i];
+
       if (
         leg.assignedVehicleId === null ||
         leg.boardingStopIndex === null ||
@@ -1177,34 +1195,45 @@ export class AnimationService {
           leg.alightingStopIndex,
         );
 
-      // When we reach our waiting/current vehicle
+      const graphics = this.selectedEntityPolylines[i];
+      const shouldHighlightLeg = i === this.highlightedLegIndex;
+      if (shouldHighlightLeg) {
+        graphics.filters = [
+          new OutlineFilter(1, 0xffffff),
+          new OutlineFilter(2, 0xffff00),
+        ];
+      } else {
+        graphics.filters = [];
+      }
+
+      let calculatedPolylineNo = passengerPath.length;
+      let lineNo = 0;
+
+      // If the passenger in the vehicle or waiting for it
       if (vehicle.data.id === passengerAnimationData?.vehicleId) {
         const relativePolylineIndex =
           vehicleAnimationData.displayedPolylines.currentPolylineIndex -
           leg.boardingStopIndex;
 
-        // When vehicle did not reach him yet
         if (relativePolylineIndex >= 0) {
-          calculatedPolylineNo += relativePolylineIndex;
+          calculatedPolylineNo = relativePolylineIndex;
           lineNo = vehicle.data.currentLineIndex ?? 0;
+        } else {
+          calculatedPolylineNo = 0;
         }
-      } else calculatedPolylineNo += passengerPath.length;
+      }
 
-      polylines.push(...passengerPath);
+      this.redrawPolyline(
+        calculatedPolylineNo,
+        lineNo,
+        new L.Point(
+          passenger.sprites[0].parent.x,
+          passenger.sprites[0].parent.y,
+        ),
+        passengerPath,
+        graphics,
+      );
     }
-    if (polylines.length === 0) return;
-
-    if (calculatedPolylineNo < 0) {
-      calculatedPolylineNo = 0;
-      lineNo = 0;
-    }
-
-    this.redrawPolyline(
-      calculatedPolylineNo,
-      lineNo,
-      new L.Point(passenger.sprites[0].parent.x, passenger.sprites[0].parent.y),
-      polylines,
-    );
   }
 
   private redrawPolyline(
@@ -1212,12 +1241,12 @@ export class AnimationService {
     lineNo: number,
     interpolatedPoint: L.Point,
     polylines: Polyline[],
+    graphics: PIXI.Graphics,
   ) {
     const BASE_LINE_WIDTH = 4;
     const MIN_WIDTH = 0.04; // By testing out values
     const ALPHA = 0.9;
     const width = Math.max(BASE_LINE_WIDTH / this.utils?.getScale(), MIN_WIDTH);
-    const graphics = this.selectedEntityPolyline;
     graphics.clear();
     graphics.lineStyle(width, this.LIGHT_GRAY, ALPHA);
 
@@ -1530,19 +1559,27 @@ export class AnimationService {
   private unselectVehicle() {
     this.unhighlightEntityId(this._selectedVehicleIdSignal(), 'vehicle');
     this._selectedVehicleIdSignal.set(null);
-    this.selectedEntityPolyline.clear();
+    this.selectedEntityPolylines.forEach((polyline) => polyline.clear());
   }
 
   private unselectPassenger() {
     this.unhighlightEntityId(this._selectedPassengerIdSignal(), 'passenger');
     this._selectedPassengerIdSignal.set(null);
-    this.selectedEntityPolyline.clear();
+    this.selectedEntityPolylines.forEach((polyline) => polyline.clear());
+    this.selectedEntityPolylines.forEach((polyline) =>
+      polyline.removeFromParent(),
+    );
+    this.highlightedLegIndex = null;
   }
 
   private unselectStop() {
     this.unhighlightEntityId(this._selectedStopIdSignal(), 'stop');
     this._selectedStopIdSignal.set(null);
-    this.selectedEntityPolyline.clear();
+    this.selectedEntityPolylines.forEach((polyline) => polyline.clear());
+    this.selectedEntityPolylines.forEach((polyline) =>
+      polyline.removeFromParent(),
+    );
+    this.selectedEntityPolylines = [];
   }
 
   private highlightEntityId(
@@ -1610,6 +1647,14 @@ export class AnimationService {
     this.unselectVehicle();
     this.unselectPassenger();
     this.unselectStop();
+  }
+
+  highlightLeg(legIndex: number) {
+    this.highlightedLegIndex = legIndex;
+  }
+
+  unhighlightLeg() {
+    this.highlightedLegIndex = null;
   }
 
   addPixiOverlay(map: L.Map) {
