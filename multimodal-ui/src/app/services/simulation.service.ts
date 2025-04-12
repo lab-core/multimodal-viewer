@@ -1203,7 +1203,7 @@ export class SimulationService {
     );
 
     const continuousAnimationData = continuousStates.reduce((acc, state) => {
-      return this.mergeAnimationData(acc, state.animationData);
+      return this.mergeAnimationData(acc, state.animationData, state.timestamp);
     }, continuousStates[0].animationData);
 
     return {
@@ -1762,6 +1762,7 @@ export class SimulationService {
   private mergeAnimationData(
     firstAnimationData: AnimationData,
     secondAnimationData: AnimationData,
+    mergeTimestamp: number,
   ): AnimationData {
     // This version really merge the two animation data but is pretty slow.
     // const mergedPassengerAnimationData: Record<
@@ -1911,12 +1912,28 @@ export class SimulationService {
       {};
 
     for (const passengerId in firstAnimationData.passengers) {
-      mergedPassengerAnimationData[passengerId] =
-        firstAnimationData.passengers[passengerId];
+      const passengerAnimationData = firstAnimationData.passengers[passengerId];
+      if (
+        passengerAnimationData !== undefined &&
+        passengerAnimationData.length > 0
+      ) {
+        const lastAnimationData =
+          passengerAnimationData[passengerAnimationData.length - 1];
+        lastAnimationData.endTimestamp = mergeTimestamp;
+      }
+      mergedPassengerAnimationData[passengerId] = passengerAnimationData;
     }
     for (const vehicleId in firstAnimationData.vehicles) {
-      mergedVehicleAnimationData[vehicleId] =
-        firstAnimationData.vehicles[vehicleId];
+      const vehicleAnimationData = firstAnimationData.vehicles[vehicleId];
+      if (
+        vehicleAnimationData !== undefined &&
+        vehicleAnimationData.length > 0
+      ) {
+        const lastAnimationData =
+          vehicleAnimationData[vehicleAnimationData.length - 1];
+        lastAnimationData.endTimestamp = mergeTimestamp;
+      }
+      mergedVehicleAnimationData[vehicleId] = vehicleAnimationData;
     }
 
     for (const passengerId in secondAnimationData.passengers) {
