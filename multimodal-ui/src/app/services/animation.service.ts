@@ -1148,7 +1148,6 @@ export class AnimationService {
 
     const polylines: Polyline[] = [];
 
-    let reachedCurrentVehicle = false;
     let calculatedPolylineNo = 0;
     let lineNo = 0;
 
@@ -1180,8 +1179,6 @@ export class AnimationService {
 
       // When we reach our waiting/current vehicle
       if (vehicle.data.id === passengerAnimationData?.vehicleId) {
-        reachedCurrentVehicle = true;
-
         const relativePolylineIndex =
           vehicleAnimationData.displayedPolylines.currentPolylineIndex -
           leg.boardingStopIndex;
@@ -1191,8 +1188,7 @@ export class AnimationService {
           calculatedPolylineNo += relativePolylineIndex;
           lineNo = vehicle.data.currentLineIndex ?? 0;
         }
-      } else if (!reachedCurrentVehicle)
-        calculatedPolylineNo += passengerPath.length;
+      } else calculatedPolylineNo += passengerPath.length;
 
       polylines.push(...passengerPath);
     }
