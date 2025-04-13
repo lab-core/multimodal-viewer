@@ -93,3 +93,16 @@
   opacity: 1;
 }
 /* ********************************** */
+
+.hover-tooltip {
+  position: absolute;
+  top: -5px;
+  background-color: #424242;
+  color: #fff;
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 4px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  white-space: nowrap;
+}

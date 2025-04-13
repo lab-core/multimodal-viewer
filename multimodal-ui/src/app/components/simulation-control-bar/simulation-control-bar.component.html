@@ -141,7 +141,12 @@
         </form>
       </div>
 
-      <div class="flex-1 sliders">
+      <div
+        #sliderWrapper
+        class="flex-1 sliders"
+        (mousemove)="onMouseMove($event)"
+        (mouseleave)="hoverValue = null"
+      >
         <!-- Main control slider -->
         <mat-slider
           discrete
@@ -156,6 +161,12 @@
             [value]="visualizationTime"
             (valueChange)="onSliderChange($event)"
           />
+
+          @if (hoverValue !== null) {
+            <div class="hover-tooltip" [style.left.px]="tooltipX">
+              {{ hoverValue }}
+            </div>
+          }
         </mat-slider>
 
         <!-- Loaded parts of the simulation -->

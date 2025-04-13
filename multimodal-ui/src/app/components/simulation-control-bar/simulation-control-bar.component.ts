@@ -3,6 +3,7 @@ import {
   Component,
   computed,
   effect,
+  ElementRef,
   input,
   InputSignal,
   OnDestroy,
@@ -13,21 +14,10 @@ import {
   viewChild,
   WritableSignal,
 } from '@angular/core';
-import {
-  AbstractControl,
-  FormControl,
-  FormsModule,
-  ReactiveFormsModule,
-  ValidationErrors,
-  ValidatorFn,
-} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInput, MatInputModule } from '@angular/material/input';
-import { MatMenuModule } from '@angular/material/menu';
-import { MatSliderModule } from '@angular/material/slider';
+import { MatSlider, MatSliderModule } from '@angular/material/slider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import hotkeys from 'hotkeys-js';
 import {
@@ -38,6 +28,18 @@ import { SimulationTimePipe } from '../../pipes/simulation-time.pipe';
 import { AnimationService } from '../../services/animation.service';
 import { SimulationService } from '../../services/simulation.service';
 import { VisualizationService } from '../../services/visualization.service';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatMenuModule } from '@angular/material/menu';
+import {
+  AbstractControl,
+  FormControl,
+  FormsModule,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+} from '@angular/forms';
+import { simulationTimeDisplay } from '../../utils/simulation-time.utils';
+import { MatInput, MatInputModule } from '@angular/material/input';
 
 @Component({
   selector: 'app-simulation-control-bar',
@@ -59,6 +61,44 @@ import { VisualizationService } from '../../services/visualization.service';
   styleUrl: './simulation-control-bar.component.css',
 })
 export class SimulationControlBarComponent implements OnInit, OnDestroy {
+  sliderWrapper = viewChild<ElementRef<HTMLElement>>('sliderWrapper');
+  slider = viewChild(MatSlider);
+
+  hoverValue: string | null = null;
+  tooltipX = 0;
+  sliderValue = 50;
+
+  onMouseMove(event: MouseEvent) {
+    const slider = this.sliderWrapper()?.nativeElement;
+    if (!slider) return;
+
+    const sliderTrack = slider.querySelector(
+      '.mdc-slider__track',
+    ) as HTMLElement;
+    if (sliderTrack == null) return;
+
+    const rect = sliderTrack.getBoundingClientRect();
+
+    // console.log(event);
+    // console.log(rect);
+    const x = event.clientX - rect.left;
+    const percent = Math.max(0, Math.min(1, x / rect.width));
+
+    const simulationStartTime = this.simulationStartTimeSignal();
+    const simulationEndTime = this.simulationEndTimeSignal();
+    if (simulationStartTime === null || simulationEndTime === null) return;
+
+    const steps = simulationEndTime - simulationStartTime;
+    const stepNo = Math.floor(percent * steps);
+    const sex = stepNo + simulationStartTime;
+    // const timestamp =
+    //   simulationStartTime + percent * (simulationEndTime - simulationStartTime);
+
+    const simulationTime = simulationTimeDisplay(sex);
+    this.hoverValue = simulationTime;
+    this.tooltipX = x; // Adjust for tooltip offset
+  }
+
   // MARK: Properties
   readonly isSimulationPausedSignal: Signal<boolean> = computed(
     () => this.simulationInputSignal().status === 'paused',
