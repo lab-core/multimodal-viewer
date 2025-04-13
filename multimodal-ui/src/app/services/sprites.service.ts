@@ -19,13 +19,16 @@ export interface TextureSaveData {
   stopTextureUrl: string;
 
   vehicleModeTextures: CustomTexture[];
+
+  colorPresetIndex: number;
+  customColors: string[];
 }
 
 @Injectable({
   providedIn: 'root',
 })
 export class SpritesService {
-  readonly VERSION = 2;
+  readonly VERSION = 3;
   readonly SPRITE_SIZE = 40;
 
   private readonly KEY_TEXTURES = 'multimodal.textures';
@@ -37,6 +40,23 @@ export class SpritesService {
   readonly DEFAULT_ZOOM_OUT_PASSENGER_TEXTURE_URL =
     '/images/zoom-out-passenger.png';
   readonly DEFAULT_STOP_TEXTURE_URL = '/images/sample-stop.png';
+
+  readonly PRESET_LIGHT_COLOR_THEME = [
+    '#ccffcc',
+    '#ffffb3',
+    '#ffffb3',
+    '#ffb980',
+    '#ffb980',
+    '#ff3333',
+    '#ff3333',
+  ];
+
+  readonly PRESET_SATURATED_COLOR_THEME = [
+    '#00ff00',
+    '#ffff00',
+    '#ff8000',
+    '#ff0000',
+  ];
 
   private _useZoomedOutSprites = false;
   private _vehicleSpriteScale = 1;
@@ -55,6 +75,12 @@ export class SpritesService {
   private _stopTexture = Texture.from(this.DEFAULT_STOP_TEXTURE_URL);
 
   private _vehicleModeTextures: CustomTexture[] = [];
+
+  private _colorPresetIndex = 0;
+
+  private _customColors: string[] = ['#00ff00', '#ff0000']; // Default custom preset
+
+  private _currentColorPreset: string[] = this.PRESET_LIGHT_COLOR_THEME; // Default preset
 
   private _textureMap = new Map<string, Texture>();
 
@@ -89,6 +115,18 @@ export class SpritesService {
 
   get stopTexture(): Texture {
     return this._stopTexture;
+  }
+
+  get colorPresetIndex(): number {
+    return this._colorPresetIndex;
+  }
+
+  get customColors(): string[] {
+    return this._customColors;
+  }
+
+  get currentColorPreset(): string[] {
+    return this._currentColorPreset;
   }
   ///////////
 
@@ -133,6 +171,8 @@ export class SpritesService {
     zoomOutPassengerTextureUrl: string,
     stopTextureUrl: string,
     vehicleModeTextures: CustomTexture[],
+    colorPresetIndex: number,
+    customColors: string[],
   ) {
     const saveData: TextureSaveData = {
       version: this.VERSION,
@@ -142,6 +182,8 @@ export class SpritesService {
       zoomOutPassengerTextureUrl,
       stopTextureUrl,
       vehicleModeTextures,
+      colorPresetIndex,
+      customColors,
     };
 
     localStorage.setItem(this.KEY_TEXTURES, JSON.stringify(saveData));
@@ -193,6 +235,19 @@ export class SpritesService {
     );
 
     this._stopTexture = Texture.from(textureSaveData.stopTextureUrl);
+
+    this._colorPresetIndex = textureSaveData.colorPresetIndex;
+    this._customColors = textureSaveData.customColors;
+
+    if (this._colorPresetIndex === 0)
+      this._currentColorPreset = this.PRESET_LIGHT_COLOR_THEME;
+    if (this._colorPresetIndex === 1)
+      this._currentColorPreset = this.PRESET_SATURATED_COLOR_THEME;
+    if (
+      this._colorPresetIndex === 2 &&
+      textureSaveData.customColors.length >= 2
+    )
+      this._currentColorPreset = textureSaveData.customColors;
 
     this._vehicleModeTextures = textureSaveData.vehicleModeTextures;
     this._textureMap.clear();

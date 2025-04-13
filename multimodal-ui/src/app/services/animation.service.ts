@@ -106,18 +106,6 @@ export class AnimationService {
   private readonly KELLY_GREEN = 0x028a0f;
   private readonly LIGHT_GRAY = 0x666666;
 
-  private readonly CAPACITY_COLORS = [
-    '#ffffff',
-    '#ccffcc',
-    // Double yellow and triple orange and red to make it more important
-    '#ffffb3',
-    '#ffffb3',
-    '#ffb980',
-    '#ffb980',
-    '#ff3333',
-    '#ff3333',
-  ];
-
   private readonly BITMAP_TEXT_URL = 'bitmap-fonts/custom-sans-serif.xml';
   private readonly BITMAP_TEXT_STYLE: Partial<PIXI.IBitmapTextStyle> = {
     fontName: 'custom-sans-serif',
@@ -806,7 +794,14 @@ export class AnimationService {
         stopEntity.text.text = `${numberOfDisplayedPassengers} (${numberOfPassengers})`;
       }
 
-      const interpolate = d3InterpolateRgb(this.CAPACITY_COLORS);
+      if (numberOfPassengers === 0) {
+        stopEntity.text.tint = 0xffffff;
+        stopEntity.sprite.tint = 0xffffff;
+      }
+
+      const interpolate = d3InterpolateRgb(
+        this.spriteService.currentColorPreset,
+      );
 
       const t = Math.min(1, numberOfPassengers / stopEntity.data.capacity);
 
@@ -859,7 +854,7 @@ export class AnimationService {
   }
 
   private updateVehiclePassengerCounters() {
-    const interpolate = d3InterpolateRgb(this.CAPACITY_COLORS);
+    const interpolate = d3InterpolateRgb(this.spriteService.currentColorPreset);
 
     // eslint-disable-next-line @typescript-eslint/prefer-for-of
     for (let index = 0; index < this.vehicles.length; ++index) {
@@ -880,6 +875,12 @@ export class AnimationService {
         vehicleEntity.text.text = numberOfPassengers.toString();
       } else {
         vehicleEntity.text.text = `${numberOfDisplayedPassengers} (${numberOfPassengers})`;
+      }
+
+      if (numberOfPassengers === 0) {
+        vehicleEntity.text.tint = 0xffffff;
+        vehicleEntity.sprite.tint = 0xffffff;
+        continue;
       }
 
       const t = Math.min(1, numberOfPassengers / vehicleEntity.data.capacity);
