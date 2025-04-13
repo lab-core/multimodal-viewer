@@ -6,18 +6,30 @@
         @for (item of history(); track item.id) {
           @switch (item.type) {
             @case ("vehicle") {
-              <mat-chip (click)="selectVehicle(item.id)">
+              <mat-chip
+                (click)="selectVehicle(item.id)"
+                (mouseenter)="preselectEntity(item)"
+                (mouseleave)="unpreselectEntity()"
+              >
                 <mat-icon matChipAvatar> directions_car</mat-icon
                 >{{ item.name }}
               </mat-chip>
             }
             @case ("passenger") {
-              <mat-chip (click)="selectPassenger(item.id)">
+              <mat-chip
+                (click)="selectPassenger(item.id)"
+                (mouseenter)="preselectEntity(item)"
+                (mouseleave)="unpreselectEntity()"
+              >
                 <mat-icon matChipAvatar> accessibility</mat-icon>{{ item.name }}
               </mat-chip>
             }
             @case ("stop") {
-              <mat-chip (click)="selectStop(item.id)">
+              <mat-chip
+                (click)="selectStop(item.id)"
+                (mouseenter)="preselectEntity(item)"
+                (mouseleave)="unpreselectEntity()"
+              >
                 <mat-icon matChipAvatar> place</mat-icon>{{ item.name }}
               </mat-chip>
             }

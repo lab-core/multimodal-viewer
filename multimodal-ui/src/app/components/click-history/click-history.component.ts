@@ -35,6 +35,9 @@ export interface HistoryItem {
 export class ClickHistoryComponent {
   history: WritableSignal<HistoryItem[]> = signal([]);
 
+  // Don't make selects from the history change the order of the history
+  _ignoreNextSelect = false;
+
   constructor(
     private readonly visualizationService: VisualizationService,
     private readonly animationService: AnimationService,
@@ -56,21 +59,37 @@ export class ClickHistoryComponent {
     this.history.set([]);
   }
 
+  unpreselectEntity() {
+    this.animationService.preselectEntity(null);
+  }
+
+  preselectEntity(item: HistoryItem) {
+    this.animationService.preselectEntity(item, false);
+  }
+
   selectVehicle(id: string) {
+    this._ignoreNextSelect = true;
     this.animationService.selectEntity(id, 'vehicle');
   }
 
   selectPassenger(id: string) {
+    this._ignoreNextSelect = true;
     this.animationService.selectEntity(id, 'passenger');
   }
 
   selectStop(id: string) {
+    this._ignoreNextSelect = true;
     this.animationService.selectEntity(id, 'stop');
   }
 
   private effectOnVehicleSelected() {
     const vehicleId = this.animationService.selectedVehicleIdSignal();
     if (vehicleId === null) return;
+
+    if (this._ignoreNextSelect) {
+      this._ignoreNextSelect = false;
+      return;
+    }
 
     const vehicle = untracked(() => this.getVehicle(vehicleId));
     if (vehicle == null) return;
@@ -82,6 +101,11 @@ export class ClickHistoryComponent {
     const passengerId = this.animationService.selectedPassengerIdSignal();
     if (passengerId === null) return;
 
+    if (this._ignoreNextSelect) {
+      this._ignoreNextSelect = false;
+      return;
+    }
+
     const passenger = untracked(() => this.getPassenger(passengerId));
     if (passenger == null) return;
 
@@ -91,6 +115,11 @@ export class ClickHistoryComponent {
   private effectOnStopSelected() {
     const stopId = this.animationService.selectedStopIdSignal();
     if (stopId === null) return;
+
+    if (this._ignoreNextSelect) {
+      this._ignoreNextSelect = false;
+      return;
+    }
 
     const stop = untracked(() => this.getStop(stopId));
     if (stop == null) return;
@@ -111,7 +140,7 @@ export class ClickHistoryComponent {
       this.visualizationService.visualizationEnvironmentSignal();
     if (!visualizationEnvironment) return undefined;
 
-    return visualizationEnvironment.currentState.vehicles[id];
+    return visualizationEnvironment.vehicles[id];
   }
 
   private getPassenger(id: string) {
@@ -119,7 +148,7 @@ export class ClickHistoryComponent {
       this.visualizationService.visualizationEnvironmentSignal();
     if (!visualizationEnvironment) return undefined;
 
-    return visualizationEnvironment.currentState.passengers[id];
+    return visualizationEnvironment.passengers[id];
   }
 
   private getStop(id: string) {
@@ -127,6 +156,6 @@ export class ClickHistoryComponent {
       this.visualizationService.visualizationEnvironmentSignal();
     if (!visualizationEnvironment) return undefined;
 
-    return visualizationEnvironment.currentState.stops[id];
+    return visualizationEnvironment.stops[id];
   }
 }

@@ -136,6 +136,7 @@ export class CloseEntitiesMenuComponent {
   }
 
   onBlur() {
+    this.animationService.preselectEntity(null, false);
     this.show.set(false);
   }
 
