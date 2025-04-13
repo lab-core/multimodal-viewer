@@ -307,8 +307,8 @@ export class AnimationService {
       this.spriteService.getCurrentPassengerTexture(),
     );
     sprite.anchor.set(0.5, 0.5); // Center texture on coordinate
-    sprite.scale.set(this.spriteService.passengerSpriteScale);
     const passengerContainer = new PIXI.Container();
+    passengerContainer.scale.set(this.spriteService.passengerSpriteScale);
     passengerContainer.addChild(sprite);
 
     // Counter of passengers in a stop
@@ -568,6 +568,21 @@ export class AnimationService {
           shouldShowComplete,
         );
       });
+
+    // Always show selected vehicle
+    const selectedVehicleId = this.selectedVehicleIdSignal();
+    if (selectedVehicleId) {
+      const vehicle = this.vehicleEntitiesByVehicleId[selectedVehicleId];
+      if (vehicle) vehicle.sprite.parent.visible = true;
+    }
+
+    // Always show selected passenger
+    const selectedPassengerId = this.selectedPassengerIdSignal();
+    if (selectedPassengerId) {
+      const passenger =
+        this.passengerEntitiesByPassengerId[selectedPassengerId];
+      if (passenger) passenger.sprite.parent.visible = true;
+    }
   }
 
   private setVehiclePositions() {
@@ -816,12 +831,9 @@ export class AnimationService {
       }
     }
 
-    if (this.filters.has('stops')) {
-      return;
-    }
-
     const showText = !this.spriteService.useZoomedOutSprites;
-    for (const stopEntity of this.passengerStopEntities) {
+
+    const adjustStopDisplay = (stopEntity: DualTextEntity<AnimatedStop>) => {
       if (!stopEntity.sprite.parent.visible) {
         // Only show the stop image
         stopEntity.sprite.parent.visible = true;
@@ -834,6 +846,21 @@ export class AnimationService {
         stopEntity.text.visible = showText;
         stopEntity.otherSprite.visible = false;
       }
+    };
+
+    // Always show selected stop
+    const selectedStopId = this.selectedStopIdSignal();
+    if (selectedStopId) {
+      const stopEntity = this.passengerStopEntitiesByPosition[selectedStopId];
+      if (stopEntity) adjustStopDisplay(stopEntity);
+    }
+
+    if (this.filters.has('stops')) {
+      return;
+    }
+
+    for (const stopEntity of this.passengerStopEntities) {
+      adjustStopDisplay(stopEntity);
     }
   }
 
