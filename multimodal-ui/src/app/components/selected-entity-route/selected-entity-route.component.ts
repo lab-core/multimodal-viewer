@@ -1,7 +1,7 @@
 import { Component, Input } from '@angular/core';
-import { getId, Stop } from '../../interfaces/simulation.model';
-import { AnimationService } from '../../services/animation.service';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { Stop } from '../../interfaces/simulation.model';
+import { AnimationService } from '../../services/animation.service';
 
 @Component({
   selector: 'app-selected-entity-route',
@@ -21,7 +21,6 @@ export class SelectedEntityRouteComponent {
   }
 
   selectStop(stop: Stop) {
-    const stopId = getId(stop);
-    this.animationService.selectEntity(stopId, 'stop');
+    this.animationService.selectEntity(stop.id, 'stop');
   }
 }
