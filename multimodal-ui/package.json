@@ -9,7 +9,9 @@
     "set-env": "ts-node --esm scripts/set-env.js",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "lint": "ng lint"
+    "lint": "ng lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "private": true,
   "dependencies": {
