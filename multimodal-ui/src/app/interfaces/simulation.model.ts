@@ -533,22 +533,26 @@ export interface AnimatedSimulationStates {
   continuousAnimationData: AnimationData | null;
 }
 
+function addTypeToStop(
+  stop: Stop,
+  type: 'previous' | 'current' | 'next',
+): Stop & { type: 'previous' | 'current' | 'next' } {
+  const castedStop = stop as Stop & { type: 'previous' | 'current' | 'next' };
+  castedStop.type = type;
+  return castedStop;
+}
+
 export function getAllStops(
   vehicle: Vehicle,
 ): (Stop & { type: 'previous' | 'current' | 'next' })[] {
-  const previousStops: (Stop & { type: 'previous' | 'current' | 'next' })[] =
-    vehicle.previousStops.map((stop) => ({
-      ...stop,
-      type: 'previous',
-    }));
-  const nextStops: (Stop & { type: 'previous' | 'current' | 'next' })[] =
-    vehicle.nextStops.map((stop) => ({
-      ...stop,
-      type: 'next',
-    }));
-  const currentStop: (Stop & { type: 'previous' | 'current' | 'next' })[] =
-    vehicle.currentStop ? [{ ...vehicle.currentStop, type: 'current' }] : [];
-  return [...previousStops, ...currentStop, ...nextStops];
+  return vehicle.previousStops
+    .map((stop) => addTypeToStop(stop, 'previous'))
+    .concat(
+      vehicle.currentStop === null
+        ? []
+        : [addTypeToStop(vehicle.currentStop, 'current')],
+      vehicle.nextStops.map((stop) => addTypeToStop(stop, 'next')),
+    );
 }
 
 export function getAllLegs<P extends Passenger>(
