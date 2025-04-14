@@ -1232,7 +1232,7 @@ export class AnimationService {
       ]);
       graphics.moveTo(firstLayerPoint.x, firstLayerPoint.y);
 
-      for (let j = 1; j <= lineNo; ++j) {
+      for (let j = 1; j <= Math.min(lineNo, polylinePoints.length - 1); ++j) {
         const geoPos = currentPolyline.polyline[j];
         const point = this.utils.latLngToLayerPoint([
           geoPos.latitude,
