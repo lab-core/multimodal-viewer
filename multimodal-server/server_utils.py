@@ -3,19 +3,25 @@ import logging
 import os
 import threading
 from enum import Enum
+from pathlib import Path
+from dotenv import load_dotenv
 
 from flask import request
 from flask_socketio import emit
 
+# Load environment variables from the root .env file
+env_path = Path(__file__).parent.parent / '.env'
+load_dotenv(env_path)
+
 HOST = os.getenv("SERVER_HOST", "127.0.0.1")
-PORT = 5000
+PORT = int(os.getenv("PORT_SERVER", "8089"))  # It will use .env or default to 8089
 
 CLIENT_ROOM = "client"
 SIMULATION_ROOM = "simulation"
 SCRIPT_ROOM = "script"
 
 # Save the state of the simulation every STATE_SAVE_STEP events
-STATE_SAVE_STEP = 100
+STATE_SAVE_STEP = 1000
 
 # If the version is identical, the save file can be loaded
 SAVE_VERSION = 8

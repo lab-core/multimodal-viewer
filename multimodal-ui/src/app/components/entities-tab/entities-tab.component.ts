@@ -1,7 +1,7 @@
 import { Component, computed, Signal } from '@angular/core';
-import { Passenger, Vehicle } from '../../interfaces/simulation.model';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { Passenger, Vehicle } from '../../interfaces/simulation.model';
 import { AnimationService } from '../../services/animation.service';
 import { VisualizationService } from '../../services/visualization.service';
 
@@ -19,7 +19,7 @@ export class EntitiesTabComponent {
     if (environment === null) {
       return [];
     }
-    return Object.values(environment.currentState.passengers);
+    return Object.values(environment.passengers);
   });
 
   readonly numberOfPassengersByStatusSignal: Signal<
@@ -35,7 +35,7 @@ export class EntitiesTabComponent {
       return [];
     }
 
-    const passengers = Object.values(environment.currentState.passengers);
+    const passengers = Object.values(environment.passengers);
     const counts: Record<string, Passenger[]> = {};
 
     for (const passenger of passengers) {
@@ -57,7 +57,7 @@ export class EntitiesTabComponent {
     if (environment === null) {
       return [];
     }
-    return Object.values(environment.currentState.vehicles);
+    return Object.values(environment.vehicles);
   });
 
   readonly numberOfVehiclesByStatusSignal: Signal<
@@ -74,7 +74,7 @@ export class EntitiesTabComponent {
       return [];
     }
 
-    const vehicles = Object.values(environment.currentState.vehicles);
+    const vehicles = Object.values(environment.vehicles);
     const counts: Record<string, Vehicle[]> = {};
 
     for (const vehicle of vehicles) {

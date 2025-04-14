@@ -29,7 +29,6 @@ import {
   DynamicPassengerAnimationData,
   DynamicVehicleAnimationData,
   getAllStops,
-  getId,
   Polyline,
   StaticPassengerAnimationData,
   StaticVehicleAnimationData,
@@ -107,18 +106,6 @@ export class AnimationService {
   private readonly KELLY_GREEN = 0x028a0f;
   private readonly LIGHT_GRAY = 0x666666;
 
-  private readonly CAPACITY_COLORS = [
-    '#ffffff',
-    '#ccffcc',
-    // Double yellow and triple orange and red to make it more important
-    '#ffffb3',
-    '#ffffb3',
-    '#ffb980',
-    '#ffb980',
-    '#ff3333',
-    '#ff3333',
-  ];
-
   private readonly BITMAP_TEXT_URL = 'bitmap-fonts/custom-sans-serif.xml';
   private readonly BITMAP_TEXT_STYLE: Partial<PIXI.IBitmapTextStyle> = {
     fontName: 'custom-sans-serif',
@@ -128,6 +115,8 @@ export class AnimationService {
   private pause = false;
   private animationVisualizationTime = 0;
   private lastVisualisationTime = 0;
+
+  private hasCenteredInitially = false;
 
   private vehicles: TextEntity<AnimatedVehicle>[] = [];
   private vehicleEntitiesByVehicleId: Record<string, Entity<AnimatedVehicle>> =
@@ -182,6 +171,14 @@ export class AnimationService {
   }
 
   synchronizeEnvironment(simulationEnvironment: AnimatedSimulationEnvironment) {
+    // We need to interpolate the animation time to quickly join the current visualization time if there is
+    // a continuous animation data between the last and the current visualization time, or else
+    // set the animation time to the current visualization time.
+    this.synchronizeTime(
+      simulationEnvironment,
+      simulationEnvironment.timestamp,
+    );
+
     this.selectedEntityPolyline.clear();
     this.container.removeChildren();
     this.container.addChild(this.selectedEntityPolyline);
@@ -200,9 +197,7 @@ export class AnimationService {
     const selectedVehicleId = this._selectedVehicleIdSignal();
     const selectedPassengerId = this._selectedPassengerIdSignal();
 
-    for (const vehicle of Object.values(
-      simulationEnvironment.currentState.vehicles,
-    )) {
+    for (const vehicle of Object.values(simulationEnvironment.vehicles)) {
       this.addVehicle(vehicle);
       if (selectedVehicleId !== null && vehicle.id == selectedVehicleId) {
         isSelectedVehicleInEnvironment = true;
@@ -219,9 +214,7 @@ export class AnimationService {
 
     let isSelectedPassengerInEnvironment = false;
 
-    for (const passenger of Object.values(
-      simulationEnvironment.currentState.passengers,
-    )) {
+    for (const passenger of Object.values(simulationEnvironment.passengers)) {
       this.addPassenger(passenger);
       if (selectedPassengerId !== null && passenger.id == selectedPassengerId) {
         isSelectedPassengerInEnvironment = true;
@@ -240,13 +233,10 @@ export class AnimationService {
 
     let isSelectedStopInEnvironment = false;
     const selectedStopId = this._selectedStopIdSignal();
-    for (const stop of Object.values(
-      simulationEnvironment.currentState.stops,
-    )) {
-      const stopId = getId(stop);
-      if (selectedStopId !== null && stopId == selectedStopId) {
+    for (const stop of Object.values(simulationEnvironment.stops)) {
+      if (selectedStopId !== null && stop.id == selectedStopId) {
         isSelectedStopInEnvironment = true;
-        this.highlightEntityId(stopId, 'stop');
+        this.highlightEntityId(stop.id, 'stop');
       }
     }
 
@@ -261,14 +251,12 @@ export class AnimationService {
     this.onRedraw();
   }
 
-  synchronizeTime(
+  private synchronizeTime(
     animatedSimulationEnvironment: AnimatedSimulationEnvironment,
     visualizationTime: number,
   ) {
     // Don't sync if we don't have the right state
-    if (
-      animatedSimulationEnvironment.currentState.timestamp != visualizationTime
-    ) {
+    if (animatedSimulationEnvironment.timestamp != visualizationTime) {
       console.warn(
         "Animation not synced: simulation timestamp doesn't match visualisation time",
       );
@@ -353,7 +341,7 @@ export class AnimationService {
       const vehicle = vehicleEntity.data;
       const allStops = getAllStops(vehicle);
       for (const stop of allStops) {
-        if (this.passengerStopEntitiesByPosition[getId(stop)] !== undefined)
+        if (this.passengerStopEntitiesByPosition[stop.id] !== undefined)
           continue;
 
         const stopContainer = new PIXI.Container();
@@ -408,13 +396,14 @@ export class AnimationService {
         this.container.addChild(stopContainer);
         this.passengerStopEntities.push(entity);
 
-        this.passengerStopEntitiesByPosition[getId(stop)] = entity;
+        this.passengerStopEntitiesByPosition[stop.id] = entity;
       }
     }
   }
 
   clearAnimations() {
     this.container.removeChildren();
+    this.hasCenteredInitially = false;
     this.vehicles = [];
     this.vehicleEntitiesByVehicleId = {};
     this.passengersEntities = [];
@@ -716,27 +705,31 @@ export class AnimationService {
       ) {
         const vehicleEntity =
           this.vehicleEntitiesByVehicleId[animationData.vehicleId];
-        const allStops = getAllStops(vehicleEntity.data);
-        const stop =
-          allStops[(animationData as StaticPassengerAnimationData).stopIndex];
-        if (stop !== undefined) {
-          const point = this.utils.latLngToLayerPoint([
-            stop.position.latitude,
-            stop.position.longitude,
-          ]);
-          passengerEntity.sprite.parent.x = point.x;
-          passengerEntity.sprite.parent.y = point.y;
+        if (vehicleEntity !== undefined) {
+          const allStops = getAllStops(vehicleEntity.data);
+          const stop =
+            allStops[(animationData as StaticPassengerAnimationData).stopIndex];
+          if (stop !== undefined) {
+            const point = this.utils.latLngToLayerPoint([
+              stop.position.latitude,
+              stop.position.longitude,
+            ]);
+            passengerEntity.sprite.parent.x = point.x;
+            passengerEntity.sprite.parent.y = point.y;
 
-          if (passenger.status !== 'complete') {
-            const animatedStop =
-              this.passengerStopEntitiesByPosition[getId(stop)];
+            if (passenger.status !== 'complete') {
+              const animatedStop =
+                this.passengerStopEntitiesByPosition[stop.id];
 
-            if (animatedStop) {
-              animatedStop.data.passengerIds.push(passenger.id);
-              animatedStop.data.numberOfPassengers +=
-                passenger.numberOfPassengers;
+              if (animatedStop) {
+                animatedStop.data.passengerIds.push(passenger.id);
+                animatedStop.data.numberOfPassengers +=
+                  passenger.numberOfPassengers;
+              }
             }
           }
+        } else {
+          // Unknown bug
         }
       } else if (
         (animationData as DynamicPassengerAnimationData).isOnBoard === true &&
@@ -804,7 +797,14 @@ export class AnimationService {
         stopEntity.text.text = `${numberOfDisplayedPassengers} (${numberOfPassengers})`;
       }
 
-      const interpolate = d3InterpolateRgb(this.CAPACITY_COLORS);
+      if (numberOfPassengers === 0) {
+        stopEntity.text.tint = 0xffffff;
+        stopEntity.sprite.tint = 0xffffff;
+      }
+
+      const interpolate = d3InterpolateRgb(
+        this.spriteService.currentColorPreset,
+      );
 
       const t = Math.min(1, numberOfPassengers / stopEntity.data.capacity);
 
@@ -857,7 +857,7 @@ export class AnimationService {
   }
 
   private updateVehiclePassengerCounters() {
-    const interpolate = d3InterpolateRgb(this.CAPACITY_COLORS);
+    const interpolate = d3InterpolateRgb(this.spriteService.currentColorPreset);
 
     // eslint-disable-next-line @typescript-eslint/prefer-for-of
     for (let index = 0; index < this.vehicles.length; ++index) {
@@ -878,6 +878,12 @@ export class AnimationService {
         vehicleEntity.text.text = numberOfPassengers.toString();
       } else {
         vehicleEntity.text.text = `${numberOfDisplayedPassengers} (${numberOfPassengers})`;
+      }
+
+      if (numberOfPassengers === 0) {
+        vehicleEntity.text.tint = 0xffffff;
+        vehicleEntity.sprite.tint = 0xffffff;
+        continue;
       }
 
       const t = Math.min(1, numberOfPassengers / vehicleEntity.data.capacity);
@@ -1026,8 +1032,7 @@ export class AnimationService {
         stop.sprite.parent.position,
       );
       if (distance <= minVisualDistance) {
-        const id = getId(stop.data);
-        nearStops.push({ id, name: id });
+        nearStops.push({ id: stop.data.id, name: stop.data.id });
       }
     }
 
@@ -1390,6 +1395,65 @@ export class AnimationService {
     this.updateVehiclePassengerCounters();
     this.updateStopCounters();
     this.followSelectedStop();
+    this.centerMapToFirstVisibleEntity();
+  }
+
+  private centerMapToFirstVisibleEntity() {
+    if (this.hasCenteredInitially || !this.utils) {
+      return;
+    }
+
+    let point: L.LatLngExpression | null = null;
+
+    // Check if any vehicle is visible
+    if (point === null) {
+      const vehicle = this.vehicles.find(
+        (vehicle) => vehicle.sprite.parent.visible,
+      );
+      if (vehicle !== undefined) {
+        point = this.utils.layerPointToLatLng(
+          new L.Point(vehicle.sprite.parent.x, vehicle.sprite.parent.y),
+        );
+      }
+    }
+
+    // Check if any passenger is visible
+    if (point === null) {
+      const passenger = this.passengersEntities.find(
+        (passenger) => passenger.sprite.parent.visible,
+      );
+      if (passenger !== undefined) {
+        point = this.utils.layerPointToLatLng(
+          new L.Point(passenger.sprite.parent.x, passenger.sprite.parent.y),
+        );
+      }
+    }
+
+    // Check if any stop is visible
+    if (point === null) {
+      const stop = this.passengerStopEntities.find(
+        (stop) => stop.sprite.parent.visible,
+      );
+      if (stop !== undefined) {
+        point = this.utils.layerPointToLatLng(
+          new L.Point(stop.sprite.parent.x, stop.sprite.parent.y),
+        );
+      }
+    }
+
+    // Center map to first visible entity
+    if (point !== null) {
+      this.utils.getMap().setView(point, this.utils.getMap().getZoom(), {
+        animate: true,
+      });
+
+      this.hasCenteredInitially = true;
+      console.log(
+        'Centered map to first visible entity:',
+        point,
+        this.utils.getMap().getZoom(),
+      );
+    }
   }
 
   // onClick is called after onEntityPointerdown

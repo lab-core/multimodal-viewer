@@ -1,17 +1,16 @@
 import { Component, Input } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { MatIconModule } from '@angular/material/icon';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   AnimatedPassenger,
   AnimatedStop,
   AnimatedVehicle,
-  getId,
 } from '../../interfaces/simulation.model';
-import { FavoriteEntitiesService } from '../../services/favorite-entities.service';
-import { MatIconModule } from '@angular/material/icon';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { AnimationService } from '../../services/animation.service';
-import { MatExpansionModule } from '@angular/material/expansion';
+import { FavoriteEntitiesService } from '../../services/favorite-entities.service';
 import { SelectedEntityRouteComponent } from '../selected-entity-route/selected-entity-route.component';
 
 @Component({
@@ -84,17 +83,16 @@ export class SelectedEntityTabComponent {
   }
 
   isFavoriteStop(stop: AnimatedStop) {
-    return this.favoriteEntitiesService.favStopIds().has(getId(stop));
+    return this.favoriteEntitiesService.favStopIds().has(stop.id);
   }
 
   toggleFavoriteStop(stop: AnimatedStop) {
-    this.favoriteEntitiesService.toggleFavoriteStop(getId(stop));
+    this.favoriteEntitiesService.toggleFavoriteStop(stop.id);
   }
 
   // Select function
   selectStop(stop: AnimatedStop) {
-    const id = getId(stop);
-    this.animationService.selectEntity(id, 'stop');
+    this.animationService.selectEntity(stop.id, 'stop');
   }
 
   selectVehicle(id: string) {

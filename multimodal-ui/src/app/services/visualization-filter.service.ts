@@ -51,9 +51,9 @@ export class VisualizationFilterService {
     if (visualizationEnvironment === null) return;
 
     // Get unique vehicle modes
-    const currentModes = Object.values(
-      visualizationEnvironment.currentState.vehicles,
-    ).map((vehicle) => vehicle.mode ?? 'unknown');
+    const currentModes = Object.values(visualizationEnvironment.vehicles).map(
+      (vehicle) => vehicle.mode ?? 'unknown',
+    );
 
     // Combine current modes and previous modes then get uniques
     const allModes = [...currentModes, ...vehicleModes].filter(
