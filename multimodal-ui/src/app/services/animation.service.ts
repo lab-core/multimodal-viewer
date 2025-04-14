@@ -1484,53 +1484,101 @@ export class AnimationService {
       return;
     }
 
-    let point: L.LatLngExpression | null = null;
+    const points: {
+      x: number;
+      y: number;
+    }[] = [];
 
-    // Check if any vehicle is visible
-    if (point === null) {
-      const vehicle = this.vehicles.find(
-        (vehicle) => vehicle.sprites[0].parent.visible,
-      );
-      if (vehicle !== undefined) {
-        point = this.utils.layerPointToLatLng(
-          new L.Point(vehicle.sprites[0].parent.x, vehicle.sprites[0].parent.y),
-        );
+    let minimumX: number | null = null;
+    let maximumX: number | null = null;
+    let minimumY: number | null = null;
+    let maximumY: number | null = null;
+
+    const updateBounds = (x: number, y: number) => {
+      if (minimumX === null || x < minimumX) minimumX = x;
+      if (maximumX === null || x > maximumX) maximumX = x;
+      if (minimumY === null || y < minimumY) minimumY = y;
+      if (maximumY === null || y > maximumY) maximumY = y;
+    };
+
+    // Get all visible vehicles coordinates
+    this.vehicles.forEach((vehicle) => {
+      if (
+        vehicle.sprites[0].parent.visible &&
+        vehicle.sprites[0].parent.x !== 0 &&
+        vehicle.sprites[0].parent.y !== 0
+      ) {
+        const x = vehicle.sprites[0].parent.x;
+        const y = vehicle.sprites[0].parent.y;
+        updateBounds(x, y);
+        points.push({
+          x,
+          y,
+        });
       }
-    }
+    });
 
-    // Check if any passenger is visible
-    if (point === null) {
-      const passenger = this.passengersEntities.find(
-        (passenger) => passenger.sprites[0].parent.visible,
-      );
-      if (passenger !== undefined) {
-        point = this.utils.layerPointToLatLng(
-          new L.Point(
-            passenger.sprites[0].parent.x,
-            passenger.sprites[0].parent.y,
-          ),
-        );
+    // Get all visible passengers coordinates
+    this.passengersEntities.forEach((passenger) => {
+      if (passenger.sprites[0].parent.visible) {
+        const x = passenger.sprites[0].parent.x;
+        const y = passenger.sprites[0].parent.y;
+        updateBounds(x, y);
+        points.push({
+          x,
+          y,
+        });
       }
-    }
+    });
 
-    // Check if any stop is visible
-    if (point === null) {
-      const stop = this.passengerStopEntities.find(
-        (stop) => stop.sprites[0].parent.visible,
-      );
-      if (stop !== undefined) {
-        point = this.utils.layerPointToLatLng(
-          new L.Point(stop.sprites[0].parent.x, stop.sprites[0].parent.y),
-        );
+    // Get all visible stops coordinates
+    this.passengerStopEntities.forEach((stop) => {
+      if (stop.sprites[0].parent.visible) {
+        const x = stop.sprites[0].parent.x;
+        const y = stop.sprites[0].parent.y;
+        updateBounds(x, y);
+        points.push({
+          x,
+          y,
+        });
       }
+    });
+
+    // Compute bounds and get center
+    if (
+      minimumX === null ||
+      maximumX === null ||
+      minimumY === null ||
+      maximumY === null ||
+      points.length === 0
+    ) {
+      return;
     }
 
-    // Center map to first visible entity
-    if (point !== null) {
-      this.utils.getMap().setView(point, this.utils.getMap().getZoom(), {
-        animate: true,
-      });
-    }
+    // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
+    const centerX = (minimumX + maximumX) / 2;
+    // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
+    const centerY = (minimumY + maximumY) / 2;
+
+    const centerPoint = {
+      x: centerX,
+      y: centerY,
+    };
+
+    const closestPoint = points.reduce((prev, curr) => {
+      const prevDistance = this.distanceBetweenPoints(centerPoint, prev);
+      const currDistance = this.distanceBetweenPoints(centerPoint, curr);
+      return prevDistance < currDistance ? prev : curr;
+    });
+
+    this.utils
+      .getMap()
+      .setView(
+        this.utils.layerPointToLatLng(
+          new L.Point(closestPoint.x, closestPoint.y),
+        ),
+      );
+    this.hasCenteredInitially = true;
   }
 
   // onClick is called after onEntityPointerdown
