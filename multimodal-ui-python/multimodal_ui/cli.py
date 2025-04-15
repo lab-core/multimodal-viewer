@@ -21,7 +21,7 @@ def main():
     parser.add_argument('--port', type=int, default=int(os.getenv('PORT_CLIENT', '8085')), 
                        help='Port to serve the UI')
     parser.add_argument('--backend-port', type=int, 
-                       default=int(os.getenv('PORT_SERVER', '8090')),
+                       default=int(os.getenv('PORT_SERVER', '8089')),
                        help='Port where backend server is running')
     args = parser.parse_args()
     
