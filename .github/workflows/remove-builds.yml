@@ -1,4 +1,4 @@
-name: Build
+name: Remove builds
 
 on:
   workflow_dispatch:
@@ -48,49 +48,6 @@ jobs:
 
           # Start the interactive rebase
           git rebase -i HEAD~$rebase_range
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version: '22'
-
-      - name: Install dependencies
-        run: npm install
-        working-directory: ./multimodal-ui
-
-      - name: Run build in production mode
-        run: npm run build:prod
-        working-directory: ./multimodal-ui
-
-      - name: Clear previous build artifacts
-        run: rm -rf ./multimodal-ui-python/multimodal_ui/static
-
-      - name: Copy build artifacts
-        run: cp -r ./multimodal-ui/dist/multimodal-ui/browser/ ./multimodal-ui-python/multimodal_ui/static\
-
-      - name: Verify if changes have been made
-        id: verify-build
-        run: |
-          if git diff --exit-code --name-only; then
-            echo "No changes detected in the build artifacts."
-            echo "changes_detected=false" >> $GITHUB_OUTPUT
-          else
-            echo "Changes detected in the build artifacts."
-            echo "changes_detected=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Do not push if no changes were made
-        if: steps.verify-build.outputs.changes_detected == 'false'
-        run: |
-          echo "No changes detected. Skipping commit and push."
-          exit 0
-
-      - name: Commit and push changes
-        if: steps.verify-build.outputs.changes_detected == 'true'
-        run: |
-          # Add and commit the changes
-          git add ./multimodal-ui-python/multimodal_ui/static
-          git commit -m "_____automatic-build-update_____"
 
           # Push the changes to the current branch
           # The --force flag is needed because of the rebase
