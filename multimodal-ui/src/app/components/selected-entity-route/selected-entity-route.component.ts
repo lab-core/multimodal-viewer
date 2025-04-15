@@ -14,9 +14,7 @@ export class SelectedEntityRouteComponent {
   @Input() currentStop: Stop | null;
   @Input() nextStops: Stop[];
 
-  constructor(
-    private animationService: AnimationService,
-  ) {
+  constructor(private animationService: AnimationService) {
     this.previousStops = [];
     this.currentStop = null;
     this.nextStops = [];
