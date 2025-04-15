@@ -59,7 +59,7 @@ jobs:
 
           git filter-repo --commit-callback '
           import re
-          message = commit.message.strip()
+          message = commit.message.decode("utf-8").strip()
           if re.match(r"^_____automatic-build-update_____$", message):
             commit.message = "Dropped automatic build update"
             commit.skip = True
