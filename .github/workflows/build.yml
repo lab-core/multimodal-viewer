@@ -1,7 +1,11 @@
 name: Verify build
 
 on:
-  workflow_dispatch:
+  # TODO CHANGE BACK TO THIS
+  # workflow_dispatch:
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build:
@@ -10,6 +14,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
+
+      # TODO REMOVE OTHER BUILD COMMITS IN HISTORY
 
       - name: Set up Node.js
         uses: actions/setup-node@v2
