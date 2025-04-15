@@ -23,6 +23,10 @@
     padding-left: 24px;
 }
 
+::ng-deep .mat-expansion-panel-body {
+    padding: 0 5px 5px 5px !important;
+}
+
 .mat-card-group>*:first-child {
     border-bottom-left-radius: 0px;
     border-bottom-right-radius: 0px;
