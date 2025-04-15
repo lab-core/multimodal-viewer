@@ -107,15 +107,18 @@ export class CloseEntitiesMenuComponent {
   }
 
   preselectVehicle(id: string) {
-    this.animationService.preselectEntity({ id, type: 'vehicle' }, true);
+    this.animationService.preselectEntity({ id, entityType: 'vehicle' }, true);
   }
 
   preselectPassenger(id: string) {
-    this.animationService.preselectEntity({ id, type: 'passenger' }, true);
+    this.animationService.preselectEntity(
+      { id, entityType: 'passenger' },
+      true,
+    );
   }
 
   preselectStop(id: string) {
-    this.animationService.preselectEntity({ id, type: 'stop' }, true);
+    this.animationService.preselectEntity({ id, entityType: 'stop' }, true);
   }
 
   selectVehicle(id: string) {

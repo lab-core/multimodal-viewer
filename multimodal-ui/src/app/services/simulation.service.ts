@@ -420,7 +420,7 @@ export class SimulationService {
     }
 
     return {
-      type: 'passenger',
+      entityType: 'passenger',
       id,
       name,
       status,
@@ -595,7 +595,7 @@ export class SimulationService {
     }
 
     return {
-      type: 'vehicle',
+      entityType: 'vehicle',
       id,
       mode,
       status,
@@ -720,7 +720,7 @@ export class SimulationService {
 
     return {
       id,
-      type: 'stop',
+      entityType: 'stop',
       arrivalTime,
       departureTime,
       position,

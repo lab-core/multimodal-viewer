@@ -4,7 +4,7 @@
     <div class="container">
       <div class="content">
         @for (item of history(); track item.id) {
-          @switch (item.type) {
+          @switch (item.entityType) {
             @case ("vehicle") {
               <mat-chip
                 (click)="selectVehicle(item.id)"
