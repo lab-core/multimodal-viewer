@@ -87,4 +87,4 @@ In the `/multimodal_ui/static/main-XXXXXXXX.js` file, locate this section:
 `socketUrl:"http://127.0.0.1:8089",apiUrl:"http://127.0.0.1:8089/api/",clientPort:8085`
 and replace the ports to match the ones you redefined in your .env file.
 
-Reinstall the python package for good mesure.
+Reinstall the Python package for good measure.
