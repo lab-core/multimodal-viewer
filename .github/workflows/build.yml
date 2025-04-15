@@ -61,7 +61,6 @@ jobs:
           import re
           message = commit.message.decode("utf-8").strip()
           if re.match(r"^_____automatic-build-update_____$", message):
-            commit.message = "Dropped automatic build update"
             commit.skip = True
           ' --force
 
