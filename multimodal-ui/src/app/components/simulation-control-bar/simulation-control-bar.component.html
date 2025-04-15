@@ -141,21 +141,25 @@
         </form>
       </div>
 
-      <div class="flex-1 sliders">
+      <div
+        #sliderWrapper
+        class="flex-1 sliders"
+        (mousemove)="onSliderMouseMove($event)"
+        (mouseleave)="sliderHoverSimulationTime = null"
+      >
         <!-- Main control slider -->
-        <mat-slider
-          discrete
-          [displayWith]="
-            sliderLabelFormatter(simulationStartTime, simulationEndTime)
-          "
-          [min]="simulationStartTime"
-          [max]="simulationEndTime"
-        >
+        <mat-slider [min]="simulationStartTime" [max]="simulationEndTime">
           <input
             matSliderThumb
             [value]="visualizationTime"
             (valueChange)="onSliderChange($event)"
           />
+
+          @if (sliderHoverSimulationTime !== null) {
+            <div class="hover-tooltip" [style.left.px]="sliderTooltipX">
+              {{ sliderHoverSimulationTime }}
+            </div>
+          }
         </mat-slider>
 
         <!-- Loaded parts of the simulation -->
