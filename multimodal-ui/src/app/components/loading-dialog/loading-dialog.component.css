@@ -1,11 +1,11 @@
 @import "../../../styles/flex.styles.css";
 
 .content {
-    justify-content: center;
-    align-items: center; 
-    gap: 20px;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
 }
 
 .message {
-    margin: 0px;
+  margin: 0px;
 }
