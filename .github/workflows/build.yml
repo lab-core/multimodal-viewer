@@ -12,8 +12,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout current branch
         uses: actions/checkout@v2
+        with:
+          fetch-depth: 0 # Fetch all history for all branches and tags to ensure we can push changes
+          ref: ${{ github.head_ref }} # Checkout the current branch to ensure we are on the correct commit
+
+      # TODO REMOVE THIS
+      - name: Git status
+        run: |
+          git status
 
       # TODO REMOVE OTHER BUILD COMMITS IN HISTORY
 
