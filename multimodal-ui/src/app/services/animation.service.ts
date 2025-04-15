@@ -339,8 +339,8 @@ export class AnimationService {
       this.spriteService.getCurrentPassengerTexture(),
     );
     sprite.anchor.set(0.5, 0.5); // Center texture on coordinate
-    sprite.scale.set(this.spriteService.passengerSpriteScale);
     const passengerContainer = new PIXI.Container();
+    passengerContainer.scale.set(this.spriteService.passengerSpriteScale);
     passengerContainer.addChild(sprite);
 
     const entity: Entity<AnimatedPassenger> = {
@@ -610,6 +610,31 @@ export class AnimationService {
           shouldShowComplete,
         );
       });
+
+    const preselectedEntity = this.preselectedEntitySignal();
+
+    // Always show preselected or selected vehicle
+    const selectedVehicleId =
+      preselectedEntity?.entityType === 'vehicle'
+        ? preselectedEntity.id
+        : this.selectedVehicleIdSignal();
+
+    if (selectedVehicleId) {
+      const vehicle = this.vehicleEntitiesByVehicleId[selectedVehicleId];
+      if (vehicle) vehicle.sprites[0].parent.visible = true;
+    }
+
+    // Always show  preselected or selected passenger
+    const selectedPassengerId =
+      preselectedEntity?.entityType === 'passenger'
+        ? preselectedEntity.id
+        : this.selectedPassengerIdSignal();
+
+    if (selectedPassengerId) {
+      const passenger =
+        this.passengerEntitiesByPassengerId[selectedPassengerId];
+      if (passenger) passenger.sprites[0].parent.visible = true;
+    }
   }
 
   private setVehiclePositions() {
@@ -904,12 +929,9 @@ export class AnimationService {
       }
     }
 
-    if (this.filters.has('stops')) {
-      return;
-    }
-
     const showText = !this.spriteService.useZoomedOutSprites;
-    for (const stopEntity of this.passengerStopEntities) {
+
+    const adjustStopDisplay = (stopEntity: Entity<AnimatedStop>) => {
       if (!stopEntity.sprites[0].parent.visible) {
         // Only show the stop image
         stopEntity.sprites[0].parent.visible = true;
@@ -924,6 +946,26 @@ export class AnimationService {
         stopEntity.texts[1].visible = showText;
         stopEntity.sprites[1].visible = false;
       }
+    };
+
+    // Always show preselected or selected stop
+    const preselectedStop = this.preselectedEntitySignal();
+    const selectedStopId =
+      preselectedStop?.entityType === 'stop'
+        ? preselectedStop.id
+        : this.selectedStopIdSignal();
+
+    if (selectedStopId) {
+      const stopEntity = this.passengerStopEntitiesByPosition[selectedStopId];
+      if (stopEntity) adjustStopDisplay(stopEntity);
+    }
+
+    if (this.filters.has('stops')) {
+      return;
+    }
+
+    for (const stopEntity of this.passengerStopEntities) {
+      adjustStopDisplay(stopEntity);
     }
   }
 
@@ -1166,10 +1208,11 @@ export class AnimationService {
   }
 
   private redrawPassengerPolyline() {
-    let selectedPassengerId = this._selectedPassengerIdSignal();
-    const preselectedEntity = this._preselectedEntityIdSignal();
-    if (preselectedEntity && preselectedEntity.entityType === 'passenger')
-      selectedPassengerId = preselectedEntity.id;
+    const preselectedEntity = this.preselectedEntitySignal();
+    const selectedPassengerId =
+      preselectedEntity?.entityType === 'passenger'
+        ? preselectedEntity.id
+        : this.selectedPassengerIdSignal();
 
     if (!selectedPassengerId) return;
 
@@ -1190,13 +1233,17 @@ export class AnimationService {
         ]
       : [...passenger.data.previousLegs, ...passenger.data.nextLegs];
 
-    if (this.selectedEntityPolylines.length === 0) {
-      legs.forEach(() => {
+    // If we have less entity polylines than legs, add the additional missing polylines
+    if (this.selectedEntityPolylines.length < legs.length) {
+      for (
+        let i = 0;
+        i < legs.length - this.selectedEntityPolylines.length;
+        ++i
+      ) {
+        const graphics = new PIXI.Graphics();
         this.selectedEntityPolylines.push(new PIXI.Graphics());
-      });
-      this.selectedEntityPolylines.forEach((graphics) =>
-        this.container.addChild(graphics),
-      );
+        this.container.addChild(graphics);
+      }
     }
 
     // Collect all polylines
@@ -1228,6 +1275,9 @@ export class AnimationService {
         );
 
       const graphics = this.selectedEntityPolylines[i];
+
+      if (graphics == null) return; // Safe check return when unkown bug
+
       const shouldHighlightLeg = i === this.highlightedLegIndex;
       if (shouldHighlightLeg) {
         graphics.filters = [
@@ -1316,7 +1366,7 @@ export class AnimationService {
       ]);
       graphics.moveTo(firstLayerPoint.x, firstLayerPoint.y);
 
-      for (let j = 1; j <= lineNo; ++j) {
+      for (let j = 1; j <= Math.min(lineNo, polylinePoints.length - 1); ++j) {
         const geoPos = currentPolyline.polyline[j];
         const point = this.utils.latLngToLayerPoint([
           geoPos.latitude,
