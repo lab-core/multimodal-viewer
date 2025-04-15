@@ -146,6 +146,12 @@ export interface Leg {
   assignedTime: number | null;
 }
 
+export interface AnimatedLeg extends Leg {
+  previousStops: Stop[];
+  currentStop: Stop | null;
+  nextStops: Stop[];
+}
+
 export interface Passenger {
   id: string;
   name: string | null;
@@ -234,12 +240,12 @@ export interface Stop {
   arrivalTime: number;
   departureTime: number | null; // null means infinite
   position: Position;
+  id: string;
   capacity: number;
   label: string;
 }
 
-export interface AnimatedStop
-  extends Omit<Stop, 'arrivalTime' | 'departureTime'> {
+export interface AnimatedStop extends Stop {
   /**
    * Passengers that are waiting at the stop.
    */
@@ -258,6 +264,8 @@ export interface AnimatedStop
    * only the displayed passengers.
    */
   numberOfPassengers: number;
+
+  numberOfCompletePassengers: number;
 }
 
 export const DEFAULT_STOP_CAPACITY = 10;
@@ -342,7 +350,7 @@ export type displayed<T> = T & {
   notDisplayedReason: string | null;
 };
 
-export interface AnimationData {
+export interface EntityAnimationData {
   startTimestamp: number;
   startOrder: number;
   endTimestamp: number | null;
@@ -350,7 +358,7 @@ export interface AnimationData {
   notDisplayedReason: string | null; // null when the data is the last one and the animated environment is not fully built
 }
 
-export interface PassengerAnimationData extends AnimationData {
+export interface PassengerAnimationData extends EntityAnimationData {
   vehicleId: string | null;
   status: PassengerStatus;
 }
@@ -368,7 +376,7 @@ export type AnyPassengerAnimationData =
   | DynamicPassengerAnimationData
   | PassengerAnimationData; // For not displayed passengers
 
-export interface VehicleAnimationData extends AnimationData {
+export interface VehicleAnimationData extends EntityAnimationData {
   status: VehicleStatus;
 
   displayedPolylines: DisplayedPolylines;
@@ -376,6 +384,7 @@ export interface VehicleAnimationData extends AnimationData {
 
 export interface StaticVehicleAnimationData extends VehicleAnimationData {
   position: Position;
+  stopId: string;
 }
 
 export interface DynamicVehicleAnimationData extends VehicleAnimationData {
@@ -389,6 +398,9 @@ export type AnyVehicleAnimationData =
 
 export interface AnimatedPassenger extends displayed<Passenger> {
   animationData: AnyPassengerAnimationData[];
+  previousLegs: AnimatedLeg[];
+  currentLeg: AnimatedLeg | null;
+  nextLegs: AnimatedLeg[];
 }
 
 export interface AnimatedVehicle extends displayed<Vehicle> {
@@ -423,27 +435,6 @@ export interface SimulationEnvironment {
   order: number;
 }
 
-export interface AnimatedSimulationEnvironment {
-  finalState: SimulationEnvironment;
-  currentState: SimulationEnvironment & {
-    passengers: Record<string, AnimatedPassenger>;
-    vehicles: Record<string, AnimatedVehicle>;
-    stops: Record<string, AnimatedStop>;
-  };
-
-  /**
-   * A data structure to speed up the animation
-   */
-  animationData: {
-    passengers: Record<string, AnyPassengerAnimationData[]>;
-    vehicles: Record<string, AnyVehicleAnimationData[]>;
-    startTimestamp: number;
-    endTimestamp: number;
-    startOrder: number;
-    endOrder: number;
-  };
-}
-
 export interface RawSimulationEnvironment
   extends Pick<SimulationEnvironment, 'timestamp' | 'order'> {
   passengers: Passenger[];
@@ -459,11 +450,37 @@ export interface SimulationState extends SimulationEnvironment {
   updates: AnySimulationUpdate[];
 }
 
-export interface SimulationStates {
+export interface AnimationData {
+  passengers: Record<string, AnyPassengerAnimationData[]>;
+  vehicles: Record<string, AnyVehicleAnimationData[]>;
+  startTimestamp: number;
+  endTimestamp: number;
+  startOrder: number;
+  endOrder: number;
+}
+
+export interface AnimatedSimulationState extends SimulationState {
+  /**
+   * A data structure to speed up the animation
+   */
+  animationData: AnimationData;
+}
+
+export interface AnimatedSimulationEnvironment extends SimulationEnvironment {
+  /**
+   * A data structure to speed up the animation
+   */
+  animationData: AnimationData;
+  passengers: Record<string, AnimatedPassenger>;
+  vehicles: Record<string, AnimatedVehicle>;
+  stops: Record<string, AnimatedStop>;
+}
+
+export interface AnimatedSimulationStates {
   /**
    * All loaded states
    */
-  states: SimulationState[];
+  states: AnimatedSimulationState[];
 
   /**
    * If true, the client will continue to request more states
@@ -512,15 +529,41 @@ export interface SimulationStates {
      */
     endTimestamp: number;
   } | null;
+
+  continuousAnimationData: AnimationData | null;
 }
 
-export function getAllStops(vehicle: Vehicle): Stop[] {
-  return vehicle.previousStops.concat(
-    vehicle.currentStop === null ? [] : [vehicle.currentStop],
-    vehicle.nextStops,
+function addTypeToStop(
+  stop: Stop,
+  type: 'previous' | 'current' | 'next',
+): Stop & { type: 'previous' | 'current' | 'next' } {
+  const castedStop = stop as Stop & { type: 'previous' | 'current' | 'next' };
+  castedStop.type = type;
+  return castedStop;
+}
+
+export function getAllStops(
+  vehicle: Vehicle,
+): (Stop & { type: 'previous' | 'current' | 'next' })[] {
+  return vehicle.previousStops
+    .map((stop) => addTypeToStop(stop, 'previous'))
+    .concat(
+      vehicle.currentStop === null
+        ? []
+        : [addTypeToStop(vehicle.currentStop, 'current')],
+      vehicle.nextStops.map((stop) => addTypeToStop(stop, 'next')),
+    );
+}
+
+export function getAllLegs<P extends Passenger>(
+  passenger: P,
+): P['previousLegs'] {
+  return passenger.previousLegs.concat(
+    passenger.currentLeg === null ? [] : [passenger.currentLeg],
+    passenger.nextLegs,
   );
 }
 
-export function getId(stop: { position: Position }): string {
-  return `${stop.position.latitude},${stop.position.longitude}`;
+export function getStopId(position: Position): string {
+  return '' + position.latitude + ',' + position.longitude;
 }

@@ -23,6 +23,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import {
   AnimatedPassenger,
@@ -40,16 +41,15 @@ import { SimulationService } from '../../services/simulation.service';
 import { UserInterfaceService } from '../../services/user-interface.service';
 import { VisualizationFilterService } from '../../services/visualization-filter.service';
 import { VisualizationService } from '../../services/visualization.service';
+import { EntitiesTabComponent } from '../entities-tab/entities-tab.component';
 import { FavoriteEntitiesComponent } from '../favorite-entities/favorite-entities.component';
 import { InformationDialogComponent } from '../information-dialog/information-dialog.component';
 import { MapLayersComponent } from '../map-tiles/map-tiles.component';
 import { RecursiveStatisticComponent } from '../recursive-statistic/recursive-statistic.component';
+import { SelectedEntityTabComponent } from '../selected-entity-tab/selected-entity-tab.component';
 import { SimulationControlBarComponent } from '../simulation-control-bar/simulation-control-bar.component';
 import { SimulationControlPanelComponent } from '../simulation-control-panel/simulation-control-panel.component';
 import { VisualizerFilterComponent } from '../visualizer-filter/visualizer-filter.component';
-import { EntitiesTabComponent } from '../entities-tab/entities-tab.component';
-import { Router } from '@angular/router';
-import { SelectedEntityTabComponent } from '../selected-entity-tab/selected-entity-tab.component';
 
 export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 
@@ -120,7 +120,7 @@ export class VisualizerComponent implements OnDestroy {
       if (environment === null || selectedPassengerId === null) {
         return null;
       }
-      return environment.currentState.passengers[selectedPassengerId] ?? null;
+      return environment.passengers[selectedPassengerId] ?? null;
     },
   );
 
@@ -134,7 +134,7 @@ export class VisualizerComponent implements OnDestroy {
         return null;
       }
 
-      return environment.currentState.vehicles[selectedVehicleId] ?? null;
+      return environment.vehicles[selectedVehicleId] ?? null;
     },
   );
 
@@ -147,7 +147,7 @@ export class VisualizerComponent implements OnDestroy {
       return null;
     }
 
-    return environment.currentState.stops[selectedStopId] ?? null;
+    return environment.stops[selectedStopId] ?? null;
   });
 
   readonly selectedPassengerVehicleSignal: Signal<AnimatedVehicle | null> =
@@ -166,9 +166,7 @@ export class VisualizerComponent implements OnDestroy {
       }
 
       const selectedVehicle =
-        environment.currentState.vehicles[
-          selectedPassenger.currentLeg.assignedVehicleId
-        ];
+        environment.vehicles[selectedPassenger.currentLeg.assignedVehicleId];
 
       return selectedVehicle ?? null;
     });
@@ -184,7 +182,7 @@ export class VisualizerComponent implements OnDestroy {
       }
 
       return (
-        Object.values(environment.currentState.stops).find((stop) =>
+        Object.values(environment.stops).find((stop) =>
           stop.passengerIds.includes(selectedPassenger.id),
         ) ?? null
       );
@@ -202,7 +200,7 @@ export class VisualizerComponent implements OnDestroy {
       }
 
       const passengers = selectedVehicle.passengerIds.map(
-        (passengerId) => environment.currentState.passengers[passengerId],
+        (passengerId) => environment.passengers[passengerId],
       );
 
       return passengers;
@@ -219,15 +217,15 @@ export class VisualizerComponent implements OnDestroy {
       }
 
       return (
-        Object.values(environment.currentState.stops).find((stop) =>
+        Object.values(environment.stops).find((stop) =>
           stop.vehicleIds.includes(selectedVehicle.id),
         ) ?? null
       );
     },
   );
 
-  readonly selectedStopPassengersSignal: Signal<AnimatedPassenger[]> = computed(
-    () => {
+  private readonly selectedStopPassengersSignal: Signal<AnimatedPassenger[]> =
+    computed(() => {
       const selectedStop = this.selectedStopSignal();
       const environment =
         this.visualizationService.visualizationEnvironmentSignal();
@@ -237,12 +235,29 @@ export class VisualizerComponent implements OnDestroy {
       }
 
       const passengers = selectedStop.passengerIds.map(
-        (passengerId) => environment.currentState.passengers[passengerId],
+        (passengerId) => environment.passengers[passengerId],
       );
 
       return passengers;
-    },
-  );
+    });
+
+  readonly selectedStopWaitingPassengersSignal: Signal<AnimatedPassenger[]> =
+    computed(() => {
+      const selectedStopPassengers = this.selectedStopPassengersSignal();
+
+      return selectedStopPassengers.filter(
+        (passenger) => passenger.status !== 'complete',
+      );
+    });
+
+  readonly selectedStopCompletedPassengersSignal: Signal<AnimatedPassenger[]> =
+    computed(() => {
+      const selectedStopPassengers = this.selectedStopPassengersSignal();
+
+      return selectedStopPassengers.filter(
+        (passenger) => passenger.status === 'complete',
+      );
+    });
 
   readonly selectedStopVehiclesSignal: Signal<AnimatedVehicle[]> = computed(
     () => {
@@ -255,7 +270,7 @@ export class VisualizerComponent implements OnDestroy {
       }
 
       const vehicles = selectedStop.vehicleIds.map(
-        (vehicleId) => environment.currentState.vehicles[vehicleId],
+        (vehicleId) => environment.vehicles[vehicleId],
       );
 
       return vehicles;
@@ -269,7 +284,7 @@ export class VisualizerComponent implements OnDestroy {
       return [];
     }
 
-    const passengers = Object.values(environment.currentState.passengers).map(
+    const passengers = Object.values(environment.passengers).map(
       (passenger) => ({
         id: passenger.id,
         displayedValue: `[PASSENGER] ${passenger.name ? passenger.name + ' (' + passenger.id + ')' : passenger.id}`,
@@ -278,14 +293,12 @@ export class VisualizerComponent implements OnDestroy {
       }),
     );
 
-    const vehicles = Object.values(environment.currentState.vehicles).map(
-      (vehicle) => ({
-        id: vehicle.id,
-        displayedValue: `[VEHICLE] ${vehicle.id}`,
-        type: 'vehicle' as const,
-        entity: vehicle,
-      }),
-    );
+    const vehicles = Object.values(environment.vehicles).map((vehicle) => ({
+      id: vehicle.id,
+      displayedValue: `[VEHICLE] ${vehicle.id}`,
+      type: 'vehicle' as const,
+      entity: vehicle,
+    }));
 
     return [...passengers, ...vehicles];
   });
@@ -457,8 +470,8 @@ export class VisualizerComponent implements OnDestroy {
         } else if (
           !this.showSelectedEntityTab &&
           (selectedPassenger !== null ||
-          selectedVehicle !== null ||
-          selectedStop !== null)
+            selectedVehicle !== null ||
+            selectedStop !== null)
         ) {
           this.informationTabControl.setValue(['selectedEntity']);
         }
@@ -504,21 +517,6 @@ export class VisualizerComponent implements OnDestroy {
 
       this.animationService.synchronizeEnvironment(
         animatedSimulationEnvironment,
-      );
-    });
-
-    effect(() => {
-      const animatedSimulationEnvironment =
-        this.visualizationService.visualizationEnvironmentSignal();
-      const visualizationTime =
-        this.visualizationService.wantedVisualizationTimeSignal();
-
-      if (animatedSimulationEnvironment == null || visualizationTime == null)
-        return;
-
-      this.animationService.synchronizeTime(
-        animatedSimulationEnvironment,
-        visualizationTime,
       );
     });
 
@@ -714,7 +712,7 @@ export class VisualizerComponent implements OnDestroy {
       if (!environment) {
         return {};
       }
-      return environment.currentState.statistic;
+      return environment.statistic;
     });
   }
 

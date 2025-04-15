@@ -1,17 +1,20 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, effect } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { MatIconModule } from '@angular/material/icon';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   AnimatedPassenger,
+  AnimatedSimulationEnvironment,
   AnimatedStop,
   AnimatedVehicle,
-  getId,
+  getAllLegs,
 } from '../../interfaces/simulation.model';
-import { FavoriteEntitiesService } from '../../services/favorite-entities.service';
-import { MatIconModule } from '@angular/material/icon';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { AnimationService } from '../../services/animation.service';
-import { MatExpansionModule } from '@angular/material/expansion';
+import { FavoriteEntitiesService } from '../../services/favorite-entities.service';
+import { VisualizationService } from '../../services/visualization.service';
 import { SelectedEntityRouteComponent } from '../selected-entity-route/selected-entity-route.component';
 
 @Component({
@@ -22,28 +25,48 @@ import { SelectedEntityRouteComponent } from '../selected-entity-route/selected-
     MatIconModule,
     MatExpansionModule,
     SelectedEntityRouteComponent,
+    MatDividerModule,
   ],
   templateUrl: './selected-entity-tab.component.html',
   styleUrl: './selected-entity-tab.component.css',
 })
 export class SelectedEntityTabComponent {
-  @Input() selectedPassenger: AnimatedPassenger | null = null;
-  @Input() selectedPassengerStop: AnimatedStop | null = null;
-  @Input() selectedPassengerVehicle: AnimatedVehicle | null = null;
+  @Input({ required: true }) selectedPassenger: AnimatedPassenger | null = null;
+  @Input({ required: true }) selectedPassengerStop: AnimatedStop | null = null;
+  @Input({ required: true }) selectedPassengerVehicle: AnimatedVehicle | null =
+    null;
 
-  @Input() selectedVehicle: AnimatedVehicle | null = null;
-  @Input() selectedVehicleStop: AnimatedStop | null = null;
-  @Input() selectedVehiclePassengers: AnimatedPassenger[] = [];
+  @Input({ required: true }) selectedVehicle: AnimatedVehicle | null = null;
+  @Input({ required: true }) selectedVehicleStop: AnimatedStop | null = null;
+  @Input({ required: true }) selectedVehiclePassengers: AnimatedPassenger[] =
+    [];
 
-  @Input() selectedStop: AnimatedStop | null = null;
-  @Input() selectedStopPassengers: AnimatedPassenger[] = [];
-  @Input() selectedStopVehicles: AnimatedVehicle[] = [];
+  @Input({ required: true }) selectedStop: AnimatedStop | null = null;
+  @Input({ required: true })
+  selectedStopWaitingPassengers: AnimatedPassenger[] = [];
+  @Input({ required: true })
+  selectedStopCompletedPassengers: AnimatedPassenger[] = [];
+  @Input({ required: true }) selectedStopVehicles: AnimatedVehicle[] = [];
+
+  protected environment: AnimatedSimulationEnvironment | null;
 
   constructor(
     private readonly animationService: AnimationService,
     private readonly favoriteEntitiesService: FavoriteEntitiesService,
     private snackBar: MatSnackBar,
-  ) {}
+    private visualizationService: VisualizationService,
+  ) {
+    this.environment = null;
+    effect(() => {
+      this.environment =
+        this.visualizationService.visualizationEnvironmentSignal();
+    });
+  }
+
+  get selectedPassengerLegs() {
+    const passenger = this.selectedPassenger;
+    return passenger === null ? [] : getAllLegs(passenger);
+  }
 
   copyToClipboard(text: string): void {
     navigator.clipboard
@@ -84,17 +107,16 @@ export class SelectedEntityTabComponent {
   }
 
   isFavoriteStop(stop: AnimatedStop) {
-    return this.favoriteEntitiesService.favStopIds().has(getId(stop));
+    return this.favoriteEntitiesService.favStopIds().has(stop.id);
   }
 
   toggleFavoriteStop(stop: AnimatedStop) {
-    this.favoriteEntitiesService.toggleFavoriteStop(getId(stop));
+    this.favoriteEntitiesService.toggleFavoriteStop(stop.id);
   }
 
   // Select function
   selectStop(stop: AnimatedStop) {
-    const id = getId(stop);
-    this.animationService.selectEntity(id, 'stop');
+    this.animationService.selectEntity(stop.id, 'stop');
   }
 
   selectVehicle(id: string) {
@@ -103,5 +125,16 @@ export class SelectedEntityTabComponent {
 
   selectPassenger(id: string) {
     this.animationService.selectEntity(id, 'passenger');
+  }
+
+  // Highlight function
+  highlightLeg(legIndex: number) {
+    if (this.selectedPassenger) {
+      this.animationService.highlightLeg(legIndex);
+    }
+  }
+
+  unhighlightLeg() {
+    this.animationService.unhighlightLeg();
   }
 }
