@@ -3,7 +3,7 @@ import logging
 import multiprocessing
 
 from flask_socketio import emit
-from server_utils import (
+from .server_utils import (
     CLIENT_ROOM,
     RUNNING_SIMULATION_STATUSES,
     SAVE_VERSION,
@@ -13,8 +13,8 @@ from server_utils import (
     get_session_id,
     log,
 )
-from simulation import run_simulation
-from simulation_visualization_data_model import SimulationVisualizationDataManager
+from .simulation import run_simulation
+from .simulation_visualization_data_model import SimulationVisualizationDataManager
 
 
 class SimulationHandler:

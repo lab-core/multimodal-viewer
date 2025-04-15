@@ -14,5 +14,6 @@ multimodal-server/saved_simulations
 data/medium-taxi
 data/small-taxi
 
-# Python Package
+# Python Packages
 multimodal_ui.egg-info
+multimodal_server.egg-info

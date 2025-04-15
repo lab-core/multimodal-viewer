@@ -10,7 +10,7 @@ from multimodalsim.simulator.request import Leg, Trip
 from multimodalsim.simulator.stop import Stop
 from multimodalsim.simulator.vehicle import Route, Vehicle
 from multimodalsim.state_machine.status import PassengerStatus, VehicleStatus
-from server_utils import SAVE_VERSION, SIMULATION_SAVE_FILE_SEPARATOR
+from .server_utils import SAVE_VERSION, SIMULATION_SAVE_FILE_SEPARATOR
 
 
 # MARK: Enums

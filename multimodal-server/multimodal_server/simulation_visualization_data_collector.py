@@ -1,7 +1,7 @@
 import threading
 from typing import Optional
 
-from log_manager import register_log
+from .log_manager import register_log
 from multimodalsim.observer.data_collector import DataCollector
 from multimodalsim.simulator.environment import Environment
 from multimodalsim.simulator.event import Event, RecurrentTimeSyncEvent
@@ -33,14 +33,14 @@ from multimodalsim.simulator.vehicle_event import (
     VehicleWaiting,
 )
 from multimodalsim.statistics.data_analyzer import DataAnalyzer
-from server_utils import (
+from .server_utils import (
     HOST,
     PORT,
     STATE_SAVE_STEP,
     SimulationStatus,
     build_simulation_id,
 )
-from simulation_visualization_data_model import (
+from .simulation_visualization_data_model import (
     PassengerLegsUpdate,
     PassengerStatusUpdate,
     SimulationInformation,
