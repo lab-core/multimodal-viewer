@@ -5,7 +5,7 @@ venv
 __pycache__
 
 # Saved logs
-multimodal-server/saved_logs
+multimodal_server/saved_logs
 
 # Saved simulations
 multimodal_server/saved_simulations

@@ -2,9 +2,6 @@ from setuptools import setup, find_packages
 
 setup(
     name="multimodal-server",
-    version="0.1.0",
-    description="Flask-SocketIO server for multimodal simulation",
-    author="Your Name",
     packages=find_packages(include=["multimodal_server", "multimodal_server.*"]),
     include_package_data=True,
     install_requires=[
