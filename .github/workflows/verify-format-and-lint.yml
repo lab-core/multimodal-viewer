@@ -1,4 +1,4 @@
-name: Format and Lint
+name: Verify format and lint
 
 on:
   push:
@@ -9,8 +9,7 @@ on:
       - main
 
 jobs:
-  # Run `npm run format` in dry mode to check if the code is already formatted correctly
-  format-and-lint:
+  verify-format-and-lint:
     runs-on: ubuntu-latest
 
     steps:
