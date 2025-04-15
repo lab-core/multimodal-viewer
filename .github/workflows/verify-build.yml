@@ -38,7 +38,7 @@ jobs:
       - name: Verify if changes have been made
         id: verify-build
         run: |
-          if git diff --exit-code; then
+          if git diff --exit-code --name-only; then
             echo "No changes detected in the build artifacts."
             echo "changes_detected=false" >> $GITHUB_OUTPUT
           else
