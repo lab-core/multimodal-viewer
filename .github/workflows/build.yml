@@ -64,6 +64,8 @@ jobs:
             commit.skip = True
           ' --force
 
+          git status
+
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
