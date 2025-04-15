@@ -2,18 +2,17 @@ import {
   Component,
   effect,
   signal,
-  Signal,
   untracked,
   WritableSignal,
 } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { VisualizationService } from '../../services/visualization.service';
-import { AnimationService } from '../../services/animation.service';
 import { EntityType } from '../../interfaces/entity.model';
-import { MatButtonModule } from '@angular/material/button';
+import { AnimationService } from '../../services/animation.service';
+import { VisualizationService } from '../../services/visualization.service';
 
 export interface HistoryItem {
   id: string;
