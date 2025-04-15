@@ -17,7 +17,7 @@ git pull origin develop-visualizer
 
 ## Setting Up the Backend
 
-Running the backend requires a python environment
+Running the backend requires a Python environment
 
 ```bash
 # Creating Python environment
@@ -57,7 +57,7 @@ cd multimodal-server
 python .\server.py
 ```
 
-Then, open a new terminal and install all the angular dependencies:
+Then, open a new terminal and install all the Angular dependencies:
 
 ```bash
 cd multimodal-ui
@@ -68,7 +68,7 @@ Serve the application with `npm start`
 
 ## Launching Without Angular
 
-First make sure to install the python package :
+First make sure to install the Python package :
 
 ```bash
 cd multimodal-ui-python
@@ -104,7 +104,7 @@ python .\server.py
 
 ### Running with one command line
 
-From the root of the project, execute tis line in powershell:
+From the root of the project, execute this line in PowerShell:
 
 ```bash
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "multimodal-ui"; .\venv\Scripts\activate; cd .\multimodal-server; python .\server.py
@@ -129,10 +129,10 @@ Once the build is finished, copy the contents of `multimodal-ui/dist/multimodal-
 
 The ports are defined in the .env file. After changing them, restart both the front and the back ends for the changes to take effect.
 
-If you are using running the app through the python package and do not wish to rebuild it with angular, you will also have to change the ports directly in the built main file. In the
+If you are using running the app through the Python package and do not wish to rebuild it with Angular, you will also have to change the ports directly in the built main file. In the
 `/multimodal-ui-python/multimodal_ui/static/main-XXXXXXXX.js`
 file, locate this section:
 `socketUrl:"http://127.0.0.1:8089",apiUrl:"http://127.0.0.1:8089/api/",clientPort:8085`
 and replace the ports to match the ones you redefined in your .env file.
 
-Reinstall the python package for good mesure.
+Reinstall the Python package for good measure.
