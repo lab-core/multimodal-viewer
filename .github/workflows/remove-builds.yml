@@ -1,5 +1,7 @@
 name: Remove builds
 
+description: This workflow does not work well with merge commits. Consider using rebases instead.
+
 on:
   workflow_dispatch:
 
@@ -44,7 +46,7 @@ jobs:
           commit_count=$(git rev-list --count HEAD)
 
           # Substract ten to account for potential unrelated commits
-          rebase_range=$((commit_count - 10))
+          rebase_range=$((commit_count - 1))
 
           # Start the interactive rebase
           git rebase -i HEAD~$rebase_range
