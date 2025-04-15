@@ -62,42 +62,9 @@ import { MatInput, MatInputModule } from '@angular/material/input';
 })
 export class SimulationControlBarComponent implements OnInit, OnDestroy {
   sliderWrapper = viewChild<ElementRef<HTMLElement>>('sliderWrapper');
-  slider = viewChild(MatSlider);
-
-  hoverValue: string | null = null;
-  tooltipX = 0;
-  sliderValue = 50;
-
-  onMouseMove(event: MouseEvent) {
-    const slider = this.sliderWrapper()?.nativeElement;
-    if (!slider) return;
-
-    const sliderTrack = slider.querySelector(
-      '.mdc-slider__track',
-    ) as HTMLElement;
-    if (sliderTrack == null) return;
-
-    const rect = sliderTrack.getBoundingClientRect();
-
-    // console.log(event);
-    // console.log(rect);
-    const x = event.clientX - rect.left;
-    const percent = Math.max(0, Math.min(1, x / rect.width));
-
-    const simulationStartTime = this.simulationStartTimeSignal();
-    const simulationEndTime = this.simulationEndTimeSignal();
-    if (simulationStartTime === null || simulationEndTime === null) return;
-
-    const steps = simulationEndTime - simulationStartTime;
-    const stepNo = Math.floor(percent * steps);
-    const sex = stepNo + simulationStartTime;
-    // const timestamp =
-    //   simulationStartTime + percent * (simulationEndTime - simulationStartTime);
-
-    const simulationTime = simulationTimeDisplay(sex);
-    this.hoverValue = simulationTime;
-    this.tooltipX = x; // Adjust for tooltip offset
-  }
+  sliderHoverSimulationTime: string | null = null;
+  sliderHoverTimestamp = 0;
+  sliderTooltipX = 0;
 
   // MARK: Properties
   readonly isSimulationPausedSignal: Signal<boolean> = computed(
@@ -289,6 +256,32 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
     );
   }
 
+  onSliderMouseMove(event: MouseEvent) {
+    const slider = this.sliderWrapper()?.nativeElement;
+    if (!slider) return;
+
+    const sliderTrack = slider.querySelector(
+      '.mdc-slider__track',
+    ) as HTMLElement;
+    if (sliderTrack == null) return;
+
+    const rect = sliderTrack.getBoundingClientRect();
+
+    const x = event.clientX - rect.left;
+    const percent = Math.max(0, Math.min(1, x / rect.width));
+
+    const simulationStartTime = this.simulationStartTimeSignal();
+    const simulationEndTime = this.simulationEndTimeSignal();
+    if (simulationStartTime === null || simulationEndTime === null) return;
+
+    this.sliderHoverTimestamp =
+      simulationStartTime + percent * (simulationEndTime - simulationStartTime);
+
+    const simulationTime = simulationTimeDisplay(this.sliderHoverTimestamp);
+    this.sliderHoverSimulationTime = simulationTime;
+    this.sliderTooltipX = x;
+  }
+
   fastForwardTime() {
     this.translateTime(this.fastForwardStepSignal());
   }
@@ -350,7 +343,7 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
   /**** ************************ ****/
 
   onSliderChange(value: number) {
-    this.visualizationService.setVisualizationTime(value);
+    this.visualizationService.setVisualizationTime(this.sliderHoverTimestamp);
   }
 
   // MARK: Other
