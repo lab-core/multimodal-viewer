@@ -58,8 +58,11 @@ jobs:
           # git rebase --continue
 
           git filter-repo --commit-callback '
-            if commit.message.startswith(b"_____automatic-build-update_____"):
-                commit.drop()
+          import re
+          message = commit.message.strip()
+          if re.match(r"^_____automatic-build-update_____$", message):
+            commit.message = "Dropped automatic build update"
+            commit.skip = True
           ' --force
 
       - name: Set up Node.js
