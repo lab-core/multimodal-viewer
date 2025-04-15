@@ -236,8 +236,11 @@
                 tabindex="0"
                 class="clickable indent"
                 [matTooltip]="'Select passenger'"
+                [matTooltipPosition]="'after'"
                 (click)="selectPassenger(passenger.id)"
                 (keydown.enter)="selectPassenger(passenger.id)"
+                (mouseenter)="preselectEntity(passenger)"
+                (mouseleave)="unpreselectEntity()"
               >
                 <span>{{ passenger.name }}</span>
               </div>
@@ -326,8 +329,11 @@
                 tabindex="0"
                 class="clickable indent"
                 [matTooltip]="'Select passenger'"
+                [matTooltipPosition]="'after'"
                 (click)="selectPassenger(passenger.id)"
                 (keydown.enter)="selectPassenger(passenger.id)"
+                (mouseenter)="preselectEntity(passenger)"
+                (mouseleave)="unpreselectEntity()"
               >
                 <span>{{ passenger.name }}</span>
               </div>
@@ -383,8 +389,11 @@
                 tabindex="0"
                 class="clickable indent"
                 [matTooltip]="'Select vehicle'"
+                [matTooltipPosition]="'after'"
                 (click)="selectVehicle(vehicle.id)"
                 (keydown.enter)="selectVehicle(vehicle.id)"
+                (mouseenter)="preselectEntity(vehicle)"
+                (mouseleave)="unpreselectEntity()"
               >
                 <span>{{ vehicle.name }}</span>
               </div>

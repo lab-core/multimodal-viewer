@@ -10,6 +10,7 @@ import {
   AnimatedSimulationEnvironment,
   AnimatedStop,
   AnimatedVehicle,
+  DataEntity,
   getAllLegs,
 } from '../../interfaces/simulation.model';
 import { AnimationService } from '../../services/animation.service';
@@ -112,6 +113,14 @@ export class SelectedEntityTabComponent {
 
   toggleFavoriteStop(stop: AnimatedStop) {
     this.favoriteEntitiesService.toggleFavoriteStop(stop.id);
+  }
+
+  preselectEntity(passenger: DataEntity) {
+    this.animationService.preselectEntity(passenger);
+  }
+
+  unpreselectEntity() {
+    this.animationService.preselectEntity(null);
   }
 
   // Select function

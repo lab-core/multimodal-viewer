@@ -17,12 +17,14 @@ import {
   Entity,
   EntityFilterMode,
   EntityInfo,
+  EntityType,
 } from '../interfaces/entity.model';
 import {
   AnimatedPassenger,
   AnimatedSimulationEnvironment,
   AnimatedStop,
   AnimatedVehicle,
+  DataEntity,
   DisplayedPolylines,
   DynamicPassengerAnimationData,
   DynamicVehicleAnimationData,
@@ -48,6 +50,13 @@ export class AnimationService {
   private readonly _selectedStopIdSignal: WritableSignal<string | null> =
     signal(null);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private readonly _preselectedEntityIdSignal: WritableSignal<DataEntity | null> =
+    signal(null);
+
+  private readonly _showPreselectedInTabSignal: WritableSignal<boolean> =
+    signal(false);
+
   private readonly _clickPositionSignal: WritableSignal<PIXI.Point> = signal(
     new PIXI.Point(0, 0),
   );
@@ -70,6 +79,14 @@ export class AnimationService {
 
   get nearStopsSignal(): Signal<EntityInfo[]> {
     return this._nearStopsSignal;
+  }
+
+  get preselectedEntitySignal(): Signal<DataEntity | null> {
+    return this._preselectedEntityIdSignal;
+  }
+
+  get showPreselectedInTabSignal(): Signal<boolean> {
+    return this._showPreselectedInTabSignal;
   }
 
   get selectedVehicleIdSignal(): Signal<string | null> {
@@ -203,7 +220,8 @@ export class AnimationService {
       this.addVehicle(vehicle);
       if (selectedVehicleId !== null && vehicle.id == selectedVehicleId) {
         isSelectedVehicleInEnvironment = true;
-        this.highlightEntityId(vehicle.id, 'vehicle');
+        if (this._preselectedEntityIdSignal() == null)
+          this.highlightEntityId(vehicle.id, 'vehicle');
       }
     }
 
@@ -220,7 +238,8 @@ export class AnimationService {
       this.addPassenger(passenger);
       if (selectedPassengerId !== null && passenger.id == selectedPassengerId) {
         isSelectedPassengerInEnvironment = true;
-        this.highlightEntityId(passenger.id, 'passenger');
+        if (this._preselectedEntityIdSignal() == null)
+          this.highlightEntityId(passenger.id, 'passenger');
       }
     }
 
@@ -238,7 +257,8 @@ export class AnimationService {
     for (const stop of Object.values(simulationEnvironment.stops)) {
       if (selectedStopId !== null && stop.id == selectedStopId) {
         isSelectedStopInEnvironment = true;
-        this.highlightEntityId(stop.id, 'stop');
+        if (this._preselectedEntityIdSignal() == null)
+          this.highlightEntityId(stop.id, 'stop');
       }
     }
 
@@ -246,6 +266,14 @@ export class AnimationService {
       this.unselectStop();
       console.warn(
         'The stop you selected is not in the environment anymore. It has been deselected.',
+      );
+    }
+
+    const preselectedEntity = this._preselectedEntityIdSignal();
+    if (preselectedEntity !== null) {
+      this.highlightEntityId(
+        preselectedEntity.id,
+        preselectedEntity.entityType,
       );
     }
 
@@ -667,9 +695,11 @@ export class AnimationService {
       }
 
       const selectedVehicleId = this._selectedVehicleIdSignal();
+      const preselectedDataEntity = this._preselectedEntityIdSignal();
       if (
-        selectedVehicleId !== null &&
-        selectedVehicleId === vehicle.id &&
+        (preselectedDataEntity?.id === vehicle.id ||
+          (selectedVehicleId === vehicle.id &&
+            preselectedDataEntity === null)) &&
         vehicleEntity.data.currentLineIndex !== null &&
         point !== null
       ) {
@@ -771,17 +801,14 @@ export class AnimationService {
       }
 
       const selectedPassengerId = this._selectedPassengerIdSignal();
-      if (
-        selectedPassengerId !== null &&
-        selectedPassengerId === passenger.id
-      ) {
+
+      if (selectedPassengerId === passenger.id) {
         this.frame_pointToFollow = this.utils.layerPointToLatLng(
           new L.Point(
             passengerEntity.sprites[0].parent.x,
             passengerEntity.sprites[0].parent.y,
           ),
         );
-        this.redrawPassengerPolyline();
       }
     }
   }
@@ -1119,6 +1146,7 @@ export class AnimationService {
     }
     // More than one
     else {
+      this.unselectEntity();
       this._clickPositionSignal.set(
         new PIXI.Point(event.containerPoint.x, event.containerPoint.y),
       );
@@ -1138,7 +1166,11 @@ export class AnimationService {
   }
 
   private redrawPassengerPolyline() {
-    const selectedPassengerId = this._selectedPassengerIdSignal();
+    let selectedPassengerId = this._selectedPassengerIdSignal();
+    const preselectedEntity = this._preselectedEntityIdSignal();
+    if (preselectedEntity && preselectedEntity.entityType === 'passenger')
+      selectedPassengerId = preselectedEntity.id;
+
     if (!selectedPassengerId) return;
 
     const passenger = this.passengerEntitiesByPassengerId[selectedPassengerId];
@@ -1472,6 +1504,7 @@ export class AnimationService {
     this.resetStopCounters();
     this.setVehiclePositions();
     this.setPassengerPositions();
+    this.redrawPassengerPolyline();
     this.filterEntities();
     this.updateVehiclePassengerCounters();
     this.updateStopCounters();
@@ -1630,10 +1663,7 @@ export class AnimationService {
     this.selectedEntityPolylines = [];
   }
 
-  private highlightEntityId(
-    entityId: string,
-    type: 'vehicle' | 'passenger' | 'stop',
-  ) {
+  private highlightEntityId(entityId: string, type: EntityType) {
     let entity;
     switch (type) {
       case 'vehicle':
@@ -1655,10 +1685,7 @@ export class AnimationService {
     }
   }
 
-  private unhighlightEntityId(
-    entityId: string | null,
-    type: 'vehicle' | 'passenger' | 'stop',
-  ) {
+  private unhighlightEntityId(entityId: string | null, type: EntityType) {
     if (!entityId) return;
     let entity;
     switch (type) {
@@ -1675,7 +1702,15 @@ export class AnimationService {
     if (entity) entity.sprites[0].parent.filters = null;
   }
 
-  selectEntity(entityId: string, type: 'vehicle' | 'passenger' | 'stop') {
+  preselectEntity(dataEntity: DataEntity | null, showInTab = false) {
+    this._preselectedEntityIdSignal.set(dataEntity);
+    this._showPreselectedInTabSignal.set(showInTab);
+    if (dataEntity)
+      this.highlightEntityId(dataEntity.id, dataEntity.entityType);
+  }
+
+  selectEntity(entityId: string, type: EntityType) {
+    this._preselectedEntityIdSignal.set(null);
     this.unselectEntity();
 
     switch (type) {
@@ -1692,6 +1727,8 @@ export class AnimationService {
   }
 
   unselectEntity() {
+    this._preselectedEntityIdSignal.set(null);
+    this._showPreselectedInTabSignal.set(false);
     this.unselectVehicle();
     this.unselectPassenger();
     this.unselectStop();

@@ -13,3 +13,5 @@ export interface EntityInfo {
   id: string;
   name: string;
 }
+
+export type EntityType = 'vehicle' | 'passenger' | 'stop';
