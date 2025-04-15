@@ -1,5 +1,7 @@
 name: Build
 
+description: This workflow does not work well with merge commits. Consider using rebases instead.
+
 on:
   workflow_dispatch:
 
@@ -49,6 +51,7 @@ jobs:
 
       #     # Start the interactive rebase
       #     git rebase -i HEAD~$rebase_range
+
 
       - name: Set up Node.js
         uses: actions/setup-node@v2

@@ -4,13 +4,13 @@ import os
 import threading
 from enum import Enum
 from pathlib import Path
-from dotenv import load_dotenv
 
+from dotenv import load_dotenv
 from flask import request
 from flask_socketio import emit
 
 # Load environment variables from the root .env file
-env_path = Path(__file__).parent.parent / '.env'
+env_path = Path(__file__).parent.parent / ".env"
 load_dotenv(env_path)
 
 HOST = os.getenv("SERVER_HOST", "127.0.0.1")
@@ -24,7 +24,7 @@ SCRIPT_ROOM = "script"
 STATE_SAVE_STEP = 1000
 
 # If the version is identical, the save file can be loaded
-SAVE_VERSION = 8
+SAVE_VERSION = 9
 
 SIMULATION_SAVE_FILE_SEPARATOR = "---"
 

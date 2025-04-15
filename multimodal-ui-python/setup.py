@@ -17,8 +17,6 @@ setup(
             'multimodal-ui=multimodal_ui.cli:main',
         ],
     },
-    author="Your Name",
-    author_email="your.email@example.com",
     description="Multimodal UI application packaged for Python",
     license="MIT",
     keywords="angular ui multimodal",

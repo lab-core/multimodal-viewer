@@ -3,6 +3,7 @@ import math
 import os
 from enum import Enum
 
+import multimodalsim.optimization.dispatcher  # To avoid circular import error
 from filelock import FileLock
 from multimodalsim.simulator.environment import Environment
 from multimodalsim.simulator.request import Leg, Trip
@@ -134,11 +135,27 @@ class VisualizedLeg(Serializable):
             else None
         )
 
+        all_legs = (
+            trip.previous_legs
+            + ([trip.current_leg] if trip.current_leg else [])
+            + trip.next_legs
+        )
+
+        same_vehicle_leg_index = 0
+        for i, other_leg in enumerate(all_legs):
+            if other_leg.assigned_vehicle == leg.assigned_vehicle:
+                if other_leg == leg:
+                    break
+                else:
+                    same_vehicle_leg_index += 1
+
         if route is not None:
             all_stops = route.previous_stops.copy()
             if route.current_stop is not None:
                 all_stops.append(route.current_stop)
             all_stops += route.next_stops
+
+            trip_found_count = 0
 
             for i, stop in enumerate(all_stops):
                 if boarding_stop_index is None and trip in (
@@ -146,8 +163,12 @@ class VisualizedLeg(Serializable):
                     + stop.boarding_passengers
                     + stop.boarded_passengers
                 ):
-                    boarding_stop_index = i
-                    break
+                    if trip_found_count == same_vehicle_leg_index:
+                        boarding_stop_index = i
+                        break
+                    trip_found_count += 1
+
+            trip_found_count = 0
 
             for i, stop in enumerate(all_stops):
                 if alighting_stop_index is None and trip in (
@@ -155,8 +176,10 @@ class VisualizedLeg(Serializable):
                     + stop.alighting_passengers
                     + stop.alighted_passengers
                 ):
-                    alighting_stop_index = i
-                    break
+                    if trip_found_count == same_vehicle_leg_index:
+                        alighting_stop_index = i
+                        break
+                    trip_found_count += 1
 
         assigned_vehicle_id = (
             leg.assigned_vehicle.id if leg.assigned_vehicle is not None else None
