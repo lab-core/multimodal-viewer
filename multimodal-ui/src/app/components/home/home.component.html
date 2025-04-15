@@ -21,13 +21,17 @@
       <span>Browse simulations</span>
     </button>
 
-    <button
-      mat-raised-button
-      class="enable-pointer-events"
-      (click)="onAboutUs()"
-    >
-      <mat-icon>info</mat-icon>
-      <span>About Us</span>
-    </button>
+    <div class="flex-row gap-1-rem">
+      <button
+        mat-raised-button
+        class="enable-pointer-events flex-1"
+        (click)="onAboutUs()"
+      >
+        <mat-icon>info</mat-icon>
+        <span>About Us</span>
+      </button>
+
+      <app-github-button class="enable-pointer-events" />
+    </div>
   </div>
 }

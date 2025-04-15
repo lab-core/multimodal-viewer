@@ -6,10 +6,11 @@ import { firstValueFrom } from 'rxjs';
 import { CommunicationService } from '../../services/communication.service';
 import { DialogService } from '../../services/dialog.service';
 import { LoadingService } from '../../services/loading.service';
+import { GithubButtonComponent } from '../github-button/github-button.component';
 
 @Component({
   selector: 'app-home',
-  imports: [MatButtonModule, MatIconModule],
+  imports: [MatButtonModule, MatIconModule, GithubButtonComponent],
   templateUrl: './home.component.html',
   styleUrl: './home.component.css',
 })
