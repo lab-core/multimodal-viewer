@@ -238,7 +238,12 @@
           [selectedVehicleStop]="selectedVehicleStopSignal()"
           [selectedVehiclePassengers]="selectedVehiclePassengersSignal()"
           [selectedStop]="selectedStop"
-          [selectedStopPassengers]="selectedStopPassengersSignal()"
+          [selectedStopWaitingPassengers]="
+            selectedStopWaitingPassengersSignal()
+          "
+          [selectedStopCompletedPassengers]="
+            selectedStopCompletedPassengersSignal()
+          "
           [selectedStopVehicles]="selectedStopVehiclesSignal()"
         ></app-selected-entity-tab>
       </mat-card-content>

@@ -9,9 +9,10 @@ import { provideRouter } from '@angular/router';
 
 import { SocketIoConfig, SocketIoModule } from 'ngx-socket-io';
 import { routes } from './app.routes';
+import { environment } from '../environments/environment';
 
 const config: SocketIoConfig = {
-  url: 'http://127.0.0.1:5000',
+  url: environment.socketUrl,
   options: { auth: { type: 'client' } },
 };
 

@@ -242,8 +242,8 @@ export class VisualizerComponent implements OnDestroy {
     },
   );
 
-  readonly selectedStopPassengersSignal: Signal<AnimatedPassenger[]> = computed(
-    () => {
+  private readonly selectedStopPassengersSignal: Signal<AnimatedPassenger[]> =
+    computed(() => {
       const selectedStop = this.selectedStopSignal();
       const environment =
         this.visualizationService.visualizationEnvironmentSignal();
@@ -257,8 +257,25 @@ export class VisualizerComponent implements OnDestroy {
       );
 
       return passengers;
-    },
-  );
+    });
+
+  readonly selectedStopWaitingPassengersSignal: Signal<AnimatedPassenger[]> =
+    computed(() => {
+      const selectedStopPassengers = this.selectedStopPassengersSignal();
+
+      return selectedStopPassengers.filter(
+        (passenger) => passenger.status !== 'complete',
+      );
+    });
+
+  readonly selectedStopCompletedPassengersSignal: Signal<AnimatedPassenger[]> =
+    computed(() => {
+      const selectedStopPassengers = this.selectedStopPassengersSignal();
+
+      return selectedStopPassengers.filter(
+        (passenger) => passenger.status === 'complete',
+      );
+    });
 
   readonly selectedStopVehiclesSignal: Signal<AnimatedVehicle[]> = computed(
     () => {

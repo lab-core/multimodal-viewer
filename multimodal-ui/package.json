@@ -3,8 +3,10 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
+    "start": "npm run set-env && ng serve",
+    "build": "npm run set-env && ng build",
+    "build:prod": "npm run set-env && ng build --configuration=production",
+    "set-env": "ts-node --esm scripts/set-env.js",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "lint": "ng lint"
@@ -22,7 +24,6 @@
     "@angular/platform-browser-dynamic": "^19.1.0",
     "@angular/router": "^19.1.0",
     "@bluehalo/ngx-leaflet": "^19.0.0",
-    "@types/node": "^22.13.4",
     "@types/stats.js": "^0.17.3",
     "d3-color": "^3.1.0",
     "d3-interpolate": "^3.0.1",
@@ -51,9 +52,11 @@
     "@types/d3-interpolate": "^3.0.4",
     "@types/jasmine": "~5.1.0",
     "@types/leaflet": "^1.9.16",
+    "@types/node": "^22.14.1",
     "@types/node-random-name": "^1.0.2",
     "@types/polyline": "^0.1.32",
     "angular-eslint": "19.0.2",
+    "dotenv": "^16.5.0",
     "eslint": "^9.16.0",
     "jasmine-core": "~5.5.0",
     "karma": "~6.4.0",
@@ -61,6 +64,7 @@
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
+    "ts-node": "^10.9.2",
     "typescript": "~5.7.2",
     "typescript-eslint": "8.18.0"
   }
