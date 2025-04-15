@@ -17,3 +17,4 @@ data/small-taxi
 # Python Packages
 multimodal_ui.egg-info
 multimodal_server.egg-info
+multimodal_package.egg-info

@@ -15,12 +15,12 @@ git checkout develop-visualizer
 git pull origin develop-visualizer
 ```
 
-## Setting Up the Backend
+## Installing the python packages
 
-Running the backend requires a python environment
+This little script will install all Python-related things you need to run the project.
 
 ```bash
-# Creating Python environment
+# Creating Python environment (Optional)
 py -3.11 -m venv venv
 .\venv\Scripts\activate
 
@@ -33,32 +33,33 @@ cd multimodal-simulator
 git checkout develop-visualizer
 git pull origin develop-visualizer
 
-# Installing simulation Python package
+# Installing the submodule package
 cd python
 python -m pip install -r requirements.txt
 python setup.py install
 
-# Installing server Python package
+# Installing the project package
 cd ../..
 pip install -e .
-
-# Installing frontend Python package
-cd multimodal-ui-python
-pip install -e .
-cd ..
 ```
 
-## Serving With Angular
 
-First, start your server:
+## Launching 
 
-```bash
-.\venv\Scripts\activate
-cd multimodal-server
-python .\server.py
-```
+Once you have installed all the packages, you have a few ways to run the project
 
-Then, open a new terminal and install all the angular dependencies:
+### Python
+
+Open two separate terminals and activate the Python environment if you have created one. Launch the front-end with `multimodal-ui` 
+in the first terminal, and the back-end with `multimodal-server` in the second.
+
+### Docker
+
+Make sure you have Docker installed on your machine first. Then run `docker-compose` from the root of the project.
+
+### Angular
+
+Install all the angular dependencies:
 
 ```bash
 cd multimodal-ui
@@ -67,53 +68,8 @@ npm ci
 
 Serve the application with `npm start`
 
-## Launching Without Angular
+Launch the server in a separate terminal with `multimodal-server`. Do not forget to activate the Python environment if you have created one.
 
-First make sure to install the python package :
-
-```bash
-cd multimodal-ui-python
-pip install -e .
-cd ..
-```
-
-Now you have a few options to run the project.
-
-### Using launch.py
-
-You can run it via `launch.py`. This should work on Windows, MacOS, and some Linux configurations.
-
-```bash
-python .\launch.py
-```
-
-### Running frontend and the backend separately
-
-If `launch.py` fails for you, you can run the frontend with:
-
-```bash
-multimodal-ui
-```
-
-Then you can run the server in a separate terminal:
-
-```bash
-.\venv\Scripts\activate
-cd multimodal-server
-python .\server.py
-```
-
-### Running with one command line
-
-From the root of the project, execute tis line in powershell:
-
-```bash
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "multimodal-ui"; .\venv\Scripts\activate; cd .\multimodal-server; python .\server.py
-```
-
-### Running in Docker
-
-Make sure you have Docker installed on your machine first. Then run `docker-compose` from the root of the project.
 
 ## Rebuilding the Frontend
 
@@ -124,14 +80,14 @@ cd multimodal-ui
 npm run build
 ```
 
-Once the build is finished, copy the contents of `multimodal-ui/dist/multimodal-ui/browser/` into `multimodal-ui-python/multimodal_ui/static/`
+Once the build is finished, copy the contents of `multimodal-ui/dist/multimodal-ui/browser/` into `multimodal_ui/static/`
 
 ## Changing Ports
 
 The ports are defined in the .env file. After changing them, restart both the front and the back ends for the changes to take effect.
 
 If you are using running the app through the python package and do not wish to rebuild it with angular, you will also have to change the ports directly in the built main file. In the
-`/multimodal-ui-python/multimodal_ui/static/main-XXXXXXXX.js`
+`/multimodal_ui/static/main-XXXXXXXX.js`
 file, locate this section:
 `socketUrl:"http://127.0.0.1:8089",apiUrl:"http://127.0.0.1:8089/api/",clientPort:8085`
 and replace the ports to match the ones you redefined in your .env file.
