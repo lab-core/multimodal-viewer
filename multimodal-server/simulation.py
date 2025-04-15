@@ -19,6 +19,7 @@ def run_simulation(
     data: str,
     max_duration: float | None,
     stop_event: threading.Event | None = None,
+    is_offline: bool = False,
 ) -> None:
     data_container = DataContainer()
 
@@ -27,6 +28,7 @@ def run_simulation(
         max_duration=max_duration,
         simulation_id=simulation_id,
         input_data_description=data,
+        offline=is_offline,
     )
 
     environment_observer = EnvironmentObserver(
@@ -71,12 +73,18 @@ if __name__ == "__main__":
     parser.add_argument(
         "--max-duration", type=float, help="The maximum duration to run the simulation"
     )
+    parser.add_argument(
+        "--offline",
+        action="store_true",
+        help="Run the simulation in offline mode without requiring internet access",
+    )
 
     args = parser.parse_args()
 
     name = args.name
     data = args.data
     max_duration = args.max_duration
+    is_offline = args.offline
 
     name_error = verify_simulation_name(name)
 
@@ -112,7 +120,7 @@ if __name__ == "__main__":
     simulation_id, _ = build_simulation_id(name)
 
     print(
-        f"Running simulation with id: {simulation_id}, data: {data} and {f'max duration: {max_duration}' if max_duration is not None else 'no max duration'}"
+        f"Running simulation with id: {simulation_id}, data: {data} and {f'max duration: {max_duration}' if max_duration is not None else 'no max duration'}{is_offline and ' in offline mode' or ''}"
     )
 
     stop_event = threading.Event()
@@ -127,9 +135,9 @@ if __name__ == "__main__":
 
     input_listener_thread.start()
 
-    run_simulation(simulation_id, data, max_duration, stop_event)
+    run_simulation(simulation_id, data, max_duration, stop_event, is_offline)
 
     print("To run a simulation with the same configuration, use the following command:")
     print(
-        f"python simulation.py  --data {data}{f' --max-duration {max_duration}' if max_duration is not None else ''} --name {name}"
+        f"python simulation.py  --data {data}{f' --max-duration {max_duration}' if max_duration is not None else ''} --name {name}{f' --offline' if is_offline else ''}"
     )
