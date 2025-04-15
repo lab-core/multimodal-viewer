@@ -1,4 +1,4 @@
-name: Verify build
+name: Build
 
 on:
   # TODO CHANGE BACK TO THIS
@@ -54,6 +54,7 @@ jobs:
           exit 0
 
       - name: Commit and push changes
+        if: steps.verify-build.outputs.changes_detected == 'true'
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
