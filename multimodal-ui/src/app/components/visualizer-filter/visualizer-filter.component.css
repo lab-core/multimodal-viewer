@@ -1,49 +1,49 @@
 p {
-    margin: 0px;
+  margin: 0px;
 }
 
-.title{
-    font: var(--mat-sys-body-medium);
-    margin-top: 0px;
-    margin-bottom: 10px
+.title {
+  font: var(--mat-sys-body-medium);
+  margin-top: 0px;
+  margin-bottom: 10px;
 }
 
 .content {
-    display: flex;
-    gap: 10px;
+  display: flex;
+  gap: 10px;
 }
 
 .entity-filters {
-    display: flex;
-    flex-direction: column;
+  display: flex;
+  flex-direction: column;
 }
 mat-chip-option {
-    margin-bottom: 10px;
+  margin-bottom: 10px;
 }
 
 /* Remove margin-bottom for that last chip */
 ul li:last-child mat-chip-option {
-    margin-bottom: 0px;
+  margin-bottom: 0px;
 }
 
 /* Make chips tigher */
 ul {
-    width: fit-content;
-    margin-left: auto; /* Move list of modes to the right */
+  width: fit-content;
+  margin-left: auto; /* Move list of modes to the right */
 
-    list-style-type: none;
-    padding-left: 20px;
-    margin-top: 0px;
-    margin-bottom: 0px;
+  list-style-type: none;
+  padding-left: 20px;
+  margin-top: 0px;
+  margin-bottom: 0px;
 }
 
 .radio-group {
-    display: flex;
-    flex-direction: column;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Shrink radio buttons */
 :host ::ng-deep .mat-mdc-radio-button .mdc-radio {
-    scale: 0.8;
-    padding: 5px;
+  scale: 0.8;
+  padding: 5px;
 }

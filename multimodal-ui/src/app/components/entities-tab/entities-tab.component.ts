@@ -1,5 +1,9 @@
 import { Component, computed, Signal } from '@angular/core';
-import { Passenger, Vehicle } from '../../interfaces/simulation.model';
+import {
+  DataEntity,
+  Passenger,
+  Vehicle,
+} from '../../interfaces/simulation.model';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AnimationService } from '../../services/animation.service';
@@ -19,7 +23,7 @@ export class EntitiesTabComponent {
     if (environment === null) {
       return [];
     }
-    return Object.values(environment.currentState.passengers);
+    return Object.values(environment.passengers);
   });
 
   readonly numberOfPassengersByStatusSignal: Signal<
@@ -35,7 +39,16 @@ export class EntitiesTabComponent {
       return [];
     }
 
-    const passengers = Object.values(environment.currentState.passengers);
+    const passengers = Object.values(environment.passengers);
+    passengers.sort(
+      (a, b) =>
+        b.nextLegs.length +
+        b.previousLegs.length +
+        (b.currentLeg != null ? 1 : 0) -
+        (a.nextLegs.length +
+          a.previousLegs.length +
+          (a.currentLeg != null ? 1 : 0)),
+    );
     const counts: Record<string, Passenger[]> = {};
 
     for (const passenger of passengers) {
@@ -57,7 +70,7 @@ export class EntitiesTabComponent {
     if (environment === null) {
       return [];
     }
-    return Object.values(environment.currentState.vehicles);
+    return Object.values(environment.vehicles);
   });
 
   readonly numberOfVehiclesByStatusSignal: Signal<
@@ -74,7 +87,7 @@ export class EntitiesTabComponent {
       return [];
     }
 
-    const vehicles = Object.values(environment.currentState.vehicles);
+    const vehicles = Object.values(environment.vehicles);
     const counts: Record<string, Vehicle[]> = {};
 
     for (const vehicle of vehicles) {
@@ -94,6 +107,14 @@ export class EntitiesTabComponent {
     private readonly animationService: AnimationService,
     private readonly visualizationService: VisualizationService,
   ) {}
+
+  preselectEntity(entity: DataEntity) {
+    this.animationService.preselectEntity(entity);
+  }
+
+  unpreselectEntity() {
+    this.animationService.preselectEntity(null);
+  }
 
   selectPassenger(id: string) {
     this.animationService.selectEntity(id, 'passenger');

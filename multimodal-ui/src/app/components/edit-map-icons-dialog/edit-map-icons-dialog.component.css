@@ -31,10 +31,9 @@ p {
 
 .custom-icon {
   width: 40px;
-  height: 40px;
 
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: center;
 }
 
@@ -52,4 +51,97 @@ p {
   button {
     color: var(--mat-sys-primary);
   }
+}
+
+.color-title {
+  margin: 0px;
+}
+
+.color-group {
+  display: flex;
+  justify-content: space-between;
+}
+
+.color-picker {
+  border: none;
+  width: 15px;
+  height: 15px;
+  margin: 2px;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.color-picker::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.color-picker::-webkit-color-swatch {
+  border: 1px solid black;
+  border-radius: 0;
+}
+
+.color-picker::-moz-color-swatch {
+  border: 1px solid black;
+  border-radius: 0;
+}
+
+.color-list-container,
+.custom-color-list,
+.custom-color,
+.preset-color {
+  display: flex;
+  align-items: center;
+}
+
+.color-list-container {
+  gap: 5px;
+}
+
+.preset-color {
+  width: 15px;
+  height: 15px;
+  border: 1px solid black;
+}
+
+.color-placeholder {
+  background: #ccc;
+  border: dotted 3px #999;
+  width: 15px;
+  height: 15px;
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.mini-icon-button {
+  width: 32px;
+  height: 32px;
+  padding: 4px;
+  padding-top: 7px;
+  mat-icon {
+    font-size: 20px;
+  }
+}
+
+.color-tester {
+  display: flex;
+  gap: 10px;
+}
+
+.wrapper-icon {
+  position: relative;
+}
+
+.color-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+
+  mask-repeat: no-repeat;
+  width: 40px;
+  height: 100%;
+  mask-size: 40px;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
 }

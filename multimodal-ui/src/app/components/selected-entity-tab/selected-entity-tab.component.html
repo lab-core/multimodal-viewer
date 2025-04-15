@@ -12,6 +12,7 @@
           ? 'Remove from favorite'
           : 'Add to favorite'
       "
+      [matTooltipPosition]="'after'"
       (click)="
         toggleFavoritePassenger(selectedPassenger.id, selectedPassenger.name)
       "
@@ -30,6 +31,7 @@
           #idElement
           class="clickable-no-padding"
           [matTooltip]="'Click to copy'"
+          [matTooltipPosition]="'after'"
           (click)="copyToClipboard(selectedPassenger.id)"
           (keydown.enter)="copyToClipboard(selectedPassenger.id)"
         >
@@ -40,6 +42,7 @@
         <mat-card-content
           class="clickable-no-padding"
           [matTooltip]="'Click to copy'"
+          [matTooltipPosition]="'after'"
           (click)="copyToClipboard(selectedPassenger.name!)"
           (keydown.enter)="copyToClipboard(selectedPassenger.name!)"
         >
@@ -70,6 +73,7 @@
           <mat-card-content
             class="clickable-no-padding"
             [matTooltip]="'Select stop'"
+            [matTooltipPosition]="'after'"
             (click)="selectStop(selectedPassengerStop)"
             (keydown.enter)="selectStop(selectedPassengerStop)"
           >
@@ -82,6 +86,7 @@
           <mat-card-content
             class="clickable-no-padding"
             [matTooltip]="'Select vehicle'"
+            [matTooltipPosition]="'after'"
             (click)="selectVehicle(selectedPassengerVehicle.id)"
             (keydown.enter)="selectVehicle(selectedPassengerVehicle.id)"
           >
@@ -91,28 +96,46 @@
       }
     </div>
 
-    <!--TODO Passenger route-->
-    <!-- <mat-accordion>
+    <mat-accordion>
       <mat-expansion-panel>
         <mat-expansion-panel-header>
           <mat-panel-title>Passenger route</mat-panel-title>
         </mat-expansion-panel-header>
-        @for (leg of selectedPassenger.legs; track leg.id; let idx = $index) {
-          <div class="flex-column gap-0-5-rem">
-            @if (idx !== 0) {
-              <mat-divider></mat-divider>
-            }
-            <div class="indent"><b>{{leg.name}}</b></div>
-            <app-selected-entity-route
-            class="indent"
-            [previousStops]="leg.previousStops"
-            [currentStop]="leg.currentStop"
-            [nextStops]="leg.nextStops"
-            ></app-selected-entity-route>
-          </div>
-        }
+        <div class="flex-column gap-1-5-rem">
+          @for (leg of selectedPassengerLegs; track index; let index = $index) {
+            <div
+              class="flex-column gap-0-5-rem"
+              (mouseenter)="highlightLeg(index)"
+              (mouseleave)="unhighlightLeg()"
+            >
+              <div class="indent">
+                @if (environment !== null && leg.assignedVehicleId !== null) {
+                  @let vehicle = environment.vehicles[leg.assignedVehicleId];
+                  <div
+                    tabindex="0"
+                    class="clickable-no-padding"
+                    [matTooltip]="'Select vehicle'"
+                    [matTooltipPosition]="'after'"
+                    (click)="selectVehicle(vehicle.id)"
+                    (keydown.enter)="selectVehicle(vehicle.id)"
+                  >
+                    Vehicle: {{ vehicle.name }}
+                  </div>
+                } @else {
+                  <b>{{ leg.assignedVehicleId }}</b>
+                }
+              </div>
+              <app-selected-entity-route
+                class="indent"
+                [previousStops]="leg.previousStops"
+                [currentStop]="leg.currentStop"
+                [nextStops]="leg.nextStops"
+              ></app-selected-entity-route>
+            </div>
+          }
+        </div>
       </mat-expansion-panel>
-    </mat-accordion> -->
+    </mat-accordion>
   </div>
 }
 
@@ -130,6 +153,7 @@
           ? 'Remove from favorite'
           : 'Add to favorite'
       "
+      [matTooltipPosition]="'after'"
       (click)="toggleFavoriteVehicle(selectedVehicle.id, selectedVehicle.name)"
     >
       <mat-icon>{{
@@ -144,6 +168,7 @@
         <mat-card-content
           class="clickable-no-padding"
           [matTooltip]="'Click to copy'"
+          [matTooltipPosition]="'after'"
           (click)="copyToClipboard(selectedVehicle.id)"
           (keydown.enter)="copyToClipboard(selectedVehicle.id)"
         >
@@ -154,6 +179,7 @@
         <mat-card-content
           class="clickable-no-padding"
           [matTooltip]="'Click to copy'"
+          [matTooltipPosition]="'after'"
           (click)="copyToClipboard(selectedVehicle.name)"
           (keydown.enter)="copyToClipboard(selectedVehicle.name)"
         >
@@ -165,6 +191,7 @@
           <mat-card-content
             class="clickable-no-padding"
             [matTooltip]="'Click to copy'"
+            [matTooltipPosition]="'after'"
             (click)="copyToClipboard(selectedVehicle.mode)"
             (keydown.enter)="copyToClipboard(selectedVehicle.mode)"
           >
@@ -187,6 +214,7 @@
           <mat-card-content
             class="clickable-no-padding"
             [matTooltip]="'Select stop'"
+            [matTooltipPosition]="'after'"
             (click)="selectStop(selectedVehicleStop)"
             (keydown.enter)="selectStop(selectedVehicleStop)"
           >
@@ -219,8 +247,11 @@
                 tabindex="0"
                 class="clickable indent"
                 [matTooltip]="'Select passenger'"
+                [matTooltipPosition]="'after'"
                 (click)="selectPassenger(passenger.id)"
                 (keydown.enter)="selectPassenger(passenger.id)"
+                (mouseenter)="preselectEntity(passenger)"
+                (mouseleave)="unpreselectEntity()"
               >
                 <span>{{ passenger.name }}</span>
               </div>
@@ -262,6 +293,7 @@
           ? 'Remove from favorite'
           : 'Add to favorite'
       "
+      [matTooltipPosition]="'after'"
       (click)="toggleFavoriteStop(selectedStop)"
     >
       <mat-icon>{{
@@ -290,24 +322,30 @@
       </mat-card>
     </div>
 
-    @if (selectedStopPassengers.length > 0) {
+    @if (selectedStopWaitingPassengers.length > 0) {
       <mat-accordion>
         <mat-expansion-panel>
           <mat-expansion-panel-header>
             <mat-panel-title>
               Passengers at stop ({{
-                selectedStopPassengers.length
+                selectedStopWaitingPassengers.length
               }})</mat-panel-title
             >
           </mat-expansion-panel-header>
           <div class="flex-column gap-0-5-rem">
-            @for (passenger of selectedStopPassengers; track passenger.id) {
+            @for (
+              passenger of selectedStopWaitingPassengers;
+              track passenger.id
+            ) {
               <div
                 tabindex="0"
                 class="clickable indent"
                 [matTooltip]="'Select passenger'"
+                [matTooltipPosition]="'after'"
                 (click)="selectPassenger(passenger.id)"
                 (keydown.enter)="selectPassenger(passenger.id)"
+                (mouseenter)="preselectEntity(passenger)"
+                (mouseleave)="unpreselectEntity()"
               >
                 <span>{{ passenger.name }}</span>
               </div>
@@ -317,21 +355,30 @@
       </mat-accordion>
     }
 
-    <!--TODO completed trip list-->
-    <!-- @if (selectedStopPassengersCompleted.length > 0) {
+    @if (selectedStopCompletedPassengers.length > 0) {
       <mat-accordion>
         <mat-expansion-panel>
           <mat-expansion-panel-header>
-            <mat-panel-title> Trip completed ({{selectedStopPassengersCompleted.length}})</mat-panel-title>
+            <mat-panel-title>
+              Trip completed ({{
+                selectedStopCompletedPassengers.length
+              }})</mat-panel-title
+            >
           </mat-expansion-panel-header>
           <div class="flex-column gap-0-5-rem">
-            @for (passenger of selectedStopPassengersCompleted; track passenger.id) {
+            @for (
+              passenger of selectedStopCompletedPassengers;
+              track passenger.id
+            ) {
               <div
                 tabindex="0"
                 class="clickable indent"
                 [matTooltip]="'Select passenger'"
+                [matTooltipPosition]="'after'"
                 (click)="selectPassenger(passenger.id)"
                 (keydown.enter)="selectPassenger(passenger.id)"
+                (mouseenter)="preselectEntity(passenger)"
+                (mouseleave)="unpreselectEntity()"
               >
                 <span>{{ passenger.name }}</span>
               </div>
@@ -339,7 +386,7 @@
           </div>
         </mat-expansion-panel>
       </mat-accordion>
-    } -->
+    }
 
     @if (selectedStopVehicles.length > 0) {
       <mat-accordion>
@@ -357,8 +404,11 @@
                 tabindex="0"
                 class="clickable indent"
                 [matTooltip]="'Select vehicle'"
+                [matTooltipPosition]="'after'"
                 (click)="selectVehicle(vehicle.id)"
                 (keydown.enter)="selectVehicle(vehicle.id)"
+                (mouseenter)="preselectEntity(vehicle)"
+                (mouseleave)="unpreselectEntity()"
               >
                 <span>{{ vehicle.name }}</span>
               </div>
