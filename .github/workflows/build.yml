@@ -61,7 +61,7 @@ jobs:
           # done
 
           # Continue the rebase if 
-          git rebase --continue
+          # git rebase --continue
 
           # git filter-repo --commit-callback '
           # import re
