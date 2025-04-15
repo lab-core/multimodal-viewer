@@ -25,11 +25,11 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { EntityType } from '../../interfaces/entity.model';
 import {
   AnimatedPassenger,
   AnimatedStop,
   AnimatedVehicle,
-  DataEntity,
   RUNNING_SIMULATION_STATUSES,
   Simulation,
   SimulationStatus,
@@ -42,6 +42,7 @@ import { SimulationService } from '../../services/simulation.service';
 import { UserInterfaceService } from '../../services/user-interface.service';
 import { VisualizationFilterService } from '../../services/visualization-filter.service';
 import { VisualizationService } from '../../services/visualization.service';
+import { ClickHistoryComponent } from '../click-history/click-history.component';
 import { EntitiesTabComponent } from '../entities-tab/entities-tab.component';
 import { FavoriteEntitiesComponent } from '../favorite-entities/favorite-entities.component';
 import { InformationDialogComponent } from '../information-dialog/information-dialog.component';
@@ -51,8 +52,6 @@ import { SelectedEntityTabComponent } from '../selected-entity-tab/selected-enti
 import { SimulationControlBarComponent } from '../simulation-control-bar/simulation-control-bar.component';
 import { SimulationControlPanelComponent } from '../simulation-control-panel/simulation-control-panel.component';
 import { VisualizerFilterComponent } from '../visualizer-filter/visualizer-filter.component';
-import { ClickHistoryComponent } from '../click-history/click-history.component';
-import { EntityType } from '../../interfaces/entity.model';
 
 export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 

@@ -5,11 +5,11 @@ import Stats from 'stats.js';
   selector: 'app-metrics',
   imports: [],
   templateUrl: './metrics.component.html',
-  styleUrl: './metrics.component.css'
+  styleUrl: './metrics.component.css',
 })
 export class MetricsComponent implements OnInit, OnDestroy {
   @Input() mode = '';
-  
+
   private stats!: Stats;
 
   constructor(private el: ElementRef) {}
@@ -24,13 +24,13 @@ export class MetricsComponent implements OnInit, OnDestroy {
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     this.el.nativeElement.appendChild(this.stats.dom);
-    
+
     this.update();
   }
 
   private update(): void {
     this.stats.begin();
-    
+
     requestAnimationFrame(() => {
       this.stats.end();
       this.update();

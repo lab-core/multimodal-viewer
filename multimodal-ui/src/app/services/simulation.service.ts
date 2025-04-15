@@ -52,13 +52,6 @@ import { DataService } from './data.service';
   providedIn: 'root',
 })
 export class SimulationService {
-  // MARK: TODO DELETE
-  private readonly timers: Record<string, number> = {
-    timer1: 0,
-    timer2: 0,
-    timer3: 0,
-  };
-
   // MARK: Properties
   private readonly _activeSimulationIdSignal: WritableSignal<string | null> =
     signal(null);

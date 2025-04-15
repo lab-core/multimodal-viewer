@@ -1,8 +1,8 @@
-import "leaflet";
-import { Popup } from "leaflet";
-import * as PIXI from "pixi.js";
+import 'leaflet';
+import { Popup } from 'leaflet';
+import * as PIXI from 'pixi.js';
 
-declare module "leaflet" {
+declare module 'leaflet' {
   interface PixiOverlayOptions extends L.LayerOptions {
     padding: number;
     forceCanvas: boolean;
@@ -16,9 +16,12 @@ declare module "leaflet" {
     shouldRedrawOnMove: () => boolean;
   }
 
-// Original:
-//   type LatLngToLayerPointFn = (latLng: L.LatLng, zoom?: number) => L.Point;
-  type LatLngToLayerPointFn = (latLng: L.LatLngExpression, zoom?: number) => L.Point;
+  // Original:
+  //   type LatLngToLayerPointFn = (latLng: L.LatLng, zoom?: number) => L.Point;
+  type LatLngToLayerPointFn = (
+    latLng: L.LatLngExpression,
+    zoom?: number,
+  ) => L.Point;
   type LayerPointToLatLngFn = (point: L.Point, zoom?: number) => L.LatLng;
 
   interface PixiOverlayUtils {
@@ -37,12 +40,12 @@ declare module "leaflet" {
 
   type DrawCallbackFn = (
     utils: PixiOverlayUtils,
- //   container: PIXI.Container,
-    event: L.LeafletEvent
+    //   container: PIXI.Container,
+    event: L.LeafletEvent,
   ) => void;
 
   interface LeafletPixiOverlayDefnition
-    extends Omit<L.Layer, "onAdd" | "onRemove"> {
+    extends Omit<L.Layer, 'onAdd' | 'onRemove'> {
     utils: PixiOverlayUtils;
     options: PixiOverlayOptions;
     _container?: HTMLElement;
@@ -65,8 +68,8 @@ declare module "leaflet" {
     _onAnimZoom: (event: L.ZoomAnimEvent) => void;
     _onMove: (event: L.LeafletEvent) => void;
     _updateTransform: (
-      center: Pick<L.ZoomAnimEvent, "center">,
-      zoom: Pick<L.ZoomAnimEvent, "zoom">,
+      center: Pick<L.ZoomAnimEvent, 'center'>,
+      zoom: Pick<L.ZoomAnimEvent, 'zoom'>,
     ) => void;
     _redraw: (offset: number, container: PIXI.Container) => void;
     _update: (event: Partial<L.LeafletEvent>) => void;
@@ -77,7 +80,7 @@ declare module "leaflet" {
       pixiContainer: PIXI.Container,
       options?: Partial<PixiOverlayOptions>,
     ) => void;
-//    redraw: (data: PIXI.Container) => this;
+    //    redraw: (data: PIXI.Container) => this;
     redraw: (event: L.LeafletEvent) => this; // Doesn't exactly seem to be a leaflet event, but is not a container either.
     onAdd: (map: L.Map) => void;
     onRemove: () => void;
@@ -94,10 +97,10 @@ declare module "leaflet" {
 }
 
 // Added this
-declare module "pixi.js" {
-    interface DisplayObject {
-        currentScale: number;
-        targetScale: number;
-        popup?: Popup;
-    }
+declare module 'pixi.js' {
+  interface DisplayObject {
+    currentScale: number;
+    targetScale: number;
+    popup?: Popup;
+  }
 }

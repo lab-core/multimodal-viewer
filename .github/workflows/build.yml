@@ -1,0 +1,97 @@
+name: Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout current branch
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0 # Fetch all history for all branches and tags to ensure we can push changes
+          ref: ${{ github.head_ref }} # Checkout the current branch to ensure we are on the correct commit
+          token: ${{ secrets.WORKFLOW_PAT }} # Use the personal access token for authentication
+
+      - name: Configure git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Remove previous build commits
+        env:
+          GIT_SEQUENCE_EDITOR: 'python3 /tmp/edit_rebase_sequence.py' # Set the editor to a Python script that will edit the rebase sequence
+        run: |
+          # Create a temporary Python script to edit the rebase sequence
+          cat << 'EOF' > /tmp/edit_rebase_sequence.py
+          import sys
+          import re
+
+          sequence_file = sys.argv[1]
+          print(f"Editing sequence file: {sequence_file}")
+          with open(sequence_file, 'r') as file:
+              lines = file.readlines()
+
+          with open(sequence_file, 'w') as file:
+              for line in lines:
+                  if not re.match(r'^pick [0-9a-f]+ _____automatic-build-update_____', line):
+                      file.write(line)
+          EOF
+
+          # Compute the number of commits to rebase
+          commit_count=$(git rev-list --count HEAD)
+
+          # Substract one
+          rebase_range=$((commit_count - 1))
+
+          # Start the interactive rebase
+          git rebase -i HEAD~$rebase_range
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: ./multimodal-ui
+
+      - name: Run build in production mode
+        run: npm run build
+        working-directory: ./multimodal-ui
+
+      - name: Clear previous build artifacts
+        run: rm -rf ./multimodal-ui-python/multimodal_ui/static
+
+      - name: Copy build artifacts
+        run: cp -r ./multimodal-ui/dist/multimodal-ui/browser/ ./multimodal-ui-python/multimodal_ui/static
+
+      - name: Verify if changes have been made
+        id: verify-build
+        run: |
+          if git diff --exit-code --name-only; then
+            echo "No changes detected in the build artifacts."
+            echo "changes_detected=false" >> $GITHUB_OUTPUT
+          else
+            echo "Changes detected in the build artifacts."
+            echo "changes_detected=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Do not push if no changes were made
+        if: steps.verify-build.outputs.changes_detected == 'false'
+        run: |
+          echo "No changes detected. Skipping commit and push."
+          exit 0
+
+      - name: Commit and push changes
+        if: steps.verify-build.outputs.changes_detected == 'true'
+        run: |
+          # Add and commit the changes
+          git add ./multimodal-ui-python/multimodal_ui/static
+          git commit -m "_____automatic-build-update_____"
+
+          # Push the changes to the current branch
+          # The --force flag is needed because of the rebase
+          git push --force

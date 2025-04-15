@@ -1,42 +1,42 @@
 @import "../../../styles/flex.styles.css";
 
 .clickable {
-    cursor: pointer;
-    padding: 0.5rem 0;
-    border-radius: 0.5rem;
+  cursor: pointer;
+  padding: 0.5rem 0;
+  border-radius: 0.5rem;
 
-    &:hover {
-        background-color: color(srgb 0.101961 0.105882 0.121569 / 0.08);
-    }
+  &:hover {
+    background-color: color(srgb 0.101961 0.105882 0.121569 / 0.08);
+  }
 }
 
 .clickable-no-padding {
-    cursor: pointer;
-    border-radius: 0.5rem;
+  cursor: pointer;
+  border-radius: 0.5rem;
 
-    &:hover {
-        background-color: color(srgb 0.101961 0.105882 0.121569 / 0.08);
-    }
+  &:hover {
+    background-color: color(srgb 0.101961 0.105882 0.121569 / 0.08);
+  }
 }
 
 .indent {
-    padding-left: 24px;
+  padding-left: 24px;
 }
 
 ::ng-deep .mat-expansion-panel-body {
-    padding: 0 5px 5px 5px !important;
+  padding: 0 5px 5px 5px !important;
 }
 
-.mat-card-group>*:first-child {
-    border-bottom-left-radius: 0px;
-    border-bottom-right-radius: 0px;
+.mat-card-group > *:first-child {
+  border-bottom-left-radius: 0px;
+  border-bottom-right-radius: 0px;
 }
 
-.mat-card-group>*:last-child {
-    border-top-left-radius: 0px;
-    border-top-right-radius: 0px;
+.mat-card-group > *:last-child {
+  border-top-left-radius: 0px;
+  border-top-right-radius: 0px;
 }
 
-.mat-card-group>*:not(:first-child):not(:last-child) {
-    border-radius: 0px;
+.mat-card-group > *:not(:first-child):not(:last-child) {
+  border-radius: 0px;
 }

@@ -1,9 +1,8 @@
 {
-    "extends": "./tsconfig.json",
-    "compilerOptions": {
-      "module": "CommonJS",
-      "esModuleInterop": true
-    },
-    "include": ["scripts/**/*"]
-  }
-  
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "esModuleInterop": true
+  },
+  "include": ["scripts/**/*"]
+}

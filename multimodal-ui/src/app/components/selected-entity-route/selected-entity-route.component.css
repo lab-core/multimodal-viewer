@@ -1,53 +1,53 @@
 .dot {
-    height: 1rem;
-    width: 1rem;
-    border-radius: 50%;
-    display: inline-block;
+  height: 1rem;
+  width: 1rem;
+  border-radius: 50%;
+  display: inline-block;
 }
 
 .line {
-    height: 0.75rem;
-    width: 2px;
-    display: inline-block;
+  height: 0.75rem;
+  width: 2px;
+  display: inline-block;
 }
 
 .flex-row {
-    display: flex;
-    flex-direction: row;
-    height: 100%;
-    gap: 5px;
-    justify-content: start;
-    align-items: center;
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  gap: 5px;
+  justify-content: start;
+  align-items: center;
 }
 
 .flex-column {
-    display: flex;
-    flex-direction: column;
+  display: flex;
+  flex-direction: column;
 }
 
 .center {
-    justify-content: center;
-    align-items: center;
+  justify-content: center;
+  align-items: center;
 }
 
 .space-between {
-    justify-content: space-between;
-    align-self: stretch;
+  justify-content: space-between;
+  align-self: stretch;
 }
 
 .route-done {
-    background-color: #666666;
+  background-color: #666666;
 }
 
 .route-left {
-    background-color: #028a0f;
+  background-color: #028a0f;
 }
 
 .clickable-no-padding {
-    cursor: pointer;
-    border-radius: 0.5rem;
+  cursor: pointer;
+  border-radius: 0.5rem;
 
-    &:hover {
-        background-color: color(srgb 0.101961 0.105882 0.121569 / 0.08);
-    }
+  &:hover {
+    background-color: color(srgb 0.101961 0.105882 0.121569 / 0.08);
+  }
 }

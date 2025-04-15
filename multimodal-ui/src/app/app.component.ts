@@ -10,13 +10,15 @@ import { MetricsComponent } from './components/metrics/metrics.component';
 
 @Component({
   selector: 'app-root',
-  imports: [MapComponent, RouterOutlet, ConnectionStatusComponent, MetricsComponent],
+  imports: [
+    MapComponent,
+    RouterOutlet,
+    ConnectionStatusComponent,
+    MetricsComponent,
+  ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
 })
 export class AppComponent {
   constructor(private readonly dataService: DataService) {}
-
 }
-
-

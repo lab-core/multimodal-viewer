@@ -50,7 +50,6 @@ export class AnimationService {
   private readonly _selectedStopIdSignal: WritableSignal<string | null> =
     signal(null);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private readonly _preselectedEntityIdSignal: WritableSignal<DataEntity | null> =
     signal(null);
 

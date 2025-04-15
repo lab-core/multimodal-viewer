@@ -1,0 +1,53 @@
+name: Verify build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  verify-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: ./multimodal-ui
+
+      - name: Run build in production mode
+        run: npm run build
+        working-directory: ./multimodal-ui
+
+      - name: Clear previous build artifacts
+        run: rm -rf ./multimodal-ui-python/multimodal_ui/static
+
+      - name: Copy build artifacts
+        run: cp -r ./multimodal-ui/dist/multimodal-ui/browser/ ./multimodal-ui-python/multimodal_ui/static
+
+      - name: Verify if changes have been made
+        id: verify-build
+        run: |
+          if git diff --exit-code --name-only; then
+            echo "No changes detected in the build artifacts."
+            echo "changes_detected=false" >> $GITHUB_OUTPUT
+          else
+            echo "Changes detected in the build artifacts."
+            echo "changes_detected=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Fail if changes were made
+        if: steps.verify-build.outputs.changes_detected == 'true'
+        run: |
+          echo "Build introduced changes. Please build and commit the changes."
+          exit 1

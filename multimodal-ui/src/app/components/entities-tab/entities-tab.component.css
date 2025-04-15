@@ -1,17 +1,17 @@
 .clickable {
-    cursor: pointer;
-    padding: 0.5rem 0;
-    border-radius: 0.5rem;
+  cursor: pointer;
+  padding: 0.5rem 0;
+  border-radius: 0.5rem;
 
-    &:hover {
-        background-color: color(srgb 0.101961 0.105882 0.121569 / 0.08);
-    }
+  &:hover {
+    background-color: color(srgb 0.101961 0.105882 0.121569 / 0.08);
+  }
 }
 
 ::ng-deep .mat-expansion-panel-body {
-    padding: 0 5px 5px 5px !important;
+  padding: 0 5px 5px 5px !important;
 }
 
 .indent {
-    padding-left: 24px;
+  padding-left: 24px;
 }
