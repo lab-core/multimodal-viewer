@@ -5,14 +5,16 @@ venv
 __pycache__
 
 # Saved logs
-multimodal-server/saved_logs
+multimodal_server/saved_logs
 
 # Saved simulations
-multimodal-server/saved_simulations
+multimodal_server/saved_simulations
 
 # Data folder too large
 data/medium-taxi
 data/small-taxi
 
-# Python Package
+# Python Packages
 multimodal_ui.egg-info
+multimodal_server.egg-info
+multimodal_package.egg-info

@@ -5,13 +5,13 @@ from multimodalsim.observer.data_collector import DataContainer, StandardDataCol
 from multimodalsim.observer.environment_observer import EnvironmentObserver
 from multimodalsim.simulator.simulator import Simulator
 from multimodalsim.statistics.data_analyzer import FixedLineDataAnalyzer
-from server_utils import (
+from .server_utils import (
     build_simulation_id,
     get_available_data,
     set_event_on_input,
     verify_simulation_name,
 )
-from simulation_visualization_data_collector import SimulationVisualizationDataCollector
+from .simulation_visualization_data_collector import SimulationVisualizationDataCollector
 
 
 def run_simulation(
