@@ -17,6 +17,7 @@ jobs:
         with:
           fetch-depth: 0 # Fetch all history for all branches and tags to ensure we can push changes
           ref: ${{ github.head_ref }} # Checkout the current branch to ensure we are on the correct commit
+          token: ${{ secrets.WORKFLOW_PAT }} # Use the personal access token for authentication
 
       # TODO REMOVE THIS
       - name: Git status
@@ -63,11 +64,7 @@ jobs:
 
       - name: Commit and push changes
         if: steps.verify-build.outputs.changes_detected == 'true'
-        env:
-          PAT: ${{ secrets.WORKFLOW_PAT }}
         run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add ./multimodal-ui-python/multimodal_ui/static
           git commit -m "_____automatic-build-update_____"
           git push https://${PAT}@github.com/${{ github.repository }}.git HEAD:${{ github.head_ref }}
