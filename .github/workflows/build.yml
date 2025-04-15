@@ -20,6 +20,11 @@ jobs:
           ref: ${{ github.head_ref }} # Checkout the current branch to ensure we are on the correct commit
           token: ${{ secrets.WORKFLOW_PAT }} # Use the personal access token for authentication
 
+      - name: Configure git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
       # - name: Install git-filter-repo
       #   run: |
       #     sudo apt-get update
@@ -125,10 +130,6 @@ jobs:
       - name: Commit and push changes
         if: steps.verify-build.outputs.changes_detected == 'true'
         run: |
-          # Configure Git user 
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-
           # Add and commit the changes
           git add ./multimodal-ui-python/multimodal_ui/static
           git commit -m "_____automatic-build-update_____"
