@@ -137,15 +137,20 @@ mat-card-title:not(:first-child) {
 /* Favorites icon */
 
 /* Remove label padding */
-:host ::ng-deep .mdc-evolution-chip--with-avatar.mdc-evolution-chip--with-primary-graphic .mdc-evolution-chip__action--primary {
+:host
+  ::ng-deep
+  .mdc-evolution-chip--with-avatar.mdc-evolution-chip--with-primary-graphic
+  .mdc-evolution-chip__action--primary {
   padding: 0px;
 }
 
 /* Fix inner-uneven padding */
-:host ::ng-deep .mdc-evolution-chip--with-avatar.mdc-evolution-chip--with-primary-graphic .mdc-evolution-chip__graphic {
+:host
+  ::ng-deep
+  .mdc-evolution-chip--with-avatar.mdc-evolution-chip--with-primary-graphic
+  .mdc-evolution-chip__graphic {
   padding: 4px;
 }
-
 
 .information-panel-header {
   position: absolute;
@@ -189,16 +194,16 @@ mat-card-title:not(:first-child) {
   padding-left: 24px;
 }
 
-.mat-card-group>*:first-child {
+.mat-card-group > *:first-child {
   border-bottom-left-radius: 0px;
   border-bottom-right-radius: 0px;
 }
 
-.mat-card-group>*:last-child {
+.mat-card-group > *:last-child {
   border-top-left-radius: 0px;
   border-top-right-radius: 0px;
 }
 
-.mat-card-group>*:not(:first-child):not(:last-child) {
+.mat-card-group > *:not(:first-child):not(:last-child) {
   border-radius: 0px;
 }

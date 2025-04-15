@@ -61,7 +61,9 @@
       <button
         mat-icon-button
         [matTooltip]="
-          'Fast-forward the simulation ' + fastForwardStep + ' seconds later (ctrl + →)'
+          'Fast-forward the simulation ' +
+          fastForwardStep +
+          ' seconds later (ctrl + →)'
         "
         (click)="fastForwardTime()"
       >
@@ -71,7 +73,9 @@
       <button
         mat-icon-button
         [matTooltip]="
-          speed > 0 ? 'Reverse the simulation (r)' : 'Forward the simulation (r)'
+          speed > 0
+            ? 'Reverse the simulation (r)'
+            : 'Forward the simulation (r)'
         "
         [disabled]="speed === 0"
         (click)="toggleSimulationDirection()"
