@@ -59,7 +59,7 @@ jobs:
         working-directory: ./multimodal-ui
 
       - name: Run build in production mode
-        run: npm run build:prod
+        run: npm run build
         working-directory: ./multimodal-ui
 
       - name: Clear previous build artifacts
