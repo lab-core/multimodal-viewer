@@ -42,6 +42,8 @@ jobs:
           # Start an interactive rebase
           git rebase -i HEAD~$rebase_range
 
+          echo "Removing the following build commit hashes: $commit_hashes"
+
           # Remove the lines containing the build commit hashes
           for commit_hash in $commit_hashes; do
             sed -i "/^pick $commit_hash/d" .git/rebase-merge/git-rebase-todo
