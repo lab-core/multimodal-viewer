@@ -611,15 +611,25 @@ export class AnimationService {
         );
       });
 
-    // Always show selected vehicle
-    const selectedVehicleId = this.selectedVehicleIdSignal();
+    const preselectedEntity = this.preselectedEntitySignal();
+
+    // Always show preselected or selected vehicle
+    const selectedVehicleId =
+      preselectedEntity?.entityType === 'vehicle'
+        ? preselectedEntity.id
+        : this.selectedVehicleIdSignal();
+
     if (selectedVehicleId) {
       const vehicle = this.vehicleEntitiesByVehicleId[selectedVehicleId];
       if (vehicle) vehicle.sprites[0].parent.visible = true;
     }
 
-    // Always show selected passenger
-    const selectedPassengerId = this.selectedPassengerIdSignal();
+    // Always show  preselected or selected passenger
+    const selectedPassengerId =
+      preselectedEntity?.entityType === 'passenger'
+        ? preselectedEntity.id
+        : this.selectedPassengerIdSignal();
+
     if (selectedPassengerId) {
       const passenger =
         this.passengerEntitiesByPassengerId[selectedPassengerId];
@@ -938,8 +948,13 @@ export class AnimationService {
       }
     };
 
-    // Always show selected stop
-    const selectedStopId = this.selectedStopIdSignal();
+    // Always show preselected or selected stop
+    const preselectedStop = this.preselectedEntitySignal();
+    const selectedStopId =
+      preselectedStop?.entityType === 'stop'
+        ? preselectedStop.id
+        : this.selectedStopIdSignal();
+
     if (selectedStopId) {
       const stopEntity = this.passengerStopEntitiesByPosition[selectedStopId];
       if (stopEntity) adjustStopDisplay(stopEntity);
@@ -1193,10 +1208,11 @@ export class AnimationService {
   }
 
   private redrawPassengerPolyline() {
-    let selectedPassengerId = this._selectedPassengerIdSignal();
-    const preselectedEntity = this._preselectedEntityIdSignal();
-    if (preselectedEntity && preselectedEntity.entityType === 'passenger')
-      selectedPassengerId = preselectedEntity.id;
+    const preselectedEntity = this.preselectedEntitySignal();
+    const selectedPassengerId =
+      preselectedEntity?.entityType === 'passenger'
+        ? preselectedEntity.id
+        : this.selectedPassengerIdSignal();
 
     if (!selectedPassengerId) return;
 
@@ -1217,13 +1233,17 @@ export class AnimationService {
         ]
       : [...passenger.data.previousLegs, ...passenger.data.nextLegs];
 
-    if (this.selectedEntityPolylines.length === 0) {
-      legs.forEach(() => {
+    // If we have less entity polylines than legs, add the additional missing polylines
+    if (this.selectedEntityPolylines.length < legs.length) {
+      for (
+        let i = 0;
+        i < legs.length - this.selectedEntityPolylines.length;
+        ++i
+      ) {
+        const graphics = new PIXI.Graphics();
         this.selectedEntityPolylines.push(new PIXI.Graphics());
-      });
-      this.selectedEntityPolylines.forEach((graphics) =>
-        this.container.addChild(graphics),
-      );
+        this.container.addChild(graphics);
+      }
     }
 
     // Collect all polylines
@@ -1255,6 +1275,9 @@ export class AnimationService {
         );
 
       const graphics = this.selectedEntityPolylines[i];
+
+      if (graphics == null) return; // Safe check return when unkown bug
+
       const shouldHighlightLeg = i === this.highlightedLegIndex;
       if (shouldHighlightLeg) {
         graphics.filters = [
