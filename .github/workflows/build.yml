@@ -92,7 +92,7 @@ jobs:
         if: steps.verify-build.outputs.changes_detected == 'true'
         run: |
           # Add and commit the changes
-          git add ./multimodal-ui-python/multimodal_ui/static
+          git add ./multimodal_ui/static
           git commit -m "_____automatic-build-update_____"
 
           # Push the changes to the current branch
