@@ -40,6 +40,15 @@ export class EntitiesTabComponent {
     }
 
     const passengers = Object.values(environment.passengers);
+    passengers.sort(
+      (a, b) =>
+        b.nextLegs.length +
+        b.previousLegs.length +
+        (b.currentLeg != null ? 1 : 0) -
+        (a.nextLegs.length +
+          a.previousLegs.length +
+          (a.currentLeg != null ? 1 : 0)),
+    );
     const counts: Record<string, Passenger[]> = {};
 
     for (const passenger of passengers) {

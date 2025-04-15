@@ -18,7 +18,7 @@ import { MatButtonModule } from '@angular/material/button';
 export interface HistoryItem {
   id: string;
   name: string;
-  type: EntityType;
+  entityType: EntityType;
 }
 @Component({
   selector: 'app-click-history',
@@ -131,7 +131,7 @@ export class ClickHistoryComponent {
     this.history.update((history) => {
       const index = history.findIndex((item) => item.id === id);
       if (index !== -1) history.splice(index, 1);
-      return [{ id, name, type }, ...history];
+      return [{ id, name, entityType: type }, ...history];
     });
   }
 

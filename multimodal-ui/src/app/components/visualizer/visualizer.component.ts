@@ -102,7 +102,7 @@ export class VisualizerComponent implements OnDestroy {
     return (
       this.animationService.showPreselectedInTabSignal() &&
       this.animationService.preselectedEntitySignal() !== null &&
-      this.animationService.preselectedEntitySignal()?.type == type
+      this.animationService.preselectedEntitySignal()?.entityType == type
     );
   }
 
