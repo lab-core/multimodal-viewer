@@ -60,8 +60,8 @@ jobs:
           git filter-repo --commit-callback '
           import re
           message = commit.message.decode("utf-8").strip()
-          print(message)
           if re.match(r"^_____automatic-build-update_____$", message):
+            print("Removing commit:", commit.id)
             commit.skip = True
           ' --force
 
