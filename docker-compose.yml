@@ -29,7 +29,7 @@ services:
     ports:
       - "${PORT_SERVER}:${PORT_SERVER}"
     volumes:
-      - ./multimodal-server:/app/multimodal-server
+      - ./multimodal-server:/app/multimodal_server
       - ./data:/app/data
     networks:
       - multimodal-network

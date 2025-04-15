@@ -13,11 +13,12 @@ COPY .env ./
 RUN npm run build 
 
 FROM nginx:alpine
-# Install envsubst (needed for variable substitution)
+
 RUN apk add --no-cache bash
+
 COPY --from=build-stage /app/dist/multimodal-ui/browser /usr/share/nginx/html
-# Copy nginx.conf template (replace .conf with .template)
+
 COPY nginx.conf /etc/nginx/conf.d/default.conf.template
-# Replace vars and start Nginx
+
 CMD ["/bin/bash", "-c", "envsubst '${PORT_SERVER}' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
 EXPOSE 80

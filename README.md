@@ -20,7 +20,7 @@ git pull origin develop-visualizer
 This little script will install all Python-related things you need to run the project.
 
 ```bash
-# Creating Python environment (Optional)
+# Creating and activating Python environment (Optional)
 py -3.11 -m venv venv
 .\venv\Scripts\activate
 
@@ -53,10 +53,6 @@ Once you have installed all the packages, you have a few ways to run the project
 Open two separate terminals and activate the Python environment if you have created one. Launch the front-end with `multimodal-ui` 
 in the first terminal, and the back-end with `multimodal-server` in the second.
 
-### Docker
-
-Make sure you have Docker installed on your machine first. Then run `docker-compose` from the root of the project.
-
 ### Angular
 
 Install all the angular dependencies:
@@ -86,9 +82,8 @@ Once the build is finished, copy the contents of `multimodal-ui/dist/multimodal-
 
 The ports are defined in the .env file. After changing them, restart both the front and the back ends for the changes to take effect.
 
-If you are using running the app through the python package and do not wish to rebuild it with angular, you will also have to change the ports directly in the built main file. In the
-`/multimodal_ui/static/main-XXXXXXXX.js`
-file, locate this section:
+If you are unning the app through the python package and do not wish to rebuild it with angular, you will also have to change the ports directly in the build. 
+In the `/multimodal_ui/static/main-XXXXXXXX.js` file, locate this section:
 `socketUrl:"http://127.0.0.1:8089",apiUrl:"http://127.0.0.1:8089/api/",clientPort:8085`
 and replace the ports to match the ones you redefined in your .env file.
 

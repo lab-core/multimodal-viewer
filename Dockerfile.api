@@ -6,32 +6,25 @@ FROM python:3.11-slim
 # Set the working directory in the container
 WORKDIR /app
 
-# Install Git (needed for cloning the repository)
+# Install system dependencies
 RUN apt-get update && apt-get install -y git
 
 # Clone the repository (including submodules)
-RUN git clone --recurse-submodules https://github.com/RTOpt/multimodal-simulator.git /app/multimodal-simulator
+COPY . /app
 
-# Copy the server 
-COPY multimodal-server /app/multimodal-server
-
-# Upgrade pip
+# Install Python dependencies
 RUN pip install --upgrade pip
 
-# Install simulator dependencies
-WORKDIR /app/multimodal-simulator
-RUN git checkout develop-visualizer
-RUN git pull origin develop-visualizer
-
+# Install simulator package
 WORKDIR /app/multimodal-simulator/python
 RUN pip install -r requirements.txt
 RUN python setup.py install
 
-# Install server requirements
-WORKDIR /app/multimodal-server
-RUN pip install -r requirements.txt
+# Install the main project package in development mode
+WORKDIR /app
+RUN pip install -e .
 
 EXPOSE ${PORT_SERVER}
 
-# Run server.py when the container launches
-CMD ["python", "server.py"]
+# Run the server using the installed package
+CMD ["multimodal-server"]
