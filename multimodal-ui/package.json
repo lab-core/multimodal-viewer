@@ -6,7 +6,7 @@
     "start": "npm run set-env && ng serve",
     "build": "npm run set-env && ng build",
     "build:prod": "npm run set-env && ng build --configuration=production",
-    "set-env": "ts-node --esm scripts/set-env.js",
+    "set-env": "ts-node --esm scripts/set-env.js && prettier --write ./src/environments/environment.ts ./src/environments/environment.prod.ts ./angular.json",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "lint": "ng lint",
