@@ -33,18 +33,19 @@ cd multimodal-simulator
 git checkout develop-visualizer
 git pull origin develop-visualizer
 
-# Installing Python package
+# Installing simulation Python package
 cd python
 python -m pip install -r requirements.txt
 python setup.py install
 
-# Installing Server Requirements
-cd ../../multimodal-server
-python -m pip install -r requirements.txt
+# Installing server Python package
+cd ../..
+pip install -e .
 
-# Leaving the environment
+# Installing frontend Python package
+cd multimodal-ui-python
+pip install -e .
 cd ..
-deactivate
 ```
 
 ## Serving With Angular
