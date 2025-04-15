@@ -25,6 +25,11 @@
         <mat-button-toggle value="favorites"
           ><mat-icon>star</mat-icon></mat-button-toggle
         >
+
+        <mat-button-toggle value="history">
+          <mat-icon>history</mat-icon>
+        </mat-button-toggle>
+
         <mat-button-toggle value="layers"
           ><mat-icon>layers</mat-icon></mat-button-toggle
         >
@@ -101,6 +106,12 @@
       [class.enable-pointer-events]="showFavorites"
     ></app-favorite-entities>
   }
+
+  <app-click-history
+    class="tab-content fade"
+    [class.fade-show]="showClickHistory"
+    [class.enable-pointer-events]="showClickHistory"
+  ></app-click-history>
 
   <app-map-tiles
     class="tab-content fade"
@@ -227,7 +238,12 @@
           [selectedVehicleStop]="selectedVehicleStopSignal()"
           [selectedVehiclePassengers]="selectedVehiclePassengersSignal()"
           [selectedStop]="selectedStop"
-          [selectedStopPassengers]="selectedStopPassengersSignal()"
+          [selectedStopWaitingPassengers]="
+            selectedStopWaitingPassengersSignal()
+          "
+          [selectedStopCompletedPassengers]="
+            selectedStopCompletedPassengersSignal()
+          "
           [selectedStopVehicles]="selectedStopVehiclesSignal()"
         ></app-selected-entity-tab>
       </mat-card-content>

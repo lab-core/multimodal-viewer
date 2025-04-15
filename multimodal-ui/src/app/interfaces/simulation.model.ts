@@ -1,3 +1,5 @@
+import { EntityType } from './entity.model';
+
 export const SIMULATION_SAVE_FILE_SEPARATOR = '---';
 
 export type SimulationStatus =
@@ -146,7 +148,13 @@ export interface Leg {
   assignedTime: number | null;
 }
 
-export interface Passenger {
+export interface AnimatedLeg extends Leg {
+  previousStops: Stop[];
+  currentStop: Stop | null;
+  nextStops: Stop[];
+}
+
+export interface Passenger extends DataEntity {
   id: string;
   name: string | null;
   status: PassengerStatus;
@@ -230,7 +238,7 @@ export interface DisplayedPolylines {
   currentPolylineEndTime: number | null;
 }
 
-export interface Stop {
+export interface Stop extends DataEntity {
   arrivalTime: number;
   departureTime: number | null; // null means infinite
   position: Position;
@@ -239,8 +247,7 @@ export interface Stop {
   label: string;
 }
 
-export interface AnimatedStop
-  extends Omit<Stop, 'arrivalTime' | 'departureTime'> {
+export interface AnimatedStop extends Stop {
   /**
    * Passengers that are waiting at the stop.
    */
@@ -259,11 +266,18 @@ export interface AnimatedStop
    * only the displayed passengers.
    */
   numberOfPassengers: number;
+
+  numberOfCompletePassengers: number;
 }
 
 export const DEFAULT_STOP_CAPACITY = 10;
 
-export interface Vehicle {
+export interface DataEntity {
+  id: string;
+  entityType: EntityType;
+}
+
+export interface Vehicle extends DataEntity {
   id: string;
   mode: string | null;
   status: VehicleStatus;
@@ -391,6 +405,9 @@ export type AnyVehicleAnimationData =
 
 export interface AnimatedPassenger extends displayed<Passenger> {
   animationData: AnyPassengerAnimationData[];
+  previousLegs: AnimatedLeg[];
+  currentLeg: AnimatedLeg | null;
+  nextLegs: AnimatedLeg[];
 }
 
 export interface AnimatedVehicle extends displayed<Vehicle> {
@@ -523,10 +540,36 @@ export interface AnimatedSimulationStates {
   continuousAnimationData: AnimationData | null;
 }
 
-export function getAllStops(vehicle: Vehicle): Stop[] {
-  return vehicle.previousStops.concat(
-    vehicle.currentStop === null ? [] : [vehicle.currentStop],
-    vehicle.nextStops,
+function addTypeToStop(
+  stop: Stop,
+  type: 'previous' | 'current' | 'next',
+): Stop & { type: 'previous' | 'current' | 'next' } {
+  const castedStop = stop as Stop & {
+    type: 'previous' | 'current' | 'next';
+  };
+  castedStop.type = type;
+  return castedStop;
+}
+
+export function getAllStops(
+  vehicle: Vehicle,
+): (Stop & { type: 'previous' | 'current' | 'next' })[] {
+  return vehicle.previousStops
+    .map((stop) => addTypeToStop(stop, 'previous'))
+    .concat(
+      vehicle.currentStop === null
+        ? []
+        : [addTypeToStop(vehicle.currentStop, 'current')],
+      vehicle.nextStops.map((stop) => addTypeToStop(stop, 'next')),
+    );
+}
+
+export function getAllLegs<P extends Passenger>(
+  passenger: P,
+): P['previousLegs'] {
+  return passenger.previousLegs.concat(
+    passenger.currentLeg === null ? [] : [passenger.currentLeg],
+    passenger.nextLegs,
   );
 }
 
