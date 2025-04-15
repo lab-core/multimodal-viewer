@@ -151,7 +151,13 @@ export class HomeComponent {
     ]);
   }
 
-  onAboutUs() {
-    // TODO Add about us page
+  async onUserGuide() {
+    this.shouldShowMainMenuSignal.set(false);
+
+    await firstValueFrom(
+      this.dialogService.openUserGuide().afterClosed(),
+    );
+
+    this.shouldShowMainMenuSignal.set(true);
   }
 }

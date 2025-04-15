@@ -22,34 +22,36 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
-      - name: Remove previous build commits
-        env:
-          GIT_SEQUENCE_EDITOR: 'python3 /tmp/edit_rebase_sequence.py' # Set the editor to a Python script that will edit the rebase sequence
-        run: |
-          # Create a temporary Python script to edit the rebase sequence
-          cat << 'EOF' > /tmp/edit_rebase_sequence.py
-          import sys
-          import re
+      # Disabled for now because too much issues with merge commits
+      # - name: Remove previous build commits
+      #   env:
+      #     GIT_SEQUENCE_EDITOR: 'python3 /tmp/edit_rebase_sequence.py' # Set the editor to a Python script that will edit the rebase sequence
+      #   run: |
+      #     # Create a temporary Python script to edit the rebase sequence
+      #     cat << 'EOF' > /tmp/edit_rebase_sequence.py
+      #     import sys
+      #     import re
 
-          sequence_file = sys.argv[1]
-          print(f"Editing sequence file: {sequence_file}")
-          with open(sequence_file, 'r') as file:
-              lines = file.readlines()
+      #     sequence_file = sys.argv[1]
+      #     print(f"Editing sequence file: {sequence_file}")
+      #     with open(sequence_file, 'r') as file:
+      #         lines = file.readlines()
 
-          with open(sequence_file, 'w') as file:
-              for line in lines:
-                  if not re.match(r'^pick [0-9a-f]+ _____automatic-build-update_____', line):
-                      file.write(line)
-          EOF
+      #     with open(sequence_file, 'w') as file:
+      #         for line in lines:
+      #             if not re.match(r'^pick [0-9a-f]+ _____automatic-build-update_____', line):
+      #                 file.write(line)
+      #     EOF
 
-          # Compute the number of commits to rebase
-          commit_count=$(git rev-list --count HEAD)
+      #     # Compute the number of commits to rebase
+      #     commit_count=$(git rev-list --count HEAD)
 
-          # Substract ten to account for potential unrelated commits
-          rebase_range=$((commit_count - 1))
+      #     # Substract one
+      #     rebase_range=$((commit_count - 1))
 
-          # Start the interactive rebase
-          git rebase -i HEAD~$rebase_range
+      #     # Start the interactive rebase
+      #     git rebase -i HEAD~$rebase_range
+
 
       - name: Set up Node.js
         uses: actions/setup-node@v2
