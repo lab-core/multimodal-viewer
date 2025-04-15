@@ -1,7 +1,11 @@
 import { Component, computed, Signal } from '@angular/core';
+import {
+  DataEntity,
+  Passenger,
+  Vehicle,
+} from '../../interfaces/simulation.model';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Passenger, Vehicle } from '../../interfaces/simulation.model';
 import { AnimationService } from '../../services/animation.service';
 import { VisualizationService } from '../../services/visualization.service';
 
@@ -36,6 +40,15 @@ export class EntitiesTabComponent {
     }
 
     const passengers = Object.values(environment.passengers);
+    passengers.sort(
+      (a, b) =>
+        b.nextLegs.length +
+        b.previousLegs.length +
+        (b.currentLeg != null ? 1 : 0) -
+        (a.nextLegs.length +
+          a.previousLegs.length +
+          (a.currentLeg != null ? 1 : 0)),
+    );
     const counts: Record<string, Passenger[]> = {};
 
     for (const passenger of passengers) {
@@ -94,6 +107,14 @@ export class EntitiesTabComponent {
     private readonly animationService: AnimationService,
     private readonly visualizationService: VisualizationService,
   ) {}
+
+  preselectEntity(entity: DataEntity) {
+    this.animationService.preselectEntity(entity);
+  }
+
+  unpreselectEntity() {
+    this.animationService.preselectEntity(null);
+  }
 
   selectPassenger(id: string) {
     this.animationService.selectEntity(id, 'passenger');

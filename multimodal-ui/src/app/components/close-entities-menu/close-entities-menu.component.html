@@ -24,8 +24,7 @@
         @for (vehicle of nearVehicles; track vehicle.id) {
           <mat-chip
             (click)="onClickVehicle(vehicle.id)"
-            (mouseenter)="selectVehicle(vehicle.id)"
-            (mouseleave)="unselectEntity()"
+            (mouseenter)="preselectVehicle(vehicle.id)"
           >
             <mat-icon matChipAvatar>directions_car</mat-icon>{{ vehicle.name }}
           </mat-chip>
@@ -33,8 +32,7 @@
         @for (passenger of nearPassengers; track passenger.id) {
           <mat-chip
             (click)="onClickPassenger(passenger.id)"
-            (mouseenter)="selectPassenger(passenger.id)"
-            (mouseleave)="unselectEntity()"
+            (mouseenter)="preselectPassenger(passenger.id)"
           >
             <mat-icon matChipAvatar>accessibility</mat-icon>
             {{ passenger.name }}
@@ -43,8 +41,7 @@
         @for (stop of nearStops; track stop.id) {
           <mat-chip
             (click)="onClickStop(stop.id)"
-            (mouseenter)="selectStop(stop.id)"
-            (mouseleave)="unselectEntity()"
+            (mouseenter)="preselectStop(stop.id)"
           >
             <mat-icon matChipAvatar>place</mat-icon>{{ stop.name }}
           </mat-chip>

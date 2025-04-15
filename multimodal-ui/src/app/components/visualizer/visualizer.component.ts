@@ -29,6 +29,7 @@ import {
   AnimatedPassenger,
   AnimatedStop,
   AnimatedVehicle,
+  DataEntity,
   RUNNING_SIMULATION_STATUSES,
   Simulation,
   SimulationStatus,
@@ -50,6 +51,8 @@ import { SelectedEntityTabComponent } from '../selected-entity-tab/selected-enti
 import { SimulationControlBarComponent } from '../simulation-control-bar/simulation-control-bar.component';
 import { SimulationControlPanelComponent } from '../simulation-control-panel/simulation-control-panel.component';
 import { VisualizerFilterComponent } from '../visualizer-filter/visualizer-filter.component';
+import { ClickHistoryComponent } from '../click-history/click-history.component';
+import { EntityType } from '../../interfaces/entity.model';
 
 export type VisualizerStatus = SimulationStatus | 'not-found' | 'disconnected';
 
@@ -66,6 +69,7 @@ export interface EntitySearch {
     SimulationControlBarComponent,
     VisualizerFilterComponent,
     FavoriteEntitiesComponent,
+    ClickHistoryComponent,
     MapLayersComponent,
     MatCardModule,
     MatButtonModule,
@@ -94,6 +98,14 @@ export class VisualizerComponent implements OnDestroy {
   private matDialogRef: MatDialogRef<InformationDialogComponent> | null = null;
   readonly selectedModeSignal: WritableSignal<string | null> = signal(null);
 
+  private isPreselectedEntity(type: EntityType) {
+    return (
+      this.animationService.showPreselectedInTabSignal() &&
+      this.animationService.preselectedEntitySignal() !== null &&
+      this.animationService.preselectedEntitySignal()?.entityType == type
+    );
+  }
+
   private readonly visualizerStatusSignal: Signal<VisualizerStatus> = computed(
     () => {
       const isConnected = this.communicationService.isConnectedSignal();
@@ -115,9 +127,11 @@ export class VisualizerComponent implements OnDestroy {
     () => {
       const environment =
         this.visualizationService.visualizationEnvironmentSignal();
-      const selectedPassengerId = this.selectedPassengerIdSignal();
+      const selectedPassengerId = this.isPreselectedEntity('passenger')
+        ? this.animationService.preselectedEntitySignal()?.id
+        : this.selectedPassengerIdSignal();
 
-      if (environment === null || selectedPassengerId === null) {
+      if (environment === null || selectedPassengerId == null) {
         return null;
       }
       return environment.passengers[selectedPassengerId] ?? null;
@@ -128,9 +142,11 @@ export class VisualizerComponent implements OnDestroy {
     () => {
       const environment =
         this.visualizationService.visualizationEnvironmentSignal();
-      const selectedVehicleId = this.selectedVehicleIdSignal();
+      const selectedVehicleId = this.isPreselectedEntity('vehicle')
+        ? this.animationService.preselectedEntitySignal()?.id
+        : this.selectedVehicleIdSignal();
 
-      if (environment === null || selectedVehicleId === null) {
+      if (environment === null || selectedVehicleId == null) {
         return null;
       }
 
@@ -139,11 +155,13 @@ export class VisualizerComponent implements OnDestroy {
   );
 
   readonly selectedStopSignal: Signal<AnimatedStop | null> = computed(() => {
-    const selectedStopId = this.animationService.selectedStopIdSignal();
+    const selectedStopId = this.isPreselectedEntity('stop')
+      ? this.animationService.preselectedEntitySignal()?.id
+      : this.animationService.selectedStopIdSignal();
     const environment =
       this.visualizationService.visualizationEnvironmentSignal();
 
-    if (environment === null || selectedStopId === null) {
+    if (environment === null || selectedStopId == null) {
       return null;
     }
 
@@ -307,6 +325,7 @@ export class VisualizerComponent implements OnDestroy {
   showSearch = false;
   showFilter = false;
   showFavorites = false;
+  showClickHistory = false;
   showLayers = false;
 
   readonly informationTabControl: FormControl<string[] | null>;
@@ -416,10 +435,12 @@ export class VisualizerComponent implements OnDestroy {
       this.showSearch = false;
       this.showFilter = false;
       this.showFavorites = false;
+      this.showClickHistory = false;
       this.showLayers = false;
       if (tab === 'search') this.showSearch = true;
       else if (tab === 'filter') this.showFilter = true;
       else if (tab === 'favorites') this.showFavorites = true;
+      else if (tab === 'history') this.showClickHistory = true;
       else if (tab === 'layers') this.showLayers = true;
     });
 
@@ -456,6 +477,10 @@ export class VisualizerComponent implements OnDestroy {
       this.animationService.selectedPassengerIdSignal();
       this.animationService.selectedVehicleIdSignal();
       this.animationService.selectedStopIdSignal();
+
+      const hasAndShowPreselectedEntity =
+        this.animationService.showPreselectedInTabSignal() &&
+        this.animationService.preselectedEntitySignal() != null;
       untracked(() => {
         const selectedPassenger = this.selectedPassengerSignal();
         const selectedVehicle = this.selectedVehicleSignal();
@@ -471,7 +496,8 @@ export class VisualizerComponent implements OnDestroy {
           !this.showSelectedEntityTab &&
           (selectedPassenger !== null ||
             selectedVehicle !== null ||
-            selectedStop !== null)
+            selectedStop !== null ||
+            hasAndShowPreselectedEntity)
         ) {
           this.informationTabControl.setValue(['selectedEntity']);
         }

@@ -1,3 +1,5 @@
+import { EntityType } from './entity.model';
+
 export const SIMULATION_SAVE_FILE_SEPARATOR = '---';
 
 export type SimulationStatus =
@@ -152,7 +154,7 @@ export interface AnimatedLeg extends Leg {
   nextStops: Stop[];
 }
 
-export interface Passenger {
+export interface Passenger extends DataEntity {
   id: string;
   name: string | null;
   status: PassengerStatus;
@@ -236,7 +238,7 @@ export interface DisplayedPolylines {
   currentPolylineEndTime: number | null;
 }
 
-export interface Stop {
+export interface Stop extends DataEntity {
   arrivalTime: number;
   departureTime: number | null; // null means infinite
   position: Position;
@@ -270,7 +272,12 @@ export interface AnimatedStop extends Stop {
 
 export const DEFAULT_STOP_CAPACITY = 10;
 
-export interface Vehicle {
+export interface DataEntity {
+  id: string;
+  entityType: EntityType;
+}
+
+export interface Vehicle extends DataEntity {
   id: string;
   mode: string | null;
   status: VehicleStatus;
@@ -537,7 +544,9 @@ function addTypeToStop(
   stop: Stop,
   type: 'previous' | 'current' | 'next',
 ): Stop & { type: 'previous' | 'current' | 'next' } {
-  const castedStop = stop as Stop & { type: 'previous' | 'current' | 'next' };
+  const castedStop = stop as Stop & {
+    type: 'previous' | 'current' | 'next';
+  };
   castedStop.type = type;
   return castedStop;
 }

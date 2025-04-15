@@ -12,6 +12,7 @@
           ? 'Remove from favorite'
           : 'Add to favorite'
       "
+      [matTooltipPosition]="'after'"
       (click)="
         toggleFavoritePassenger(selectedPassenger.id, selectedPassenger.name)
       "
@@ -30,6 +31,7 @@
           #idElement
           class="clickable-no-padding"
           [matTooltip]="'Click to copy'"
+          [matTooltipPosition]="'after'"
           (click)="copyToClipboard(selectedPassenger.id)"
           (keydown.enter)="copyToClipboard(selectedPassenger.id)"
         >
@@ -40,6 +42,7 @@
         <mat-card-content
           class="clickable-no-padding"
           [matTooltip]="'Click to copy'"
+          [matTooltipPosition]="'after'"
           (click)="copyToClipboard(selectedPassenger.name!)"
           (keydown.enter)="copyToClipboard(selectedPassenger.name!)"
         >
@@ -70,6 +73,7 @@
           <mat-card-content
             class="clickable-no-padding"
             [matTooltip]="'Select stop'"
+            [matTooltipPosition]="'after'"
             (click)="selectStop(selectedPassengerStop)"
             (keydown.enter)="selectStop(selectedPassengerStop)"
           >
@@ -82,6 +86,7 @@
           <mat-card-content
             class="clickable-no-padding"
             [matTooltip]="'Select vehicle'"
+            [matTooltipPosition]="'after'"
             (click)="selectVehicle(selectedPassengerVehicle.id)"
             (keydown.enter)="selectVehicle(selectedPassengerVehicle.id)"
           >
@@ -110,6 +115,7 @@
                     tabindex="0"
                     class="clickable-no-padding"
                     [matTooltip]="'Select vehicle'"
+                    [matTooltipPosition]="'after'"
                     (click)="selectVehicle(vehicle.id)"
                     (keydown.enter)="selectVehicle(vehicle.id)"
                   >
@@ -147,6 +153,7 @@
           ? 'Remove from favorite'
           : 'Add to favorite'
       "
+      [matTooltipPosition]="'after'"
       (click)="toggleFavoriteVehicle(selectedVehicle.id, selectedVehicle.name)"
     >
       <mat-icon>{{
@@ -161,6 +168,7 @@
         <mat-card-content
           class="clickable-no-padding"
           [matTooltip]="'Click to copy'"
+          [matTooltipPosition]="'after'"
           (click)="copyToClipboard(selectedVehicle.id)"
           (keydown.enter)="copyToClipboard(selectedVehicle.id)"
         >
@@ -171,6 +179,7 @@
         <mat-card-content
           class="clickable-no-padding"
           [matTooltip]="'Click to copy'"
+          [matTooltipPosition]="'after'"
           (click)="copyToClipboard(selectedVehicle.name)"
           (keydown.enter)="copyToClipboard(selectedVehicle.name)"
         >
@@ -182,6 +191,7 @@
           <mat-card-content
             class="clickable-no-padding"
             [matTooltip]="'Click to copy'"
+            [matTooltipPosition]="'after'"
             (click)="copyToClipboard(selectedVehicle.mode)"
             (keydown.enter)="copyToClipboard(selectedVehicle.mode)"
           >
@@ -204,6 +214,7 @@
           <mat-card-content
             class="clickable-no-padding"
             [matTooltip]="'Select stop'"
+            [matTooltipPosition]="'after'"
             (click)="selectStop(selectedVehicleStop)"
             (keydown.enter)="selectStop(selectedVehicleStop)"
           >
@@ -236,8 +247,11 @@
                 tabindex="0"
                 class="clickable indent"
                 [matTooltip]="'Select passenger'"
+                [matTooltipPosition]="'after'"
                 (click)="selectPassenger(passenger.id)"
                 (keydown.enter)="selectPassenger(passenger.id)"
+                (mouseenter)="preselectEntity(passenger)"
+                (mouseleave)="unpreselectEntity()"
               >
                 <span>{{ passenger.name }}</span>
               </div>
@@ -279,6 +293,7 @@
           ? 'Remove from favorite'
           : 'Add to favorite'
       "
+      [matTooltipPosition]="'after'"
       (click)="toggleFavoriteStop(selectedStop)"
     >
       <mat-icon>{{
@@ -326,8 +341,11 @@
                 tabindex="0"
                 class="clickable indent"
                 [matTooltip]="'Select passenger'"
+                [matTooltipPosition]="'after'"
                 (click)="selectPassenger(passenger.id)"
                 (keydown.enter)="selectPassenger(passenger.id)"
+                (mouseenter)="preselectEntity(passenger)"
+                (mouseleave)="unpreselectEntity()"
               >
                 <span>{{ passenger.name }}</span>
               </div>
@@ -356,8 +374,11 @@
                 tabindex="0"
                 class="clickable indent"
                 [matTooltip]="'Select passenger'"
+                [matTooltipPosition]="'after'"
                 (click)="selectPassenger(passenger.id)"
                 (keydown.enter)="selectPassenger(passenger.id)"
+                (mouseenter)="preselectEntity(passenger)"
+                (mouseleave)="unpreselectEntity()"
               >
                 <span>{{ passenger.name }}</span>
               </div>
@@ -383,8 +404,11 @@
                 tabindex="0"
                 class="clickable indent"
                 [matTooltip]="'Select vehicle'"
+                [matTooltipPosition]="'after'"
                 (click)="selectVehicle(vehicle.id)"
                 (keydown.enter)="selectVehicle(vehicle.id)"
+                (mouseenter)="preselectEntity(vehicle)"
+                (mouseleave)="unpreselectEntity()"
               >
                 <span>{{ vehicle.name }}</span>
               </div>

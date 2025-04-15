@@ -420,6 +420,7 @@ export class SimulationService {
     }
 
     return {
+      entityType: 'passenger',
       id,
       name,
       status,
@@ -594,6 +595,7 @@ export class SimulationService {
     }
 
     return {
+      entityType: 'vehicle',
       id,
       mode,
       status,
@@ -716,7 +718,15 @@ export class SimulationService {
       return null;
     }
 
-    return { arrivalTime, departureTime, position, capacity, label, id };
+    return {
+      id,
+      entityType: 'stop',
+      arrivalTime,
+      departureTime,
+      position,
+      capacity,
+      label,
+    };
   }
 
   private extractSimulationEnvironment(
