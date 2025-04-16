@@ -160,9 +160,7 @@ The frontend contains three main components: the map, the user interface, and th
 
 TODO diagram here.
 
-As you can see, the client will receive the states and updates from the server, and directly build the animation data for the map. The animation service, responsible for the animations on the map, will use this animation data whereas the visualizer will build the environment from the states and updates when the visualization time changes.
-
-TODO continue
+TODO explanation here.
 
 ## Backend
 
