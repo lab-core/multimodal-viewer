@@ -574,6 +574,7 @@ export class AnimationService {
         (shouldShowComplete || // Is complete filter on or is not complete
           vehicle.data.status !== 'complete');
 
+      // TODO Changing this affects the selected entity panel. Use new `number...` field.
       vehicle.data.passengerIds = vehicle.data.passengerIds.filter(
         (passengerId) => {
           const passenger = this.passengerEntitiesByPassengerId[passengerId];
@@ -599,6 +600,7 @@ export class AnimationService {
 
     // Same for passengers since these stops are only shown when passengers are waiting
     // Filter the passengers of the stop instead of changing the stop container
+    // TODO Changing this affects the selected entity panel. Use new `number...` field.
     for (const stop of this.passengerStopEntities)
       stop.data.passengerIds = stop.data.passengerIds.filter((passengerId) => {
         const passenger = this.passengerEntitiesByPassengerId[passengerId];
@@ -885,7 +887,7 @@ export class AnimationService {
         continue;
       }
 
-      if (numberOfDisplayedPassengers === 0) {
+      if (numberOfPassengers === 0) {
         stopEntity.texts[0].text = '';
       } else if (numberOfDisplayedPassengers === numberOfPassengers) {
         stopEntity.texts[0].text = numberOfPassengers.toString();
@@ -893,7 +895,7 @@ export class AnimationService {
         stopEntity.texts[0].text = `${numberOfDisplayedPassengers} (${numberOfPassengers})`;
       }
 
-      if (numberOfDisplayedCompletePassengers === 0) {
+      if (numberOfCompletePassengers === 0) {
         stopEntity.texts[1].text = '';
       } else if (
         numberOfDisplayedCompletePassengers === numberOfCompletePassengers
@@ -1004,7 +1006,7 @@ export class AnimationService {
 
       const numberOfPassengers = vehicleEntity.data.numberOfPassengers;
 
-      if (numberOfDisplayedPassengers === 0) vehicleEntity.texts[0].text = '';
+      if (numberOfPassengers === 0) vehicleEntity.texts[0].text = '';
       else if (numberOfDisplayedPassengers === numberOfPassengers) {
         vehicleEntity.texts[0].text = numberOfPassengers.toString();
       } else {
