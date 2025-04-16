@@ -154,9 +154,7 @@ export class HomeComponent {
   async onUserGuide() {
     this.shouldShowMainMenuSignal.set(false);
 
-    await firstValueFrom(
-      this.dialogService.openUserGuide().afterClosed(),
-    );
+    await firstValueFrom(this.dialogService.openUserGuide().afterClosed());
 
     this.shouldShowMainMenuSignal.set(true);
   }

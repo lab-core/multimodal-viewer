@@ -108,22 +108,22 @@ export class DialogService {
 
   openUserGuide() {
     // Calculate dimensions based on viewport
-    const vh = window.innerHeight * 0.9;  // 90% of viewport height
-    const vw = window.innerWidth * 0.8;   // 80% of viewport width
-    const maxWidth = (4/3) * vh;          // Maximum width based on height (4:3 ratio)
-  
+    const vh = window.innerHeight * 0.9; // 90% of viewport height
+    const vw = window.innerWidth * 0.8; // 80% of viewport width
+    const maxWidth = (4 / 3) * vh; // Maximum width based on height (4:3 ratio)
+
     // Use whichever is smaller - the 80% width or the 4:3 ratio width
     const width = Math.min(vw, maxWidth);
-  
+
     return this.matDialog.open<UserGuideComponent>(UserGuideComponent, {
       width: `${width}px`,
       height: `${vh}px`,
-      maxHeight: '90vh',  // Fallback
-      maxWidth: '80vw',   // Fallback
-      panelClass: 'user-guide-dialog'  // For custom styling
+      maxHeight: '90vh', // Fallback
+      maxWidth: '80vw', // Fallback
+      panelClass: 'user-guide-dialog', // For custom styling
     });
   }
-  
+
   openEditMapIconsDialog(): MatDialogRef<
     EditMapIconsDialogComponent,
     EditMapIconsDialogResult

@@ -2,9 +2,9 @@
 @import "../../../styles/color.styles.css";
 
 mat-dialog-content {
-  max-height: 80vh; 
-  height: 80vh; 
-  overflow-y: auto; 
+  max-height: 80vh;
+  height: 80vh;
+  overflow-y: auto;
   padding: 16px;
 }
 
@@ -16,11 +16,9 @@ mat-icon {
   margin: 0 2px;
 }
 
-
 .flex-column {
   margin-bottom: 0.5rem;
 }
-
 
 .guide-image {
   max-width: 100%;
@@ -45,7 +43,6 @@ p {
   margin: 0.5rem 0;
 }
 
-
 .align-self-end {
   margin-inline-start: auto;
 }
@@ -58,11 +55,10 @@ p {
   font-weight: 500;
 }
 
-
-.list-item, .actions {
+.list-item,
+.actions {
   display: none;
 }
-
 
 .dialog-header {
   display: flex;
