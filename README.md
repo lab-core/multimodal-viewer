@@ -14,6 +14,9 @@ This project is an extension of the packaged [multimodal-simulation](https://git
     - [Building the Frontend](#building-the-frontend)
     - [Changing Ports](#changing-ports)
   - [Frontend](#frontend)
+    - [Wanted visualization time](#wanted-visualization-time)
+    - [Data reception](#data-reception)
+    - [Display](#display)
   - [Backend](#backend)
     - [Key insights](#key-insights)
     - [Components](#components)
@@ -156,11 +159,31 @@ Reinstall the Python package for good measure.
 
 ## Frontend
 
-The frontend contains three main components: the map, the user interface, and the environment builder. In this section, we will focus on the last one.
+The frontend contains three main components: the map, the user interface, and the environment build. In this section, we will focus on the last one.
 
-TODO diagram here.
+![Environment Build](docs/client-environment-build.png)
 
-TODO explanation here.
+Before going into the details of the environment builder, we need to explain a few important concepts. In the server, the simulation is saved as a series of states. Each state is a snapshot of the simulation at a given time, and contains a list of updates that, when applied to the state, will reconstruct the simulation at any given time.
+
+Another important concept is the animation data used for the animations on the map. Each entity has a list of animation data that contains the information to display the entity at any given time. It contains all the information needed to find the position, the color, the orientation or the path.
+
+### Wanted visualization time
+
+As you can see, the central logic part is the wanted visualization time. This value is incremented or decremented periodically according to the speed and the direction of the visualization, can be directly changed by the user in the interface, and is limited by the simulation start and end time.
+
+The wanted visualization time is the target that the system tries to reach. If the simulation states are not available for the wanted visualization time, the system will fetch new states from the server and wait for them to be available. When the simulation states are available, the system will build the visualization environment and the visualization will be updated.
+
+### Data reception
+
+When the server responds to the client state request, the client will receive a list of new simulation states. Each state needs to be parsed and verified, and a continuous structure is created that will be used for the animation. We refer to this structure as the animation data.
+
+Once all new states are ready, we will merge the new states and animation data with the current ones in the client. Because the states already loaded in the client can be scattered all over the simulation, the server sends additional information to help the client extract the largest possible continuous list of states around the wanted visualization time. The client can then use this to merge the animation data of those continuous states and create a unified animation data.
+
+### Display
+
+Once the animation states and data are ready, and the environment for the wanted visualization time is built, the user interface will be updated and the map animation will be synchronized. The environment is used to display information in the user interface such as the control bar, the left panel with the statistics and the entities, and the utility features on the right.
+
+The map animation is done using the animation data. For each frame, the animation will find the current animation data for each entity and can quickly update the map.
 
 ## Backend
 
