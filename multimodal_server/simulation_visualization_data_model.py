@@ -10,6 +10,7 @@ from multimodalsim.simulator.request import Leg, Trip
 from multimodalsim.simulator.stop import Stop
 from multimodalsim.simulator.vehicle import Route, Vehicle
 from multimodalsim.state_machine.status import PassengerStatus, VehicleStatus
+
 from .server_utils import SAVE_VERSION, SIMULATION_SAVE_FILE_SEPARATOR
 
 
@@ -1486,10 +1487,9 @@ class SimulationVisualizationDataManager:
         )
 
         should_request_more_states = (
-            is_simulation_complete
-            and not client_has_last_state
-            and not client_has_max_states
-            or not is_simulation_complete
+            is_simulation_complete and not client_has_max_states
+        ) or (
+            not is_simulation_complete
             and (client_has_last_state or not client_has_max_states)
         )
 
