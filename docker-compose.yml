@@ -9,28 +9,23 @@ services:
     env_file:
       - .env
     ports:
-      - "${PORT_CLIENT}:80"
+      - "${PORT_CLIENT}:80"  # Only expose port 80
     networks:
       - multimodal-network
     depends_on:
       - backend
     environment:
-      - BACKEND_URL=http://backend:${PORT_SERVER}
+      - PORT_SERVER=${PORT_SERVER}
 
   backend:
     container_name: backend
     build:
       context: .
       dockerfile: Dockerfile.api
-      args:
-        - PORT_SERVER=${PORT_SERVER}  # Moved under 'build'
     env_file:
       - .env
     ports:
       - "${PORT_SERVER}:${PORT_SERVER}"
-    volumes:
-      - ./multimodal-server:/app/multimodal_server
-      - ./data:/app/data
     networks:
       - multimodal-network
     environment:
