@@ -1,5 +1,6 @@
-multimodal-server/saved_logs
-multimodal-server/__pycache__
+multimodal-server
+multimodal-ui
+venv
 **/node_modules
 **/dist
 **/.vscode
