@@ -1,13 +1,14 @@
 import os
 import threading
 
-from multimodal_server.server_utils import (
+from multimodal_viewer.server.server_utils import (
     build_simulation_id,
     get_available_data,
+    get_data_directory_path,
     set_event_on_input,
     verify_simulation_name,
 )
-from multimodal_server.simulation_visualization_data_collector import (
+from multimodal_viewer.server.simulation_visualization_data_collector import (
     SimulationVisualizationDataCollector,
 )
 from multimodalsim.observer.data_collector import DataContainer, StandardDataCollector
@@ -38,8 +39,11 @@ def run_simulation(
         [StandardDataCollector(data_container), data_collector],
     )
 
-    current_directory = os.path.dirname(os.path.abspath(__file__))
-    simulation_data_directory = f"{current_directory}/../../data/{data}/"
+    simulation_data_directory = get_data_directory_path(data) + "/"
+
+    if not os.path.exists(simulation_data_directory):
+        print(f"Simulation data directory {simulation_data_directory} does not exist")
+        return
 
     simulator = Simulator(
         simulation_data_directory,

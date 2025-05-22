@@ -1,15 +1,15 @@
 import threading
 from typing import Optional
 
-from multimodal_server.log_manager import register_log
-from multimodal_server.server_utils import (
+from multimodal_viewer.server.log_manager import register_log
+from multimodal_viewer.server.server_utils import (
     HOST,
     PORT,
     STATE_SAVE_STEP,
     SimulationStatus,
     build_simulation_id,
 )
-from multimodal_server.simulation_visualization_data_model import (
+from multimodal_viewer.server.simulation_visualization_data_model import (
     PassengerLegsUpdate,
     PassengerStatusUpdate,
     SimulationInformation,

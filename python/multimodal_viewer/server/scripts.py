@@ -1,7 +1,7 @@
 import threading
 
-from multimodal_server.server import run_server
-from multimodal_ui.cli import main as run_ui
+from multimodal_viewer.server.server import run_server
+from multimodal_viewer.ui.cli import main as run_ui
 
 
 def run_server_and_ui():

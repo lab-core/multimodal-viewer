@@ -1,6 +1,6 @@
 import time
 
-from multimodal_server.server_utils import HOST, PORT
+from multimodal_viewer.server.server_utils import HOST, PORT
 from socketio import Client, exceptions
 
 sio = Client()
