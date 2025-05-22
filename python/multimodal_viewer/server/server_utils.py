@@ -15,6 +15,9 @@ load_dotenv(env_path)
 
 HOST = os.getenv("SERVER_HOST", "127.0.0.1")
 PORT = int(os.getenv("PORT_SERVER", "8089"))  # It will use .env or default to 8089
+CLIENT_PORT = int(
+    os.getenv("PORT_CLIENT", "8085")
+)  # It will use .env or default to 8085
 
 CLIENT_ROOM = "client"
 SIMULATION_ROOM = "simulation"

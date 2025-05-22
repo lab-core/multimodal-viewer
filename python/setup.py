@@ -31,7 +31,6 @@ setup(
         "python-dotenv==1.1.0",
         "multimodalsim==0.0.1",
         # UI requirements
-        "port-for>=0.4",
     ],
     entry_points={
         "console_scripts": [
@@ -39,6 +38,9 @@ setup(
             "multimodalsim-ui=multimodal_viewer.ui.cli:main",
             "multimodalsim-simulation=multimodal_viewer.server.simulation:run_simulation_cli",
             "multimodalsim-viewer=multimodal_viewer.server.scripts:run_server_and_ui",
+            "multimodalsim-stop-server=multimodal_viewer.server.scripts:terminate_server",
+            "multimodalsim-stop-ui=multimodal_viewer.server.scripts:terminate_ui",
+            "multimodalsim-stop-all=multimodal_viewer.server.scripts:terminate_all",
         ]
     },
     python_requires=">=3.7",
