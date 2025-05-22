@@ -38,6 +38,7 @@ setup(
             "multimodalsim-server=multimodal_server.server:run_server",
             "multimodalsim-ui=multimodal_ui.cli:main",
             "multimodalsim-simulation=multimodal_server.simulation:run_simulation_cli",
+            "multimodalsim-viewer=multimodal_server.scripts:run_server_and_ui",
         ]
     },
     python_requires=">=3.7",
