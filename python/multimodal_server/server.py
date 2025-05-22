@@ -4,8 +4,8 @@ import time
 from flask import Flask
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
-from .http_routes import http_routes
-from .server_utils import (
+from multimodal_server.http_routes import http_routes
+from multimodal_server.server_utils import (
     CLIENT_ROOM,
     HOST,
     PORT,
@@ -13,7 +13,7 @@ from .server_utils import (
     get_session_id,
     log,
 )
-from .simulation_manager import SimulationManager
+from multimodal_server.simulation_manager import SimulationManager
 
 
 def run_server():

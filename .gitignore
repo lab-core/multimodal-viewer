@@ -5,10 +5,10 @@ venv
 __pycache__
 
 # Saved logs
-multimodal_server/saved_logs
+saved_logs
 
 # Saved simulations
-multimodal_server/saved_simulations
+saved_simulations
 
 # Data folder except for some specific files
 data/*
@@ -38,3 +38,8 @@ data/*
 multimodal_ui.egg-info
 multimodal_server.egg-info
 multimodal_package.egg-info
+
+# Python compiled files
+build
+dist
+*.egg-info

@@ -1,17 +1,19 @@
 import os
 import threading
 
-from multimodalsim.observer.data_collector import DataContainer, StandardDataCollector
-from multimodalsim.observer.environment_observer import EnvironmentObserver
-from multimodalsim.simulator.simulator import Simulator
-from multimodalsim.statistics.data_analyzer import FixedLineDataAnalyzer
-from .server_utils import (
+from multimodal_server.server_utils import (
     build_simulation_id,
     get_available_data,
     set_event_on_input,
     verify_simulation_name,
 )
-from .simulation_visualization_data_collector import SimulationVisualizationDataCollector
+from multimodal_server.simulation_visualization_data_collector import (
+    SimulationVisualizationDataCollector,
+)
+from multimodalsim.observer.data_collector import DataContainer, StandardDataCollector
+from multimodalsim.observer.environment_observer import EnvironmentObserver
+from multimodalsim.simulator.simulator import Simulator
+from multimodalsim.statistics.data_analyzer import FixedLineDataAnalyzer
 
 
 def run_simulation(
@@ -29,6 +31,7 @@ def run_simulation(
         simulation_id=simulation_id,
         input_data_description=data,
         offline=is_offline,
+        stop_event=stop_event,
     )
 
     environment_observer = EnvironmentObserver(
@@ -36,7 +39,7 @@ def run_simulation(
     )
 
     current_directory = os.path.dirname(os.path.abspath(__file__))
-    simulation_data_directory = f"{current_directory}/../data/{data}/"
+    simulation_data_directory = f"{current_directory}/../../data/{data}/"
 
     simulator = Simulator(
         simulation_data_directory,
@@ -62,7 +65,7 @@ def run_simulation(
         stop_event.set()
 
 
-if __name__ == "__main__":
+def run_simulation_cli():
     import argparse
 
     import questionary
@@ -98,6 +101,8 @@ if __name__ == "__main__":
     name = name.replace(" ", "_")
 
     available_data = get_available_data()
+
+    print(f"Available data: {available_data}")
 
     if len(available_data) == 0:
         print("No input data is available, please provide some in the data folder")
@@ -141,3 +146,7 @@ if __name__ == "__main__":
     print(
         f"python simulation.py  --data {data}{f' --max-duration {max_duration}' if max_duration is not None else ''} --name {name}{f' --offline' if is_offline else ''}"
     )
+
+
+if __name__ == "__main__":
+    run_simulation_cli()

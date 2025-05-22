@@ -105,32 +105,27 @@ The following script will setup the virtual environment.
 # Upgrading pip
 python -m pip install --upgrade pip
 
-# Updating submodule
-git submodule update --init --recursive
-cd multimodal-simulator
-git checkout develop-visualizer
-git pull origin develop-visualizer
-
-# Installing the submodule package
-cd python
-python -m pip install -r requirements.txt
-python setup.py install
-
 # Installing the project package
-cd ../..
+cd python
 python -m pip install -e .
 ```
 
 Now that the python environment is set up, you can run the following command to run the server:
 
 ```bash
-multimodal-server
+multimodalsim-server
 ```
 
-You can also deploy the frontend with the following command:
+You can also host the frontend with the following command:
 
 ```bash
-multimodal-ui
+multimodalsim-ui
+```
+
+A script to run a simulation from the command line is also available. You can run it with the following command:
+
+```bash
+multimodalsim-simulation
 ```
 
 ### Building the Frontend

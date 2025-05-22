@@ -1,7 +1,29 @@
 import threading
 from typing import Optional
 
-from .log_manager import register_log
+from multimodal_server.log_manager import register_log
+from multimodal_server.server_utils import (
+    HOST,
+    PORT,
+    STATE_SAVE_STEP,
+    SimulationStatus,
+    build_simulation_id,
+)
+from multimodal_server.simulation_visualization_data_model import (
+    PassengerLegsUpdate,
+    PassengerStatusUpdate,
+    SimulationInformation,
+    SimulationVisualizationDataManager,
+    StatisticUpdate,
+    Update,
+    UpdateType,
+    VehicleStatusUpdate,
+    VehicleStopsUpdate,
+    VisualizedEnvironment,
+    VisualizedPassenger,
+    VisualizedStop,
+    VisualizedVehicle,
+)
 from multimodalsim.observer.data_collector import DataCollector
 from multimodalsim.simulator.environment import Environment
 from multimodalsim.simulator.event import Event, RecurrentTimeSyncEvent
@@ -33,28 +55,6 @@ from multimodalsim.simulator.vehicle_event import (
     VehicleWaiting,
 )
 from multimodalsim.statistics.data_analyzer import DataAnalyzer
-from .server_utils import (
-    HOST,
-    PORT,
-    STATE_SAVE_STEP,
-    SimulationStatus,
-    build_simulation_id,
-)
-from .simulation_visualization_data_model import (
-    PassengerLegsUpdate,
-    PassengerStatusUpdate,
-    SimulationInformation,
-    SimulationVisualizationDataManager,
-    StatisticUpdate,
-    Update,
-    UpdateType,
-    VehicleStatusUpdate,
-    VehicleStopsUpdate,
-    VisualizedEnvironment,
-    VisualizedPassenger,
-    VisualizedStop,
-    VisualizedVehicle,
-)
 from socketio import Client
 
 
@@ -101,6 +101,7 @@ class SimulationVisualizationDataCollector(DataCollector):
         simulation_id: str | None = None,
         max_duration: float | None = None,
         offline: bool = False,
+        stop_event: threading.Event | None = None,
     ) -> None:
         if simulation_id is None:
             simulation_id, _ = build_simulation_id(name)
@@ -124,6 +125,8 @@ class SimulationVisualizationDataCollector(DataCollector):
         self.data_analyzer = data_analyzer
         self.statistics_delta_time = statistics_delta_time
         self.last_statistics_update_time = None
+
+        self.stop_event = stop_event
 
         if not offline:
             self.initialize_communication()
@@ -201,7 +204,8 @@ class SimulationVisualizationDataCollector(DataCollector):
                 )
                 self.visualized_environment.estimated_end_time = new_estimated_end_time
 
-        self.stop_event = threading.Event()
+        if self.stop_event is None:
+            self.stop_event = threading.Event()
 
         self.connection_thread = threading.Thread(target=self.handle_connection)
         self.connection_thread.start()
