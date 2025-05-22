@@ -122,10 +122,24 @@ You can also host the frontend with the following command:
 multimodalsim-ui
 ```
 
+Both processes can be run in the same terminal using this command:
+
+```bash
+multimodalsim-viewer
+```
+
 A script to run a simulation from the command line is also available. You can run it with the following command:
 
 ```bash
 multimodalsim-simulation
+```
+
+Additional scripts are available to stop the server and the client properly:
+
+```bash
+multimodalsim-stop-server
+multimodalsim-stop-ui
+multimodalsim-stop-all
 ```
 
 ### Building the Frontend
