@@ -106,8 +106,6 @@ def run_simulation_cli():
 
     available_data = get_available_data()
 
-    print(f"Available data: {available_data}")
-
     if len(available_data) == 0:
         print("No input data is available, please provide some in the data folder")
         exit(1)

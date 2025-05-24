@@ -69,8 +69,8 @@ def build_simulation_id(name: str) -> tuple[str, str]:
 
 
 def get_data_directory_path(data: str | None = None) -> str:
-    current_directory = os.path.dirname(os.path.abspath(__file__))
-    data_directory = os.path.join(current_directory, "..", "..", "..", "data")
+    cwd = os.getcwd()
+    data_directory = os.path.join(cwd, "data")
 
     if data is not None:
         data_directory = os.path.join(data_directory, data)

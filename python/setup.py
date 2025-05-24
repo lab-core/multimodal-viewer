@@ -2,36 +2,34 @@ from setuptools import find_packages, setup
 
 setup(
     name="multimodalsim_viewer",
-    version="0.1.0",
-    description="Multimodal viewer",
+    version="0.0.1",
+    description="Multimodal simulation viewer",
     license="MIT",
     keywords="flask angular ui multimodal server",
     packages=find_packages(
         include=[
-            "multimodal_server",
-            "multimodal_server.*",
-            "multimodal_ui",
-            "multimodal_ui.*",
+            "multimodalsim_viewer",
+            "multimodalsim_viewer.*",
         ]
     ),
     include_package_data=True,
     package_data={
-        "multimodal_ui": ["static/**/*"],
+        "multimodalsim_viewer": ["ui/static/**/*"],
     },
-    package_dir={"": "."},
     install_requires=[
         # Server requirements
-        "flask==3.1.0",
+        "flask==3.1.1",
         "flask-socketio==5.5.1",
-        "eventlet==0.39.0",
+        "eventlet==0.40.0",
         "websocket-client==1.8.0",
-        "filelock==3.17.0",
-        "flask_cors==5.0.1",
+        "filelock==3.18.0",
+        "flask_cors==6.0.0",
         "questionary==2.1.0",
         "python-dotenv==1.1.0",
         "multimodalsim==0.0.1",
         # UI requirements
     ],
+    python_requires="==3.11.*",
     entry_points={
         "console_scripts": [
             "multimodalsim-server=multimodalsim_viewer.server.server:run_server",
@@ -43,5 +41,4 @@ setup(
             "multimodalsim-stop-all=multimodalsim_viewer.server.scripts:terminate_all",
         ]
     },
-    python_requires=">=3.7",
 )
