@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from multimodal_viewer.ui.server import serve_angular_app
+from multimodalsim_viewer.ui.server import serve_angular_app
 
 
 def load_env_vars():

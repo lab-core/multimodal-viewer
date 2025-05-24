@@ -1,20 +1,20 @@
 import os
 import threading
 
-from multimodal_viewer.server.server_utils import (
+from multimodalsim.observer.data_collector import DataContainer, StandardDataCollector
+from multimodalsim.observer.environment_observer import EnvironmentObserver
+from multimodalsim.simulator.simulator import Simulator
+from multimodalsim.statistics.data_analyzer import FixedLineDataAnalyzer
+from multimodalsim_viewer.server.server_utils import (
     build_simulation_id,
     get_available_data,
     get_data_directory_path,
     set_event_on_input,
     verify_simulation_name,
 )
-from multimodal_viewer.server.simulation_visualization_data_collector import (
+from multimodalsim_viewer.server.simulation_visualization_data_collector import (
     SimulationVisualizationDataCollector,
 )
-from multimodalsim.observer.data_collector import DataContainer, StandardDataCollector
-from multimodalsim.observer.environment_observer import EnvironmentObserver
-from multimodalsim.simulator.simulator import Simulator
-from multimodalsim.statistics.data_analyzer import FixedLineDataAnalyzer
 
 
 def run_simulation(

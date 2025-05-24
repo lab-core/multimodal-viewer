@@ -5,7 +5,7 @@ import time
 import webbrowser
 
 from flask import Flask, request, send_from_directory
-from multimodal_viewer.server.server_utils import HOST
+from multimodalsim_viewer.server.server_utils import HOST
 
 
 def serve_angular_app(static_dir, port=None, backend_port=None):

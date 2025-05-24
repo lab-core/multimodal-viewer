@@ -34,13 +34,13 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "multimodalsim-server=multimodal_viewer.server.server:run_server",
-            "multimodalsim-ui=multimodal_viewer.ui.cli:main",
-            "multimodalsim-simulation=multimodal_viewer.server.simulation:run_simulation_cli",
-            "multimodalsim-viewer=multimodal_viewer.server.scripts:run_server_and_ui",
-            "multimodalsim-stop-server=multimodal_viewer.server.scripts:terminate_server",
-            "multimodalsim-stop-ui=multimodal_viewer.server.scripts:terminate_ui",
-            "multimodalsim-stop-all=multimodal_viewer.server.scripts:terminate_all",
+            "multimodalsim-server=multimodalsim_viewer.server.server:run_server",
+            "multimodalsim-ui=multimodalsim_viewer.ui.cli:main",
+            "multimodalsim-simulation=multimodalsim_viewer.server.simulation:run_simulation_cli",
+            "multimodalsim-viewer=multimodalsim_viewer.server.scripts:run_server_and_ui",
+            "multimodalsim-stop-server=multimodalsim_viewer.server.scripts:terminate_server",
+            "multimodalsim-stop-ui=multimodalsim_viewer.server.scripts:terminate_ui",
+            "multimodalsim-stop-all=multimodalsim_viewer.server.scripts:terminate_all",
         ]
     },
     python_requires=">=3.7",

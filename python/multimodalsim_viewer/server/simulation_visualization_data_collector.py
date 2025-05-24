@@ -1,29 +1,6 @@
 import threading
 from typing import Optional
 
-from multimodal_viewer.server.log_manager import register_log
-from multimodal_viewer.server.server_utils import (
-    HOST,
-    PORT,
-    STATE_SAVE_STEP,
-    SimulationStatus,
-    build_simulation_id,
-)
-from multimodal_viewer.server.simulation_visualization_data_model import (
-    PassengerLegsUpdate,
-    PassengerStatusUpdate,
-    SimulationInformation,
-    SimulationVisualizationDataManager,
-    StatisticUpdate,
-    Update,
-    UpdateType,
-    VehicleStatusUpdate,
-    VehicleStopsUpdate,
-    VisualizedEnvironment,
-    VisualizedPassenger,
-    VisualizedStop,
-    VisualizedVehicle,
-)
 from multimodalsim.observer.data_collector import DataCollector
 from multimodalsim.simulator.environment import Environment
 from multimodalsim.simulator.event import Event, RecurrentTimeSyncEvent
@@ -55,6 +32,29 @@ from multimodalsim.simulator.vehicle_event import (
     VehicleWaiting,
 )
 from multimodalsim.statistics.data_analyzer import DataAnalyzer
+from multimodalsim_viewer.server.log_manager import register_log
+from multimodalsim_viewer.server.server_utils import (
+    HOST,
+    PORT,
+    STATE_SAVE_STEP,
+    SimulationStatus,
+    build_simulation_id,
+)
+from multimodalsim_viewer.server.simulation_visualization_data_model import (
+    PassengerLegsUpdate,
+    PassengerStatusUpdate,
+    SimulationInformation,
+    SimulationVisualizationDataManager,
+    StatisticUpdate,
+    Update,
+    UpdateType,
+    VehicleStatusUpdate,
+    VehicleStopsUpdate,
+    VisualizedEnvironment,
+    VisualizedPassenger,
+    VisualizedStop,
+    VisualizedVehicle,
+)
 from socketio import Client
 
 

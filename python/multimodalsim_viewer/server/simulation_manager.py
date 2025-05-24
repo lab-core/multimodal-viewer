@@ -3,7 +3,7 @@ import logging
 import multiprocessing
 
 from flask_socketio import emit
-from multimodal_viewer.server.server_utils import (
+from multimodalsim_viewer.server.server_utils import (
     CLIENT_ROOM,
     RUNNING_SIMULATION_STATUSES,
     SAVE_VERSION,
@@ -13,8 +13,8 @@ from multimodal_viewer.server.server_utils import (
     get_session_id,
     log,
 )
-from multimodal_viewer.server.simulation import run_simulation
-from multimodal_viewer.server.simulation_visualization_data_model import (
+from multimodalsim_viewer.server.simulation import run_simulation
+from multimodalsim_viewer.server.simulation_visualization_data_model import (
     SimulationVisualizationDataManager,
 )
 

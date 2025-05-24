@@ -2,9 +2,9 @@ import threading
 import time
 
 import requests
-from multimodal_viewer.server.server import run_server
-from multimodal_viewer.server.server_utils import CLIENT_PORT, HOST, PORT
-from multimodal_viewer.ui.cli import main as run_ui
+from multimodalsim_viewer.server.server import run_server
+from multimodalsim_viewer.server.server_utils import CLIENT_PORT, HOST, PORT
+from multimodalsim_viewer.ui.cli import main as run_ui
 from socketio import Client, exceptions
 
 

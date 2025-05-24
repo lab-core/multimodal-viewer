@@ -5,15 +5,15 @@ from enum import Enum
 
 import multimodalsim.optimization.dispatcher  # To avoid circular import error
 from filelock import FileLock
-from multimodal_viewer.server.server_utils import (
-    SAVE_VERSION,
-    SIMULATION_SAVE_FILE_SEPARATOR,
-)
 from multimodalsim.simulator.environment import Environment
 from multimodalsim.simulator.request import Leg, Trip
 from multimodalsim.simulator.stop import Stop
 from multimodalsim.simulator.vehicle import Route, Vehicle
 from multimodalsim.state_machine.status import PassengerStatus, VehicleStatus
+from multimodalsim_viewer.server.server_utils import (
+    SAVE_VERSION,
+    SIMULATION_SAVE_FILE_SEPARATOR,
+)
 
 
 # MARK: Enums
