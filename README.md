@@ -3,14 +3,13 @@
 This project is an extension of the packaged [multimodal-simulation](https://github.com/lab-core/multimodal-simulator) designed to offer a visualization interface for the simulation results. The frontend is built with Angular and uses [Leaflet](https://leafletjs.com/) as well as [Leaflet.PixiOverlay](https://github.com/manubb/Leaflet.PixiOverlay) to animate the simulation results on a map. The backend is built with Flask and uses Flask-SocketIO to communicate with the frontend, and also handle the data extraction process.
 
 - [Multimodal Simulation Visualization](#multimodal-simulation-visualization)
-  - [Folder structure](#folder-structure)
-    - [`data`](#data)
-    - [`multimodal_simulator`](#multimodal_simulator)
   - [Installation](#installation)
+  - [Deployment to PyPI](#deployment-to-pypi)
+  - [Development](#development)
     - [Angular](#angular)
     - [Python](#python)
-      - [Windows](#windows)
-      - [Linux / MacOS](#linux--macos)
+        - [Windows](#windows)
+        - [Linux / MacOS](#linux--macos)
     - [Building the Frontend](#building-the-frontend)
     - [Changing Ports](#changing-ports)
   - [Frontend](#frontend)
@@ -20,44 +19,79 @@ This project is an extension of the packaged [multimodal-simulation](https://git
   - [Backend](#backend)
     - [Key insights](#key-insights)
     - [Components](#components)
-      - [`server.py`](#serverpy)
-      - [`server_utils.py`](#server_utilspy)
-      - [`http_routes.py`](#http_routespy)
-      - [`simulation_manager.py`](#simulation_managerpy)
-      - [`simulation_visualization_data_collector.py`](#simulation_visualization_data_collectorpy)
-      - [`simulation_visualization_data_model.py`](#simulation_visualization_data_modelpy)
-      - [`simulation.py`](#simulationpy)
+        - [`server.py`](#serverpy)
+        - [`server_utils.py`](#server_utilspy)
+        - [`http_routes.py`](#http_routespy)
+        - [`simulation_manager.py`](#simulation_managerpy)
+        - [`simulation_visualization_data_collector.py`](#simulation_visualization_data_collectorpy)
+        - [`simulation_visualization_data_model.py`](#simulation_visualization_data_modelpy)
+        - [`simulation.py`](#simulationpy)
   - [Known issues and limitations](#known-issues-and-limitations)
 
-## Folder structure
-
-This repository is structured as follows:
-
-```bash
-├── multimodal_server # Backend Flask application
-├── multimodal_ui # Compiled Angular application
-├── multimodal-ui # Frontend Angular application
-├── multimodal-simulator # Submodule containing the multimodal-simulator package
-├── data # Source data for the simulation
-```
-
-### `data`
-
-Source data folders are available in the `data/` folder to run simulations. Only a restricted number of source data are provided with the Github repository because some data are too large to be uploaded on Github.
-
-### `multimodal_simulator`
-
-The `multimodal-simulator` submodule is available in the `multimodal-simulator` folder. When updating your local repository, you can use the following command to update the submodule :
-
-```bash
-# Should be run in the root of the repository
-git submodule update --init --recursive
-cd multimodal-simulator
-git checkout develop-visualizer
-git pull origin develop-visualizer
-```
-
 ## Installation
+
+This project is hosted on PyPI and can be installed with pip. The package is called `multimodalsim-viewer`. You can install it with the following command:
+
+```bash
+pip install multimodalsim-viewer
+```
+
+Now that the package is installed, you have access to several commands that will allow you to run the project easily.
+
+```bash
+multimodalsim-server  # To run the server
+multimodalsim-ui      # To run the frontend
+multimodalsim-viewer  # To run both the server and the frontend
+
+multimodalsim-simulation  # To run a simulation from the command line
+
+multimodalsim-stop-server # To stop the server
+multimodalsim-stop-ui # To stop the frontend
+multimodalsim-stop-all # To stop both the server and the frontend
+```
+
+## Deployment to PyPI
+
+To deploy this project, you need to have the `build` and `twine` packages installed. You can install them with the following command:
+
+```bash
+python -m pip install --upgrade build twine
+```
+
+Then, you need to build the project:
+
+```bash
+python -m build
+```
+
+To deploy the project to PyPI, you can use the following command:
+
+```bash
+python -m twine upload --repository pypi ./dist/* --verbose
+```
+
+If you want to deploy but not affect the main index of PyPI, you can deploy the project to TestPyPI:
+
+```bash
+python -m twine upload --repository testpypi ./dist/* --verbose
+```
+
+Docker scripts are also available to build and deploy the project without having to install Python or Node.js. You can use one of the following commands:
+
+```bash
+# To only build the angular application
+docker compose --profile build up --build --force-recreate
+
+# To build the angular application and publish it to PyPI or TestPyPI
+docker compose --profile publish up --build --force-recreate
+docker compose --profile publish-test up --build --force-recreate
+
+# To only publish the package to PyPI or TestPyPI without building the angular application
+docker compose --profile publish-only up --build --force-recreate
+docker compose --profile publish-test-only up --build --force-recreate
+```
+
+## Development
 
 This project is built with Python and Angular. You have several options to run the project. You can either use `docker-compose` to run the project in a containerized environment, you can use Python to run the project locally and deploy the frontend, and finally you can also run the frontend using `npm`.
 

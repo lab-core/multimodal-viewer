@@ -1,7 +1,33 @@
-multimodal-server
-multimodal-ui
-venv
-**/node_modules
-**/dist
-**/.vscode
-**/.angular
+# Unrelated files and directories
+.github/workflows/
+.vscode/
+data/
+venv/
+.gitignore
+.gitmodules/
+LICENSE
+README.md
+
+# Cache files and dependency directories
+**/__pycache__/
+**/node_modules/
+**/.angular/
+
+# Build artifacts
+**/dist/
+**/build/
+**/*.egg-info/
+
+# Docker-specific files
+Dockerfile*
+docker-compose.yml
+.dockerignore
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,21 @@
+FROM python:3.11.12-alpine3.21
+
+# Set the working directory
+WORKDIR /app
+
+# Update pip and install dependencies
+RUN python -m pip install --upgrade pip build twine
+
+# Copy the Python package files
+COPY .pypirc ./
+
+# Publish the package to PyPI
+CMD \
+  echo "Running: cd ./python" && \
+  cd ./python && \
+  echo "Running: rm -rf ./dist" && \
+  rm -rf ./dist && \
+  echo "Running: python -m build" && \
+  python -m build && \
+  echo "Running: python -m twine upload --repository testpypi --verbose --config-file .pypirc ./dist/*" && \
+  python -m twine upload --repository testpypi --verbose --config-file ../.pypirc ./dist/* \ 

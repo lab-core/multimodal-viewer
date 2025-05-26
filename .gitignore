@@ -43,3 +43,6 @@ multimodal_package.egg-info
 build
 dist
 *.egg-info
+
+# PyPI configuration
+.pypirc
