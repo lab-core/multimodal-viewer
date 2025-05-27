@@ -4,28 +4,10 @@ This project is an extension of the packaged [multimodal-simulation](https://git
 
 - [Multimodal Simulation Visualization](#multimodal-simulation-visualization)
   - [Installation](#installation)
-  - [Deployment to PyPI](#deployment-to-pypi)
+  - [Publication to PyPI](#publication-to-pypi)
   - [Development](#development)
-    - [Angular](#angular)
-    - [Python](#python)
-        - [Windows](#windows)
-        - [Linux / MacOS](#linux--macos)
-    - [Building the Frontend](#building-the-frontend)
-    - [Changing Ports](#changing-ports)
   - [Frontend](#frontend)
-    - [Wanted visualization time](#wanted-visualization-time)
-    - [Data reception](#data-reception)
-    - [Display](#display)
   - [Backend](#backend)
-    - [Key insights](#key-insights)
-    - [Components](#components)
-        - [`server.py`](#serverpy)
-        - [`server_utils.py`](#server_utilspy)
-        - [`http_routes.py`](#http_routespy)
-        - [`simulation_manager.py`](#simulation_managerpy)
-        - [`simulation_visualization_data_collector.py`](#simulation_visualization_data_collectorpy)
-        - [`simulation_visualization_data_model.py`](#simulation_visualization_data_modelpy)
-        - [`simulation.py`](#simulationpy)
   - [Known issues and limitations](#known-issues-and-limitations)
 
 ## Installation
@@ -50,9 +32,9 @@ multimodalsim-stop-ui # To stop the frontend
 multimodalsim-stop-all # To stop both the server and the frontend
 ```
 
-## Deployment to PyPI
+## Publication to PyPI
 
-To deploy this project, you need to have the `build` and `twine` packages installed. You can install them with the following command:
+To publish this project, you need to have the `build` and `twine` packages installed. You can install them with the following command:
 
 ```bash
 python -m pip install --upgrade build twine
@@ -64,19 +46,19 @@ Then, you need to build the project:
 python -m build
 ```
 
-To deploy the project to PyPI, you can use the following command:
+To publish the project to PyPI, you can use the following command:
 
 ```bash
 python -m twine upload --repository pypi ./dist/* --verbose
 ```
 
-If you want to deploy but not affect the main index of PyPI, you can deploy the project to TestPyPI:
+If you want to publish but not affect the main index of PyPI, you can publish the project to TestPyPI:
 
 ```bash
 python -m twine upload --repository testpypi ./dist/* --verbose
 ```
 
-Docker scripts are also available to build and deploy the project without having to install Python or Node.js. You can use one of the following commands:
+Docker scripts are also available to build and publish the project without having to install Python or Node.js. You can use one of the following commands:
 
 ```bash
 # To only build the angular application
@@ -180,14 +162,21 @@ multimodalsim-stop-all
 
 If you made changes to the frontend, you might want to rebuild it to be able to run it without Angular later.
 
+A docker script is available to build the frontend without having to install Node.js or npm. You can use the following command:
+
 ```bash
-cd multimodal-ui
+docker compose --profile build up --build --force-recreate
+```
+
+If you want to build the frontend manually, you can do so by running this command in the `multimodal-ui` folder:
+
+```bash
 npm run build
 ```
 
-Once the build is finished, copy the contents of `multimodal-ui/dist/multimodal-ui/browser/` into `multimodal_ui/static/`.
+Once the build is finished, copy the contents of `multimodal-ui/dist/multimodal-ui/browser/` into `python/multimodalsim_viewer/ui/static/`. This will allow the Python package to serve the built frontend.
 
-This process can be done automatically when developing using the provided GitHub action `Build`. You can run it on the branch of your choice in the Actions tab of the repository.
+This process can also be done using the provided GitHub action `Build`. You can run it on the branch of your choice in the Actions tab of the repository.
 
 ### Changing Ports
 
