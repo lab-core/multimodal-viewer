@@ -1,24 +1,24 @@
+import { provideHttpClient } from '@angular/common/http';
 import {
   ApplicationConfig,
   importProvidersFrom,
   provideZoneChangeDetection,
 } from '@angular/core';
-import { provideHttpClient } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { provideRouter } from '@angular/router';
 
 import { SocketIoConfig, SocketIoModule } from 'ngx-socket-io';
-import { routes } from './app.routes';
 import { environment } from '../environments/environment';
+import { routes } from './app.routes';
 
-const config: SocketIoConfig = {
+const socketIoConfiguration: SocketIoConfig = {
   url: environment.socketUrl,
   options: { auth: { type: 'client' } },
 };
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    importProvidersFrom(SocketIoModule.forRoot(config)),
+    importProvidersFrom(SocketIoModule.forRoot(socketIoConfiguration)),
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
     provideAnimationsAsync(),
