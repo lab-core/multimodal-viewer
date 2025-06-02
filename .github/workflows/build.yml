@@ -69,7 +69,7 @@ jobs:
         run: rm -rf ./multimodal_ui/static
 
       - name: Copy build artifacts
-        run: cp -r ./multimodal-ui/dist/multimodal-ui/browser/ ./multimodal_ui/static
+        run: cp -r ./multimodal-ui/dist/multimodal-ui/browser/ ./python/multimodalsim_viewer/ui/static
 
       - name: Verify if changes have been made
         id: verify-build

@@ -15,6 +15,9 @@ load_dotenv(env_path)
 
 HOST = os.getenv("SERVER_HOST", "127.0.0.1")
 PORT = int(os.getenv("PORT_SERVER", "8089"))  # It will use .env or default to 8089
+CLIENT_PORT = int(
+    os.getenv("PORT_CLIENT", "8085")
+)  # It will use .env or default to 8085
 
 CLIENT_ROOM = "client"
 SIMULATION_ROOM = "simulation"
@@ -65,9 +68,18 @@ def build_simulation_id(name: str) -> tuple[str, str]:
     return simulation_id, start_time
 
 
+def get_data_directory_path(data: str | None = None) -> str:
+    cwd = os.getcwd()
+    data_directory = os.path.join(cwd, "data")
+
+    if data is not None:
+        data_directory = os.path.join(data_directory, data)
+
+    return data_directory
+
+
 def get_available_data():
-    current_dir = os.path.dirname(os.path.realpath(__file__))
-    data_dir = os.path.join(current_dir, "..", "data")
+    data_dir = get_data_directory_path()
 
     if not os.path.exists(data_dir):
         return []

@@ -1,37 +1,59 @@
 version: '3.8'
-
 services:
-  frontend:
-    container_name: frontend
+  build-ui:
+    container_name: build-ui
     build:
       context: .
-      dockerfile: Dockerfile.frontend
-    env_file:
-      - .env
-    ports:
-      - "${PORT_CLIENT}:80"  # Only expose port 80
-    networks:
-      - multimodal-network
+      dockerfile: Dockerfile.build-ui
+    profiles:
+      - build-ui
+      - publish
+      - publish-test
+    volumes:
+      - ./python/multimodalsim_viewer/ui/static:/app/static
+
+  publish:
+    container_name: publish
+    build:
+      context: .
+      dockerfile: Dockerfile.publish
     depends_on:
-      - backend
-    environment:
-      - PORT_SERVER=${PORT_SERVER}
+      build-ui:
+        condition: service_completed_successfully
+    profiles:
+      - publish
+    volumes:
+      - ./python:/app/python
 
-  backend:
-    container_name: backend
+  publish-test:
+    container_name: publish-test
     build:
       context: .
-      dockerfile: Dockerfile.api
-    env_file:
-      - .env
-    ports:
-      - "${PORT_SERVER}:${PORT_SERVER}"
-    networks:
-      - multimodal-network
-    environment:
-      - SERVER_HOST=0.0.0.0
-      - PORT=${PORT_SERVER}
+      dockerfile: Dockerfile.publish-test
+    depends_on:
+      build-ui:
+        condition: service_completed_successfully
+    profiles:
+      - publish-test
+    volumes:
+      - ./python:/app/python
 
-networks:
-  multimodal-network:
-    driver: bridge
+  publish-only: # Do not require build-ui
+    container_name: publish-only
+    build:
+      context: .
+      dockerfile: Dockerfile.publish
+    profiles:
+      - publish-only
+    volumes:
+      - ./python:/app/python
+
+  publish-test-only: # Do not require build-ui
+    container_name: publish-test-only
+    build:
+      context: .
+      dockerfile: Dockerfile.publish-test
+    profiles:
+      - publish-test-only
+    volumes:
+      - ./python:/app/python
