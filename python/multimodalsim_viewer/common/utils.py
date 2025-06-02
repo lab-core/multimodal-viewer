@@ -1,23 +1,59 @@
 import datetime
 import logging
 import os
+import shutil
 import threading
 from enum import Enum
-from pathlib import Path
+from json import loads
 
-from dotenv import load_dotenv
 from flask import request
 from flask_socketio import emit
 
-# Load environment variables from the root .env file
-env_path = Path(__file__).parent.parent / ".env"
-load_dotenv(env_path)
+# Copy default environment if it exists
+CURRENT_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
+DEFAULT_ENVIRONMENT_PATH = os.path.join(
+    CURRENT_DIRECTORY, "../../../default-environment.json"
+)
+ENVIRONMENT_PATH = os.path.join(CURRENT_DIRECTORY, "environment.json")
 
-HOST = os.getenv("SERVER_HOST", "127.0.0.1")
-PORT = int(os.getenv("PORT_SERVER", "8089"))  # It will use .env or default to 8089
-CLIENT_PORT = int(
-    os.getenv("PORT_CLIENT", "8085")
-)  # It will use .env or default to 8085
+if os.path.exists(DEFAULT_ENVIRONMENT_PATH):
+    shutil.copy(DEFAULT_ENVIRONMENT_PATH, ENVIRONMENT_PATH)
+
+
+# Load environment variables from environment.json
+def load_environment(path: str, previous_environment: dict) -> dict:
+    if not os.path.exists(path):
+        return previous_environment
+
+    with open(path) as environment_file:
+        content = loads("\n".join(environment_file.readlines()).replace("'", '"'))
+
+        for key in content:
+            previous_environment[key] = content[key]
+
+
+environment = {}
+
+load_environment(ENVIRONMENT_PATH, environment)
+load_environment(os.path.join(os.getcwd(), "environment.json"), environment)
+
+# Write environment into static folder
+STATIC_ENVIRONMENT_PATH = os.path.join(
+    CURRENT_DIRECTORY, "../ui/static/environment.json"
+)
+with open(STATIC_ENVIRONMENT_PATH, "w") as static_environment_file:
+    static_environment_file.write(
+        "{\n  "
+        + ",\n  ".join([f'"{key}": "{value}"' for key, value in environment.items()])
+        + "\n}"
+    )
+
+
+HOST = str(environment["HOST"])
+SERVER_PORT = int(environment["SERVER_PORT"])
+CLIENT_PORT = int(environment["CLIENT_PORT"])
+
+print(f"Server running on {HOST}:{SERVER_PORT} and client on {HOST}:{CLIENT_PORT}")
 
 CLIENT_ROOM = "client"
 SIMULATION_ROOM = "simulation"

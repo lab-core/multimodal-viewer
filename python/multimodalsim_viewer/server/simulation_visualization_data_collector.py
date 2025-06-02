@@ -32,14 +32,14 @@ from multimodalsim.simulator.vehicle_event import (
     VehicleWaiting,
 )
 from multimodalsim.statistics.data_analyzer import DataAnalyzer
-from multimodalsim_viewer.server.log_manager import register_log
-from multimodalsim_viewer.server.server_utils import (
+from multimodalsim_viewer.common.utils import (
     HOST,
-    PORT,
+    SERVER_PORT,
     STATE_SAVE_STEP,
     SimulationStatus,
     build_simulation_id,
 )
+from multimodalsim_viewer.server.log_manager import register_log
 from multimodalsim_viewer.server.simulation_visualization_data_model import (
     PassengerLegsUpdate,
     PassengerStatusUpdate,
@@ -217,7 +217,7 @@ class SimulationVisualizationDataCollector(DataCollector):
                 try:
                     print("Trying to reconnect")
                     self.sio.connect(
-                        f"http://{HOST}:{PORT}", auth={"type": "simulation"}
+                        f"http://{HOST}:{SERVER_PORT}", auth={"type": "simulation"}
                     )
                     print("Connected")
                 except Exception as e:

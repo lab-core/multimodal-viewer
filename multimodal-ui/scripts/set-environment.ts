@@ -3,10 +3,10 @@
  */
 import { copyFileSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { CLIENT_PORT } from '../../environment.json';
+import { CLIENT_PORT } from '../../default-environment.json';
 
 const ANGULAR_JSON_PATH = join(__dirname, '../angular.json');
-const ENVIRONMENT_FILE_PATH = join(__dirname, '../../environment.json');
+const ENVIRONMENT_FILE_PATH = join(__dirname, '../../default-environment.json');
 const PUBLIC_ENVIRONMENT_FILE_PATH = join(
   __dirname,
   '../public/environment.json',

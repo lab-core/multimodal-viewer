@@ -5,7 +5,7 @@ from multimodalsim.observer.data_collector import DataContainer, StandardDataCol
 from multimodalsim.observer.environment_observer import EnvironmentObserver
 from multimodalsim.simulator.simulator import Simulator
 from multimodalsim.statistics.data_analyzer import FixedLineDataAnalyzer
-from multimodalsim_viewer.server.server_utils import (
+from multimodalsim_viewer.common.utils import (
     build_simulation_id,
     get_available_data,
     get_data_directory_path,

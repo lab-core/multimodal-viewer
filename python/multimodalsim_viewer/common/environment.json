@@ -1,0 +1,5 @@
+{
+  "CLIENT_PORT": 8085,
+  "SERVER_PORT": 8089,
+  "HOST": "127.0.0.1"
+}

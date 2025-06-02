@@ -62,7 +62,7 @@ Docker scripts are also available to build and publish the project without havin
 
 ```bash
 # To only build the angular application
-docker compose --profile build up --build --force-recreate
+docker compose --profile build-ui up --build --force-recreate
 
 # To build the angular application and publish it to PyPI or TestPyPI
 docker compose --profile publish up --build --force-recreate
