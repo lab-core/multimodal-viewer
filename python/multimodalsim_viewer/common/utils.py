@@ -6,6 +6,7 @@ import threading
 from enum import Enum
 from json import loads
 
+from filelock import FileLock
 from flask import request
 from flask_socketio import emit
 
@@ -25,11 +26,14 @@ def load_environment(path: str, previous_environment: dict) -> dict:
     if not os.path.exists(path):
         return previous_environment
 
-    with open(path) as environment_file:
-        content = loads("\n".join(environment_file.readlines()).replace("'", '"'))
+    lock = FileLock(f"{path}.lock")
 
-        for key in content:
-            previous_environment[key] = content[key]
+    with lock:
+        with open(path) as environment_file:
+            content = loads("\n".join(environment_file.readlines()).replace("'", '"'))
+
+            for key in content:
+                previous_environment[key] = content[key]
 
 
 environment = {}
@@ -41,12 +45,16 @@ load_environment(os.path.join(os.getcwd(), "environment.json"), environment)
 STATIC_ENVIRONMENT_PATH = os.path.join(
     CURRENT_DIRECTORY, "../ui/static/environment.json"
 )
-with open(STATIC_ENVIRONMENT_PATH, "w") as static_environment_file:
-    static_environment_file.write(
-        "{\n  "
-        + ",\n  ".join([f'"{key}": "{value}"' for key, value in environment.items()])
-        + "\n}"
-    )
+lock = FileLock(f"{STATIC_ENVIRONMENT_PATH}.lock")
+with lock:
+    with open(STATIC_ENVIRONMENT_PATH, "w") as static_environment_file:
+        static_environment_file.write(
+            "{\n  "
+            + ",\n  ".join(
+                [f'"{key}": "{value}"' for key, value in environment.items()]
+            )
+            + "\n}"
+        )
 
 
 HOST = str(environment["HOST"])
