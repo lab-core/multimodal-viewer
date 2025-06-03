@@ -4,62 +4,86 @@ import os
 import shutil
 import threading
 from enum import Enum
-from json import loads
+from json import dumps, loads
 
 from filelock import FileLock
 from flask import request
 from flask_socketio import emit
 
-# Copy default environment if it exists
-CURRENT_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_ENVIRONMENT_PATH = os.path.join(
-    CURRENT_DIRECTORY, "../../../default-environment.json"
-)
-ENVIRONMENT_PATH = os.path.join(CURRENT_DIRECTORY, "environments/environment.json")
-
-if os.path.exists(DEFAULT_ENVIRONMENT_PATH):
-    shutil.copy(DEFAULT_ENVIRONMENT_PATH, ENVIRONMENT_PATH)
-
-
-# Load environment variables from environment.json
-def load_environment(path: str, previous_environment: dict) -> dict:
-    if not os.path.exists(path):
-        return previous_environment
-
-    lock = FileLock(f"{path}.lock")
-
-    with lock:
-        with open(path) as environment_file:
-            content = loads("\n".join(environment_file.readlines()).replace("'", '"'))
-
-            for key in content:
-                previous_environment[key] = content[key]
-
-
 environment = {}
 
-load_environment(ENVIRONMENT_PATH, environment)
-load_environment(os.path.join(os.getcwd(), "environment.json"), environment)
+is_environment_loaded = False
 
-# Write environment into static folder
-STATIC_ENVIRONMENT_PATH = os.path.join(
-    CURRENT_DIRECTORY, "../ui/static/environment.json"
-)
-lock = FileLock(f"{STATIC_ENVIRONMENT_PATH}.lock")
-with lock:
-    with open(STATIC_ENVIRONMENT_PATH, "w") as static_environment_file:
-        static_environment_file.write(
-            "{\n  "
-            + ",\n  ".join(
-                [f'"{key}": "{value}"' for key, value in environment.items()]
+
+def load_environment() -> None:
+    global is_environment_loaded
+    if is_environment_loaded:
+        return
+    is_environment_loaded = True
+
+    # Copy default environment if it exists
+    CURRENT_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
+    DEFAULT_ENVIRONMENT_PATH = os.path.join(
+        CURRENT_DIRECTORY, "../../../default-environment.json"
+    )
+    ENVIRONMENT_PATH = os.path.join(CURRENT_DIRECTORY, "environments/environment.json")
+
+    if os.path.exists(DEFAULT_ENVIRONMENT_PATH):
+        shutil.copy(DEFAULT_ENVIRONMENT_PATH, ENVIRONMENT_PATH)
+
+    # Load environment variables from environment.json
+    def load_environment_file(path: str, previous_environment: dict) -> None:
+        if not os.path.exists(path):
+            return previous_environment
+
+        lock = FileLock(f"{path}.lock")
+
+        with lock:
+            with open(path) as environment_file:
+                content = loads(
+                    "\n".join(environment_file.readlines()).replace("'", '"')
+                )
+
+                for key in content:
+                    previous_environment[key] = content[key]
+
+    # Load default environment
+    load_environment_file(ENVIRONMENT_PATH, environment)
+    # Load environment from the current working directory
+    load_environment_file(os.path.join(os.getcwd(), "environment.json"), environment)
+
+    # Write environment into static folder
+    STATIC_ENVIRONMENT_PATH = os.path.join(
+        CURRENT_DIRECTORY, "../ui/static/environment.json"
+    )
+    lock = FileLock(f"{STATIC_ENVIRONMENT_PATH}.lock")
+    with lock:
+        with open(STATIC_ENVIRONMENT_PATH, "w") as static_environment_file:
+            static_environment_file.write(
+                dumps(environment, indent=2, separators=(",", ": "), sort_keys=True)
             )
-            + "\n}"
-        )
 
+
+#
+class _Environment:
+    def __init__(self):
+        load_environment()
+        print("Environment loaded")
+
+    @property
+    def SERVER_PORT(self) -> int:
+        return int(environment.get("SERVER_PORT"))
+
+    @property
+    def CLIENT_PORT(self) -> int:
+        return int(environment.get("CLIENT_PORT"))
+
+
+_environment = _Environment()
+SERVER_PORT = _environment.SERVER_PORT
+CLIENT_PORT = _environment.CLIENT_PORT
 
 HOST = "127.0.0.1"
-SERVER_PORT = int(environment["SERVER_PORT"])
-CLIENT_PORT = int(environment["CLIENT_PORT"])
 
 CLIENT_ROOM = "client"
 SIMULATION_ROOM = "simulation"
