@@ -15,8 +15,8 @@ setup(
     include_package_data=True,
     package_data={
         "multimodalsim_viewer": ["ui/static/**/*"],
+        "environments": ["common/environments/**/*"],
     },
-    data_files=[('environment', ['common/environment.json'])]
     install_requires=[
         # Common requirements
         # Server requirements

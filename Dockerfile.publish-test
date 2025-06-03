@@ -9,10 +9,15 @@ RUN python -m pip install --upgrade pip build twine
 # Copy the Python package files
 COPY .pypirc ./
 
+# Copy default environment file
+COPY default-environment.json /app/
+
 # Publish the package to PyPI
 CMD \
   echo "Running: cd ./python" && \
   cd ./python && \
+  echo "Running: cp ../default-environment.json ./multimodalsim_viewer/common/environments/environment.json" && \
+  cp ../default-environment.json ./multimodalsim_viewer/common/environments/environment.json && \
   echo "Running: rm -rf ./dist" && \
   rm -rf ./dist && \
   echo "Running: python -m build" && \

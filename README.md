@@ -6,8 +6,24 @@ This project is an extension of the packaged [multimodal-simulation](https://git
   - [Installation](#installation)
   - [Publication to PyPI](#publication-to-pypi)
   - [Development](#development)
+    - [Angular](#angular)
+    - [Python](#python)
+    - [Building the Frontend](#building-the-frontend)
+    - [Changing Environment Variables](#changing-environment-variables)
   - [Frontend](#frontend)
+    - [Wanted visualization time](#wanted-visualization-time)
+    - [Data reception](#data-reception)
+    - [Display](#display)
   - [Backend](#backend)
+    - [Key insights](#key-insights)
+    - [Components](#components)
+      - [`server.py`](#serverpy)
+      - [`server_utils.py`](#server_utilspy)
+      - [`http_routes.py`](#http_routespy)
+      - [`simulation_manager.py`](#simulation_managerpy)
+      - [`simulation_visualization_data_collector.py`](#simulation_visualization_data_collectorpy)
+      - [`simulation_visualization_data_model.py`](#simulation_visualization_data_modelpy)
+      - [`simulation.py`](#simulationpy)
   - [Known issues and limitations](#known-issues-and-limitations)
 
 ## Installation
@@ -25,11 +41,15 @@ multimodalsim-server  # To run the server
 multimodalsim-ui      # To run the frontend
 multimodalsim-viewer  # To run both the server and the frontend
 
-multimodalsim-simulation  # To run a simulation from the command line
-
 multimodalsim-stop-server # To stop the server
 multimodalsim-stop-ui # To stop the frontend
 multimodalsim-stop-all # To stop both the server and the frontend
+```
+
+You can also run a simulation from the command line. Several arguments are available to customize the simulation and can be found with the `--help` option, but the required arguments will be asked interactively if not provided. The command to run a simulation is:
+
+```bash
+multimodalsim-simulation
 ```
 
 ## Publication to PyPI
@@ -62,7 +82,7 @@ Docker scripts are also available to build and publish the project without havin
 
 ```bash
 # To only build the angular application
-docker compose --profile build-ui up --build --force-recreate
+docker compose --profile build-angular up --build --force-recreate
 
 # To build the angular application and publish it to PyPI or TestPyPI
 docker compose --profile publish up --build --force-recreate
@@ -97,16 +117,12 @@ The port is defined in the `.env` file. By default, it is set to `8085`. You can
 
 This project is currently built with Python 3.11. To make the installation easier, you should use a Python virtual environment. You can use the following scripts depending on your operating system.
 
-##### Windows
-
 ```bash
+# For Windows
 py -3.11 -m venv venv
 .\venv\Scripts\activate
-```
 
-##### Linux / MacOS
-
-```bash
+# For Linux / MacOS
 python3 -m venv venv
 source venv/bin/activate
 ```
@@ -178,18 +194,15 @@ Once the build is finished, copy the contents of `multimodal-ui/dist/multimodal-
 
 This process can also be done using the provided GitHub action `Build`. You can run it on the branch of your choice in the Actions tab of the repository.
 
-### Changing Ports
+### Changing Environment Variables
 
-The ports are defined in the .env file. After changing them, restart both the front and the back ends for the changes to take effect.
+Some variables, such as the client and server ports, are defined in an environment file.
 
-If you are running the app through the python package or inside a docker container and do not wish to rebuild it with angular, you will also have to change the ports directly in the build.
-In the `/multimodal_ui/static/main-XXXXXXXX.js` file, locate this section:
-`socketUrl:"http://127.0.0.1:8089",apiUrl:"http://127.0.0.1:8089/api/",clientPort:8085`
-and replace the ports to match the ones you redefined in your .env file.
+The `default-environment.json` file in the root folder of the repository defines the default environment variables that will be used by the built application. You can create a `environment.json` file in the folder from which you run the application, and it will override the default values.
 
-Reinstall the Python package for good measure.
+After changing them, you will need to restart all processes for the changes to take effect.
 
-If you are running it in docker, you will have to rebuild it with `docker-compose up --build`
+We strongly recommend to use `npm start` and `npm run build` and/or the provided docker scripts to run the application, as they will automatically load the correct environment.
 
 ## Frontend
 

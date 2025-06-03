@@ -7,6 +7,10 @@ COPY multimodal-ui/ /app/angular
 COPY default-environment.json /app/
 
 CMD \
+  echo "Running: rm -rf /app/angular/dist" && \
+  rm -rf /app/angular/dist && \
+  echo "Running: rm -rf /app/static/*" && \
+  rm -rf /app/static/* && \
   echo "Running: cd /app/angular" && \
   cd /app/angular && \
   echo "Running: npm install" && \

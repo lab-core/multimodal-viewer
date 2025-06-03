@@ -1,6 +1,6 @@
-import { HOST, SERVER_PORT } from '../../public/environment.json';
+import { SERVER_PORT } from '../../public/environment.json';
 
 export const environment = {
-  socketUrl: `http://${HOST}:${SERVER_PORT}`,
-  apiUrl: `http://${HOST}:${SERVER_PORT}/api`,
+  socketUrl: `:${SERVER_PORT}`,
+  apiUrl: `:${SERVER_PORT}/api`,
 };

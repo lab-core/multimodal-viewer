@@ -15,7 +15,7 @@ CURRENT_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_ENVIRONMENT_PATH = os.path.join(
     CURRENT_DIRECTORY, "../../../default-environment.json"
 )
-ENVIRONMENT_PATH = os.path.join(CURRENT_DIRECTORY, "environment.json")
+ENVIRONMENT_PATH = os.path.join(CURRENT_DIRECTORY, "environments/environment.json")
 
 if os.path.exists(DEFAULT_ENVIRONMENT_PATH):
     shutil.copy(DEFAULT_ENVIRONMENT_PATH, ENVIRONMENT_PATH)
@@ -57,11 +57,9 @@ with lock:
         )
 
 
-HOST = str(environment["HOST"])
+HOST = "127.0.0.1"
 SERVER_PORT = int(environment["SERVER_PORT"])
 CLIENT_PORT = int(environment["CLIENT_PORT"])
-
-print(f"Server running on {HOST}:{SERVER_PORT} and client on {HOST}:{CLIENT_PORT}")
 
 CLIENT_ROOM = "client"
 SIMULATION_ROOM = "simulation"
