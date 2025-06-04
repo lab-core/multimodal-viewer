@@ -1,12 +1,12 @@
 version: '3.8'
 services:
-  build-ui:
-    container_name: build-ui
+  build-angular:
+    container_name: build-angular
     build:
       context: .
-      dockerfile: Dockerfile.build-ui
+      dockerfile: Dockerfile.build-angular
     profiles:
-      - build-ui
+      - build-angular
       - publish
       - publish-test
     volumes:
@@ -18,7 +18,7 @@ services:
       context: .
       dockerfile: Dockerfile.publish
     depends_on:
-      build-ui:
+      build-angular:
         condition: service_completed_successfully
     profiles:
       - publish
@@ -31,14 +31,14 @@ services:
       context: .
       dockerfile: Dockerfile.publish-test
     depends_on:
-      build-ui:
+      build-angular:
         condition: service_completed_successfully
     profiles:
       - publish-test
     volumes:
       - ./python:/app/python
 
-  publish-only: # Do not require build-ui
+  publish-only: # Do not require build-angular
     container_name: publish-only
     build:
       context: .
@@ -48,7 +48,7 @@ services:
     volumes:
       - ./python:/app/python
 
-  publish-test-only: # Do not require build-ui
+  publish-test-only: # Do not require build-angular
     container_name: publish-test-only
     build:
       context: .

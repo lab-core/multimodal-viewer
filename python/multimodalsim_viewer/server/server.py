@@ -4,15 +4,15 @@ import time
 from flask import Flask
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
-from multimodalsim_viewer.server.http_routes import http_routes
-from multimodalsim_viewer.server.server_utils import (
+from multimodalsim_viewer.common.utils import (
     CLIENT_ROOM,
     HOST,
-    PORT,
+    SERVER_PORT,
     get_available_data,
     get_session_id,
     log,
 )
+from multimodalsim_viewer.server.http_routes import http_routes
 from multimodalsim_viewer.server.simulation_manager import SimulationManager
 
 
@@ -200,10 +200,10 @@ def run_server():
 
     logging.basicConfig(level=logging.DEBUG)
 
-    log(f"Starting server at {HOST}:{PORT}", "server", should_emit=False)
+    log(f"Starting server at {HOST}:{SERVER_PORT}", "server", should_emit=False)
 
     # MARK: Run server
-    socketio.run(app, host=HOST, port=PORT)
+    socketio.run(app, host=HOST, port=SERVER_PORT)
 
 
 if __name__ == "__main__":

@@ -2,8 +2,8 @@ import threading
 import time
 
 import requests
+from multimodalsim_viewer.common.utils import CLIENT_PORT, HOST, SERVER_PORT
 from multimodalsim_viewer.server.server import run_server
-from multimodalsim_viewer.server.server_utils import CLIENT_PORT, HOST, PORT
 from multimodalsim_viewer.ui.cli import main as run_ui
 from socketio import Client, exceptions
 
@@ -28,7 +28,7 @@ def terminate_server():
     sio = Client()
 
     try:
-        sio.connect(f"http://{HOST}:{PORT}", auth={"type": "script"})
+        sio.connect(f"http://{HOST}:{SERVER_PORT}", auth={"type": "script"})
 
         sio.emit("terminate")
 

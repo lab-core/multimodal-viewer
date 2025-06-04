@@ -4,15 +4,15 @@ import threading
 import time
 import webbrowser
 
-from flask import Flask, request, send_from_directory
-from multimodalsim_viewer.server.server_utils import HOST
+from flask import Flask, send_from_directory
+from multimodalsim_viewer.common.utils import CLIENT_PORT, HOST, SERVER_PORT
 
 
 def serve_angular_app(static_dir, port=None, backend_port=None):
     if port is None:
-        port = int(os.getenv("PORT_CLIENT", "8085"))
+        port = CLIENT_PORT
     if backend_port is None:
-        backend_port = int(os.getenv("PORT_SERVER", "8089"))
+        backend_port = SERVER_PORT
 
     app = Flask(__name__, static_folder=static_dir)
 

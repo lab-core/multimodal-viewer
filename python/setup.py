@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="multimodalsim_viewer",
-    version="0.0.1",
+    version="0.0.2",
     description="Multimodal simulation viewer",
     license="MIT",
     keywords="flask angular ui multimodal server",
@@ -15,8 +15,10 @@ setup(
     include_package_data=True,
     package_data={
         "multimodalsim_viewer": ["ui/static/**/*"],
+        "environments": ["common/environments/**/*"],
     },
     install_requires=[
+        # Common requirements
         # Server requirements
         "flask==3.1.1",
         "flask-socketio==5.5.1",
@@ -25,7 +27,6 @@ setup(
         "filelock==3.18.0",
         "flask_cors==6.0.0",
         "questionary==2.1.0",
-        "python-dotenv==1.1.0",
         "multimodalsim==0.0.1",
         # UI requirements
     ],
