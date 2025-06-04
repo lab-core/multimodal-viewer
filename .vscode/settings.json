@@ -6,6 +6,7 @@
     "enroute",
     "github",
     "GITHUB",
+    "jsonify",
     "latlng",
     "LERPABLE",
     "moveend",
@@ -20,5 +21,34 @@
     "SVDM",
     "titlecase",
     "venv"
+  ],
+  "pylint.cwd": "${workspaceFolder}/python",
+  "editor.defaultFormatter": null,
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2
+  },
+  "[css]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2
+  },
+  "[html]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2
+  },
+  "editor.formatOnSave": true,
+  "black-formatter.cwd": "${workspaceFolder}/python",
+  // To specify to the black formatter to use the configuration file
+  // see https://github.com/microsoft/vscode-black-formatter/issues/519
+  "black-formatter.args": [
+    "--config",
+    "${workspaceFolder}/python/pyproject.toml"
   ]
 }
