@@ -6,9 +6,7 @@ import zipfile
 
 from flask import Blueprint, jsonify, request, send_file
 from multimodalsim_viewer.common.utils import get_data_directory_path
-from multimodalsim_viewer.server.simulation_visualization_data_model import (
-    SimulationVisualizationDataManager,
-)
+from multimodalsim_viewer.server.simulation_visualization_data_model import SimulationVisualizationDataManager
 
 http_routes = Blueprint("http_routes", __name__)
 
@@ -29,11 +27,11 @@ def zip_folder(folder_path, zip_name):
         return None
 
     zip_path = os.path.join(tempfile.gettempdir(), f"{zip_name}.zip")
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zip_file:
         for root, _, files in os.walk(folder_path):
             for file in files:
                 file_path = os.path.join(root, file)
-                zipf.write(file_path, os.path.relpath(file_path, folder_path))
+                zip_file.write(file_path, os.path.relpath(file_path, folder_path))
 
     return zip_path
 
@@ -71,9 +69,7 @@ def handle_zip_upload(folder_path):
         response_message += f" (renamed from '{base_folder_name}')"
 
     return (
-        jsonify(
-            {"message": response_message, "actual_folder_name": unique_folder_name}
-        ),
+        jsonify({"message": response_message, "actual_folder_name": unique_folder_name}),
         201,
     )
 
@@ -110,11 +106,7 @@ def delete_input_data(folder_name):
 # MARK: Saved Simulations Routes
 @http_routes.route("/api/simulation/<folder_name>", methods=["GET"])
 def export_saved_simulation(folder_name):
-    folder_path = (
-        SimulationVisualizationDataManager.get_saved_simulation_directory_path(
-            folder_name
-        )
-    )
+    folder_path = SimulationVisualizationDataManager.get_saved_simulation_directory_path(folder_name)
     logging.info(f"Requested folder: {folder_path}")
 
     zip_path = zip_folder(folder_path, folder_name)
@@ -126,21 +118,13 @@ def export_saved_simulation(folder_name):
 
 @http_routes.route("/api/simulation/<folder_name>", methods=["POST"])
 def import_saved_simulation(folder_name):
-    folder_path = (
-        SimulationVisualizationDataManager.get_saved_simulation_directory_path(
-            folder_name
-        )
-    )
+    folder_path = SimulationVisualizationDataManager.get_saved_simulation_directory_path(folder_name)
     return handle_zip_upload(folder_path)
 
 
 @http_routes.route("/api/simulation/<folder_name>", methods=["DELETE"])
 def delete_saved_simulation(folder_name):
-    folder_path = (
-        SimulationVisualizationDataManager.get_saved_simulation_directory_path(
-            folder_name
-        )
-    )
+    folder_path = SimulationVisualizationDataManager.get_saved_simulation_directory_path(folder_name)
     if not os.path.isdir(folder_path):
         return jsonify({"error": "Folder not found"}), 404
 

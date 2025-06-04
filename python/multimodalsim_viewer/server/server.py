@@ -26,7 +26,7 @@ def run_server():
     socketio = SocketIO(app, cors_allowed_origins="*")
 
     # key = session id, value = auth type
-    sockets_types_by_session_id = dict()
+    sockets_types_by_session_id = {}
 
     simulation_manager = SimulationManager()
 
@@ -83,16 +83,12 @@ def run_server():
         emit("available-data", get_available_data(), to=CLIENT_ROOM)
 
     @socketio.on("get-missing-simulation-states")
-    def on_client_get_missing_simulation_states(
-        simulation_id, visualization_time, loaded_state_orders
-    ):
+    def on_client_get_missing_simulation_states(simulation_id, visualization_time, loaded_state_orders):
         log(
             f"getting missing simulation states for {simulation_id} with visualization time {visualization_time} and {len(loaded_state_orders)} loaded state orders ",
             "client",
         )
-        simulation_manager.emit_missing_simulation_states(
-            simulation_id, visualization_time, loaded_state_orders
-        )
+        simulation_manager.emit_missing_simulation_states(simulation_id, visualization_time, loaded_state_orders)
 
     @socketio.on("get-polylines")
     def on_client_get_polylines(simulation_id):
@@ -117,10 +113,7 @@ def run_server():
                 simulation_manager.stop_simulation(simulation_id)
                 simulation_handler.process.join()
 
-        # TODO Solution to remove sleep
-        # - Add a flag to the simulation manager to stop the server
-        # - On simulation-end, check if all simulations with processes are stopped
-        # - If so, stop the server
+        # Wait for all connections to close
         time.sleep(1)
 
         socketio.stop()
@@ -129,9 +122,7 @@ def run_server():
     @socketio.on("simulation-start")
     def on_simulation_start(simulation_id, simulation_start_time):
         log(f"simulation {simulation_id} started", "simulation")
-        simulation_manager.on_simulation_start(
-            simulation_id, get_session_id(), simulation_start_time
-        )
+        simulation_manager.on_simulation_start(simulation_id, get_session_id(), simulation_start_time)
 
     @socketio.on("simulation-pause")
     def on_simulation_pause(simulation_id):
@@ -163,9 +154,7 @@ def run_server():
             "simulation",
             logging.DEBUG,
         )
-        simulation_manager.on_simulation_update_estimated_end_time(
-            simulation_id, estimated_end_time
-        )
+        simulation_manager.on_simulation_update_estimated_end_time(simulation_id, estimated_end_time)
 
     @socketio.on("simulation-update-polylines-version")
     def on_simulation_update_polylines_version(simulation_id):

@@ -10,75 +10,68 @@ from multimodalsim.simulator.request import Leg, Trip
 from multimodalsim.simulator.stop import Stop
 from multimodalsim.simulator.vehicle import Route, Vehicle
 from multimodalsim.state_machine.status import PassengerStatus, VehicleStatus
-from multimodalsim_viewer.common.utils import (
-    SAVE_VERSION,
-    SIMULATION_SAVE_FILE_SEPARATOR,
-)
+from multimodalsim_viewer.common.utils import SAVE_VERSION, SIMULATION_SAVE_FILE_SEPARATOR
 
 
 # MARK: Enums
 def convert_passenger_status_to_string(status: PassengerStatus) -> str:
     if status == PassengerStatus.RELEASE:
         return "release"
-    elif status == PassengerStatus.ASSIGNED:
+    if status == PassengerStatus.ASSIGNED:
         return "assigned"
-    elif status == PassengerStatus.READY:
+    if status == PassengerStatus.READY:
         return "ready"
-    elif status == PassengerStatus.ONBOARD:
+    if status == PassengerStatus.ONBOARD:
         return "onboard"
-    elif status == PassengerStatus.COMPLETE:
+    if status == PassengerStatus.COMPLETE:
         return "complete"
-    else:
-        raise ValueError(f"Unknown PassengerStatus {status}")
+    raise ValueError(f"Unknown PassengerStatus {status}")
 
 
 def convert_vehicle_status_to_string(status: VehicleStatus) -> str:
     if status == VehicleStatus.RELEASE:
         return "release"
-    elif status == VehicleStatus.IDLE:
+    if status == VehicleStatus.IDLE:
         return "idle"
-    elif status == VehicleStatus.BOARDING:
+    if status == VehicleStatus.BOARDING:
         return "boarding"
-    elif status == VehicleStatus.ENROUTE:
+    if status == VehicleStatus.ENROUTE:
         return "enroute"
-    elif status == VehicleStatus.ALIGHTING:
+    if status == VehicleStatus.ALIGHTING:
         return "alighting"
-    elif status == VehicleStatus.COMPLETE:
+    if status == VehicleStatus.COMPLETE:
         return "complete"
-    else:
-        raise ValueError(f"Unknown VehicleStatus {status}")
+    raise ValueError(f"Unknown VehicleStatus {status}")
 
 
 def convert_string_to_passenger_status(status: str) -> PassengerStatus:
     if status == "release":
         return PassengerStatus.RELEASE
-    elif status == "assigned":
+    if status == "assigned":
         return PassengerStatus.ASSIGNED
-    elif status == "ready":
+    if status == "ready":
         return PassengerStatus.READY
-    elif status == "onboard":
+    if status == "onboard":
         return PassengerStatus.ONBOARD
-    elif status == "complete":
+    if status == "complete":
         return PassengerStatus.COMPLETE
-    else:
-        raise ValueError(f"Unknown PassengerStatus {status}")
+    raise ValueError(f"Unknown PassengerStatus {status}")
 
 
 def convert_string_to_vehicle_status(status: str) -> VehicleStatus:
     if status == "release":
         return VehicleStatus.RELEASE
-    elif status == "idle":
+    if status == "idle":
         return VehicleStatus.IDLE
-    elif status == "boarding":
+    if status == "boarding":
         return VehicleStatus.BOARDING
-    elif status == "enroute":
+    if status == "enroute":
         return VehicleStatus.ENROUTE
-    elif status == "alighting":
+    if status == "alighting":
         return VehicleStatus.ALIGHTING
-    elif status == "complete":
+    if status == "complete":
         return VehicleStatus.COMPLETE
-    else:
-        raise ValueError(f"Unknown VehicleStatus {status}")
+    raise ValueError(f"Unknown VehicleStatus {status}")
 
 
 # MARK: Serializable
@@ -133,24 +126,17 @@ class VisualizedLeg(Serializable):
         alighting_stop_index = None
 
         route = (
-            environment.get_route_by_vehicle_id(leg.assigned_vehicle.id)
-            if leg.assigned_vehicle is not None
-            else None
+            environment.get_route_by_vehicle_id(leg.assigned_vehicle.id) if leg.assigned_vehicle is not None else None
         )
 
-        all_legs = (
-            trip.previous_legs
-            + ([trip.current_leg] if trip.current_leg else [])
-            + trip.next_legs
-        )
+        all_legs = trip.previous_legs + ([trip.current_leg] if trip.current_leg else []) + trip.next_legs
 
         same_vehicle_leg_index = 0
         for i, other_leg in enumerate(all_legs):
             if other_leg.assigned_vehicle == leg.assigned_vehicle:
                 if other_leg == leg:
                     break
-                else:
-                    same_vehicle_leg_index += 1
+                same_vehicle_leg_index += 1
 
         if route is not None:
             all_stops = route.previous_stops.copy()
@@ -162,9 +148,7 @@ class VisualizedLeg(Serializable):
 
             for i, stop in enumerate(all_stops):
                 if boarding_stop_index is None and trip in (
-                    stop.passengers_to_board
-                    + stop.boarding_passengers
-                    + stop.boarded_passengers
+                    stop.passengers_to_board + stop.boarding_passengers + stop.boarded_passengers
                 ):
                     if trip_found_count == same_vehicle_leg_index:
                         boarding_stop_index = i
@@ -175,18 +159,14 @@ class VisualizedLeg(Serializable):
 
             for i, stop in enumerate(all_stops):
                 if alighting_stop_index is None and trip in (
-                    stop.passengers_to_alight
-                    + stop.alighting_passengers
-                    + stop.alighted_passengers
+                    stop.passengers_to_alight + stop.alighting_passengers + stop.alighted_passengers
                 ):
                     if trip_found_count == same_vehicle_leg_index:
                         alighting_stop_index = i
                         break
                     trip_found_count += 1
 
-        assigned_vehicle_id = (
-            leg.assigned_vehicle.id if leg.assigned_vehicle is not None else None
-        )
+        assigned_vehicle_id = leg.assigned_vehicle.id if leg.assigned_vehicle is not None else None
 
         assigned_time = None
         if assigned_vehicle_id is not None:
@@ -279,24 +259,16 @@ class VisualizedPassenger(Serializable):
         self.next_legs = next_legs
 
     @classmethod
-    def from_trip_and_environment(
-        cls, trip: Trip, environment: Environment
-    ) -> "VisualizedPassenger":
+    def from_trip_and_environment(cls, trip: Trip, environment: Environment) -> "VisualizedPassenger":
         previous_legs = [
-            VisualizedLeg.from_leg_environment_and_trip(leg, environment, trip)
-            for leg in trip.previous_legs
+            VisualizedLeg.from_leg_environment_and_trip(leg, environment, trip) for leg in trip.previous_legs
         ]
         current_leg = (
-            VisualizedLeg.from_leg_environment_and_trip(
-                trip.current_leg, environment, trip
-            )
+            VisualizedLeg.from_leg_environment_and_trip(trip.current_leg, environment, trip)
             if trip.current_leg is not None
             else None
         )
-        next_legs = [
-            VisualizedLeg.from_leg_environment_and_trip(leg, environment, trip)
-            for leg in trip.next_legs
-        ]
+        next_legs = [VisualizedLeg.from_leg_environment_and_trip(leg, environment, trip) for leg in trip.next_legs]
 
         return cls(
             trip.id,
@@ -346,12 +318,8 @@ class VisualizedPassenger(Serializable):
         status = convert_string_to_passenger_status(data["status"])
         number_of_passengers = int(data["numberOfPassengers"])
 
-        previous_legs = [
-            VisualizedLeg.deserialize(leg_data) for leg_data in data["previousLegs"]
-        ]
-        next_legs = [
-            VisualizedLeg.deserialize(leg_data) for leg_data in data["nextLegs"]
-        ]
+        previous_legs = [VisualizedLeg.deserialize(leg_data) for leg_data in data["previousLegs"]]
+        next_legs = [VisualizedLeg.deserialize(leg_data) for leg_data in data["nextLegs"]]
 
         current_leg = data.get("currentLeg", None)
         if current_leg is not None:
@@ -448,11 +416,9 @@ class VisualizedStop(Serializable):
         if capacity is not None:
             capacity = int(capacity)
 
-            label = data["label"]
+        label = data["label"]
 
-        return VisualizedStop(
-            arrival_time, departure_time, latitude, longitude, capacity, label
-        )
+        return VisualizedStop(arrival_time, departure_time, latitude, longitude, capacity, label)
 
 
 # MARK: Vehicle
@@ -493,24 +459,12 @@ class VisualizedVehicle(Serializable):
 
     @property
     def all_stops(self) -> list[VisualizedStop]:
-        return (
-            self.previous_stops
-            + ([self.current_stop] if self.current_stop is not None else [])
-            + self.next_stops
-        )
+        return self.previous_stops + ([self.current_stop] if self.current_stop is not None else []) + self.next_stops
 
     @classmethod
-    def from_vehicle_and_route(
-        cls, vehicle: Vehicle, route: Route
-    ) -> "VisualizedVehicle":
-        previous_stops = [
-            VisualizedStop.from_stop(stop) for stop in route.previous_stops
-        ]
-        current_stop = (
-            VisualizedStop.from_stop(route.current_stop)
-            if route.current_stop is not None
-            else None
-        )
+    def from_vehicle_and_route(cls, vehicle: Vehicle, route: Route) -> "VisualizedVehicle":
+        previous_stops = [VisualizedStop.from_stop(stop) for stop in route.previous_stops]
+        current_stop = VisualizedStop.from_stop(route.current_stop) if route.current_stop is not None else None
         next_stops = [VisualizedStop.from_stop(stop) for stop in route.next_stops]
         return cls(
             vehicle.id,
@@ -560,12 +514,8 @@ class VisualizedVehicle(Serializable):
         vehicle_id = str(data["id"])
         mode = data.get("mode", None)
         status = convert_string_to_vehicle_status(data["status"])
-        previous_stops = [
-            VisualizedStop.deserialize(stop_data) for stop_data in data["previousStops"]
-        ]
-        next_stops = [
-            VisualizedStop.deserialize(stop_data) for stop_data in data["nextStops"]
-        ]
+        previous_stops = [VisualizedStop.deserialize(stop_data) for stop_data in data["previousStops"]]
+        next_stops = [VisualizedStop.deserialize(stop_data) for stop_data in data["nextStops"]]
         capacity = int(data["capacity"])
         name = data.get("name", None)
 
@@ -621,9 +571,7 @@ class VisualizedEnvironment(Serializable):
 
     def serialize(self) -> dict:
         return {
-            "passengers": [
-                passenger.serialize() for passenger in self.passengers.values()
-            ],
+            "passengers": [passenger.serialize() for passenger in self.passengers.values()],
             "vehicles": [vehicle.serialize() for vehicle in self.vehicles.values()],
             "timestamp": self.timestamp,
             "estimatedEndTime": self.estimated_end_time,
@@ -702,8 +650,9 @@ class PassengerStatusUpdate(Serializable):
         self.passenger_id = passenger_id
         self.status = status
 
-    def from_trip(trip: Trip) -> "PassengerStatusUpdate":
-        return PassengerStatusUpdate(trip.id, trip.status)
+    @classmethod
+    def from_trip(cls, trip: Trip) -> "PassengerStatusUpdate":
+        return cls(trip.id, trip.status)
 
     def serialize(self) -> dict:
         return {
@@ -751,11 +700,7 @@ class PassengerLegsUpdate(Serializable):
     ) -> "PassengerLegsUpdate":
         all_previous_legs = (
             previous_passenger.previous_legs
-            + (
-                [previous_passenger.current_leg]
-                if previous_passenger.current_leg is not None
-                else []
-            )
+            + ([previous_passenger.current_leg] if previous_passenger.current_leg is not None else [])
             + previous_passenger.next_legs
         )
         current_index = 0
@@ -766,20 +711,14 @@ class PassengerLegsUpdate(Serializable):
             if current_index < len(all_previous_legs):
                 previous_leg = all_previous_legs[current_index]
                 current_index += 1
-            previous_legs.append(
-                VisualizedLeg.from_leg_environment_and_trip(
-                    leg, environment, trip, previous_leg
-                )
-            )
+            previous_legs.append(VisualizedLeg.from_leg_environment_and_trip(leg, environment, trip, previous_leg))
 
         previous_leg = None
         if trip.current_leg is not None and current_index < len(all_previous_legs):
             previous_leg = all_previous_legs[current_index]
             current_index += 1
         current_leg = (
-            VisualizedLeg.from_leg_environment_and_trip(
-                trip.current_leg, environment, trip, previous_leg
-            )
+            VisualizedLeg.from_leg_environment_and_trip(trip.current_leg, environment, trip, previous_leg)
             if trip.current_leg is not None
             else None
         )
@@ -790,11 +729,7 @@ class PassengerLegsUpdate(Serializable):
             if current_index < len(all_previous_legs):
                 next_leg = all_previous_legs[current_index]
                 current_index += 1
-            next_legs.append(
-                VisualizedLeg.from_leg_environment_and_trip(
-                    leg, environment, trip, next_leg
-                )
-            )
+            next_legs.append(VisualizedLeg.from_leg_environment_and_trip(leg, environment, trip, next_leg))
 
         return cls(trip.id, previous_legs, current_leg, next_legs)
 
@@ -819,12 +754,8 @@ class PassengerLegsUpdate(Serializable):
             raise ValueError("Invalid data for PassengerLegsUpdate")
 
         passenger_id = str(data["id"])
-        previous_legs = [
-            VisualizedLeg.deserialize(leg_data) for leg_data in data["previousLegs"]
-        ]
-        next_legs = [
-            VisualizedLeg.deserialize(leg_data) for leg_data in data["nextLegs"]
-        ]
+        previous_legs = [VisualizedLeg.deserialize(leg_data) for leg_data in data["previousLegs"]]
+        next_legs = [VisualizedLeg.deserialize(leg_data) for leg_data in data["nextLegs"]]
 
         current_leg = data.get("currentLeg", None)
         if current_leg is not None:
@@ -841,8 +772,9 @@ class VehicleStatusUpdate(Serializable):
         self.vehicle_id = vehicle_id
         self.status = status
 
-    def from_vehicle(vehicle: Vehicle) -> "VehicleStatusUpdate":
-        return VehicleStatusUpdate(vehicle.id, vehicle.status)
+    @classmethod
+    def from_vehicle(cls, vehicle: Vehicle) -> "VehicleStatusUpdate":
+        return cls(vehicle.id, vehicle.status)
 
     def serialize(self) -> dict:
         return {
@@ -882,17 +814,9 @@ class VehicleStopsUpdate(Serializable):
         self.next_stops = next_stops
 
     @classmethod
-    def from_vehicle_and_route(
-        cls, vehicle: Vehicle, route: Route
-    ) -> "VehicleStopsUpdate":
-        previous_stops = [
-            VisualizedStop.from_stop(stop) for stop in route.previous_stops
-        ]
-        current_stop = (
-            VisualizedStop.from_stop(route.current_stop)
-            if route.current_stop is not None
-            else None
-        )
+    def from_vehicle_and_route(cls, vehicle: Vehicle, route: Route) -> "VehicleStopsUpdate":
+        previous_stops = [VisualizedStop.from_stop(stop) for stop in route.previous_stops]
+        current_stop = VisualizedStop.from_stop(route.current_stop) if route.current_stop is not None else None
         next_stops = [VisualizedStop.from_stop(stop) for stop in route.next_stops]
         return cls(vehicle.id, previous_stops, current_stop, next_stops)
 
@@ -917,12 +841,8 @@ class VehicleStopsUpdate(Serializable):
             raise ValueError("Invalid data for VehicleStopsUpdate")
 
         vehicle_id = str(data["id"])
-        previous_stops = [
-            VisualizedStop.deserialize(stop_data) for stop_data in data["previousStops"]
-        ]
-        next_stops = [
-            VisualizedStop.deserialize(stop_data) for stop_data in data["nextStops"]
-        ]
+        previous_stops = [VisualizedStop.deserialize(stop_data) for stop_data in data["previousStops"]]
+        next_stops = [VisualizedStop.deserialize(stop_data) for stop_data in data["nextStops"]]
 
         current_stop = data.get("currentStop", None)
         if current_stop is not None:
@@ -932,25 +852,25 @@ class VehicleStopsUpdate(Serializable):
 
 
 class Update(Serializable):
-    type: UpdateType
+    update_type: UpdateType
     data: Serializable
     timestamp: float
     order: int
 
     def __init__(
         self,
-        type: UpdateType,
+        update_type: UpdateType,
         data: Serializable,
         timestamp: float,
     ) -> None:
-        self.type = type
+        self.update_type = update_type
         self.data = data
         self.timestamp = timestamp
         self.order = 0
 
     def serialize(self) -> dict:
         return {
-            "type": self.type.value,
+            "type": self.update_type.value,
             "data": self.data.serialize(),
             "timestamp": self.timestamp,
             "order": self.order,
@@ -961,12 +881,7 @@ class Update(Serializable):
         if isinstance(data, str):
             data = json.loads(data.replace("'", '"'))
 
-        if (
-            "type" not in data
-            or "data" not in data
-            or "timestamp" not in data
-            or "order" not in data
-        ):
+        if "type" not in data or "data" not in data or "timestamp" not in data or "order" not in data:
             raise ValueError("Invalid data for Update")
 
         update_type = UpdateType(data["type"])
@@ -1178,16 +1093,12 @@ class SimulationVisualizationDataManager:
 
     @staticmethod
     def get_all_saved_simulation_ids() -> list[str]:
-        directory_path = (
-            SimulationVisualizationDataManager.get_saved_simulations_directory_path()
-        )
-        return [simulation_id for simulation_id in os.listdir(directory_path)]
+        directory_path = SimulationVisualizationDataManager.get_saved_simulations_directory_path()
+        return os.listdir(directory_path)
 
     @staticmethod
     def get_saved_simulation_directory_path(simulation_id: str) -> str:
-        directory_path = (
-            SimulationVisualizationDataManager.get_saved_simulations_directory_path()
-        )
+        directory_path = SimulationVisualizationDataManager.get_saved_simulations_directory_path()
         simulation_directory_path = f"{directory_path}/{simulation_id}"
 
         if not os.path.exists(simulation_directory_path):
@@ -1198,66 +1109,52 @@ class SimulationVisualizationDataManager:
     # MARK: +- Corrupted
     @staticmethod
     def is_simulation_corrupted(simulation_id: str) -> bool:
-        simulation_directory_path = (
-            SimulationVisualizationDataManager.get_saved_simulation_directory_path(
-                simulation_id
-            )
+        simulation_directory_path = SimulationVisualizationDataManager.get_saved_simulation_directory_path(
+            simulation_id
         )
 
-        return os.path.exists(
-            f"{simulation_directory_path}/{SimulationVisualizationDataManager.__CORRUPTED_FILE_NAME}"
-        )
+        return os.path.exists(f"{simulation_directory_path}/{SimulationVisualizationDataManager.__CORRUPTED_FILE_NAME}")
 
     @staticmethod
     def mark_simulation_as_corrupted(simulation_id: str) -> None:
-        simulation_directory_path = (
-            SimulationVisualizationDataManager.get_saved_simulation_directory_path(
-                simulation_id
-            )
+        simulation_directory_path = SimulationVisualizationDataManager.get_saved_simulation_directory_path(
+            simulation_id
         )
 
         file_path = f"{simulation_directory_path}/{SimulationVisualizationDataManager.__CORRUPTED_FILE_NAME}"
 
-        with open(file_path, "w") as file:
+        with open(file_path, "w", encoding="utf-8") as file:
             file.write("")
 
     # MARK: +- Simulation Information
     @staticmethod
     def get_saved_simulation_information_file_path(simulation_id: str) -> str:
-        simulation_directory_path = (
-            SimulationVisualizationDataManager.get_saved_simulation_directory_path(
-                simulation_id
-            )
+        simulation_directory_path = SimulationVisualizationDataManager.get_saved_simulation_directory_path(
+            simulation_id
         )
-        file_path = f"{simulation_directory_path}/{SimulationVisualizationDataManager.__SIMULATION_INFORMATION_FILE_NAME}"
+        file_path = (
+            f"{simulation_directory_path}/{SimulationVisualizationDataManager.__SIMULATION_INFORMATION_FILE_NAME}"
+        )
 
         if not os.path.exists(file_path):
-            with open(file_path, "w") as file:
+            with open(file_path, "w", encoding="utf-8") as file:
                 file.write("")
 
         return file_path
 
     @staticmethod
-    def set_simulation_information(
-        simulation_id: str, simulation_information: SimulationInformation
-    ) -> None:
-        file_path = SimulationVisualizationDataManager.get_saved_simulation_information_file_path(
-            simulation_id
-        )
+    def set_simulation_information(simulation_id: str, simulation_information: SimulationInformation) -> None:
+        file_path = SimulationVisualizationDataManager.get_saved_simulation_information_file_path(simulation_id)
 
         lock = FileLock(f"{file_path}.lock")
 
         with lock:
-            with open(file_path, "w") as file:
-                SimulationVisualizationDataManager.__format_json_readable(
-                    simulation_information.serialize(), file
-                )
+            with open(file_path, "w", encoding="utf-8") as file:
+                SimulationVisualizationDataManager.__format_json_readable(simulation_information.serialize(), file)
 
     @staticmethod
     def get_simulation_information(simulation_id: str) -> SimulationInformation:
-        file_path = SimulationVisualizationDataManager.get_saved_simulation_information_file_path(
-            simulation_id
-        )
+        file_path = SimulationVisualizationDataManager.get_saved_simulation_information_file_path(simulation_id)
 
         lock = FileLock(f"{file_path}.lock")
 
@@ -1265,7 +1162,7 @@ class SimulationVisualizationDataManager:
         should_update_simulation_information = False
 
         with lock:
-            with open(file_path, "r") as file:
+            with open(file_path, "r", encoding="utf-8") as file:
                 data = file.read()
 
                 simulation_information = SimulationInformation.deserialize(data)
@@ -1284,19 +1181,15 @@ class SimulationVisualizationDataManager:
                     simulation_information.start_time = start_time
 
         if simulation_information is not None and should_update_simulation_information:
-            SimulationVisualizationDataManager.set_simulation_information(
-                simulation_id, simulation_information
-            )
+            SimulationVisualizationDataManager.set_simulation_information(simulation_id, simulation_information)
 
         return simulation_information
 
     # MARK: +- States and updates
     @staticmethod
     def get_saved_simulation_states_folder_path(simulation_id: str) -> str:
-        simulation_directory_path = (
-            SimulationVisualizationDataManager.get_saved_simulation_directory_path(
-                simulation_id
-            )
+        simulation_directory_path = SimulationVisualizationDataManager.get_saved_simulation_directory_path(
+            simulation_id
         )
         folder_path = f"{simulation_directory_path}/{SimulationVisualizationDataManager.__STATES_DIRECTORY_NAME}"
 
@@ -1306,18 +1199,10 @@ class SimulationVisualizationDataManager:
         return folder_path
 
     @staticmethod
-    def get_saved_simulation_state_file_path(
-        simulation_id: str, order: int, timestamp: float
-    ) -> str:
-        folder_path = (
-            SimulationVisualizationDataManager.get_saved_simulation_states_folder_path(
-                simulation_id
-            )
-        )
+    def get_saved_simulation_state_file_path(simulation_id: str, order: int, timestamp: float) -> str:
+        folder_path = SimulationVisualizationDataManager.get_saved_simulation_states_folder_path(simulation_id)
 
-        padded_order = str(order).zfill(
-            SimulationVisualizationDataManager.__STATES_ORDER_MINIMUM_LENGTH
-        )
+        padded_order = str(order).zfill(SimulationVisualizationDataManager.__STATES_ORDER_MINIMUM_LENGTH)
         padded_timestamp = str(int(timestamp)).zfill(
             SimulationVisualizationDataManager.__STATES_TIMESTAMP_MINIMUM_LENGTH
         )
@@ -1327,18 +1212,14 @@ class SimulationVisualizationDataManager:
         file_path = f"{folder_path}/{padded_order}-{padded_timestamp}.jsonl"
 
         if not os.path.exists(file_path):
-            with open(file_path, "w") as file:
+            with open(file_path, "w", encoding="utf-8") as file:
                 file.write("")
 
         return file_path
 
     @staticmethod
     def get_sorted_states(simulation_id: str) -> list[tuple[int, float]]:
-        folder_path = (
-            SimulationVisualizationDataManager.get_saved_simulation_states_folder_path(
-                simulation_id
-            )
-        )
+        folder_path = SimulationVisualizationDataManager.get_saved_simulation_states_folder_path(simulation_id)
 
         all_states_files = [
             path for path in os.listdir(folder_path) if path.endswith(".jsonl")
@@ -1353,19 +1234,15 @@ class SimulationVisualizationDataManager:
 
     @staticmethod
     def save_state(simulation_id: str, environment: VisualizedEnvironment) -> str:
-        file_path = (
-            SimulationVisualizationDataManager.get_saved_simulation_state_file_path(
-                simulation_id, environment.order, environment.timestamp
-            )
+        file_path = SimulationVisualizationDataManager.get_saved_simulation_state_file_path(
+            simulation_id, environment.order, environment.timestamp
         )
 
         lock = FileLock(f"{file_path}.lock")
 
         with lock:
-            with open(file_path, "w") as file:
-                SimulationVisualizationDataManager.__format_json_one_line(
-                    environment.serialize(), file
-                )
+            with open(file_path, "w", encoding="utf-8") as file:
+                SimulationVisualizationDataManager.__format_json_one_line(environment.serialize(), file)
 
         return file_path
 
@@ -1373,10 +1250,8 @@ class SimulationVisualizationDataManager:
     def save_update(file_path: str, update: Update) -> None:
         lock = FileLock(f"{file_path}.lock")
         with lock:
-            with open(file_path, "a") as file:
-                SimulationVisualizationDataManager.__format_json_one_line(
-                    update.serialize(), file
-                )
+            with open(file_path, "a", encoding="utf-8") as file:
+                SimulationVisualizationDataManager.__format_json_one_line(update.serialize(), file)
 
     @staticmethod
     def get_missing_states(
@@ -1385,9 +1260,7 @@ class SimulationVisualizationDataManager:
         loaded_state_orders: list[int],
         is_simulation_complete: bool,
     ) -> tuple[list[str], dict[list[str]], list[int], bool, int, int, int]:
-        sorted_states = SimulationVisualizationDataManager.get_sorted_states(
-            simulation_id
-        )
+        sorted_states = SimulationVisualizationDataManager.get_sorted_states(simulation_id)
 
         if len(sorted_states) == 0:
             return ([], {}, [], False, 0, 0, 0)
@@ -1448,17 +1321,9 @@ class SimulationVisualizationDataManager:
             #     )
             # ]
             # All next states
-            + [
-                next_state_index
-                for next_state_index in range(
-                    necessary_state_index + 1, len(sorted_states)
-                )
-            ]
+            + list(range(necessary_state_index + 1, len(sorted_states)))
             # All previous states
-            + [
-                previous_state_index
-                for previous_state_index in range(necessary_state_index - 1, -1, -1)
-            ]
+            + list(range(necessary_state_index - 1, -1, -1))
         )
 
         for index in indexes_to_load:
@@ -1470,29 +1335,24 @@ class SimulationVisualizationDataManager:
                 state_orders_to_keep.append(order)
 
                 all_state_indexes_in_client.append(index)
-                if index > last_state_index_in_client:
-                    last_state_index_in_client = index
+
+                last_state_index_in_client = max(last_state_index_in_client, index)
 
                 continue
 
             # Don't add states if the max number of states is reached
             # but continue the loop to know which states need to be kept
-            if (
-                len(missing_states)
-                >= SimulationVisualizationDataManager.__MAX_STATES_AT_ONCE
-            ):
+            if len(missing_states) >= SimulationVisualizationDataManager.__MAX_STATES_AT_ONCE:
                 continue
 
-            state_file_path = (
-                SimulationVisualizationDataManager.get_saved_simulation_state_file_path(
-                    simulation_id, order, state_timestamp
-                )
+            state_file_path = SimulationVisualizationDataManager.get_saved_simulation_state_file_path(
+                simulation_id, order, state_timestamp
             )
 
             lock = FileLock(f"{state_file_path}.lock")
 
             with lock:
-                with open(state_file_path, "r") as file:
+                with open(state_file_path, "r", encoding="utf-8") as file:
                     environment_data = file.readline()
                     missing_states.append(environment_data)
 
@@ -1504,19 +1364,14 @@ class SimulationVisualizationDataManager:
                     missing_updates[order] = current_state_updates
 
                     all_state_indexes_in_client.append(index)
-                    if index > last_state_index_in_client:
-                        last_state_index_in_client = index
+
+                    last_state_index_in_client = max(last_state_index_in_client, index)
 
         client_has_last_state = last_state_index_in_client == len(sorted_states) - 1
-        client_has_max_states = len(missing_states) + len(state_orders_to_keep) >= len(
-            indexes_to_load
-        )
+        client_has_max_states = len(missing_states) + len(state_orders_to_keep) >= len(indexes_to_load)
 
-        should_request_more_states = (
-            is_simulation_complete and not client_has_max_states
-        ) or (
-            not is_simulation_complete
-            and (client_has_last_state or not client_has_max_states)
+        should_request_more_states = (is_simulation_complete and not client_has_max_states) or (
+            not is_simulation_complete and (client_has_last_state or not client_has_max_states)
         )
 
         first_continuous_state_index = necessary_state_index
@@ -1524,9 +1379,7 @@ class SimulationVisualizationDataManager:
 
         all_state_indexes_in_client.sort()
 
-        necessary_state_index_index = all_state_indexes_in_client.index(
-            necessary_state_index
-        )
+        necessary_state_index_index = all_state_indexes_in_client.index(necessary_state_index)
 
         for index in range(necessary_state_index_index - 1, -1, -1):
             if all_state_indexes_in_client[index] == first_continuous_state_index - 1:
@@ -1534,9 +1387,7 @@ class SimulationVisualizationDataManager:
             else:
                 break
 
-        for index in range(
-            necessary_state_index_index + 1, len(all_state_indexes_in_client)
-        ):
+        for index in range(necessary_state_index_index + 1, len(all_state_indexes_in_client)):
             if all_state_indexes_in_client[index] == last_continuous_state_index + 1:
                 last_continuous_state_index += 1
             else:
@@ -1567,19 +1418,15 @@ class SimulationVisualizationDataManager:
 
     @staticmethod
     def get_saved_simulation_polylines_lock(simulation_id: str) -> FileLock:
-        simulation_directory_path = (
-            SimulationVisualizationDataManager.get_saved_simulation_directory_path(
-                simulation_id
-            )
+        simulation_directory_path = SimulationVisualizationDataManager.get_saved_simulation_directory_path(
+            simulation_id
         )
         return FileLock(f"{simulation_directory_path}/polylines.lock")
 
     @staticmethod
     def get_saved_simulation_polylines_directory_path(simulation_id: str) -> str:
-        simulation_directory_path = (
-            SimulationVisualizationDataManager.get_saved_simulation_directory_path(
-                simulation_id
-            )
+        simulation_directory_path = SimulationVisualizationDataManager.get_saved_simulation_directory_path(
+            simulation_id
         )
         directory_path = f"{simulation_directory_path}/{SimulationVisualizationDataManager.__POLYLINES_DIRECTORY_NAME}"
 
@@ -1590,13 +1437,11 @@ class SimulationVisualizationDataManager:
 
     @staticmethod
     def get_saved_simulation_polylines_version_file_path(simulation_id: str) -> str:
-        directory_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_directory_path(
-            simulation_id
-        )
+        directory_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_directory_path(simulation_id)
         file_path = f"{directory_path}/{SimulationVisualizationDataManager.__POLYLINES_VERSION_FILE_NAME}"
 
         if not os.path.exists(file_path):
-            with open(file_path, "w") as file:
+            with open(file_path, "w", encoding="utf-8") as file:
                 file.write(str(0))
 
         return file_path
@@ -1606,11 +1451,9 @@ class SimulationVisualizationDataManager:
         """
         Should always be called in a lock.
         """
-        file_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_version_file_path(
-            simulation_id
-        )
+        file_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_version_file_path(simulation_id)
 
-        with open(file_path, "w") as file:
+        with open(file_path, "w", encoding="utf-8") as file:
             file.write(str(version))
 
     @staticmethod
@@ -1618,63 +1461,43 @@ class SimulationVisualizationDataManager:
         """
         Should always be called in a lock.
         """
-        file_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_version_file_path(
-            simulation_id
-        )
+        file_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_version_file_path(simulation_id)
 
-        with open(file_path, "r") as file:
+        with open(file_path, "r", encoding="utf-8") as file:
             return int(file.read())
 
     @staticmethod
     def get_polylines_version_with_lock(simulation_id: str) -> int:
-        lock = SimulationVisualizationDataManager.get_saved_simulation_polylines_lock(
-            simulation_id
-        )
+        lock = SimulationVisualizationDataManager.get_saved_simulation_polylines_lock(simulation_id)
         with lock:
-            return SimulationVisualizationDataManager.get_polylines_version(
-                simulation_id
-            )
+            return SimulationVisualizationDataManager.get_polylines_version(simulation_id)
 
     @staticmethod
     def get_saved_simulation_polylines_file_path(simulation_id: str) -> str:
-        directory_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_directory_path(
-            simulation_id
-        )
+        directory_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_directory_path(simulation_id)
 
         file_path = f"{directory_path}/{SimulationVisualizationDataManager.__POLYLINES_FILE_NAME}.jsonl"
 
         if not os.path.exists(file_path):
-            with open(file_path, "w") as file:
+            with open(file_path, "w", encoding="utf-8") as file:
                 file.write("")
 
         return file_path
 
     @staticmethod
-    def set_polylines(
-        simulation_id: str, polylines: dict[str, tuple[str, list[float]]]
-    ) -> None:
+    def set_polylines(simulation_id: str, polylines: dict[str, tuple[str, list[float]]]) -> None:
 
-        file_path = (
-            SimulationVisualizationDataManager.get_saved_simulation_polylines_file_path(
-                simulation_id
-            )
-        )
+        file_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_file_path(simulation_id)
 
-        lock = SimulationVisualizationDataManager.get_saved_simulation_polylines_lock(
-            simulation_id
-        )
+        lock = SimulationVisualizationDataManager.get_saved_simulation_polylines_lock(simulation_id)
 
         with lock:
             # Increment the version to notify the client that the polylines have changed
-            version = SimulationVisualizationDataManager.get_polylines_version(
-                simulation_id
-            )
+            version = SimulationVisualizationDataManager.get_polylines_version(simulation_id)
             version += 1
-            SimulationVisualizationDataManager.set_polylines_version(
-                simulation_id, version
-            )
+            SimulationVisualizationDataManager.set_polylines_version(simulation_id, version)
 
-            with open(file_path, "a") as file:
+            with open(file_path, "a", encoding="utf-8") as file:
                 for coordinates_string, (
                     encoded_polyline,
                     coefficients,
@@ -1684,9 +1507,7 @@ class SimulationVisualizationDataManager:
                         "encodedPolyline": encoded_polyline,
                         "coefficients": coefficients,
                     }
-                    SimulationVisualizationDataManager.__format_json_one_line(
-                        data, file
-                    )
+                    SimulationVisualizationDataManager.__format_json_one_line(data, file)
 
     @staticmethod
     def get_polylines(
@@ -1695,22 +1516,16 @@ class SimulationVisualizationDataManager:
 
         polylines = []
 
-        lock = SimulationVisualizationDataManager.get_saved_simulation_polylines_lock(
-            simulation_id
-        )
+        lock = SimulationVisualizationDataManager.get_saved_simulation_polylines_lock(simulation_id)
 
         version = 0
 
         with lock:
-            version = SimulationVisualizationDataManager.get_polylines_version(
-                simulation_id
-            )
+            version = SimulationVisualizationDataManager.get_polylines_version(simulation_id)
 
-            file_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_file_path(
-                simulation_id
-            )
+            file_path = SimulationVisualizationDataManager.get_saved_simulation_polylines_file_path(simulation_id)
 
-            with open(file_path, "r") as file:
+            with open(file_path, "r", encoding="utf-8") as file:
                 for line in file:
                     polylines.append(line)
 
