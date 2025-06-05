@@ -1,0 +1,9 @@
+FROM python:3.11.12-alpine3.21
+
+WORKDIR /app/python
+
+CMD \ 
+  echo "Running: pip install --upgrade pip -r requirements.txt -e ." && \
+  pip install --upgrade pip -r requirements.txt -e . && \
+  echo "Running: tail -f /dev/null" && \
+  tail -f /dev/null

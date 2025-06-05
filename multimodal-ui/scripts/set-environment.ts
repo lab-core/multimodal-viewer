@@ -15,6 +15,8 @@ const PUBLIC_ENVIRONMENT_FILE_PATH = join(
 try {
   const environment = parse(readFileSync(ENVIRONMENT_FILE_PATH, 'utf8'));
   const CLIENT_PORT = parseInt(environment['CLIENT_PORT']);
+  // Get the host set in the environment by Docker if available
+  const HOST = process.env['HOST'] ?? '127.0.0.1';
 
   if (CLIENT_PORT === undefined) {
     throw new Error('CLIENT_PORT is not defined in the environment file');
@@ -27,6 +29,10 @@ try {
   angularJson['projects']['multimodal-ui']['architect']['serve']['options'][
     'port'
   ] = CLIENT_PORT;
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+  angularJson['projects']['multimodal-ui']['architect']['serve']['options'][
+    'host'
+  ] = HOST;
   writeFileSync(ANGULAR_JSON_PATH, JSON.stringify(angularJson, null, 2));
 
   // Write the environment variables to the public folder

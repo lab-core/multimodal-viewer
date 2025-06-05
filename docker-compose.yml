@@ -57,3 +57,38 @@ services:
       - publish-test-only
     volumes:
       - ./python:/app/python
+
+  angular-dev:
+    container_name: angular-dev
+    env_file:
+      - .env
+    environment:
+      - HOST=0.0.0.0
+    ports:
+      - '${CLIENT_PORT}:${CLIENT_PORT}'
+    build:
+      context: .
+      dockerfile: Dockerfile.angular-dev
+    profiles:
+      - angular-dev
+    volumes:
+      - ./multimodal-ui:/app/angular
+      - ./.env:/app/.env
+
+  python-dev:
+    container_name: python-dev
+    env_file:
+      - .env
+    environment:
+      - HOST=0.0.0.0
+    ports:
+      - '${SERVER_PORT}:${SERVER_PORT}'
+    build:
+      context: .
+      dockerfile: Dockerfile.python-dev
+    profiles:
+      - python-dev
+    volumes:
+      - ./python:/app/python
+      - ./.env:/app/.env
+      - ./data:/app/data

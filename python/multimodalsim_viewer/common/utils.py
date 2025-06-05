@@ -70,12 +70,17 @@ class _Environment:
     def CLIENT_PORT(self) -> int:
         return int(environment.get("CLIENT_PORT"))
 
+    @property
+    def HOST(self) -> str:
+        # Get the host from the environment set by Docker if available
+        return os.getenv("HOST", "127.0.0.1")
+
 
 _environment = _Environment()
 SERVER_PORT = _environment.SERVER_PORT
 CLIENT_PORT = _environment.CLIENT_PORT
+HOST = _environment.HOST
 
-HOST = "127.0.0.1"
 
 CLIENT_ROOM = "client"
 SIMULATION_ROOM = "simulation"
