@@ -198,7 +198,7 @@ This process can also be done using the provided GitHub action `Build`. You can 
 
 Some variables, such as the client and server ports, are defined in an environment file.
 
-The `default-environment.json` file in the root folder of the repository defines the default environment variables that will be used by the built application. You can create a `environment.json` file in the folder from which you run the application, and it will override the default values.
+The `.env` file in the root folder of the repository defines the default environment variables that will be used by the built application. You can create a `.env` file in the folder from which you run the application (CWD), and it will override the default values.
 
 After changing them, you will need to restart all processes for the changes to take effect.
 

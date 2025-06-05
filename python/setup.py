@@ -27,6 +27,7 @@ setup(
         "filelock==3.18.0",
         "flask_cors==6.0.0",
         "questionary==2.1.0",
+        "python-dotenv==1.1.0",
         "multimodalsim==0.0.1",
         # UI requirements
     ],
