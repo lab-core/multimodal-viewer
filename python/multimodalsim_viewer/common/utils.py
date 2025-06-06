@@ -44,6 +44,9 @@ def load_environment() -> None:
     # Load environment from the current working directory
     load_environment_file(os.path.join(os.getcwd(), ".env"), environment)
 
+    # Get host from docker if available and set it in environment
+    environment["HOST"] = os.getenv("HOST", "127.0.0.1")
+
     # Write environment into static folder
     STATIC_ENVIRONMENT_PATH = os.path.join(
         CURRENT_DIRECTORY, "../ui/static/environment.json"
@@ -56,7 +59,6 @@ def load_environment() -> None:
             )
 
 
-#
 class _Environment:
     def __init__(self):
         load_environment()
@@ -72,8 +74,7 @@ class _Environment:
 
     @property
     def HOST(self) -> str:
-        # Get the host from the environment set by Docker if available
-        return os.getenv("HOST", "127.0.0.1")
+        return environment.get("HOST")
 
 
 _environment = _Environment()
