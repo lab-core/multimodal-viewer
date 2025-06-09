@@ -8,6 +8,7 @@ This project is an extension of the packaged [multimodal-simulation](https://git
   - [Development](#development)
     - [Angular](#angular)
     - [Python](#python)
+    - [Docker](#docker)
     - [Building the Frontend](#building-the-frontend)
     - [Changing Environment Variables](#changing-environment-variables)
   - [Frontend](#frontend)
@@ -174,6 +175,30 @@ multimodalsim-stop-ui
 multimodalsim-stop-all
 ```
 
+### Docker
+
+Alternatively, you can use Docker to run the project. A `docker-compose.yml` file is provided in the root of the repository and contains two jobs to setup containers with the required environment to run the project.
+
+You can run these containers with the following command:
+
+```bash
+# Frontend
+docker compose up --build angular-dev --detach # Run the container in the background
+docker compose exec angular-dev sh             # Open a shell in the container
+
+# Backend
+docker compose up --build python-dev --detach  # Run the container in the background
+docker compose exec python-dev sh              # Open a shell in the container
+```
+
+Once a shell is opened in the container, you can execute the commands provided above to run the server, the frontend, or a simulation. All changes made in the container affects the local files, so you can edit the files in your favorite editor and run the commands in the container.
+
+You can stop the containers with the following command:
+
+```bash
+docker compose down angular-dev python-dev
+```
+
 ### Building the Frontend
 
 If you made changes to the frontend, you might want to rebuild it to be able to run it without Angular later.
@@ -198,7 +223,7 @@ This process can also be done using the provided GitHub action `Build`. You can 
 
 Some variables, such as the client and server ports, are defined in an environment file.
 
-The `default-environment.json` file in the root folder of the repository defines the default environment variables that will be used by the built application. You can create a `environment.json` file in the folder from which you run the application, and it will override the default values.
+The `.env` file in the root folder of the repository defines the default environment variables that will be used by the built application. You can create a `.env` file in the folder from which you run the application (CWD), and it will override the default values.
 
 After changing them, you will need to restart all processes for the changes to take effect.
 
@@ -242,23 +267,23 @@ It's worth noting that two types of processes coexist in the server. The first o
 
 ### Components
 
-##### `server.py`
+#### `server.py`
 
 This file contains the main function `run_server` of the communication hub. All socket communications are defined in this file and the server state is handled here.
 
-##### `server_utils.py`
+#### `server_utils.py`
 
 This file contains all global constants and utility functions used in the server.
 
-##### `http_routes.py`
+#### `http_routes.py`
 
 This module contains the HTTP routes used to communicate with the frontend. Those HTTP routes are used to manage the file import, export and delete operations.
 
-##### `simulation_manager.py`
+#### `simulation_manager.py`
 
 This module defines the `SimulationManager` class that will handle the state of each simulation available, running or saved, in the server. It will also handle the communication with the frontend and the simulation processes along with the process instanciation and termination.
 
-##### `simulation_visualization_data_collector.py`
+#### `simulation_visualization_data_collector.py`
 
 This module provide a `DataCollector` for the data extraction and the simulation-server communication. A `DataCollector` is a component of the multimodal-simulator that is called after each event processed. It is used to extract the data from the simulation save it and notify the server.
 
@@ -266,13 +291,13 @@ When initialized, the `DataCollector` will configure the communications and crea
 
 During the simulation, the `collect` method is called and handle every event processed. It will extract the data from the simulation and create multiple updates that will be saved along the environment to be able to reconstruct every moment of the simulation.
 
-##### `simulation_visualization_data_model.py`
+#### `simulation_visualization_data_model.py`
 
 This module centralized every read and write operation on the simulation data. Each useful component of multimodal-simulator has a corresponding data model that will be used to serialize or deserialize the data and construct it from the original components.
 
 The `SimulationVisualizationDataModel` class is a static class where all read and write operations will pass through. It will guarantee the absence of concurrent access.
 
-##### `simulation.py`
+#### `simulation.py`
 
 This module contains the function called by the communication hub when instantiating a simulation process from the frontend. It also provide a CLI to run the simulation process without the frontend.
 

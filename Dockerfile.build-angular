@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY multimodal-ui/ /app/angular
 
-COPY default-environment.json /app/
+COPY .env /app/
 
 CMD \
   echo "Running: rm -rf /app/angular/dist" && \

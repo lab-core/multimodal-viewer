@@ -4,8 +4,9 @@ import os
 import shutil
 import threading
 from enum import Enum
-from json import dumps, loads
+from json import dumps
 
+from dotenv import dotenv_values
 from filelock import FileLock
 from flask import request
 from flask_socketio import emit
@@ -21,36 +22,27 @@ def load_environment() -> None:
         return
     is_environment_loaded = True
 
-    # Copy default environment if it exists
+    # Copy .env if it exists
     CURRENT_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
-    DEFAULT_ENVIRONMENT_PATH = os.path.join(
-        CURRENT_DIRECTORY, "../../../default-environment.json"
-    )
-    ENVIRONMENT_PATH = os.path.join(CURRENT_DIRECTORY, "environments/environment.json")
+    DEFAULT_ENVIRONMENT_PATH = os.path.join(CURRENT_DIRECTORY, "../../../.env")
+    ENVIRONMENT_PATH = os.path.join(CURRENT_DIRECTORY, "environments/.env")
 
     if os.path.exists(DEFAULT_ENVIRONMENT_PATH):
         shutil.copy(DEFAULT_ENVIRONMENT_PATH, ENVIRONMENT_PATH)
 
-    # Load environment variables from environment.json
+    # Load environment variables from .env
     def load_environment_file(path: str, previous_environment: dict) -> None:
         if not os.path.exists(path):
             return previous_environment
 
-        lock = FileLock(f"{path}.lock")
-
-        with lock:
-            with open(path) as environment_file:
-                content = loads(
-                    "\n".join(environment_file.readlines()).replace("'", '"')
-                )
-
-                for key in content:
-                    previous_environment[key] = content[key]
+        values = dotenv_values(path)
+        for key in values:
+            previous_environment[key] = values[key]
 
     # Load default environment
     load_environment_file(ENVIRONMENT_PATH, environment)
     # Load environment from the current working directory
-    load_environment_file(os.path.join(os.getcwd(), "environment.json"), environment)
+    load_environment_file(os.path.join(os.getcwd(), ".env"), environment)
 
     # Write environment into static folder
     STATIC_ENVIRONMENT_PATH = os.path.join(
@@ -68,7 +60,7 @@ def load_environment() -> None:
 class _Environment:
     def __init__(self):
         load_environment()
-        print("Environment loaded")
+        print(f"Environment loaded {environment}")
 
     @property
     def SERVER_PORT(self) -> int:
@@ -78,12 +70,17 @@ class _Environment:
     def CLIENT_PORT(self) -> int:
         return int(environment.get("CLIENT_PORT"))
 
+    @property
+    def HOST(self) -> str:
+        # Get the host from the environment set by Docker if available
+        return os.getenv("HOST", "127.0.0.1")
+
 
 _environment = _Environment()
 SERVER_PORT = _environment.SERVER_PORT
 CLIENT_PORT = _environment.CLIENT_PORT
+HOST = _environment.HOST
 
-HOST = "127.0.0.1"
 
 CLIENT_ROOM = "client"
 SIMULATION_ROOM = "simulation"

@@ -1,0 +1,11 @@
+FROM node:22-alpine
+
+WORKDIR /app/angular
+
+CMD \
+  echo "Running: npm install" && \
+  npm install && \
+  echo "Running: tail -f /dev/null" && \
+  tail -f /dev/null
+
+
