@@ -1,4 +1,4 @@
-name: Verify build
+name: Verify Angular build
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
       - main
 
 jobs:
-  verify-build:
+  verify-angular-build:
     runs-on: ubuntu-latest
 
     steps:
@@ -30,7 +30,7 @@ jobs:
         working-directory: ./multimodal-ui
 
       - name: Clear previous build artifacts
-        run: rm -rf ./multimodal_ui/static
+        run: rm -rf ./python/multimodalsim_viewer/ui/static
 
       - name: Copy build artifacts
         run: cp -r ./multimodal-ui/dist/multimodal-ui/browser/ ./python/multimodalsim_viewer/ui/static
