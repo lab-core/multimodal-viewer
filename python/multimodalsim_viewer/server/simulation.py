@@ -80,7 +80,7 @@ def run_simulation_cli():
     parser.add_argument(
         "--offline",
         action="store_true",
-        help="Run the simulation in offline mode without requiring internet access",
+        help="Run the simulation in offline mode (does not connect to the server)",
     )
 
     args = parser.parse_args()
@@ -95,6 +95,11 @@ def run_simulation_cli():
     while name_error is not None:
         print(f"Error: {name_error}")
         name = questionary.text("Enter the name of the simulation (spaces will be replaced by underscores)").ask()
+
+        if name is None:
+            print("Exiting")
+            return
+
         name_error = verify_simulation_name(name)
 
     name = name.replace(" ", "_")
@@ -122,7 +127,9 @@ def run_simulation_cli():
     simulation_id, _ = build_simulation_id(name)
 
     print(
-        f"Running simulation with id: {simulation_id}, data: {data} and {f'max duration: {max_duration}' if max_duration is not None else 'no max duration'}{is_offline and ' in offline mode' or ''}"
+        f"Running simulation with id: {simulation_id}, data: {data} and "
+        f"{f'max duration: {max_duration}' if max_duration is not None else 'no max duration'}"
+        f"{is_offline and ' in offline mode' or ''}"
     )
 
     stop_event = threading.Event()
@@ -141,7 +148,10 @@ def run_simulation_cli():
 
     print("To run a simulation with the same configuration, use the following command:")
     print(
-        f"python simulation.py  --data {data}{f' --max-duration {max_duration}' if max_duration is not None else ''} --name {name}{' --offline' if is_offline else ''}"
+        f"multimodalsim-simulation  --data {data} "
+        f"{f'--max-duration {max_duration}' if max_duration is not None else ''} "
+        f"{'--offline' if is_offline else ''} "
+        f"--name {name}"  # Name last to allow quick name change when re-running the command
     )
 
 

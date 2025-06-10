@@ -53,7 +53,8 @@ def run_server():
     @socketio.on("start-simulation")
     def on_client_start_simulation(name, data, response_event, max_duration):
         log(
-            f"starting simulation {name} with data {data}, response event {response_event} and max duration {max_duration}",
+            f"starting simulation {name} with data {data}, "
+            f"response event {response_event} and max duration {max_duration}",
             "client",
         )
         simulation_manager.start_simulation(name, data, response_event, max_duration)
@@ -86,7 +87,9 @@ def run_server():
     @socketio.on("get-missing-simulation-states")
     def on_client_get_missing_simulation_states(simulation_id, visualization_time, loaded_state_orders):
         log(
-            f"getting missing simulation states for {simulation_id} with visualization time {visualization_time} and {len(loaded_state_orders)} loaded state orders ",
+            f"getting missing simulation states for {simulation_id} "
+            f"with visualization time {visualization_time} "
+            f"and {len(loaded_state_orders)} loaded state orders",
             "client",
         )
         simulation_manager.emit_missing_simulation_states(simulation_id, visualization_time, loaded_state_orders)
@@ -174,7 +177,9 @@ def run_server():
         status,
     ):
         log(
-            f"simulation  {simulation_id} identified with data {data}, simulation start time {simulation_start_time}, timestamp {timestamp}, estimated end time {estimated_end_time}, max duration {max_duration} and status {status}",
+            f"simulation  {simulation_id} identified with data {data}, "
+            f"simulation start time {simulation_start_time}, timestamp {timestamp}, "
+            f"estimated end time {estimated_end_time}, max duration {max_duration} and status {status}",
             "simulation",
         )
         simulation_manager.on_simulation_identification(

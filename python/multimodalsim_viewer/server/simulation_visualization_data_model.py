@@ -1068,7 +1068,8 @@ class SimulationVisualizationDataManager:
 
     # The client keeps a maximum of __MAX_STATES_IN_CLIENT_BEFORE_NECESSARY + __MAX_STATES_IN_CLIENT_AFTER_NECESSARY + 1
     # states in memory
-    # The current one, the previous __MAX_STATES_IN_CLIENT_BEFORE_NECESSARY and the next __MAX_STATES_IN_CLIENT_AFTER_NECESSARY
+    # The current one, the previous __MAX_STATES_IN_CLIENT_BEFORE_NECESSARY and
+    # the next __MAX_STATES_IN_CLIENT_AFTER_NECESSARY
     # __MAX_STATES_IN_CLIENT_BEFORE_NECESSARY = 24
     # __MAX_STATES_IN_CLIENT_AFTER_NECESSARY = 50
 
