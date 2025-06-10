@@ -3,6 +3,7 @@ import logging
 import multiprocessing
 
 from flask_socketio import emit
+
 from multimodalsim_viewer.common.utils import (
     CLIENT_ROOM,
     RUNNING_SIMULATION_STATUSES,

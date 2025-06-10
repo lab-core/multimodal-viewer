@@ -5,8 +5,11 @@ import tempfile
 import zipfile
 
 from flask import Blueprint, jsonify, request, send_file
+
 from multimodalsim_viewer.common.utils import get_data_directory_path
-from multimodalsim_viewer.server.simulation_visualization_data_model import SimulationVisualizationDataManager
+from multimodalsim_viewer.server.simulation_visualization_data_model import (
+    SimulationVisualizationDataManager,
+)
 
 http_routes = Blueprint("http_routes", __name__)
 

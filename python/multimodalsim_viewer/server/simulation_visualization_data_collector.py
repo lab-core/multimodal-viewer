@@ -4,7 +4,12 @@ from typing import Optional
 from multimodalsim.observer.data_collector import DataCollector
 from multimodalsim.simulator.environment import Environment
 from multimodalsim.simulator.event import Event, RecurrentTimeSyncEvent
-from multimodalsim.simulator.optimization_event import EnvironmentIdle, EnvironmentUpdate, Hold, Optimize
+from multimodalsim.simulator.optimization_event import (
+    EnvironmentIdle,
+    EnvironmentUpdate,
+    Hold,
+    Optimize,
+)
 from multimodalsim.simulator.passenger_event import (
     PassengerAlighting,
     PassengerAssignment,
@@ -26,7 +31,15 @@ from multimodalsim.simulator.vehicle_event import (
     VehicleWaiting,
 )
 from multimodalsim.statistics.data_analyzer import DataAnalyzer
-from multimodalsim_viewer.common.utils import HOST, SERVER_PORT, STATE_SAVE_STEP, SimulationStatus, build_simulation_id
+from socketio import Client
+
+from multimodalsim_viewer.common.utils import (
+    HOST,
+    SERVER_PORT,
+    STATE_SAVE_STEP,
+    SimulationStatus,
+    build_simulation_id,
+)
 from multimodalsim_viewer.server.log_manager import register_log
 from multimodalsim_viewer.server.simulation_visualization_data_model import (
     PassengerLegsUpdate,
@@ -43,7 +56,6 @@ from multimodalsim_viewer.server.simulation_visualization_data_model import (
     VisualizedStop,
     VisualizedVehicle,
 )
-from socketio import Client
 
 
 # MARK: Data Collector

@@ -4,6 +4,7 @@ import time
 from flask import Flask
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
+
 from multimodalsim_viewer.common.utils import (
     CLIENT_ROOM,
     HOST,

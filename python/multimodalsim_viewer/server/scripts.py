@@ -2,10 +2,11 @@ import threading
 import time
 
 import requests
+from socketio import Client
+
 from multimodalsim_viewer.common.utils import CLIENT_PORT, HOST, SERVER_PORT
 from multimodalsim_viewer.server.server import run_server
 from multimodalsim_viewer.ui.cli import main as run_ui
-from socketio import Client
 
 
 def run_server_and_ui():

@@ -5,6 +5,7 @@ import time
 import webbrowser
 
 from flask import Flask, send_from_directory
+
 from multimodalsim_viewer.common.utils import CLIENT_PORT, HOST, SERVER_PORT
 
 

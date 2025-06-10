@@ -31,7 +31,7 @@ setup(
         "multimodalsim==0.0.1",
         # UI requirements
     ],
-    extras_require={"dev": ["black==25.1.0", "pylint==3.3.7"]},
+    extras_require={"dev": ["black==25.1.0", "pylint==3.3.7", "isort==6.0.1"]},
     python_requires="==3.11.*",
     entry_points={
         "console_scripts": [
