@@ -9,6 +9,7 @@ This project is an extension of the packaged [multimodal-simulation](https://git
     - [Angular](#angular)
     - [Python](#python)
     - [Docker](#docker)
+    - [Lint and formatting](#lint-and-formatting)
     - [Building the Frontend](#building-the-frontend)
     - [Changing Environment Variables](#changing-environment-variables)
   - [Frontend](#frontend)
@@ -198,6 +199,29 @@ You can stop the containers with the following command:
 ```bash
 docker compose down angular-dev python-dev
 ```
+
+### Lint and formatting
+
+The angular code is formatted using Prettier and linted using ESLint. The following commands are available in the `multimodal-ui` folder:
+
+```bash
+npm run lint         # Detect linting errors
+npm run format:check # Detect formatting errors
+npm run format       # Format the code
+```
+
+The python code is formatted using Black, linted using Pylint and an additional library Isort is used to organize the imports. After installing all dev dependencies, you can run the following commands in the `python` folder:
+
+```bash
+# Two options to install dev dependencies
+python -m pip install --upgrade multimodalsim-viewer[dev] 
+python -m pip install --upgrade -r requirements.txt
+
+pylint . # Detect linting errors
+black .  # Format the code
+isort .  # Organize the imports
+```
+
 
 ### Building the Frontend
 
