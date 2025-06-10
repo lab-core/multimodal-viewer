@@ -58,7 +58,7 @@ def handle_zip_upload(folder_path):
     try:
         with zipfile.ZipFile(zip_path, "r") as zip_ref:
             zip_ref.extractall(actual_folder_path)
-            logging.info(f"Extracted files: {zip_ref.namelist()}")
+            logging.info("Extracted files: %s", zip_ref.namelist())
 
         os.remove(zip_path)
     except zipfile.BadZipFile:
@@ -78,7 +78,7 @@ def handle_zip_upload(folder_path):
 @http_routes.route("/api/input_data/<folder_name>", methods=["GET"])
 def export_input_data(folder_name):
     folder_path = get_data_directory_path(folder_name)
-    logging.info(f"Requested folder: {folder_path}")
+    logging.info("Requested folder: %s", folder_path)
 
     zip_path = zip_folder(folder_path, folder_name)
     if not zip_path:
@@ -107,7 +107,7 @@ def delete_input_data(folder_name):
 @http_routes.route("/api/simulation/<folder_name>", methods=["GET"])
 def export_saved_simulation(folder_name):
     folder_path = SimulationVisualizationDataManager.get_saved_simulation_directory_path(folder_name)
-    logging.info(f"Requested folder: {folder_path}")
+    logging.info("Requested folder: %s", folder_path)
 
     zip_path = zip_folder(folder_path, folder_name)
     if not zip_path:

@@ -148,11 +148,11 @@ def get_available_data():
 
 def log(message: str, auth_type: str, level=logging.INFO, should_emit=True) -> None:
     if auth_type == "server":
-        logging.log(level, f"[{auth_type}] {message}")
+        logging.log(level, "[%s] %s", auth_type, message)
         if should_emit:
             emit("log", f"{level} [{auth_type}] {message}", to=CLIENT_ROOM)
     else:
-        logging.log(level, f"[{auth_type}] {get_session_id()} {message}")
+        logging.log(level, "[%s] %s %s", auth_type, get_session_id(), message)
         if should_emit:
             emit(
                 "log",
