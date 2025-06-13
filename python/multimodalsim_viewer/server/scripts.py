@@ -2,10 +2,11 @@ import threading
 import time
 
 import requests
+from socketio import Client
+
 from multimodalsim_viewer.common.utils import CLIENT_PORT, HOST, SERVER_PORT
 from multimodalsim_viewer.server.server import run_server
 from multimodalsim_viewer.ui.cli import main as run_ui
-from socketio import Client, exceptions
 
 
 def run_server_and_ui():
@@ -38,9 +39,6 @@ def terminate_server():
 
         print("Server terminated")
 
-    except exceptions.ConnectionError as e:
-        print(f"Failed to connect to server (server not running?): {e}")
-
     except Exception as e:
         print(f"Error: {e}")
 
@@ -49,15 +47,12 @@ def terminate_ui():
     print("Terminating UI...")
 
     try:
-        response = requests.get(f"http://{HOST}:{CLIENT_PORT}/terminate")
+        response = requests.get(f"http://{HOST}:{CLIENT_PORT}/terminate", timeout=5)
 
         if response.status_code == 200:
             print("UI terminated")
         else:
             print(f"Failed to terminate UI: {response.status_code}")
-
-    except requests.exceptions.RequestException as e:
-        print(f"Error: {e}")
 
     except Exception as e:
         print(f"Error: {e}")

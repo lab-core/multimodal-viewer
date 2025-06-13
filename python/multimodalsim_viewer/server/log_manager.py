@@ -11,5 +11,5 @@ def register_log(simulation_id, message):
     if not os.path.exists(log_directory_path):
         os.makedirs(log_directory_path)
 
-    with open(file_path, "a") as file:
+    with open(file_path, "a", encoding="utf-8") as file:
         file.write(message + "\n")

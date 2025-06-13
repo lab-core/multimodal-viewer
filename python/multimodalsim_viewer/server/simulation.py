@@ -1,10 +1,14 @@
+import argparse
 import os
+import sys
 import threading
 
+import questionary
 from multimodalsim.observer.data_collector import DataContainer, StandardDataCollector
 from multimodalsim.observer.environment_observer import EnvironmentObserver
 from multimodalsim.simulator.simulator import Simulator
 from multimodalsim.statistics.data_analyzer import FixedLineDataAnalyzer
+
 from multimodalsim_viewer.common.utils import (
     build_simulation_id,
     get_available_data,
@@ -54,9 +58,7 @@ def run_simulation(
     simulation_thread.start()
 
     # Wait for the simulation to finish
-    while simulation_thread.is_alive() and (
-        stop_event is None or not stop_event.is_set()
-    ):
+    while simulation_thread.is_alive() and (stop_event is None or not stop_event.is_set()):
         simulation_thread.join(timeout=5)  # Check every 5 seconds
 
     if simulation_thread.is_alive():
@@ -70,20 +72,15 @@ def run_simulation(
 
 
 def run_simulation_cli():
-    import argparse
-
-    import questionary
 
     parser = argparse.ArgumentParser(description="Run a simulation")
     parser.add_argument("--name", type=str, help="The name of the simulation")
     parser.add_argument("--data", type=str, help="The data to use for the simulation")
-    parser.add_argument(
-        "--max-duration", type=float, help="The maximum duration to run the simulation"
-    )
+    parser.add_argument("--max-duration", type=float, help="The maximum duration to run the simulation")
     parser.add_argument(
         "--offline",
         action="store_true",
-        help="Run the simulation in offline mode without requiring internet access",
+        help="Run the simulation in offline mode (does not connect to the server)",
     )
 
     args = parser.parse_args()
@@ -97,9 +94,12 @@ def run_simulation_cli():
 
     while name_error is not None:
         print(f"Error: {name_error}")
-        name = questionary.text(
-            "Enter the name of the simulation (spaces will be replaced by underscores)"
-        ).ask()
+        name = questionary.text("Enter the name of the simulation (spaces will be replaced by underscores)").ask()
+
+        if name is None:
+            print("Exiting")
+            return
+
         name_error = verify_simulation_name(name)
 
     name = name.replace(" ", "_")
@@ -108,7 +108,7 @@ def run_simulation_cli():
 
     if len(available_data) == 0:
         print("No input data is available, please provide some in the data folder")
-        exit(1)
+        sys.exit(1)
 
     if data is None:
         # Get all available data
@@ -122,12 +122,14 @@ def run_simulation_cli():
 
     if data not in available_data:
         print("The provided data is not available")
-        exit(1)
+        sys.exit(1)
 
     simulation_id, _ = build_simulation_id(name)
 
     print(
-        f"Running simulation with id: {simulation_id}, data: {data} and {f'max duration: {max_duration}' if max_duration is not None else 'no max duration'}{is_offline and ' in offline mode' or ''}"
+        f"Running simulation with id: {simulation_id}, data: {data} and "
+        f"{f'max duration: {max_duration}' if max_duration is not None else 'no max duration'}"
+        f"{is_offline and ' in offline mode' or ''}"
     )
 
     stop_event = threading.Event()
@@ -146,8 +148,15 @@ def run_simulation_cli():
 
     print("To run a simulation with the same configuration, use the following command:")
     print(
-        f"python simulation.py  --data {data}{f' --max-duration {max_duration}' if max_duration is not None else ''} --name {name}{f' --offline' if is_offline else ''}"
+        f"multimodalsim-simulation  --data {data} "
+        f"{f'--max-duration {max_duration}' if max_duration is not None else ''} "
+        f"{'--offline' if is_offline else ''} "
+        f"--name {name}"  # Name last to allow quick name change when re-running the command
     )
+
+
+if __name__ == "__main__":
+    run_simulation_cli()
 
 
 if __name__ == "__main__":

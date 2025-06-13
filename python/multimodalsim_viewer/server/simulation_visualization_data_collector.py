@@ -18,7 +18,6 @@ from multimodalsim.simulator.passenger_event import (
     PassengerToBoard,
 )
 from multimodalsim.simulator.simulation import Simulation
-from multimodalsim.simulator.vehicle import Vehicle
 from multimodalsim.simulator.vehicle_event import (
     VehicleAlighted,
     VehicleArrival,
@@ -32,6 +31,8 @@ from multimodalsim.simulator.vehicle_event import (
     VehicleWaiting,
 )
 from multimodalsim.statistics.data_analyzer import DataAnalyzer
+from socketio import Client
+
 from multimodalsim_viewer.common.utils import (
     HOST,
     SERVER_PORT,
@@ -55,7 +56,6 @@ from multimodalsim_viewer.server.simulation_visualization_data_model import (
     VisualizedStop,
     VisualizedVehicle,
 )
-from socketio import Client
 
 
 # MARK: Data Collector
@@ -67,7 +67,10 @@ class SimulationVisualizationDataCollector(DataCollector):
     current_save_file_path: str
 
     max_duration: float | None
-    "Maximum duration of the simulation in in-simulation time (seconds). The simulation will stop if it exceeds this duration."
+    """
+    Maximum duration of the simulation in in-simulation time (seconds). 
+    The simulation will stop if it exceeds this duration.
+    """
 
     # Special events
     last_queued_event_time: float
@@ -103,6 +106,8 @@ class SimulationVisualizationDataCollector(DataCollector):
         offline: bool = False,
         stop_event: threading.Event | None = None,
     ) -> None:
+        super().__init__()
+
         if simulation_id is None:
             simulation_id, _ = build_simulation_id(name)
 
@@ -132,7 +137,7 @@ class SimulationVisualizationDataCollector(DataCollector):
             self.initialize_communication()
 
     @property
-    def isConnected(self) -> bool:
+    def is_connected(self) -> bool:
         return self.sio is not None and self.sio.connected
 
     # MARK: +- Communication
@@ -143,23 +148,23 @@ class SimulationVisualizationDataCollector(DataCollector):
         self.status = SimulationStatus.RUNNING
 
         @sio.on("pause-simulation")
-        def pauseSimulator():
+        def pause_simulator():
             if self._simulation is not None:
                 self._simulation.pause()
                 self.status = SimulationStatus.PAUSED
-                if self.isConnected:
+                if self.is_connected:
                     self.sio.emit("simulation-pause", self.simulation_id)
 
         @sio.on("resume-simulation")
-        def resumeSimulator():
+        def resume_simulator():
             if self._simulation is not None:
                 self._simulation.resume()
                 self.status = SimulationStatus.RUNNING
-                if self.isConnected:
+                if self.is_connected:
                     self.sio.emit("simulation-resume", self.simulation_id)
 
         @sio.on("stop-simulation")
-        def stopSimulator():
+        def stop_simulator():
             if self._simulation is not None:
                 self._simulation.stop()
                 self.status = SimulationStatus.STOPPING
@@ -190,8 +195,7 @@ class SimulationVisualizationDataCollector(DataCollector):
             new_estimated_end_time = min(
                 self.last_estimated_end_time,
                 (
-                    self.simulation_information.simulation_start_time
-                    + self.max_duration
+                    self.simulation_information.simulation_start_time + self.max_duration
                     if self.max_duration is not None
                     else self.last_estimated_end_time
                 ),
@@ -216,9 +220,7 @@ class SimulationVisualizationDataCollector(DataCollector):
             if not self.sio.connected:
                 try:
                     print("Trying to reconnect")
-                    self.sio.connect(
-                        f"http://{HOST}:{SERVER_PORT}", auth={"type": "simulation"}
-                    )
+                    self.sio.connect(f"http://{HOST}:{SERVER_PORT}", auth={"type": "simulation"})
                     print("Connected")
                 except Exception as e:
                     print(f"Failed to connect to server: {e}")
@@ -256,13 +258,12 @@ class SimulationVisualizationDataCollector(DataCollector):
         message = self.process_event(current_event, env)
         register_log(self.simulation_id, message)
 
-        if self.isConnected:
+        if self.is_connected:
             self.sio.emit("log", (self.simulation_id, message))
 
         if (
-            self.last_statistics_update_time == None
-            or current_event.time
-            >= self.last_statistics_update_time + self.statistics_delta_time
+            self.last_statistics_update_time is None
+            or current_event.time >= self.last_statistics_update_time + self.statistics_delta_time
         ):
             self.last_statistics_update_time = current_event.time
             self.add_update(
@@ -289,14 +290,12 @@ class SimulationVisualizationDataCollector(DataCollector):
             )
 
             # Notify the server that the simulation has started and send the simulation start time
-            if self.isConnected:
-                self.sio.emit(
-                    "simulation-start", (self.simulation_id, update.timestamp)
-                )
+            if self.is_connected:
+                self.sio.emit("simulation-start", (self.simulation_id, update.timestamp))
 
         if self.visualized_environment.timestamp != update.timestamp:
             # Notify the server that the simulation time has been updated
-            if self.isConnected:
+            if self.is_connected:
                 self.sio.emit(
                     "simulation-update-time",
                     (
@@ -318,7 +317,7 @@ class SimulationVisualizationDataCollector(DataCollector):
         )
         if estimated_end_time != self.visualized_environment.estimated_end_time:
             # Notify the server that the simulation estimated end time has been updated
-            if self.isConnected:
+            if self.is_connected:
                 self.sio.emit(
                     "simulation-update-estimated-end-time",
                     (self.simulation_id, estimated_end_time),
@@ -331,30 +330,26 @@ class SimulationVisualizationDataCollector(DataCollector):
                 self.simulation_id, self.visualized_environment
             )
 
-        if update.type == UpdateType.CREATE_PASSENGER:
+        if update.update_type == UpdateType.CREATE_PASSENGER:
             self.visualized_environment.add_passenger(update.data)
-        elif update.type == UpdateType.CREATE_VEHICLE:
+        elif update.update_type == UpdateType.CREATE_VEHICLE:
             self.visualized_environment.add_vehicle(update.data)
             data: VisualizedVehicle = update.data
             if data.polylines is not None:
                 self.update_polylines_if_needed(data)
-        elif update.type == UpdateType.UPDATE_PASSENGER_STATUS:
-            passenger = self.visualized_environment.get_passenger(
-                update.data.passenger_id
-            )
+        elif update.update_type == UpdateType.UPDATE_PASSENGER_STATUS:
+            passenger = self.visualized_environment.get_passenger(update.data.passenger_id)
             passenger.status = update.data.status
-        elif update.type == UpdateType.UPDATE_PASSENGER_LEGS:
-            passenger = self.visualized_environment.get_passenger(
-                update.data.passenger_id
-            )
+        elif update.update_type == UpdateType.UPDATE_PASSENGER_LEGS:
+            passenger = self.visualized_environment.get_passenger(update.data.passenger_id)
             legs_update: PassengerLegsUpdate = update.data
             passenger.previous_legs = legs_update.previous_legs
             passenger.next_legs = legs_update.next_legs
             passenger.current_leg = legs_update.current_leg
-        elif update.type == UpdateType.UPDATE_VEHICLE_STATUS:
+        elif update.update_type == UpdateType.UPDATE_VEHICLE_STATUS:
             vehicle = self.visualized_environment.get_vehicle(update.data.vehicle_id)
             vehicle.status = update.data.status
-        elif update.type == UpdateType.UPDATE_VEHICLE_STOPS:
+        elif update.update_type == UpdateType.UPDATE_VEHICLE_STOPS:
             vehicle = self.visualized_environment.get_vehicle(update.data.vehicle_id)
             stops_update: VehicleStopsUpdate = update.data
             vehicle.previous_stops = stops_update.previous_stops
@@ -362,13 +357,11 @@ class SimulationVisualizationDataCollector(DataCollector):
             vehicle.current_stop = stops_update.current_stop
             if vehicle.polylines is not None:
                 self.update_polylines_if_needed(vehicle)
-        elif update.type == UpdateType.UPDATE_STATISTIC:
+        elif update.update_type == UpdateType.UPDATE_STATISTIC:
             statistic_update: StatisticUpdate = update.data
             self.visualized_environment.statistic = statistic_update.statistic
 
-        SimulationVisualizationDataManager.save_update(
-            self.current_save_file_path, update
-        )
+        SimulationVisualizationDataManager.save_update(self.current_save_file_path, update)
 
         self.update_counter += 1
 
@@ -383,13 +376,9 @@ class SimulationVisualizationDataCollector(DataCollector):
 
         # Notify if their are not enough polylines
         if len(polylines) < len(stops) - 1:
-            raise ValueError(
-                f"Vehicle {vehicle.vehicle_id} has not enough polylines for its stops"
-            )
+            raise ValueError(f"Vehicle {vehicle.vehicle_id} has not enough polylines for its stops")
 
-        stops_pairs: list[
-            tuple[tuple[VisualizedStop, VisualizedStop], tuple[str, list[float]]]
-        ] = zip(
+        stops_pairs: list[tuple[tuple[VisualizedStop, VisualizedStop], tuple[str, list[float]]]] = zip(
             [(stops[i], stops[i + 1]) for i in range(len(stops) - 1)],
             polylines.values(),
             strict=False,  # There may be more polylines than stops
@@ -406,22 +395,20 @@ class SimulationVisualizationDataCollector(DataCollector):
                 or second_stop.latitude is None
                 or second_stop.longitude is None
             ):
-                raise ValueError(
-                    f"Vehicle {vehicle.vehicle_id} has stops without coordinates"
-                )
+                raise ValueError(f"Vehicle {vehicle.vehicle_id} has stops without coordinates")
 
-            coordinates_pair = f"{first_stop.latitude},{first_stop.longitude},{second_stop.latitude},{second_stop.longitude}"
+            coordinates_pair = (
+                f"{first_stop.latitude},{first_stop.longitude},{second_stop.latitude},{second_stop.longitude}"
+            )
 
             if coordinates_pair not in self.saved_polylines_coordinates_pairs:
                 polylines_to_save[coordinates_pair] = polyline
                 self.saved_polylines_coordinates_pairs.add(coordinates_pair)
 
         if len(polylines_to_save) > 0:
-            SimulationVisualizationDataManager.set_polylines(
-                self.simulation_id, polylines_to_save
-            )
+            SimulationVisualizationDataManager.set_polylines(self.simulation_id, polylines_to_save)
 
-        if self.isConnected:
+        if self.is_connected:
             self.sio.emit(
                 "simulation-update-polylines-version",
                 self.simulation_id,
@@ -440,9 +427,7 @@ class SimulationVisualizationDataCollector(DataCollector):
                 ),
                 environment,
             )
-            previous_passenger = self.visualized_environment.get_passenger(
-                event.state_machine.owner.id
-            )
+            previous_passenger = self.visualized_environment.get_passenger(event.state_machine.owner.id)
             self.add_update(
                 Update(
                     UpdateType.UPDATE_PASSENGER_LEGS,
@@ -474,16 +459,13 @@ class SimulationVisualizationDataCollector(DataCollector):
         self.vehicle_notification_event_queue = []
 
     @property
-    def hasToFlush(self) -> bool:
-        return (
-            len(self.passenger_assignment_event_queue) > 0
-            or len(self.vehicle_notification_event_queue) > 0
-        )
+    def has_to_flush(self) -> bool:
+        return len(self.passenger_assignment_event_queue) > 0 or len(self.vehicle_notification_event_queue) > 0
 
     # MARK: +- Process Event
     def process_event(self, event: Event, environment: Environment) -> str:
         # In case that a queued event is not linked to EnvironmentIdle
-        if self.hasToFlush and event.time > self.last_queued_event_time:
+        if self.has_to_flush and event.time > self.last_queued_event_time:
             self.flush(environment)
 
         # Optimize
@@ -492,20 +474,18 @@ class SimulationVisualizationDataCollector(DataCollector):
             return f"{event.time} TODO Optimize"
 
         # EnvironmentUpdate
-        elif isinstance(event, EnvironmentUpdate):
+        if isinstance(event, EnvironmentUpdate):
             # Do nothing ?
             return f"{event.time} TODO EnvironmentUpdate"
 
         # EnvironmentIdle
-        elif isinstance(event, EnvironmentIdle):
+        if isinstance(event, EnvironmentIdle):
             self.flush(environment)
             return f"{event.time} TODO EnvironmentIdle"
 
         # PassengerRelease
-        elif isinstance(event, PassengerRelease):
-            passenger = VisualizedPassenger.from_trip_and_environment(
-                event.trip, environment
-            )
+        if isinstance(event, PassengerRelease):
+            passenger = VisualizedPassenger.from_trip_and_environment(event.trip, environment)
             self.add_update(
                 Update(
                     UpdateType.CREATE_PASSENGER,
@@ -517,13 +497,13 @@ class SimulationVisualizationDataCollector(DataCollector):
             return f"{event.time} TODO PassengerRelease"
 
         # PassengerAssignment
-        elif isinstance(event, PassengerAssignment):
+        if isinstance(event, PassengerAssignment):
             self.passenger_assignment_event_queue.append(event)
             self.last_queued_event_time = event.time
             return f"{event.time} TODO PassengerAssignment"
 
         # PassengerReady
-        elif isinstance(event, PassengerReady):
+        if isinstance(event, PassengerReady):
             self.add_update(
                 Update(
                     UpdateType.UPDATE_PASSENGER_STATUS,
@@ -537,7 +517,7 @@ class SimulationVisualizationDataCollector(DataCollector):
             return f"{event.time} TODO PassengerReady"
 
         # PassengerToBoard
-        elif isinstance(event, PassengerToBoard):
+        if isinstance(event, PassengerToBoard):
             self.add_update(
                 Update(
                     UpdateType.UPDATE_PASSENGER_STATUS,
@@ -548,9 +528,7 @@ class SimulationVisualizationDataCollector(DataCollector):
                 ),
                 environment,
             )
-            previous_passenger = self.visualized_environment.get_passenger(
-                event.state_machine.owner.id
-            )
+            previous_passenger = self.visualized_environment.get_passenger(event.state_machine.owner.id)
             self.add_update(
                 Update(
                     UpdateType.UPDATE_PASSENGER_LEGS,
@@ -564,7 +542,7 @@ class SimulationVisualizationDataCollector(DataCollector):
             return f"{event.time} TODO PassengerToBoard"
 
         # PassengerAlighting
-        elif isinstance(event, PassengerAlighting):
+        if isinstance(event, PassengerAlighting):
             self.add_update(
                 Update(
                     UpdateType.UPDATE_PASSENGER_STATUS,
@@ -575,9 +553,7 @@ class SimulationVisualizationDataCollector(DataCollector):
                 ),
                 environment,
             )
-            previous_passenger = self.visualized_environment.get_passenger(
-                event.state_machine.owner.id
-            )
+            previous_passenger = self.visualized_environment.get_passenger(event.state_machine.owner.id)
             self.add_update(
                 Update(
                     UpdateType.UPDATE_PASSENGER_LEGS,
@@ -591,7 +567,7 @@ class SimulationVisualizationDataCollector(DataCollector):
             return f"{event.time} TODO PassengerAlighting"
 
         # VehicleWaiting
-        elif isinstance(event, VehicleWaiting):
+        if isinstance(event, VehicleWaiting):
             self.add_update(
                 Update(
                     UpdateType.UPDATE_VEHICLE_STATUS,
@@ -603,7 +579,7 @@ class SimulationVisualizationDataCollector(DataCollector):
             return f"{event.time} TODO VehicleWaiting"
 
         # VehicleBoarding
-        elif isinstance(event, VehicleBoarding):
+        if isinstance(event, VehicleBoarding):
             self.add_update(
                 Update(
                     UpdateType.UPDATE_VEHICLE_STATUS,
@@ -617,7 +593,7 @@ class SimulationVisualizationDataCollector(DataCollector):
             return f"{event.time} TODO VehicleBoarding"
 
         # VehicleDeparture
-        elif isinstance(event, VehicleDeparture):
+        if isinstance(event, VehicleDeparture):
             route = event._VehicleDeparture__route
             vehicle = event.state_machine.owner
 
@@ -643,7 +619,7 @@ class SimulationVisualizationDataCollector(DataCollector):
             return f"{event.time} TODO VehicleDeparture"
 
         # VehicleArrival
-        elif isinstance(event, VehicleArrival):
+        if isinstance(event, VehicleArrival):
             route = event._VehicleArrival__route
             vehicle = event.state_machine.owner
 
@@ -670,7 +646,7 @@ class SimulationVisualizationDataCollector(DataCollector):
             return f"{event.time} TODO VehicleArrival"
 
         # VehicleComplete
-        elif isinstance(event, VehicleComplete):
+        if isinstance(event, VehicleComplete):
             self.add_update(
                 Update(
                     UpdateType.UPDATE_VEHICLE_STATUS,
@@ -684,10 +660,8 @@ class SimulationVisualizationDataCollector(DataCollector):
             return f"{event.time} TODO VehicleComplete"
 
         # VehicleReady
-        elif isinstance(event, VehicleReady):
-            vehicle = VisualizedVehicle.from_vehicle_and_route(
-                event.vehicle, event._VehicleReady__route
-            )
+        if isinstance(event, VehicleReady):
+            vehicle = VisualizedVehicle.from_vehicle_and_route(event.vehicle, event._VehicleReady__route)
             self.add_update(
                 Update(
                     UpdateType.CREATE_VEHICLE,
@@ -699,49 +673,42 @@ class SimulationVisualizationDataCollector(DataCollector):
             return f"{event.time} TODO VehicleReady"
 
         # VehicleNotification
-        elif isinstance(event, VehicleNotification):
+        if isinstance(event, VehicleNotification):
             self.vehicle_notification_event_queue.append(event)
             self.last_queued_event_time = event.time
             return f"{event.time} TODO VehicleNotification"
 
         # VehicleBoarded
-        elif isinstance(event, VehicleBoarded):
+        if isinstance(event, VehicleBoarded):
             return f"{event.time} TODO VehicleBoarded"
 
         # VehicleAlighted
-        elif isinstance(event, VehicleAlighted):
+        if isinstance(event, VehicleAlighted):
             return f"{event.time} TODO VehicleAlighted"
 
         # VehicleUpdatePositionEvent
-        elif isinstance(event, VehicleUpdatePositionEvent):
+        if isinstance(event, VehicleUpdatePositionEvent):
             # Do nothing ?
             return f"{event.time} TODO VehicleUpdatePositionEvent"
 
         # RecurrentTimeSyncEvent
-        elif isinstance(event, RecurrentTimeSyncEvent):
+        if isinstance(event, RecurrentTimeSyncEvent):
             # Do nothing ?
             return f"{event.time} TODO RecurrentTimeSyncEvent"
 
         # Hold
-        elif isinstance(event, Hold):
+        if isinstance(event, Hold):
             # Do nothing ?
             return f"{event.time} TODO Hold"
 
-        else:
-            raise NotImplementedError(f"Event {event} not implemented")
+        raise NotImplementedError(f"Event {event} not implemented")
 
     # MARK: +- Clean Up
     def clean_up(self, env):
-        self.simulation_information.simulation_end_time = (
-            self.visualized_environment.timestamp
-        )
-        self.simulation_information.last_update_order = (
-            self.visualized_environment.order
-        )
+        self.simulation_information.simulation_end_time = self.visualized_environment.timestamp
+        self.simulation_information.last_update_order = self.visualized_environment.order
 
-        SimulationVisualizationDataManager.set_simulation_information(
-            self.simulation_id, self.simulation_information
-        )
+        SimulationVisualizationDataManager.set_simulation_information(self.simulation_id, self.simulation_information)
 
         if self.stop_event is not None:
             self.stop_event.set()
@@ -749,7 +716,7 @@ class SimulationVisualizationDataCollector(DataCollector):
         if self.connection_thread is not None:
             self.connection_thread.join()
 
-        if self.isConnected:
+        if self.is_connected:
             self.sio.disconnect()
 
         if self.sio is not None:

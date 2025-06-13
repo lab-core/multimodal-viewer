@@ -13,34 +13,27 @@ from flask_socketio import emit
 
 environment = {}
 
-is_environment_loaded = False
-
 
 def load_environment() -> None:
-    global is_environment_loaded
-    if is_environment_loaded:
-        return
-    is_environment_loaded = True
-
     # Copy .env if it exists
-    CURRENT_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
-    DEFAULT_ENVIRONMENT_PATH = os.path.join(CURRENT_DIRECTORY, "../../../.env")
-    ENVIRONMENT_PATH = os.path.join(CURRENT_DIRECTORY, "environments/.env")
+    current_directory = os.path.dirname(os.path.abspath(__file__))
+    default_environment_path = os.path.join(current_directory, "../../../.env")
+    environment_path = os.path.join(current_directory, "environments/.env")
 
-    if os.path.exists(DEFAULT_ENVIRONMENT_PATH):
-        shutil.copy(DEFAULT_ENVIRONMENT_PATH, ENVIRONMENT_PATH)
+    if os.path.exists(default_environment_path):
+        shutil.copy(default_environment_path, environment_path)
 
     # Load environment variables from .env
     def load_environment_file(path: str, previous_environment: dict) -> None:
         if not os.path.exists(path):
-            return previous_environment
+            return
 
         values = dotenv_values(path)
         for key in values:
             previous_environment[key] = values[key]
 
     # Load default environment
-    load_environment_file(ENVIRONMENT_PATH, environment)
+    load_environment_file(environment_path, environment)
     # Load environment from the current working directory
     load_environment_file(os.path.join(os.getcwd(), ".env"), environment)
 
@@ -48,39 +41,41 @@ def load_environment() -> None:
     environment["HOST"] = os.getenv("HOST", "127.0.0.1")
 
     # Write environment into static folder
-    STATIC_ENVIRONMENT_PATH = os.path.join(
-        CURRENT_DIRECTORY, "../ui/static/environment.json"
-    )
-    lock = FileLock(f"{STATIC_ENVIRONMENT_PATH}.lock")
+    static_environment_path = os.path.join(current_directory, "../ui/static/environment.json")
+    lock = FileLock(f"{static_environment_path}.lock")
     with lock:
-        with open(STATIC_ENVIRONMENT_PATH, "w") as static_environment_file:
-            static_environment_file.write(
-                dumps(environment, indent=2, separators=(",", ": "), sort_keys=True)
-            )
+        with open(static_environment_path, "w", encoding="utf-8") as static_environment_file:
+            static_environment_file.write(dumps(environment, indent=2, separators=(",", ": "), sort_keys=True))
 
 
 class _Environment:
+    is_environment_loaded = False
+
     def __init__(self):
+        if _Environment.is_environment_loaded:
+            return
+
         load_environment()
+        _Environment.is_environment_loaded = True
         print(f"Environment loaded {environment}")
 
     @property
-    def SERVER_PORT(self) -> int:
+    def server_port(self) -> int:
         return int(environment.get("SERVER_PORT"))
 
     @property
-    def CLIENT_PORT(self) -> int:
+    def client_port(self) -> int:
         return int(environment.get("CLIENT_PORT"))
 
     @property
-    def HOST(self) -> str:
+    def host(self) -> str:
         return environment.get("HOST")
 
 
 _environment = _Environment()
-SERVER_PORT = _environment.SERVER_PORT
-CLIENT_PORT = _environment.CLIENT_PORT
-HOST = _environment.HOST
+SERVER_PORT = _environment.server_port
+CLIENT_PORT = _environment.client_port
+HOST = _environment.host
 
 
 CLIENT_ROOM = "client"
@@ -153,11 +148,11 @@ def get_available_data():
 
 def log(message: str, auth_type: str, level=logging.INFO, should_emit=True) -> None:
     if auth_type == "server":
-        logging.log(level, f"[{auth_type}] {message}")
+        logging.log(level, "[%s] %s", auth_type, message)
         if should_emit:
             emit("log", f"{level} [{auth_type}] {message}", to=CLIENT_ROOM)
     else:
-        logging.log(level, f"[{auth_type}] {get_session_id()} {message}")
+        logging.log(level, "[%s] %s %s", auth_type, get_session_id(), message)
         if should_emit:
             emit(
                 "log",
@@ -169,14 +164,16 @@ def log(message: str, auth_type: str, level=logging.INFO, should_emit=True) -> N
 def verify_simulation_name(name: str | None) -> str | None:
     if name is None:
         return "Name is required"
-    elif len(name) < 3:
+    if len(name) < 3:
         return "Name must be at least 3 characters"
-    elif len(name) > 50:
+    if len(name) > 50:
         return "Name must be at most 50 characters"
-    elif name.count(SIMULATION_SAVE_FILE_SEPARATOR) > 0:
+    if name.count(SIMULATION_SAVE_FILE_SEPARATOR) > 0:
         return "Name must not contain three consecutive dashes"
-    elif any(char in name for char in ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]):
-        return 'The name muse not contain characters that might affect the file system (e.g. /, \, :, *, ?, ", <, >, |)'
+    if any(char in name for char in ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]):
+        return (
+            'The name muse not contain characters that might affect the file system (e.g. /, \\, :, *, ?, ", <, >, |)'
+        )
     return None
 
 
