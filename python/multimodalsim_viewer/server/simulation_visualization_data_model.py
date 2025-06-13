@@ -1261,10 +1261,34 @@ class SimulationVisualizationDataManager:
 
         lock = FileLock(f"{file_path}.lock")
 
+        simulation_information = None
+        should_update_simulation_information = False
+
         with lock:
             with open(file_path, "r") as file:
                 data = file.read()
-                return SimulationInformation.deserialize(data)
+
+                simulation_information = SimulationInformation.deserialize(data)
+
+                # Handle mismatched simulation_id, name, or start_time because of uploads
+                # where the simulation folder has been renamed due to duplicates.
+                start_time, name = simulation_id.split(SIMULATION_SAVE_FILE_SEPARATOR)
+
+                if (
+                    simulation_id != simulation_information.simulation_id
+                    or name != simulation_information.name
+                    or start_time != simulation_information.start_time
+                ):
+                    simulation_information.simulation_id = simulation_id
+                    simulation_information.name = name
+                    simulation_information.start_time = start_time
+
+        if simulation_information is not None and should_update_simulation_information:
+            SimulationVisualizationDataManager.set_simulation_information(
+                simulation_id, simulation_information
+            )
+
+        return simulation_information
 
     # MARK: +- States and updates
     @staticmethod

@@ -35,6 +35,9 @@ try {
   ] = HOST;
   writeFileSync(ANGULAR_JSON_PATH, JSON.stringify(angularJson, null, 2));
 
+  // Add the host to the environment variables for http requests
+  environment['HOST'] = HOST;
+
   // Write the environment variables to the public folder
   writeFileSync(PUBLIC_ENVIRONMENT_FILE_PATH, JSON.stringify(environment));
 
