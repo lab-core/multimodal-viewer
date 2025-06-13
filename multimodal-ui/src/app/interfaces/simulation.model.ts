@@ -122,6 +122,10 @@ export interface SimulationConfiguration {
   maxDuration: number | null;
 }
 
+export interface Tagged {
+  tags: string[];
+}
+
 export type PassengerStatus =
   | 'release'
   | 'assigned'
@@ -137,7 +141,7 @@ export const PASSENGER_STATUSES: PassengerStatus[] = [
   'complete',
 ];
 
-export interface Leg {
+export interface Leg extends Tagged {
   assignedVehicleId: string | null;
   boardingStopIndex: number | null;
   alightingStopIndex: number | null;
@@ -152,7 +156,7 @@ export interface AnimatedLeg extends Leg {
   nextStops: Stop[];
 }
 
-export interface Passenger extends DataEntity {
+export interface Passenger extends DataEntity, Tagged {
   id: string;
   name: string | null;
   status: PassengerStatus;
@@ -236,7 +240,7 @@ export interface DisplayedPolylines {
   currentPolylineEndTime: number | null;
 }
 
-export interface Stop extends DataEntity {
+export interface Stop extends DataEntity, Tagged {
   arrivalTime: number;
   departureTime: number | null; // null means infinite
   position: Position;
@@ -275,7 +279,7 @@ export interface DataEntity {
   entityType: EntityType;
 }
 
-export interface Vehicle extends DataEntity {
+export interface Vehicle extends DataEntity, Tagged {
   id: string;
   mode: string | null;
   status: VehicleStatus;

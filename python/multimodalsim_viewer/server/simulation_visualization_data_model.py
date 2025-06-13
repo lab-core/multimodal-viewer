@@ -103,6 +103,7 @@ class VisualizedLeg(Serializable):
     boarding_time: float | None
     alighting_time: float | None
     assigned_time: float | None
+    tags: list[str]
 
     def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self,
@@ -112,6 +113,7 @@ class VisualizedLeg(Serializable):
         boarding_time: float | None,
         alighting_time: float | None,
         assigned_time: float | None,
+        tags: list[str],
     ) -> None:
         self.assigned_vehicle_id = assigned_vehicle_id
         self.boarding_stop_index = boarding_stop_index
@@ -119,6 +121,7 @@ class VisualizedLeg(Serializable):
         self.boarding_time = boarding_time
         self.alighting_time = alighting_time
         self.assigned_time = assigned_time
+        self.tags = tags
 
     @classmethod
     def from_leg_environment_and_trip(  # pylint: disable=too-many-locals, too-many-branches
@@ -188,6 +191,7 @@ class VisualizedLeg(Serializable):
             leg.boarding_time,
             leg.alighting_time,
             assigned_time,
+            leg.tags,
         )
 
     def serialize(self) -> dict:
@@ -210,6 +214,9 @@ class VisualizedLeg(Serializable):
         if self.assigned_time is not None:
             serialized["assignedTime"] = self.assigned_time
 
+        if len(self.tags) > 0:
+            serialized["tags"] = self.tags
+
         return serialized
 
     @staticmethod
@@ -223,6 +230,7 @@ class VisualizedLeg(Serializable):
         boarding_time = data.get("boardingTime", None)
         alighting_time = data.get("alightingTime", None)
         assigned_time = data.get("assignedTime", None)
+        tags = data.get("tags", [])
 
         return VisualizedLeg(
             assigned_vehicle_id,
@@ -231,11 +239,12 @@ class VisualizedLeg(Serializable):
             boarding_time,
             alighting_time,
             assigned_time,
+            tags,
         )
 
 
 # MARK: Passenger
-class VisualizedPassenger(Serializable):
+class VisualizedPassenger(Serializable):  # pylint: disable=too-many-instance-attributes
     passenger_id: str
     name: str | None
     status: PassengerStatus
@@ -244,6 +253,8 @@ class VisualizedPassenger(Serializable):
     previous_legs: list[VisualizedLeg]
     current_leg: VisualizedLeg | None
     next_legs: list[VisualizedLeg]
+
+    tags: list[str]
 
     def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self,
@@ -254,6 +265,7 @@ class VisualizedPassenger(Serializable):
         previous_legs: list[VisualizedLeg],
         current_leg: VisualizedLeg | None,
         next_legs: list[VisualizedLeg],
+        tags: list[str],
     ) -> None:
         self.passenger_id = passenger_id
         self.name = name
@@ -263,6 +275,8 @@ class VisualizedPassenger(Serializable):
         self.previous_legs = previous_legs
         self.current_leg = current_leg
         self.next_legs = next_legs
+
+        self.tags = tags
 
     @classmethod
     def from_trip_and_environment(cls, trip: Trip, environment: Environment) -> "VisualizedPassenger":
@@ -277,13 +291,7 @@ class VisualizedPassenger(Serializable):
         next_legs = [VisualizedLeg.from_leg_environment_and_trip(leg, environment, trip) for leg in trip.next_legs]
 
         return cls(
-            trip.id,
-            trip.name,
-            trip.status,
-            trip.nb_passengers,
-            previous_legs,
-            current_leg,
-            next_legs,
+            trip.id, trip.name, trip.status, trip.nb_passengers, previous_legs, current_leg, next_legs, trip.tags
         )
 
     def serialize(self) -> dict:
@@ -302,6 +310,9 @@ class VisualizedPassenger(Serializable):
             serialized["currentLeg"] = self.current_leg.serialize()
 
         serialized["nextLegs"] = [leg.serialize() for leg in self.next_legs]
+
+        if len(self.tags) > 0:
+            serialized["tags"] = self.tags
 
         return serialized
 
@@ -331,14 +342,10 @@ class VisualizedPassenger(Serializable):
         if current_leg is not None:
             current_leg = VisualizedLeg.deserialize(current_leg)
 
+        tags = data.get("tags", [])
+
         return VisualizedPassenger(
-            passenger_id,
-            name,
-            status,
-            number_of_passengers,
-            previous_legs,
-            current_leg,
-            next_legs,
+            passenger_id, name, status, number_of_passengers, previous_legs, current_leg, next_legs, tags
         )
 
 
@@ -350,6 +357,7 @@ class VisualizedStop(Serializable):
     longitude: float | None
     capacity: int | None
     label: str
+    tags: list[str]
 
     def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self,
@@ -359,6 +367,7 @@ class VisualizedStop(Serializable):
         longitude: float | None,
         capacity: int | None,
         label: str,
+        tags: str,
     ) -> None:
         self.arrival_time = arrival_time
         self.departure_time = departure_time
@@ -366,6 +375,7 @@ class VisualizedStop(Serializable):
         self.longitude = longitude
         self.capacity = capacity
         self.label = label
+        self.tags = tags
 
     @classmethod
     def from_stop(cls, stop: Stop) -> "VisualizedStop":
@@ -376,6 +386,7 @@ class VisualizedStop(Serializable):
             stop.location.lon,
             stop.capacity,
             stop.location.label,
+            stop.tags,
         )
 
     def serialize(self) -> dict:
@@ -394,6 +405,9 @@ class VisualizedStop(Serializable):
             serialized["capacity"] = self.capacity
 
         serialized["label"] = self.label
+
+        if len(self.tags) > 0:
+            serialized["tags"] = self.tags
 
         return serialized
 
@@ -424,7 +438,9 @@ class VisualizedStop(Serializable):
 
         label = data["label"]
 
-        return VisualizedStop(arrival_time, departure_time, latitude, longitude, capacity, label)
+        tags = data.get("tags", [])
+
+        return VisualizedStop(arrival_time, departure_time, latitude, longitude, capacity, label, tags)
 
 
 # MARK: Vehicle
@@ -438,6 +454,7 @@ class VisualizedVehicle(Serializable):  # pylint: disable=too-many-instance-attr
     next_stops: list[VisualizedStop]
     capacity: int
     name: str | None
+    tags: list[str]
 
     def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self,
@@ -449,7 +466,8 @@ class VisualizedVehicle(Serializable):  # pylint: disable=too-many-instance-attr
         current_stop: VisualizedStop | None,
         next_stops: list[VisualizedStop],
         capacity: int,
-        name: str | None = None,
+        name: str | None,
+        tags: list[str],
     ) -> None:
         self.vehicle_id = str(vehicle_id)
         self.mode = mode
@@ -462,6 +480,8 @@ class VisualizedVehicle(Serializable):  # pylint: disable=too-many-instance-attr
 
         self.capacity = capacity
         self.name = name
+
+        self.tags = tags
 
     @property
     def all_stops(self) -> list[VisualizedStop]:
@@ -482,6 +502,7 @@ class VisualizedVehicle(Serializable):  # pylint: disable=too-many-instance-attr
             next_stops,
             vehicle.capacity,
             vehicle.name,
+            vehicle.tags,
         )
 
     def serialize(self) -> dict:
@@ -499,6 +520,9 @@ class VisualizedVehicle(Serializable):  # pylint: disable=too-many-instance-attr
 
         if self.current_stop is not None:
             serialized["currentStop"] = self.current_stop.serialize()
+
+        if len(self.tags) > 0:
+            serialized["tags"] = self.tags
 
         return serialized
 
@@ -530,16 +554,10 @@ class VisualizedVehicle(Serializable):  # pylint: disable=too-many-instance-attr
         if current_stop is not None:
             current_stop = VisualizedStop.deserialize(current_stop)
 
+        tags = data.get("tags", [])
+
         return VisualizedVehicle(
-            vehicle_id,
-            mode,
-            status,
-            None,
-            previous_stops,
-            current_stop,
-            next_stops,
-            capacity,
-            name,
+            vehicle_id, mode, status, None, previous_stops, current_stop, next_stops, capacity, name, tags
         )
 
 
