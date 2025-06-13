@@ -60,6 +60,16 @@
           {{ selectedPassenger.numberOfPassengers }}
         </mat-card-content>
       </mat-card>
+      <mat-card>
+        <mat-card-content>
+          <b>Tags:</b>
+          {{
+            selectedPassenger.tags.length > 0
+              ? selectedPassenger.tags.join(", ")
+              : "None"
+          }}
+        </mat-card-content>
+      </mat-card>
       @if (selectedPassenger.notDisplayedReason !== null) {
         <mat-card>
           <mat-card-content>
@@ -108,6 +118,12 @@
               (mouseenter)="highlightLeg(index)"
               (mouseleave)="unhighlightLeg()"
             >
+              <!-- <mat-card>
+                <mat-card-content>
+                  <b>Tags:</b>
+                  {{ leg.tags.length > 0 ? leg.tags.join(", ") : "None" }}
+                </mat-card-content>
+              </mat-card> -->
               <div class="indent">
                 @if (environment !== null && leg.assignedVehicleId !== null) {
                   @let vehicle = environment.vehicles[leg.assignedVehicleId];
@@ -207,6 +223,16 @@
       <mat-card>
         <mat-card-content>
           <b>Capacity:</b> {{ selectedVehicle.capacity }}
+        </mat-card-content>
+      </mat-card>
+      <mat-card>
+        <mat-card-content>
+          <b>Tags:</b>
+          {{
+            selectedVehicle.tags.length > 0
+              ? selectedVehicle.tags.join(", ")
+              : "None"
+          }}
         </mat-card-content>
       </mat-card>
       @if (selectedVehicleStop !== null) {
@@ -312,6 +338,14 @@
       <mat-card>
         <mat-card-content>
           <b>Capacity:</b> {{ selectedStop.capacity }}
+        </mat-card-content>
+      </mat-card>
+      <mat-card>
+        <mat-card-content>
+          <b>Tags:</b>
+          {{
+            selectedStop.tags.length > 0 ? selectedStop.tags.join(", ") : "None"
+          }}
         </mat-card-content>
       </mat-card>
       <mat-card>
