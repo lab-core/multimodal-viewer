@@ -308,7 +308,10 @@ export class AnimationService {
   private addVehicle(vehicle: AnimatedVehicle): void {
     const vehicleContainer = new PIXI.Container();
     const sprite = PIXI.Sprite.from(
-      this.spriteService.getCurrentVehicleTexture(vehicle.mode ?? ''),
+      this.spriteService.getCurrentVehicleTexture(
+        vehicle.mode ?? '',
+        vehicle.tags,
+      ),
     );
     vehicleContainer.scale.set(this.spriteService.vehicleSpriteScale);
     sprite.anchor.set(0.5, 0.5); // Center texture on coordinate
@@ -371,13 +374,15 @@ export class AnimationService {
 
         // Sprite
         const sprite = PIXI.Sprite.from(
-          this.spriteService.getCurrentPassengerTexture(),
+          this.spriteService.getStopWithPassengerTexture(stop.tags),
         );
         sprite.anchor.set(0.5, 0.5);
         stopContainer.addChild(sprite);
 
         // Other sprite (for the stop without passengers)
-        const otherSprite = PIXI.Sprite.from(this.spriteService.stopTexture);
+        const otherSprite = PIXI.Sprite.from(
+          this.spriteService.getEmptyStopTexture(stop.tags),
+        );
         otherSprite.scale.set(0.25);
         otherSprite.anchor.set(0.5, 0.5);
         otherSprite.visible = false;
@@ -1514,6 +1519,7 @@ export class AnimationService {
       entity.sprites[0].parent.scale.set(this.spriteService.vehicleSpriteScale);
       entity.sprites[0].texture = this.spriteService.getCurrentVehicleTexture(
         entity.data.mode,
+        entity.data.tags,
       );
       entity.texts[0].visible = showText;
     });

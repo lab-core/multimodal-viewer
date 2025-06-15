@@ -2,10 +2,6 @@ p {
   margin-top: 0px;
 }
 
-.text-content {
-  max-width: 390px;
-}
-
 .add-container {
   display: flex;
   justify-content: center;
