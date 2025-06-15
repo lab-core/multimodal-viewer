@@ -1,9 +1,45 @@
-import * as L from 'leaflet';
 import { Injectable } from '@angular/core';
 import { Texture } from '@pixi/core';
+import * as L from 'leaflet';
+
+export type CustomTextureType =
+  | 'vehicle'
+  | 'empty-stop'
+  | 'stop-with-passenger';
+
+export const CUSTOM_TEXTURE_TYPES: CustomTextureType[] = [
+  'vehicle',
+  'empty-stop',
+  'stop-with-passenger',
+];
+
+export type CustomTextureZoom = 'zoomed-in' | 'zoomed-out' | 'any';
+
+export const CUSTOM_TEXTURE_ZOOMS: CustomTextureZoom[] = [
+  'zoomed-in',
+  'zoomed-out',
+  'any',
+];
 
 export interface CustomTexture {
-  mode: string;
+  /**
+   * The tags of the entity this texture is for.
+   *
+   * If multiple tags are provided, the texture will be applied only if all tags match.
+   */
+  tags: string[];
+
+  /**
+   * The mode of the vehicle this texture is for.
+   *
+   * If null, the mode will not be considered when applying the texture.
+   */
+  mode: string | null;
+
+  type: CustomTextureType;
+
+  zoom: CustomTextureZoom;
+
   url: string;
 }
 
@@ -11,14 +47,15 @@ export interface TextureSaveData {
   version: number;
 
   vehicleTextureUrl: string;
-  passengerTextureUrl: string;
+  stopWithPassengerTextureUrl: string;
 
-  zoomOutVehicleTextureUrl: string;
-  zoomOutPassengerTextureUrl: string;
+  zoomedOutVehicleTextureUrl: string;
+  zoomedOutStopWithPassengerTextureUrl: string;
 
-  stopTextureUrl: string;
+  emptyStopTextureUrl: string;
+  zoomedOutEmptyStopTextureUrl: string;
 
-  vehicleModeTextures: CustomTexture[];
+  customTextures: CustomTexture[];
 
   colorPresetIndex: number;
   customColors: string[];
@@ -28,18 +65,22 @@ export interface TextureSaveData {
   providedIn: 'root',
 })
 export class SpritesService {
-  readonly VERSION = 3;
-  readonly SPRITE_SIZE = 40;
+  readonly VERSION = 4;
+  readonly SPRITE_SIZE = 40; // px
 
   private readonly KEY_TEXTURES = 'multimodal.textures';
 
-  readonly DEFAULT_VEHICLE_TEXTURE_URL = '/images/sample-bus.png';
-  readonly DEFAULT_PASSENGER_TEXTURE_URL = '/images/sample-wait.png';
-  readonly DEFAULT_ZOOM_OUT_VEHICLE_TEXTURE_URL =
-    '/images/zoom-out-vehicle.png';
-  readonly DEFAULT_ZOOM_OUT_PASSENGER_TEXTURE_URL =
-    '/images/zoom-out-passenger.png';
-  readonly DEFAULT_STOP_TEXTURE_URL = '/images/sample-stop.png';
+  readonly DEFAULT_UNDEFINED_TEXTURE_URL = '/images/undefined-texture.png';
+  readonly DEFAULT_VEHICLE_TEXTURE_URL = '/images/vehicle.png';
+  readonly DEFAULT_STOP_WITH_PASSENGER_TEXTURE_URL =
+    '/images/stop-with-passenger.png';
+  readonly DEFAULT_EMPTY_STOP_TEXTURE_URL = '/images/empty-stop.png';
+  readonly DEFAULT_ZOOMED_OUT_VEHICLE_TEXTURE_URL =
+    '/images/zoomed-out-vehicle.png';
+  readonly DEFAULT_ZOOMED_OUT_STOP_WITH_PASSENGER_TEXTURE_URL =
+    '/images/zoomed-out-stop-with-passenger.png';
+  readonly DEFAULT_ZOOMED_OUT_EMPTY_STOP_TEXTURE_URL =
+    '/images/zoomed-out-empty-stop.png';
 
   readonly PRESET_LIGHT_COLOR_THEME = [
     '#ccffcc',
@@ -63,18 +104,23 @@ export class SpritesService {
   private _passengerSpriteScale = 1;
 
   private _vehicleTexture = Texture.from(this.DEFAULT_VEHICLE_TEXTURE_URL);
-  private _passengerTexture = Texture.from(this.DEFAULT_PASSENGER_TEXTURE_URL);
-
-  private _zoomOutVehicleTexture = Texture.from(
-    this.DEFAULT_ZOOM_OUT_VEHICLE_TEXTURE_URL,
+  private _stopWithPassengerTexture = Texture.from(
+    this.DEFAULT_STOP_WITH_PASSENGER_TEXTURE_URL,
   );
-  private _zoomOutPassengerTexture = Texture.from(
-    this.DEFAULT_ZOOM_OUT_PASSENGER_TEXTURE_URL,
+  private _emptyStopTexture = Texture.from(this.DEFAULT_EMPTY_STOP_TEXTURE_URL);
+
+  private _zoomedOutVehicleTexture = Texture.from(
+    this.DEFAULT_ZOOMED_OUT_VEHICLE_TEXTURE_URL,
+  );
+  private _zoomedOutStopWithPassengerTexture = Texture.from(
+    this.DEFAULT_ZOOMED_OUT_STOP_WITH_PASSENGER_TEXTURE_URL,
+  );
+  private _zoomedOutStopTexture = Texture.from(
+    this.DEFAULT_ZOOMED_OUT_EMPTY_STOP_TEXTURE_URL,
   );
 
-  private _stopTexture = Texture.from(this.DEFAULT_STOP_TEXTURE_URL);
-
-  private _vehicleModeTextures: CustomTexture[] = [];
+  // TODO Verify that order match displayed one.
+  private _customTextures: CustomTexture[] = [];
 
   private _colorPresetIndex = 0;
 
@@ -101,20 +147,24 @@ export class SpritesService {
     return this._vehicleTexture;
   }
 
-  get passengerTexture(): Texture {
-    return this._passengerTexture;
+  get stopWithPassengerTexture(): Texture {
+    return this._stopWithPassengerTexture;
   }
 
-  get zoomOutVehicleTexture(): Texture {
-    return this._zoomOutVehicleTexture;
+  get emptyStopTexture(): Texture {
+    return this._emptyStopTexture;
   }
 
-  get zoomOutPassengerTexture(): Texture {
-    return this._zoomOutPassengerTexture;
+  get zoomedOutVehicleTexture(): Texture {
+    return this._zoomedOutVehicleTexture;
   }
 
-  get stopTexture(): Texture {
-    return this._stopTexture;
+  get zoomedOutStopWithPassengerTexture(): Texture {
+    return this._zoomedOutStopWithPassengerTexture;
+  }
+
+  get zoomedOutEmptyStopTexture(): Texture {
+    return this._zoomedOutStopTexture;
   }
 
   get colorPresetIndex(): number {
@@ -128,10 +178,9 @@ export class SpritesService {
   get currentColorPreset(): string[] {
     return this._currentColorPreset;
   }
-  ///////////
 
-  get vehicleModeTextures(): CustomTexture[] {
-    return structuredClone(this._vehicleModeTextures);
+  get customTextures(): CustomTexture[] {
+    return structuredClone(this._customTextures);
   }
 
   constructor() {
@@ -166,22 +215,24 @@ export class SpritesService {
 
   saveTextureData(
     vehicleTextureUrl: string,
-    passengerTextureUrl: string,
-    zoomOutVehicleTextureUrl: string,
-    zoomOutPassengerTextureUrl: string,
-    stopTextureUrl: string,
-    vehicleModeTextures: CustomTexture[],
+    stopWithPassengerTextureUrl: string,
+    emptyStopTextureUrl: string,
+    zoomedOutVehicleTextureUrl: string,
+    zoomedOutStopWithPassengerTextureUrl: string,
+    zoomedOutEmptyStopTextureUrl: string,
+    customTextures: CustomTexture[],
     colorPresetIndex: number,
     customColors: string[],
   ) {
     const saveData: TextureSaveData = {
       version: this.VERSION,
       vehicleTextureUrl,
-      passengerTextureUrl,
-      zoomOutVehicleTextureUrl,
-      zoomOutPassengerTextureUrl,
-      stopTextureUrl,
-      vehicleModeTextures,
+      stopWithPassengerTextureUrl,
+      emptyStopTextureUrl,
+      zoomedOutVehicleTextureUrl,
+      zoomedOutStopWithPassengerTextureUrl,
+      zoomedOutEmptyStopTextureUrl,
+      customTextures,
       colorPresetIndex,
       customColors,
     };
@@ -191,22 +242,71 @@ export class SpritesService {
     this.applyTexturesData(saveData);
   }
 
-  /**
-   * Vehicle texture respective of the map zoom.
-   */
-  getCurrentVehicleTexture(mode: string | null) {
-    if (this._useZoomedOutSprites) return this._zoomOutVehicleTexture;
-    const url = this._textureMap.get(mode ?? '');
-    return url ?? this._vehicleTexture;
+  getCurrentVehicleTexture(mode: string | null, tags: string[]) {
+    const currentZoom = this._useZoomedOutSprites ? 'zoomed-out' : 'zoomed-in';
+
+    const firstMatchingTexture = this._customTextures.find(
+      (texture) =>
+        texture.type === 'vehicle' &&
+        [currentZoom, 'any'].includes(texture.zoom) &&
+        texture.tags.every((tag) => tags.includes(tag)) &&
+        (texture.mode === null || texture.mode === mode),
+    );
+
+    const defaultTexture = this._useZoomedOutSprites
+      ? this._zoomedOutVehicleTexture
+      : this._vehicleTexture;
+
+    return (
+      this._textureMap.get(firstMatchingTexture?.url ?? '') ?? defaultTexture
+    );
   }
 
   /**
-   * Passenger texture respective of the map zoom.
+   * @deprecated passenger are not displayed anymore, stops are used instead.
    */
   getCurrentPassengerTexture() {
     return this._useZoomedOutSprites
-      ? this._zoomOutPassengerTexture
-      : this._passengerTexture;
+      ? this._zoomedOutStopWithPassengerTexture
+      : this._stopWithPassengerTexture;
+  }
+
+  getStopWithPassengerTexture(tags: string[]) {
+    const currentZoom = this._useZoomedOutSprites ? 'zoomed-out' : 'zoomed-in';
+
+    const firstMatchingTexture = this._customTextures.find(
+      (texture) =>
+        texture.type === 'stop-with-passenger' &&
+        [currentZoom, 'any'].includes(texture.zoom) &&
+        texture.tags.every((tag) => tags.includes(tag)),
+    );
+
+    const defaultTexture = this._useZoomedOutSprites
+      ? this._zoomedOutStopWithPassengerTexture
+      : this._stopWithPassengerTexture;
+
+    return (
+      this._textureMap.get(firstMatchingTexture?.url ?? '') ?? defaultTexture
+    );
+  }
+
+  getEmptyStopTexture(tags: string[]) {
+    const currentZoom = this._useZoomedOutSprites ? 'zoomed-out' : 'zoomed-in';
+
+    const firstMatchingTexture = this._customTextures.find(
+      (texture) =>
+        texture.type === 'empty-stop' &&
+        [currentZoom, 'any'].includes(texture.zoom) &&
+        texture.tags.every((tag) => tags.includes(tag)),
+    );
+
+    const defaultTexture = this._useZoomedOutSprites
+      ? this._zoomedOutStopWithPassengerTexture
+      : this._stopWithPassengerTexture;
+
+    return (
+      this._textureMap.get(firstMatchingTexture?.url ?? '') ?? defaultTexture
+    );
   }
 
   private loadTexturesData() {
@@ -224,18 +324,28 @@ export class SpritesService {
   }
 
   private applyTexturesData(textureSaveData: TextureSaveData) {
+    // Create default textures
     this._vehicleTexture = Texture.from(textureSaveData.vehicleTextureUrl);
-    this._passengerTexture = Texture.from(textureSaveData.passengerTextureUrl);
 
-    this._zoomOutVehicleTexture = Texture.from(
-      textureSaveData.zoomOutVehicleTextureUrl,
-    );
-    this._zoomOutPassengerTexture = Texture.from(
-      textureSaveData.zoomOutPassengerTextureUrl,
+    this._stopWithPassengerTexture = Texture.from(
+      textureSaveData.stopWithPassengerTextureUrl,
     );
 
-    this._stopTexture = Texture.from(textureSaveData.stopTextureUrl);
+    this._emptyStopTexture = Texture.from(textureSaveData.emptyStopTextureUrl);
 
+    this._zoomedOutVehicleTexture = Texture.from(
+      textureSaveData.zoomedOutVehicleTextureUrl,
+    );
+
+    this._zoomedOutStopWithPassengerTexture = Texture.from(
+      textureSaveData.zoomedOutStopWithPassengerTextureUrl,
+    );
+
+    this._zoomedOutStopTexture = Texture.from(
+      textureSaveData.zoomedOutEmptyStopTextureUrl,
+    );
+
+    // Copy color presets
     this._colorPresetIndex = textureSaveData.colorPresetIndex;
     this._customColors = textureSaveData.customColors;
 
@@ -249,12 +359,14 @@ export class SpritesService {
     )
       this._currentColorPreset = textureSaveData.customColors;
 
-    this._vehicleModeTextures = textureSaveData.vehicleModeTextures;
+    // Create custom textures
+    this._customTextures = textureSaveData.customTextures;
+
+    const urls = Array.from(new Set(this._customTextures.map((t) => t.url)));
+
     this._textureMap.clear();
-    for (const vehicleModeTexture of textureSaveData.vehicleModeTextures)
-      this._textureMap.set(
-        vehicleModeTexture.mode,
-        Texture.from(vehicleModeTexture.url),
-      );
+    urls.forEach((url) => {
+      this._textureMap.set(url, Texture.from(url));
+    });
   }
 }
