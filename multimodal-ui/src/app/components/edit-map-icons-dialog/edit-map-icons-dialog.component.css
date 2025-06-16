@@ -9,7 +9,13 @@ p {
   margin-bottom: 10px;
 }
 
-.custom-item {
+.icon-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.icon-list-item {
   padding: 5px 0px;
   width: 100%;
 
@@ -17,15 +23,11 @@ p {
   flex-direction: row;
   align-items: center;
   gap: 10px;
+
+  overflow: visible;
 }
 
-.custom-icon-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.custom-icon {
+.icon {
   width: 40px;
 
   display: flex;
@@ -33,8 +35,46 @@ p {
   justify-content: center;
 }
 
-.stop-icon {
-  scale: 0.3;
+.form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  min-width: 0;
+  flex: 1;
+}
+
+.form-field-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.custom-icon-form-field {
+  flex: 1;
+}
+
+.icon-placeholder-container {
+  --placeholder-background-color: #f0f0f0;
+  border: dotted 3px #999;
+}
+
+.icon-placeholder {
+  background-color: var(--placeholder-background-color);
+  min-height: 40px;
+}
+
+.icon-button-placeholder {
+  background-color: var(--placeholder-background-color);
+  min-width: 48px;
+  min-height: 48px;
+}
+
+.form-field-placeholder {
+  background-color: var(--placeholder-background-color);
+  border-radius: 4px;
+  min-height: 36px;
 }
 
 .file-upload {
@@ -140,4 +180,8 @@ p {
   mask-size: 40px;
   -webkit-mask-repeat: no-repeat;
   -webkit-mask-size: contain;
+}
+
+.default-icon-type {
+  flex: 1;
 }

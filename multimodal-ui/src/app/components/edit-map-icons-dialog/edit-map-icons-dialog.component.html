@@ -31,7 +31,7 @@
       <p>
         The icons are in decreasing order of priority, meaning that if two icons
         match for an entity, the one that appears first in the list will be
-        used.
+        used. You can drag and drop the icons lines to change their order.
       </p>
 
       @if (currentError !== "") {
@@ -49,14 +49,56 @@
       <p>You have no custom icons.</p>
     }
 
-    <!-- TODO Add drag and drop for ordering -->
-    <!-- TODO Reorder UI -->
-    <section class="custom-icon-list">
+    <section
+      class="icon-list"
+      cdkDropList
+      cdkDropListOrientation="vertical"
+      (cdkDropListDropped)="dropCustomTexture($event)"
+    >
       <!-- MARK: +- Custom Icons
       -->
       @for (customTexture of customTexturesSignal(); track $index) {
-        <div class="custom-item">
-          <div class="custom-icon">
+        <div class="icon-list-item" cdkDrag>
+          <!-- Placeholder
+          -->
+          <div
+            *cdkDragPlaceholder
+            class="icon-placeholder-container icon-list-item"
+          >
+            <div class="icon-placeholder icon"></div>
+
+            <div class="icon-button-placeholder"></div>
+
+            <div class="form-fields">
+              <div class="form-field-row">
+                <div
+                  class="form-field-placeholder custom-icon-form-field"
+                ></div>
+
+                <div
+                  class="form-field-placeholder custom-icon-form-field"
+                ></div>
+
+                @if (customTexture.type === "vehicle") {
+                  <div
+                    class="form-field-placeholder custom-icon-form-field"
+                  ></div>
+                }
+              </div>
+
+              <div class="form-field-row">
+                <div
+                  class="form-field-placeholder custom-icon-form-field"
+                ></div>
+              </div>
+            </div>
+
+            <div class="icon-button-placeholder"></div>
+          </div>
+
+          <!-- Actual Icon
+          -->
+          <div class="icon">
             <img width="40" alt="icon" [src]="customTexture.url" />
           </div>
 
@@ -68,73 +110,88 @@
             <mat-icon>upload</mat-icon>
           </button>
 
-          <mat-form-field
-            class="compact-input"
-            appearance="outline"
-            subscriptSizing="dynamic"
-          >
-            <mat-label>Type</mat-label>
-            <mat-select [(value)]="customTexture.type">
-              @for (customTextureType of CUSTOM_TEXTURE_TYPES; track $index) {
-                <mat-option [value]="customTextureType">
-                  {{ customTextureType.replaceAll("-", " ") | titlecase }}
-                </mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
+          <div class="form-fields">
+            <div class="form-field-row">
+              <mat-form-field
+                class="compact-input custom-icon-form-field"
+                appearance="outline"
+                subscriptSizing="dynamic"
+              >
+                <mat-label>Type</mat-label>
+                <mat-select [(value)]="customTexture.type">
+                  @for (
+                    customTextureType of CUSTOM_TEXTURE_TYPES;
+                    track $index
+                  ) {
+                    <mat-option [value]="customTextureType">
+                      {{ customTextureType.replaceAll("-", " ") | titlecase }}
+                    </mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
 
-          <mat-form-field
-            class="compact-input"
-            appearance="outline"
-            subscriptSizing="dynamic"
-          >
-            <mat-label>Zoom</mat-label>
-            <mat-select [(value)]="customTexture.zoom">
-              @for (customTextureZoom of CUSTOM_TEXTURE_ZOOMS; track $index) {
-                <mat-option [value]="customTextureZoom">
-                  {{ customTextureZoom.replaceAll("-", " ") | titlecase }}
-                </mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
+              <mat-form-field
+                class="compact-input custom-icon-form-field"
+                appearance="outline"
+                subscriptSizing="dynamic"
+              >
+                <mat-label>Zoom</mat-label>
+                <mat-select [(value)]="customTexture.zoom">
+                  @for (
+                    customTextureZoom of CUSTOM_TEXTURE_ZOOMS;
+                    track $index
+                  ) {
+                    <mat-option [value]="customTextureZoom">
+                      {{ customTextureZoom.replaceAll("-", " ") | titlecase }}
+                    </mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
 
-          <!-- TODO Only when vehicle -->
-          <mat-form-field
-            class="compact-input"
-            appearance="outline"
-            subscriptSizing="dynamic"
-          >
-            <mat-label>Vehicle Mode</mat-label>
-            <input matInput [(ngModel)]="customTexture.mode" />
-          </mat-form-field>
-
-          <mat-form-field
-            class="compact-input"
-            appearance="outline"
-            subscriptSizing="dynamic"
-          >
-            <mat-label>Tags</mat-label>
-            <mat-chip-grid #chipGrid aria-label="Enter fruits">
-              @for (tag of customTexture.tags; track tag) {
-                <mat-chip-row
-                  [aria-description]="'press enter to edit ' + tag"
-                  [editable]="true"
-                  (removed)="removeTagFromCustomTexture($index, tag)"
-                  (edited)="editTagInCustomTexture($index, tag, $event)"
+              @if (customTexture.type === "vehicle") {
+                <mat-form-field
+                  class="compact-input custom-icon-form-field"
+                  appearance="outline"
+                  subscriptSizing="dynamic"
                 >
-                  {{ tag }}
-                  <button matChipRemove [attr.aria-label]="'remove ' + tag">
-                    <mat-icon>cancel</mat-icon>
-                  </button>
-                </mat-chip-row>
+                  <mat-label>Vehicle Mode</mat-label>
+                  <input matInput [(ngModel)]="customTexture.mode" />
+                </mat-form-field>
               }
-              <input
-                [matChipInputAddOnBlur]="true"
-                [matChipInputFor]="chipGrid"
-                (matChipInputTokenEnd)="addTagToCustomTexture($index, $event)"
-              />
-            </mat-chip-grid>
-          </mat-form-field>
+            </div>
+
+            <div class="form-field-row">
+              <mat-form-field
+                class="compact-input custom-icon-form-field"
+                appearance="outline"
+                subscriptSizing="dynamic"
+              >
+                <mat-label>Tags</mat-label>
+                <mat-chip-grid #chipGrid aria-label="Enter fruits">
+                  @for (tag of customTexture.tags; track tag) {
+                    <mat-chip-row
+                      [aria-description]="'press enter to edit ' + tag"
+                      [editable]="true"
+                      (removed)="removeTagFromCustomTexture($index, tag)"
+                      (edited)="editTagInCustomTexture($index, tag, $event)"
+                    >
+                      {{ tag }}
+                      <button matChipRemove [attr.aria-label]="'remove ' + tag">
+                        <mat-icon>cancel</mat-icon>
+                      </button>
+                    </mat-chip-row>
+                  }
+                  <input
+                    [matChipInputAddOnBlur]="true"
+                    [matChipInputFor]="chipGrid"
+                    (matChipInputTokenEnd)="
+                      addTagToCustomTexture($index, $event)
+                    "
+                  />
+                </mat-chip-grid>
+              </mat-form-field>
+            </div>
+          </div>
 
           <button
             mat-icon-button
@@ -147,197 +204,52 @@
       }
 
       <mat-divider></mat-divider>
+    </section>
 
+    <section class="icon-list">
       <!-- MARK: +- Default Icons
       -->
-      <!-- TODO For loop -->
-      <div class="custom-item">
-        <div class="custom-icon">
-          <img width="40" alt="icon" [src]="vehicleTextureUrl()" />
+      @for (
+        defaultIconType of EDITABLE_DEFAULT_ICON_TYPES;
+        track defaultIconType
+      ) {
+        @let url = getTextureUrlSignal(defaultIconType)();
+        <div class="icon-list-item">
+          <div class="icon">
+            <img width="40" alt="icon" [src]="url" />
+          </div>
+
+          <button
+            mat-icon-button
+            matTooltip="Upload image"
+            (click)="uploadDefaultTexture(defaultIconType)"
+          >
+            <mat-icon>upload</mat-icon>
+          </button>
+
+          <mat-form-field
+            class="compact-input default-icon-type"
+            appearance="outline"
+            subscriptSizing="dynamic"
+          >
+            <input
+              matInput
+              disabled
+              value="Default {{
+                defaultIconType.replaceAll('-', ' ') | titlecase
+              }} Icon"
+            />
+          </mat-form-field>
+
+          <button
+            mat-icon-button
+            matTooltip="Reset icon"
+            (click)="resetDefaultTexture(defaultIconType)"
+          >
+            <mat-icon>restart_alt</mat-icon>
+          </button>
         </div>
-
-        <button
-          mat-icon-button
-          matTooltip="Upload image"
-          (click)="uploadDefaultTexture('vehicle')"
-        >
-          <mat-icon>upload</mat-icon>
-        </button>
-
-        <mat-form-field
-          class="compact-input"
-          appearance="outline"
-          subscriptSizing="dynamic"
-        >
-          <input matInput disabled value="Default Vehicle Icon" />
-        </mat-form-field>
-
-        <button
-          mat-icon-button
-          matTooltip="Reset icon"
-          (click)="resetDefaultTexture('vehicle')"
-        >
-          <mat-icon>restart_alt</mat-icon>
-        </button>
-      </div>
-
-      <div class="custom-item">
-        <div class="custom-icon">
-          <img width="40" alt="icon" [src]="stopWithPassengerTextureUrl()" />
-        </div>
-
-        <button
-          mat-icon-button
-          matTooltip="Upload image"
-          (click)="uploadDefaultTexture('stop-with-passenger')"
-        >
-          <mat-icon>upload</mat-icon>
-        </button>
-
-        <mat-form-field
-          class="compact-input"
-          appearance="outline"
-          subscriptSizing="dynamic"
-        >
-          <input matInput disabled value="Default Stop With Passenger Icon" />
-        </mat-form-field>
-
-        <button
-          mat-icon-button
-          matTooltip="Reset icon"
-          (click)="resetDefaultTexture('stop-with-passenger')"
-        >
-          <mat-icon>restart_alt</mat-icon>
-        </button>
-      </div>
-
-      <div class="custom-item">
-        <div class="custom-icon">
-          <img width="40" alt="icon" [src]="emptyStopTextureUrl()" />
-        </div>
-
-        <button
-          mat-icon-button
-          matTooltip="Upload image"
-          (click)="uploadDefaultTexture('empty-stop')"
-        >
-          <mat-icon>upload</mat-icon>
-        </button>
-
-        <mat-form-field
-          class="compact-input"
-          appearance="outline"
-          subscriptSizing="dynamic"
-        >
-          <input matInput disabled value="Empty Stop Icon" />
-        </mat-form-field>
-
-        <button
-          mat-icon-button
-          matTooltip="Reset icon"
-          (click)="resetDefaultTexture('empty-stop')"
-        >
-          <mat-icon>restart_alt</mat-icon>
-        </button>
-      </div>
-
-      <div class="custom-item">
-        <div class="custom-icon">
-          <img width="40" alt="icon" [src]="zoomedOutVehicleTextureUrl()" />
-        </div>
-
-        <button
-          mat-icon-button
-          matTooltip="Upload image"
-          (click)="uploadDefaultTexture('zoomed-out-vehicle')"
-        >
-          <mat-icon>upload</mat-icon>
-        </button>
-
-        <mat-form-field
-          class="compact-input"
-          appearance="outline"
-          subscriptSizing="dynamic"
-        >
-          <input matInput disabled value="Zoomed Out Vehicle Icon" />
-        </mat-form-field>
-
-        <button
-          mat-icon-button
-          matTooltip="Reset icon"
-          (click)="resetDefaultTexture('zoomed-out-vehicle')"
-        >
-          <mat-icon>restart_alt</mat-icon>
-        </button>
-      </div>
-
-      <div class="custom-item">
-        <div class="custom-icon">
-          <img
-            width="40"
-            alt="icon"
-            [src]="zoomedOutStopWithPassengerTextureUrl()"
-          />
-        </div>
-
-        <button
-          mat-icon-button
-          matTooltip="Upload image"
-          (click)="uploadDefaultTexture('zoomed-out-stop-with-passenger')"
-        >
-          <mat-icon>upload</mat-icon>
-        </button>
-
-        <mat-form-field
-          class="compact-input"
-          appearance="outline"
-          subscriptSizing="dynamic"
-        >
-          <input
-            matInput
-            disabled
-            value="Zoomed Out Stop With Passenger Icon"
-          />
-        </mat-form-field>
-
-        <button
-          mat-icon-button
-          matTooltip="Reset icon"
-          (click)="resetDefaultTexture('zoomed-out-stop-with-passenger')"
-        >
-          <mat-icon>restart_alt</mat-icon>
-        </button>
-      </div>
-
-      <div class="custom-item">
-        <div class="custom-icon">
-          <img width="40" alt="icon" [src]="zoomedOutEmptyStopTextureUrl()" />
-        </div>
-
-        <button
-          mat-icon-button
-          matTooltip="Upload image"
-          (click)="uploadDefaultTexture('zoomed-out-empty-stop')"
-        >
-          <mat-icon>upload</mat-icon>
-        </button>
-
-        <mat-form-field
-          class="compact-input"
-          appearance="outline"
-          subscriptSizing="dynamic"
-        >
-          <input matInput disabled value="Zoomed Out Empty Stop Icon" />
-        </mat-form-field>
-
-        <button
-          mat-icon-button
-          matTooltip="Reset icon"
-          (click)="resetDefaultTexture('zoomed-out-empty-stop')"
-        >
-          <mat-icon>restart_alt</mat-icon>
-        </button>
-      </div>
+      }
 
       <mat-divider></mat-divider>
 
@@ -417,7 +329,7 @@
       <span>*Test the color gradient using the slider below.</span>
 
       <div class="color-tester">
-        <div class="custom-icon wrapper-icon">
+        <div class="icon wrapper-icon">
           <img width="40" alt="icon" [src]="vehicleTextureUrl()" />
           <div
             class="color-overlay"
@@ -427,7 +339,7 @@
           ></div>
         </div>
 
-        <div class="custom-icon wrapper-icon">
+        <div class="icon wrapper-icon">
           <img width="40" alt="icon" [src]="stopWithPassengerTextureUrl()" />
           <div
             class="color-overlay"
@@ -439,7 +351,7 @@
           ></div>
         </div>
 
-        <div class="custom-icon wrapper-icon">
+        <div class="icon wrapper-icon">
           <img width="40" alt="icon" [src]="zoomedOutVehicleTextureUrl()" />
           <div
             class="color-overlay"
@@ -451,7 +363,7 @@
           ></div>
         </div>
 
-        <div class="custom-icon wrapper-icon">
+        <div class="icon wrapper-icon">
           <img
             width="40"
             alt="icon"
