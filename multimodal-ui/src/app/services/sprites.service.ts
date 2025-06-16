@@ -242,7 +242,7 @@ export class SpritesService {
     this.applyTexturesData(saveData);
   }
 
-  getCurrentVehicleTexture(mode: string | null, tags: string[]) {
+  getVehicleTexture(mode: string | null, tags: string[]) {
     const currentZoom = this._useZoomedOutSprites ? 'zoomed-out' : 'zoomed-in';
 
     const firstMatchingTexture = this._customTextures.find(

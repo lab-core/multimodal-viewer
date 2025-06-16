@@ -51,7 +51,7 @@ import {
 
 export type EditMapIconsDialogData = null;
 
-type EditableDefaultIconTypes =
+type EditableDefaultIconType =
   | 'vehicle'
   | 'stop-with-passenger'
   | 'empty-stop'
@@ -59,7 +59,7 @@ type EditableDefaultIconTypes =
   | 'zoomed-out-stop-with-passenger'
   | 'zoomed-out-empty-stop';
 
-const EDITABLE_DEFAULT_ICON_TYPES: EditableDefaultIconTypes[] = [
+const EDITABLE_DEFAULT_ICON_TYPES: EditableDefaultIconType[] = [
   'vehicle',
   'stop-with-passenger',
   'empty-stop',
@@ -131,7 +131,7 @@ export class EditMapIconsDialogComponent {
     viewChild.required<ElementRef<HTMLButtonElement>>('iconFileUpload');
 
   private selectedTextureIndex: number | null = null;
-  private selectedDefaultTextureType: EditableDefaultIconTypes | null = null;
+  private selectedDefaultTextureType: EditableDefaultIconType | null = null;
 
   constructor(
     private readonly dialogRef: MatDialogRef<
@@ -316,59 +316,56 @@ export class EditMapIconsDialogComponent {
           reader.result as string,
         ) as TextureSaveData;
 
-        if (
-          !spriteSaveData.version ||
-          spriteSaveData.version !== this.spritesService.VERSION
-        ) {
+        if (spriteSaveData.version !== this.spritesService.VERSION) {
           this.currentError = 'Import data format is outdated.';
           return;
         }
 
-        if (!spriteSaveData.vehicleTextureUrl) {
+        if (spriteSaveData.vehicleTextureUrl === undefined) {
           this.currentError = 'JSON has missing data: vehicleTextureUrl';
           return;
         }
 
-        if (!spriteSaveData.stopWithPassengerTextureUrl) {
+        if (spriteSaveData.stopWithPassengerTextureUrl === undefined) {
           this.currentError =
             'JSON has missing data: stopWithPassengerTextureUrl';
           return;
         }
 
-        if (!spriteSaveData.emptyStopTextureUrl) {
+        if (spriteSaveData.emptyStopTextureUrl === undefined) {
           this.currentError = 'JSON has missing data: emptyStopTextureUrl';
           return;
         }
 
-        if (!spriteSaveData.zoomedOutVehicleTextureUrl) {
+        if (spriteSaveData.zoomedOutVehicleTextureUrl === undefined) {
           this.currentError =
             'JSON has missing data: zoomedOutVehicleTextureUrl';
           return;
         }
 
-        if (!spriteSaveData.zoomedOutStopWithPassengerTextureUrl) {
+        if (spriteSaveData.zoomedOutStopWithPassengerTextureUrl === undefined) {
           this.currentError =
             'JSON has missing data: zoomedOutStopWithPassengerTextureUrl';
           return;
         }
 
-        if (!spriteSaveData.zoomedOutEmptyStopTextureUrl) {
+        if (spriteSaveData.zoomedOutEmptyStopTextureUrl === undefined) {
           this.currentError =
             'JSON has missing data: zoomedOutEmptyStopTextureUrl';
           return;
         }
 
-        if (!spriteSaveData.customTextures) {
+        if (spriteSaveData.customTextures === undefined) {
           this.currentError = 'JSON has missing data: customTextures';
           return;
         }
 
-        if (!spriteSaveData.colorPresetIndex) {
+        if (spriteSaveData.colorPresetIndex === undefined) {
           this.currentError = 'JSON has missing data: colorPresetIndex';
           return;
         }
 
-        if (!spriteSaveData.customColors) {
+        if (spriteSaveData.customColors === undefined) {
           this.currentError = 'JSON has missing data: customColors';
           return;
         }
@@ -407,13 +404,13 @@ export class EditMapIconsDialogComponent {
     reader.readAsText(input.files[0]);
   }
 
-  uploadDefaultTexture(type: EditableDefaultIconTypes) {
+  uploadDefaultTexture(type: EditableDefaultIconType) {
     this.selectedTextureIndex = null;
     this.selectedDefaultTextureType = type;
     this.uploadButton().nativeElement.click();
   }
 
-  getTextureUrlSignal(type: EditableDefaultIconTypes) {
+  getTextureUrlSignal(type: EditableDefaultIconType) {
     switch (type) {
       case 'vehicle':
         return this.vehicleTextureUrl;
@@ -430,7 +427,7 @@ export class EditMapIconsDialogComponent {
     }
   }
 
-  resetDefaultTexture(type: EditableDefaultIconTypes) {
+  resetDefaultTexture(type: EditableDefaultIconType) {
     switch (type) {
       case 'vehicle':
         this.vehicleTextureUrl.set(
@@ -501,6 +498,13 @@ export class EditMapIconsDialogComponent {
     this.customTexturesSignal.update((customTextures) => {
       customTextures[index].url = url;
       return [...customTextures];
+    });
+  }
+
+  dropCustomTexture(event: CdkDragDrop<CustomTexture[]>) {
+    this.customTexturesSignal.update((customTextures) => {
+      moveItemInArray(customTextures, event.previousIndex, event.currentIndex);
+      return structuredClone(customTextures);
     });
   }
 

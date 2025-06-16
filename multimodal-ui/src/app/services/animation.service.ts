@@ -308,10 +308,7 @@ export class AnimationService {
   private addVehicle(vehicle: AnimatedVehicle): void {
     const vehicleContainer = new PIXI.Container();
     const sprite = PIXI.Sprite.from(
-      this.spriteService.getCurrentVehicleTexture(
-        vehicle.mode ?? '',
-        vehicle.tags,
-      ),
+      this.spriteService.getVehicleTexture(vehicle.mode ?? '', vehicle.tags),
     );
     vehicleContainer.scale.set(this.spriteService.vehicleSpriteScale);
     sprite.anchor.set(0.5, 0.5); // Center texture on coordinate
@@ -1512,12 +1509,11 @@ export class AnimationService {
   private onZoomEnd(event: L.LeafletEvent) {
     this.spriteService.calculateSpriteScales(this.utils);
 
-    const passengerTexture = this.spriteService.getCurrentPassengerTexture();
     const showText = !this.spriteService.useZoomedOutSprites;
 
     this.vehicles.forEach((entity) => {
       entity.sprites[0].parent.scale.set(this.spriteService.vehicleSpriteScale);
-      entity.sprites[0].texture = this.spriteService.getCurrentVehicleTexture(
+      entity.sprites[0].texture = this.spriteService.getVehicleTexture(
         entity.data.mode,
         entity.data.tags,
       );
@@ -1528,14 +1524,19 @@ export class AnimationService {
       entity.sprites[0].parent.scale.set(
         this.spriteService.passengerSpriteScale,
       );
-      entity.sprites[0].texture = passengerTexture;
+      entity.sprites[0].texture =
+        this.spriteService.getCurrentPassengerTexture();
     });
 
     this.passengerStopEntities.forEach((entity) => {
       entity.sprites[0].parent.scale.set(
         this.spriteService.passengerSpriteScale,
       );
-      entity.sprites[0].texture = passengerTexture;
+      entity.sprites[0].texture =
+        this.spriteService.getStopWithPassengerTexture(entity.data.tags);
+      entity.sprites[1].texture = this.spriteService.getEmptyStopTexture(
+        entity.data.tags,
+      );
       entity.texts[0].visible = showText;
       entity.texts[1].visible = showText;
     });

@@ -138,7 +138,7 @@ export class DialogService {
       autoFocus: false,
       maxWidth: '80vw',
       maxHeight: '80vh',
-      width: '600px',
+      width: '800px',
     });
   }
 }
