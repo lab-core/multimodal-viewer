@@ -115,7 +115,7 @@ export class SpritesService {
   private _zoomedOutStopWithPassengerTexture = Texture.from(
     this.DEFAULT_ZOOMED_OUT_STOP_WITH_PASSENGER_TEXTURE_URL,
   );
-  private _zoomedOutStopTexture = Texture.from(
+  private _zoomedOutEmptyStopTexture = Texture.from(
     this.DEFAULT_ZOOMED_OUT_EMPTY_STOP_TEXTURE_URL,
   );
 
@@ -164,7 +164,7 @@ export class SpritesService {
   }
 
   get zoomedOutEmptyStopTexture(): Texture {
-    return this._zoomedOutStopTexture;
+    return this._zoomedOutEmptyStopTexture;
   }
 
   get colorPresetIndex(): number {
@@ -301,8 +301,8 @@ export class SpritesService {
     );
 
     const defaultTexture = this._useZoomedOutSprites
-      ? this._zoomedOutStopWithPassengerTexture
-      : this._stopWithPassengerTexture;
+      ? this._zoomedOutEmptyStopTexture
+      : this._emptyStopTexture;
 
     return (
       this._textureMap.get(firstMatchingTexture?.url ?? '') ?? defaultTexture
@@ -341,7 +341,7 @@ export class SpritesService {
       textureSaveData.zoomedOutStopWithPassengerTextureUrl,
     );
 
-    this._zoomedOutStopTexture = Texture.from(
+    this._zoomedOutEmptyStopTexture = Texture.from(
       textureSaveData.zoomedOutEmptyStopTextureUrl,
     );
 
