@@ -58,37 +58,22 @@ services:
     volumes:
       - ./python:/app/python
 
-  angular-dev:
-    container_name: angular-dev
-    env_file:
-      - .env
-    environment:
-      - HOST=0.0.0.0
-    ports:
-      - '${CLIENT_PORT}:${CLIENT_PORT}'
-    build:
-      context: .
-      dockerfile: Dockerfile.angular-dev
-    profiles:
-      - angular-dev
-    volumes:
-      - ./multimodal-ui:/app/angular
-      - ./.env:/app/.env
-
-  python-dev:
-    container_name: python-dev
+  python-prod:
+    container_name: python-prod
     env_file:
       - .env
     environment:
       - HOST=0.0.0.0
     ports:
       - '${SERVER_PORT}:${SERVER_PORT}'
+      - '${CLIENT_PORT}:${CLIENT_PORT}'
     build:
       context: .
-      dockerfile: Dockerfile.python-dev
+      dockerfile: Dockerfile.python-prod
     profiles:
-      - python-dev
+      - python-prod
     volumes:
       - ./python:/app/python
       - ./.env:/app/.env
       - ./data:/app/data
+    command: ["multimodalsim-viewer"]
