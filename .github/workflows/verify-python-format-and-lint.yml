@@ -22,17 +22,17 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip -r requirements.txt
+        run: python -m pip install --upgrade pip -r requirements.txt
         working-directory: ./python
 
       - name: Run format check
-        run: |
-          black --check --diff .
-          isort --check --diff .
+        run: black --check .
+        working-directory: ./python
+
+      - name: Run import order check
+        run: isort --check .
         working-directory: ./python
 
       - name: Run lint check
-        run: |
-          pylint .
+        run: pylint .
         working-directory: ./python
