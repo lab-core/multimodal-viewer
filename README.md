@@ -226,7 +226,7 @@ If you made changes to the frontend, you might want to rebuild it to be able to 
 A docker script is available to build the frontend without having to install Node.js or npm. You can use the following command:
 
 ```bash
-docker compose --profile build up --build --force-recreate
+docker compose --profile build-angular up --build --force-recreate
 ```
 
 If you want to build the frontend manually, you can do so by running this command in the `multimodal-ui` folder:
