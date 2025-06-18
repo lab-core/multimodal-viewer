@@ -115,6 +115,11 @@ export interface Simulation {
    * Version of the polylines
    */
   polylinesVersion: number;
+
+  /**
+   * The size of the simulation in bytes
+   */
+  size: number | null;
 }
 
 export interface SimulationConfiguration {

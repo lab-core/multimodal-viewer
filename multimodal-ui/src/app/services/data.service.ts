@@ -128,6 +128,7 @@ export class DataService {
               maxDuration: null,
             },
             polylinesVersion: -1,
+            size: null,
           };
         }
 
@@ -202,6 +203,8 @@ export class DataService {
 
         const polylinesVersion = rawSimulation.polylinesVersion ?? -1;
 
+        const size = rawSimulation.size ?? null;
+
         return {
           id,
           name,
@@ -218,6 +221,7 @@ export class DataService {
             maxDuration,
           },
           polylinesVersion,
+          size,
         };
       })
       .filter((simulation) => !!simulation);
