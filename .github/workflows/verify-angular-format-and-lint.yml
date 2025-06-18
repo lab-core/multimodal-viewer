@@ -4,9 +4,13 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'multimodal-ui/**'
   pull_request:
     branches:
       - main
+    paths:
+      - 'multimodal-ui/**'
 
 jobs:
   verify-angular-format-and-lint:
