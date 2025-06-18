@@ -1,4 +1,4 @@
-name: Verify format and lint
+name: Verify Angular format and lint
 
 on:
   push:
