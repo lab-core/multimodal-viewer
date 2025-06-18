@@ -30,3 +30,20 @@
 .bold {
   font-weight: 500;
 }
+
+.simulation-list {
+  width: calc(600px - 24px * 2);
+}
+
+.status-icon {
+  flex-shrink: 0;
+}
+
+.text-container {
+  min-width: 0;
+  overflow: hidden;
+
+  & > * {
+    white-space: nowrap;
+  }
+}

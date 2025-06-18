@@ -22,6 +22,7 @@ import {
   RUNNING_SIMULATION_STATUSES,
   Simulation,
 } from '../../interfaces/simulation.model';
+import { SimulationTimePipe } from '../../pipes/simulation-time.pipe';
 import { CommunicationService } from '../../services/communication.service';
 import { DataService } from '../../services/data.service';
 import { DialogService } from '../../services/dialog.service';
@@ -54,6 +55,7 @@ export type SimulationListGroup = 'running' | 'completed';
     MatDividerModule,
     TitleCasePipe,
     PercentPipe,
+    SimulationTimePipe,
   ],
   templateUrl: './simulation-list-dialog.component.html',
   styleUrl: './simulation-list-dialog.component.css',
@@ -280,5 +282,29 @@ export class SimulationListDialogComponent {
         })
         .afterClosed(),
     );
+  }
+
+  getDuration(simulation: Simulation): number {
+    if (simulation.simulationStartTime === null) {
+      return 0;
+    }
+
+    if (simulation.simulationEndTime !== null) {
+      return simulation.simulationEndTime - simulation.simulationStartTime;
+    }
+
+    if (simulation.simulationTime !== null) {
+      return simulation.simulationTime - simulation.simulationStartTime;
+    }
+
+    return 0;
+  }
+
+  megabytes(bytes: number | null): string {
+    if (bytes === null || bytes < 0) {
+      return 'unknown';
+    }
+    const megabytes = bytes / (1024 * 1024);
+    return `${megabytes.toFixed(2)} MB`;
   }
 }

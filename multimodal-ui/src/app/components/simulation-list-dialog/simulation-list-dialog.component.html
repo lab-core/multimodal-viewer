@@ -20,7 +20,7 @@
     <h3>{{ group.group | titlecase }}</h3>
 
     @if (group.simulations.length > 0) {
-      <section class="flex-column">
+      <section class="flex-column simulation-list">
         @for (simulation of group.simulations; track simulation.id) {
           <div
             class="list-item flex-row align-main-start align-cross-center gap-1-rem"
@@ -28,6 +28,7 @@
             <!-- MARK: Status icon
           -->
             <mat-icon
+              class="status-icon"
               [style.color]="
                 'var(--' +
                 getColorFromStatus(simulation.status) +
@@ -38,25 +39,47 @@
 
             <!-- MARK: Name and status
             -->
-            <div class="flex-column">
-              <div class="flex-row gap-1-rem">
-                <span class="bold">{{ simulation.name }}</span>
-                @if (
-                  simulation.status === "running" ||
-                  simulation.status === "paused"
-                ) {
-                  <span> {{ simulation.completion | percent: "1.2-2" }} </span>
-                }
-              </div>
-              <div
-                class="light"
-                [style.color]="
-                  'var(--' +
-                  getColorFromStatus(simulation.status) +
-                  '-text-color)'
-                "
-              >
-                {{ simulation.status }}
+            <div class="flex-row text-container">
+              <div class="flex-column">
+                <div class="flex-row gap-1-rem">
+                  <span class="bold">{{ simulation.name }}</span>
+                  @if (
+                    simulation.status === "running" ||
+                    simulation.status === "paused"
+                  ) {
+                    <span>
+                      {{ simulation.completion | percent: "1.2-2" }}
+                    </span>
+                  }
+                </div>
+                <div class="light flex-row gap-0-5-rem">
+                  <span
+                    [style.color]="
+                      'var(--' +
+                      getColorFromStatus(simulation.status) +
+                      '-text-color)'
+                    "
+                  >
+                    {{ simulation.status }}
+                  </span>
+
+                  <span>-</span>
+
+                  @let duration = getDuration(simulation);
+                  <span>{{ duration | simulationTime }}</span>
+
+                  <span>-</span>
+
+                  <span>
+                    {{ simulation.data }}
+                  </span>
+
+                  <span>-</span>
+
+                  <span>
+                    {{ megabytes(simulation.size) }}
+                  </span>
+                </div>
               </div>
             </div>
 
