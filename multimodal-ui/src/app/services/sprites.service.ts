@@ -119,7 +119,6 @@ export class SpritesService {
     this.DEFAULT_ZOOMED_OUT_EMPTY_STOP_TEXTURE_URL,
   );
 
-  // TODO Verify that order match displayed one.
   private _customTextures: CustomTexture[] = [];
 
   private _colorPresetIndex = 0;
