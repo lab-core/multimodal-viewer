@@ -1,7 +1,7 @@
 import threading
 import time
 
-import requests
+from requests import get
 from socketio import Client
 
 from multimodalsim_viewer.common.utils import CLIENT_PORT, HOST, SERVER_PORT
@@ -47,7 +47,7 @@ def terminate_ui():
     print("Terminating UI...")
 
     try:
-        response = requests.get(f"http://{HOST}:{CLIENT_PORT}/terminate", timeout=5)
+        response = get(f"http://{HOST}:{CLIENT_PORT}/terminate", timeout=5)
 
         if response.status_code == 200:
             print("UI terminated")
