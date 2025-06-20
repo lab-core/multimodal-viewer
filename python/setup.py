@@ -14,12 +14,9 @@ setup(
     ),
     include_package_data=True,
     package_data={
-        "multimodalsim_viewer": ["ui/static/**/*"],
-        "environments": ["common/environments/**/*"],
+        "multimodalsim_viewer": ["ui/static/**/*", "common/environments/.env"],
     },
     install_requires=[
-        # Common requirements
-        # Server requirements
         "flask==3.1.1",
         "flask-socketio==5.5.1",
         "eventlet==0.40.0",
@@ -29,7 +26,6 @@ setup(
         "questionary==2.1.0",
         "python-dotenv==1.1.0",
         "multimodalsim==0.0.1",
-        # UI requirements
     ],
     extras_require={"dev": ["black==25.1.0", "pylint==3.3.7", "isort==6.0.1"]},
     python_requires="==3.11.*",
