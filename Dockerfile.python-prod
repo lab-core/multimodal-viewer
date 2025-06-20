@@ -8,4 +8,4 @@ RUN echo "Running: pip install --upgrade pip -r requirements.txt -e ." && \
   pip install --upgrade pip -r requirements.txt -e . 
 
 CMD echo "Running: multimodalsim-server" && \
-  multimodalsim-server
+  multimodalsim-viewer

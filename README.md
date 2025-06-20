@@ -184,20 +184,16 @@ You can run these containers with the following command:
 
 ```bash
 # Frontend
-docker compose up --build angular-dev --detach # Run the container in the background
-docker compose exec angular-dev sh             # Open a shell in the container
+docker compose -f docker-compose.dev.yml up --build angular-dev
 
 # Backend
-docker compose up --build python-dev --detach  # Run the container in the background
-docker compose exec python-dev sh              # Open a shell in the container
+docker compose -f docker-compose.dev.yml up --build python-dev
 ```
 
-Once a shell is opened in the container, you can execute the commands provided above to run the server, the frontend, or a simulation. All changes made in the container affects the local files, so you can edit the files in your favorite editor and run the commands in the container.
-
-You can stop the containers with the following command:
+You can also run the entire project with the following command:
 
 ```bash
-docker compose down angular-dev python-dev
+docker compose up --build python-prod
 ```
 
 ### Lint and formatting
@@ -230,7 +226,7 @@ If you made changes to the frontend, you might want to rebuild it to be able to 
 A docker script is available to build the frontend without having to install Node.js or npm. You can use the following command:
 
 ```bash
-docker compose --profile build up --build --force-recreate
+docker compose --profile build-angular up --build --force-recreate
 ```
 
 If you want to build the frontend manually, you can do so by running this command in the `multimodal-ui` folder:
