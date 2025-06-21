@@ -19,7 +19,10 @@ def serve_angular_app(static_dir, port=None, backend_port=None):
 
     @app.route("/<path:path>")
     def static_proxy(path):
-        return send_from_directory(static_dir, path)
+        if os.path.exists(os.path.join(static_dir, path)):
+            return send_from_directory(static_dir, path)
+
+        return send_from_directory(static_dir, "index.html")
 
     @app.route("/")
     def root():

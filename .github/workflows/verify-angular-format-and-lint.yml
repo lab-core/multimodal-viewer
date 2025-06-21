@@ -1,15 +1,19 @@
-name: Verify format and lint
+name: Verify Angular format and lint
 
 on:
   push:
     branches:
       - main
+    paths:
+      - 'multimodal-ui/**'
   pull_request:
     branches:
       - main
+    paths:
+      - 'multimodal-ui/**'
 
 jobs:
-  verify-format-and-lint:
+  verify-angular-format-and-lint:
     runs-on: ubuntu-latest
 
     steps:
