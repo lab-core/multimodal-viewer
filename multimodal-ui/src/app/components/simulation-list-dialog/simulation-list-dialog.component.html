@@ -20,121 +20,328 @@
     <h3>{{ group.group | titlecase }}</h3>
 
     @if (group.simulations.length > 0) {
-      <section class="flex-column">
-        @for (simulation of group.simulations; track simulation.id) {
+      <section class="flex-column simulation-list">
+        @for (
+          simulation of group.simulations;
+          track simulation.id;
+          let index = $index
+        ) {
+          @let isSelected = selectedSimulationIdSignal() === simulation.id;
           <div
-            class="list-item flex-row align-main-start align-cross-center gap-1-rem"
+            class="list-item flex-column gap-0-5-rem align-main-start align-cross-stretch"
+            tabindex="0"
+            [class.selected]="isSelected"
+            (click)="toggleSelection(simulation.id)"
+            (keydown.enter)="toggleSelection(simulation.id)"
           >
-            <!-- MARK: Status icon
+            <div class="flex-row align-main-start align-cross-center gap-1-rem">
+              <!-- MARK: Status icon
           -->
-            <mat-icon
-              [style.color]="
-                'var(--' +
-                getColorFromStatus(simulation.status) +
-                '-text-color)'
-              "
-              >circle
-            </mat-icon>
-
-            <!-- MARK: Name and status
-            -->
-            <div class="flex-column">
-              <div class="flex-row gap-1-rem">
-                <span class="bold">{{ simulation.name }}</span>
-                @if (
-                  simulation.status === "running" ||
-                  simulation.status === "paused"
-                ) {
-                  <span> {{ simulation.completion | percent: "1.2-2" }} </span>
-                }
-              </div>
-              <div
-                class="light"
+              <mat-icon
+                class="status-icon"
                 [style.color]="
                   'var(--' +
                   getColorFromStatus(simulation.status) +
                   '-text-color)'
                 "
-              >
-                {{ simulation.status }}
+                >circle
+              </mat-icon>
+
+              <!-- MARK: Name and status
+            -->
+              <div class="flex-column text-container">
+                <div class="flex-row gap-1-rem">
+                  <span
+                    class="bold simulation-name"
+                    [matTooltip]="simulation.name"
+                    >{{ simulation.name }}</span
+                  >
+                  @if (
+                    simulation.status === "running" ||
+                    simulation.status === "paused"
+                  ) {
+                    <span class="completion">
+                      {{ simulation.completion | percent: "1.2-2" }}
+                    </span>
+                  }
+                </div>
+                <div class="light flex-row gap-0-5-rem">
+                  <span
+                    [style.color]="
+                      'var(--' +
+                      getColorFromStatus(simulation.status) +
+                      '-text-color)'
+                    "
+                  >
+                    {{ simulation.status }}
+                  </span>
+
+                  <div class="flex-row gap-0-5-rem">
+                    <span>-</span>
+
+                    @let duration = getDuration(simulation);
+                    <span>{{ duration | simulationTime }}</span>
+
+                    <span>-</span>
+
+                    <span>
+                      {{ simulation.data }}
+                    </span>
+
+                    <span>-</span>
+
+                    <span>
+                      {{ megabytes(simulation.size) }}
+                    </span>
+
+                    <span>-</span>
+
+                    <span>
+                      {{ simulation.startTime | date: "short" }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- MARK: Actions
+            -->
+              <div class="actions align-self-end flex-row gap-0-5-rem">
+                @if (group.group === "running") {
+                  @let isConfigureButtonDisabled =
+                    simulation.status === "starting" ||
+                    simulation.status === "stopping" ||
+                    simulation.status === "lost";
+                  <button
+                    mat-icon-button
+                    [disabled]="isConfigureButtonDisabled"
+                    [matTooltip]="'Configure'"
+                    (click)="editSimulationConfiguration(simulation, $event)"
+                  >
+                    <mat-icon>settings</mat-icon>
+                  </button>
+
+                  @let isPauseButtonDisabled =
+                    simulation.status === "starting" ||
+                    simulation.status === "stopping" ||
+                    simulation.status === "lost";
+                  @let isRunning = simulation.status !== "paused";
+
+                  <button
+                    mat-icon-button
+                    [disabled]="isPauseButtonDisabled"
+                    [matTooltip]="isRunning ? 'Pause' : 'Resume'"
+                    (click)="
+                      pauseResumeHandler(simulation.id, isRunning, $event)
+                    "
+                  >
+                    <mat-icon>{{
+                      isRunning ? "pause" : "play_arrow"
+                    }}</mat-icon>
+                  </button>
+
+                  @let isStopButtonDisabled =
+                    simulation.status === "starting" ||
+                    simulation.status === "stopping" ||
+                    simulation.status === "lost";
+                  <button
+                    mat-icon-button
+                    [disabled]="isStopButtonDisabled"
+                    [matTooltip]="'Stop'"
+                    (click)="stopSimulation(simulation.id, $event)"
+                  >
+                    <mat-icon>stop</mat-icon>
+                  </button>
+                }
+
+                @if (group.group === "completed") {
+                  <button
+                    mat-icon-button
+                    [matTooltip]="'Export'"
+                    (click)="exportSimulation(simulation.id, $event)"
+                  >
+                    <mat-icon>cloud_download</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    [matTooltip]="'Delete'"
+                    (click)="
+                      deleteSimulation(simulation.id, simulation.name, $event)
+                    "
+                  >
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                }
+
+                @let isVisualizeButtonDisabled =
+                  simulation.status === "corrupted" ||
+                  simulation.status === "outdated" ||
+                  simulation.status === "future";
+                <button
+                  mat-icon-button
+                  [disabled]="isVisualizeButtonDisabled"
+                  [matTooltip]="'Visualize'"
+                  (click)="visualizeSimulation(simulation, $event)"
+                >
+                  <mat-icon>visibility</mat-icon>
+                </button>
               </div>
             </div>
 
-            <!-- MARK: Actions
+            <!-- MARK: Detailed
             -->
-            <div class="actions align-self-end flex-row gap-0-5-rem">
-              @if (group.group === "running") {
-                @let isConfigureButtonDisabled =
-                  simulation.status === "starting" ||
-                  simulation.status === "stopping" ||
-                  simulation.status === "lost";
-                <button
-                  mat-icon-button
-                  [disabled]="isConfigureButtonDisabled"
-                  [matTooltip]="'Configure'"
-                  (click)="editSimulationConfiguration(simulation)"
-                >
-                  <mat-icon>settings</mat-icon>
-                </button>
+            <div class="flex-row gap-0-5-rem detailed-information">
+              <div class="flex-column gap-0-5-rem">
+                <span class="flex-row gap-0-5-rem">
+                  <span class="bold field">Id:</span>
+                  <span
+                    class="light copy"
+                    tabindex="0"
+                    [matTooltip]="simulation.id + ' (Click to copy)'"
+                    [matTooltipPosition]="'after'"
+                    (click)="copyToClipboard(simulation.id, $event)"
+                    (keydown.enter)="copyToClipboard(simulation.id, $event)"
+                    >{{ simulation.id }}</span
+                  >
+                </span>
 
-                @let isPauseButtonDisabled =
-                  simulation.status === "starting" ||
-                  simulation.status === "stopping" ||
-                  simulation.status === "lost";
-                @let isRunning = simulation.status !== "paused";
-
-                <button
-                  mat-icon-button
-                  [disabled]="isPauseButtonDisabled"
-                  [matTooltip]="isRunning ? 'Pause' : 'Resume'"
-                  (click)="pauseResumeHandler(simulation.id, isRunning)"
+                <span
+                  class="flex-row gap-0-5-rem"
+                  [matTooltip]="simulation.name"
                 >
-                  <mat-icon>{{ isRunning ? "pause" : "play_arrow" }}</mat-icon>
-                </button>
+                  <span class="bold field">Name:</span>
+                  <span class="light">{{ simulation.name }}</span>
+                </span>
 
-                @let isStopButtonDisabled =
-                  simulation.status === "starting" ||
-                  simulation.status === "stopping" ||
-                  simulation.status === "lost";
-                <button
-                  mat-icon-button
-                  [disabled]="isStopButtonDisabled"
-                  [matTooltip]="'Stop'"
-                  (click)="stopSimulation(simulation)"
+                <span
+                  class="flex-row gap-0-5-rem"
+                  [matTooltip]="simulation.data"
                 >
-                  <mat-icon>stop</mat-icon>
-                </button>
-              }
+                  <span class="bold field">Input Data:</span>
+                  <span class="light">{{ simulation.data }}</span>
+                </span>
 
-              @if (group.group === "completed") {
-                <button
-                  mat-icon-button
-                  [matTooltip]="'Export'"
-                  (click)="exportSimulation(simulation.id)"
-                >
-                  <mat-icon>cloud_download</mat-icon>
-                </button>
-                <button
-                  mat-icon-button
-                  [matTooltip]="'Delete'"
-                  (click)="deleteSimulation(simulation.id, simulation.name)"
-                >
-                  <mat-icon>delete</mat-icon>
-                </button>
-              }
+                <span class="flex-row gap-0-5-rem">
+                  <span class="bold field">Status:</span>
 
-              @let isVisualizeButtonDisabled =
-                simulation.status === "corrupted" ||
-                simulation.status === "outdated" ||
-                simulation.status === "future";
-              <button
-                mat-icon-button
-                [disabled]="isVisualizeButtonDisabled"
-                [matTooltip]="'Visualize'"
-                (click)="visualizeSimulation(simulation)"
-              >
-                <mat-icon>visibility</mat-icon>
-              </button>
+                  <span
+                    class="light"
+                    [style.color]="
+                      'var(--' +
+                      getColorFromStatus(simulation.status) +
+                      '-text-color)'
+                    "
+                  >
+                    {{ simulation.status }}
+                  </span>
+                </span>
+
+                <span
+                  class="flex-row gap-0-5-rem"
+                  matTooltip="Time when the user started the simulation"
+                >
+                  <span class="bold field">Start Time:</span>
+                  <span class="light">
+                    {{ simulation.startTime | date: "short" }}
+                  </span>
+                </span>
+
+                <span
+                  class="flex-row gap-0-5-rem"
+                  matTooltip="Time between the first and last events of the simulation. The real time of the processing could be different."
+                >
+                  <span class="bold field">Duration:</span>
+                  <span class="light">{{
+                    getDuration(simulation) | simulationTime
+                  }}</span>
+                </span>
+
+                <span class="flex-row gap-0-5-rem">
+                  <span class="bold field">Size:</span>
+                  <span class="light">{{ megabytes(simulation.size) }}</span>
+                </span>
+                <span
+                  class="flex-row gap-0-5-rem"
+                  matTooltip="Time of the first event in the simulation"
+                >
+                  <span class="bold field">Simulation Start Time :</span>
+                  <span class="light">
+                    {{
+                      simulation.simulationStartTime !== null
+                        ? (simulation.simulationStartTime | simulationTime)
+                        : "N/A"
+                    }}
+                  </span>
+                </span>
+
+                <span
+                  class="flex-row gap-0-5-rem"
+                  matTooltip="Time of the last event in the simulation"
+                >
+                  <span class="bold field">Simulation End Time :</span>
+                  <span class="light">
+                    {{
+                      simulation.simulationEndTime !== null
+                        ? (simulation.simulationEndTime | simulationTime)
+                        : "N/A"
+                    }}
+                  </span>
+                </span>
+              </div>
+
+              <div class="flex-column gap-0-5-rem">
+                @if (isSimulationRunning(simulation)) {
+                  <span
+                    class="flex-row gap-0-5-rem"
+                    matTooltip="Time of the current event in the simulation"
+                  >
+                    <span class="bold field">Simulation Time:</span>
+                    <span class="light">
+                      {{
+                        simulation.simulationTime !== null
+                          ? (simulation.simulationTime | simulationTime)
+                          : "N/A"
+                      }}
+                    </span>
+                  </span>
+                  <span
+                    class="flex-row gap-0-5-rem"
+                    matTooltip="Estimated time of the last event of the simulation"
+                  >
+                    <span class="bold field"
+                      >Simulation Estimated End Time:</span
+                    >
+                    <span class="light">
+                      {{
+                        simulation.simulationEstimatedEndTime !== null
+                          ? (simulation.simulationEstimatedEndTime
+                            | simulationTime)
+                          : "N/A"
+                      }}
+                    </span>
+                  </span>
+                  <span class="flex-row gap-0-5-rem">
+                    <span class="bold field">Completion:</span>
+                    <span class="light">
+                      {{ simulation.completion | percent: "1.2-2" }}
+                    </span>
+                  </span>
+                  <span
+                    class="flex-row gap-0-5-rem"
+                    matTooltip="User-defined maximum duration of the simulation"
+                  >
+                    <span class="bold field">Max Duration:</span>
+                    <span class="light">
+                      {{
+                        simulation.configuration.maxDuration !== null
+                          ? (
+                              simulation.configuration.maxDuration / 3600
+                            ).toString() + "h"
+                          : "N/A"
+                      }}
+                    </span>
+                  </span>
+                }
+              </div>
             </div>
           </div>
         }

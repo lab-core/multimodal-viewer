@@ -71,11 +71,16 @@ class _Environment:
     def host(self) -> str:
         return environment.get("HOST")
 
+    @property
+    def simulation_save_file_separator(self) -> str:
+        return environment.get("SIMULATION_SAVE_FILE_SEPARATOR")
+
 
 _environment = _Environment()
 SERVER_PORT = _environment.server_port
 CLIENT_PORT = _environment.client_port
 HOST = _environment.host
+SIMULATION_SAVE_FILE_SEPARATOR = _environment.simulation_save_file_separator
 
 
 CLIENT_ROOM = "client"
@@ -87,8 +92,6 @@ STATE_SAVE_STEP = 1000
 
 # If the version is identical, the save file can be loaded
 SAVE_VERSION = 9
-
-SIMULATION_SAVE_FILE_SEPARATOR = "---"
 
 
 class SimulationStatus(Enum):

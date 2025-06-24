@@ -1035,16 +1035,6 @@ class SimulationInformation(Serializable):
         )
 
 
-# TODO Send it to client
-# def get_size(start_path: str) -> int:
-#     total_size = 0
-#     for directory_path, _, file_names in os.walk(start_path):
-#         for file_name in file_names:
-#             file_path = os.path.join(directory_path, file_name)
-#             total_size += os.path.getsize(file_path)
-#     return total_size
-
-
 # MARK: SVDM
 class SimulationVisualizationDataManager:
     """
@@ -1110,6 +1100,23 @@ class SimulationVisualizationDataManager:
             os.makedirs(simulation_directory_path)
 
         return simulation_directory_path
+
+    # MARK: +- Folder size
+    @staticmethod
+    def _get_folder_size(start_path: str) -> int:
+        total_size = 0
+        for directory_path, _, file_names in os.walk(start_path):
+            for file_name in file_names:
+                file_path = os.path.join(directory_path, file_name)
+                total_size += os.path.getsize(file_path)
+        return total_size
+
+    @staticmethod
+    def get_saved_simulation_size(simulation_id: str) -> int:
+        simulation_directory_path = SimulationVisualizationDataManager.get_saved_simulation_directory_path(
+            simulation_id
+        )
+        return SimulationVisualizationDataManager._get_folder_size(simulation_directory_path)
 
     # MARK: +- Corrupted
     @staticmethod
