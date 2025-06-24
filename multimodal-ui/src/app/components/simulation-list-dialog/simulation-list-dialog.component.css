@@ -10,7 +10,10 @@
   padding-inline: 1rem;
   padding-block: 0.25rem;
 
-  &:hover {
+  cursor: pointer;
+
+  &:hover,
+  &.selected {
     background-color: #f0f0f0;
 
     .actions {
@@ -18,9 +21,46 @@
     }
   }
 
-  .actions {
+  &.selected .detailed-information {
+    display: flex;
+  }
+
+  .actions,
+  .detailed-information {
     display: none;
   }
+}
+
+.detailed-information {
+  /* 24px for the icon + 1rem for padding */
+  padding-inline-start: calc(24px + 1rem);
+
+  & > * {
+    flex: 1;
+  }
+
+  & > div {
+    overflow: hidden;
+    word-wrap: break-word;
+    white-space: nowrap;
+
+    /* Handle overflow for long text by hiding value and not key */
+    & > span > span:nth-child(2) {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+}
+
+.completion {
+  flex-shrink: 0;
+}
+
+.simulation-name {
+  word-wrap: break-word;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .light {
@@ -42,5 +82,14 @@
 
   & > * {
     white-space: nowrap;
+  }
+}
+
+.copy {
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+    font-weight: bold;
   }
 }

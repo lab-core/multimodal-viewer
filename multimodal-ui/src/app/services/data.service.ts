@@ -5,6 +5,7 @@ import {
   signal,
   WritableSignal,
 } from '@angular/core';
+import { SIMULATION_SAVE_FILE_SEPARATOR } from '../../environments/environment';
 import {
   Simulation,
   SIMULATION_STATUSES,
@@ -114,10 +115,13 @@ export class DataService {
         if (status === 'corrupted') {
           return {
             id,
-            name: id.split('-')[2] ?? 'unknown',
+            name: id.split(SIMULATION_SAVE_FILE_SEPARATOR)[1] ?? 'unknown',
             data: 'unknown',
             status,
-            startTime: new Date(),
+            startTime:
+              this.extractStartTime(
+                id.split(SIMULATION_SAVE_FILE_SEPARATOR)[0] ?? '',
+              ) ?? new Date(0),
             simulationStartTime: null,
             simulationEndTime: null,
             simulationTime: null,
@@ -146,34 +150,12 @@ export class DataService {
 
         const rawStartTime: string =
           rawSimulation.startTime as unknown as string;
-        if (!rawStartTime) {
-          console.error(`Simulation start time not found: ${rawStartTime}`);
+
+        const startTime: Date | null = this.extractStartTime(rawStartTime);
+        if (startTime === null) {
+          console.error('Invalid simulation start time: ', rawStartTime);
           return null;
         }
-
-        // Verify the format of the start time
-        if (!/^\d{8}-\d{9}$/.test(rawStartTime)) {
-          console.error(`Invalid format for start time: ${rawStartTime}`);
-          return null;
-        }
-
-        const year: number = parseInt(rawStartTime.slice(0, 4));
-        const month: number = parseInt(rawStartTime.slice(4, 6)) - 1;
-        const day: number = parseInt(rawStartTime.slice(6, 8));
-        const hours: number = parseInt(rawStartTime.slice(9, 11));
-        const minutes: number = parseInt(rawStartTime.slice(11, 13));
-        const seconds: number = parseInt(rawStartTime.slice(13, 15));
-        const milliseconds: number = parseInt(rawStartTime.slice(16, 19));
-
-        const startTime: Date = new Date(
-          year,
-          month,
-          day,
-          hours,
-          minutes,
-          seconds,
-          milliseconds,
-        );
 
         const simulationStartTime: number | null =
           rawSimulation.simulationStartTime ?? null;
@@ -244,5 +226,38 @@ export class DataService {
       return 1;
     }
     return -1;
+  }
+
+  private extractStartTime(rawStartTime: string): Date | null {
+    if (!rawStartTime) {
+      console.error(`Simulation start time not found: ${rawStartTime}`);
+      return null;
+    }
+
+    // Verify the format of the start time
+    if (!/^\d{8}-\d{9}$/.test(rawStartTime)) {
+      console.error(`Invalid format for start time: ${rawStartTime}`);
+      return null;
+    }
+
+    const year: number = parseInt(rawStartTime.slice(0, 4));
+    const month: number = parseInt(rawStartTime.slice(4, 6)) - 1;
+    const day: number = parseInt(rawStartTime.slice(6, 8));
+    const hours: number = parseInt(rawStartTime.slice(9, 11));
+    const minutes: number = parseInt(rawStartTime.slice(11, 13));
+    const seconds: number = parseInt(rawStartTime.slice(13, 15));
+    const milliseconds: number = parseInt(rawStartTime.slice(16, 19));
+
+    const startTime: Date = new Date(
+      year,
+      month,
+      day,
+      hours,
+      minutes,
+      seconds,
+      milliseconds,
+    );
+
+    return startTime;
   }
 }
