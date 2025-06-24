@@ -270,14 +270,17 @@ export class SpritesService {
       : this._stopWithPassengerTexture;
   }
 
-  getStopWithPassengerTexture(tags: string[]) {
+  getStopWithPassengerTexture(tags: string[], passengerTags: string[]) {
     const currentZoom = this._useZoomedOutSprites ? 'zoomed-out' : 'zoomed-in';
+
+    // If the stop has no tag, we use the passenger tags instead.
+    const usedTags = tags.length > 0 ? tags : passengerTags;
 
     const firstMatchingTexture = this._customTextures.find(
       (texture) =>
         texture.type === 'stop-with-passenger' &&
         [currentZoom, 'any'].includes(texture.zoom) &&
-        texture.tags.every((tag) => tags.includes(tag)),
+        texture.tags.every((tag) => usedTags.includes(tag)),
     );
 
     const defaultTexture = this._useZoomedOutSprites
