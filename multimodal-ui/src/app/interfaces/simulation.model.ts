@@ -272,6 +272,11 @@ export interface AnimatedStop extends Stop {
   numberOfPassengers: number;
 
   numberOfCompletePassengers: number;
+
+  /**
+   * Tags of passengers that are waiting at the stop (not the complete passengers).
+   */
+  passengerTags: string[];
 }
 
 export const DEFAULT_STOP_CAPACITY = 10;

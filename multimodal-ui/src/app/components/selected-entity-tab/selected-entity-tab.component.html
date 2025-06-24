@@ -350,6 +350,16 @@
       </mat-card>
       <mat-card>
         <mat-card-content>
+          <b>Passenger Tags:</b>
+          {{
+            selectedStop.passengerTags.length > 0
+              ? selectedStop.passengerTags.join(", ")
+              : "None"
+          }}
+        </mat-card-content>
+      </mat-card>
+      <mat-card>
+        <mat-card-content>
           <b>Position:</b> {{ selectedStop.position.latitude }},
           {{ selectedStop.position.longitude }}
         </mat-card-content>
