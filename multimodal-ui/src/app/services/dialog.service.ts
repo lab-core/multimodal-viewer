@@ -1,6 +1,16 @@
 import { Injectable } from '@angular/core';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import {
+  AddMapTileDialogComponent,
+  AddMapTileDialogData,
+  AddMapTileDialogResult,
+} from '../components/add-map-tile-dialog/add-map-tile-dialog.component';
+import {
+  EditMapIconsDialogComponent,
+  EditMapIconsDialogData,
+  EditMapIconsDialogResult,
+} from '../components/edit-map-icons-dialog/edit-map-icons-dialog.component';
+import {
   InformationDialogComponent,
   InformationDialogData,
   InformationDialogResult,
@@ -15,17 +25,7 @@ import {
   SimulationListDialogData,
   SimulationListDialogResult,
 } from '../components/simulation-list-dialog/simulation-list-dialog.component';
-import {
-  AddMapTileDialogComponent,
-  AddMapTileDialogData,
-  AddMapTileDialogResult,
-} from '../components/add-map-tile-dialog/add-map-tile-dialog.component';
 import { UserGuideComponent } from '../components/user-guide-dialog/user-guide-dialog.component';
-import {
-  EditMapIconsDialogComponent,
-  EditMapIconsDialogData,
-  EditMapIconsDialogResult,
-} from '../components/edit-map-icons-dialog/edit-map-icons-dialog.component';
 
 @Injectable({
   providedIn: 'root',
@@ -67,7 +67,7 @@ export class DialogService {
       autoFocus: false,
       maxWidth: '80vw',
       maxHeight: '80vh',
-      minWidth: '600px',
+      width: '840px',
     });
   }
 
@@ -84,7 +84,7 @@ export class DialogService {
       autoFocus: false,
       maxWidth: '80vw',
       maxHeight: '80vh',
-      width: '500px',
+      width: '600px',
     });
   }
 

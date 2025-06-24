@@ -39,30 +39,30 @@
 
             <!-- MARK: Name and status
             -->
-            <div class="flex-row text-container">
-              <div class="flex-column">
-                <div class="flex-row gap-1-rem">
-                  <span class="bold">{{ simulation.name }}</span>
-                  @if (
-                    simulation.status === "running" ||
-                    simulation.status === "paused"
-                  ) {
-                    <span>
-                      {{ simulation.completion | percent: "1.2-2" }}
-                    </span>
-                  }
-                </div>
-                <div class="light flex-row gap-0-5-rem">
-                  <span
-                    [style.color]="
-                      'var(--' +
-                      getColorFromStatus(simulation.status) +
-                      '-text-color)'
-                    "
-                  >
-                    {{ simulation.status }}
+            <div class="flex-column text-container">
+              <div class="flex-row gap-1-rem">
+                <span class="bold">{{ simulation.name }}</span>
+                @if (
+                  simulation.status === "running" ||
+                  simulation.status === "paused"
+                ) {
+                  <span>
+                    {{ simulation.completion | percent: "1.2-2" }}
                   </span>
+                }
+              </div>
+              <div class="light flex-row gap-0-5-rem">
+                <span
+                  [style.color]="
+                    'var(--' +
+                    getColorFromStatus(simulation.status) +
+                    '-text-color)'
+                  "
+                >
+                  {{ simulation.status }}
+                </span>
 
+                <div class="flex-row gap-0-5-rem">
                   <span>-</span>
 
                   @let duration = getDuration(simulation);
@@ -78,6 +78,12 @@
 
                   <span>
                     {{ megabytes(simulation.size) }}
+                  </span>
+
+                  <span>-</span>
+
+                  <span>
+                    {{ simulation.startTime | date: "short" }}
                   </span>
                 </div>
               </div>
