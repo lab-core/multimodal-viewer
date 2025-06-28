@@ -1,14 +1,14 @@
 import { Component, Signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import { MatExpansionModule } from '@angular/material/expansion';
 import { MatCardModule } from '@angular/material/card';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatChipsModule } from '@angular/material/chips';
-import { MapService } from '../../services/map.service';
-import { MapTile as MapTile } from '../../interfaces/map.model';
-import { DialogService } from '../../services/dialog.service';
 import { firstValueFrom } from 'rxjs';
+import { MapTile } from '../../interfaces/map.model';
+import { DialogService } from '../../services/dialog.service';
+import { MapService } from '../../services/map.service';
 
 @Component({
   selector: 'app-map-tiles',
@@ -56,12 +56,8 @@ export class MapLayersComponent {
   }
 
   async editMapIcons() {
-    const result = await firstValueFrom(
+    await firstValueFrom(
       this.dialogService.openEditMapIconsDialog().afterClosed(),
     );
-
-    if (!result) {
-      return;
-    }
   }
 }

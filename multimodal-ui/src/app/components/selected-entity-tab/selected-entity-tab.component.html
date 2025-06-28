@@ -60,6 +60,16 @@
           {{ selectedPassenger.numberOfPassengers }}
         </mat-card-content>
       </mat-card>
+      <mat-card>
+        <mat-card-content>
+          <b>Tags:</b>
+          {{
+            selectedPassenger.tags.length > 0
+              ? selectedPassenger.tags.join(", ")
+              : "None"
+          }}
+        </mat-card-content>
+      </mat-card>
       @if (selectedPassenger.notDisplayedReason !== null) {
         <mat-card>
           <mat-card-content>
@@ -209,6 +219,16 @@
           <b>Capacity:</b> {{ selectedVehicle.capacity }}
         </mat-card-content>
       </mat-card>
+      <mat-card>
+        <mat-card-content>
+          <b>Tags:</b>
+          {{
+            selectedVehicle.tags.length > 0
+              ? selectedVehicle.tags.join(", ")
+              : "None"
+          }}
+        </mat-card-content>
+      </mat-card>
       @if (selectedVehicleStop !== null) {
         <mat-card>
           <mat-card-content
@@ -312,6 +332,24 @@
       <mat-card>
         <mat-card-content>
           <b>Capacity:</b> {{ selectedStop.capacity }}
+        </mat-card-content>
+      </mat-card>
+      <mat-card>
+        <mat-card-content>
+          <b>Tags:</b>
+          {{
+            selectedStop.tags.length > 0 ? selectedStop.tags.join(", ") : "None"
+          }}
+        </mat-card-content>
+      </mat-card>
+      <mat-card>
+        <mat-card-content>
+          <b>Passenger Tags:</b>
+          {{
+            selectedStop.passengerTags.length > 0
+              ? selectedStop.passengerTags.join(", ")
+              : "None"
+          }}
         </mat-card-content>
       </mat-card>
       <mat-card>

@@ -555,6 +555,7 @@ export class VisualizationService {
             vehicleIds: [],
             numberOfPassengers: 0,
             numberOfCompletePassengers: 0,
+            passengerTags: [],
           };
         }
       }
@@ -690,6 +691,11 @@ export class VisualizationService {
           animatedStop.numberOfCompletePassengers +=
             passenger.numberOfPassengers;
         } else {
+          passenger.tags.forEach((tag) => {
+            if (!animatedStop.passengerTags.includes(tag)) {
+              animatedStop.passengerTags.push(tag);
+            }
+          });
           animatedStop.numberOfPassengers += passenger.numberOfPassengers;
         }
       }

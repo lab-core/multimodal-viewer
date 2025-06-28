@@ -8,18 +8,18 @@
       "name": "Server Python Debugger",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/multimodal-server/server.py",
+      "program": "${workspaceFolder}/python/multimodalsim_viewer/server/server.py",
       "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/multimodal-server"
+      "cwd": "${workspaceFolder}/"
       // "justMyCode": false
     },
     {
       "name": "Simulation Python Debugger",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/multimodal-server/simulation.py",
+      "program": "${workspaceFolder}/python/multimodalsim_viewer/server/simulation.py",
       "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/multimodal-server"
+      "cwd": "${workspaceFolder}/"
       // "justMyCode": false,
       // "args": ["--name", "launch_large", "--data", "instance_07"]
     }
