@@ -118,12 +118,6 @@
               (mouseenter)="highlightLeg(index)"
               (mouseleave)="unhighlightLeg()"
             >
-              <!-- <mat-card>
-                <mat-card-content>
-                  <b>Tags:</b>
-                  {{ leg.tags.length > 0 ? leg.tags.join(", ") : "None" }}
-                </mat-card-content>
-              </mat-card> -->
               <div class="indent">
                 @if (environment !== null && leg.assignedVehicleId !== null) {
                   @let vehicle = environment.vehicles[leg.assignedVehicleId];
