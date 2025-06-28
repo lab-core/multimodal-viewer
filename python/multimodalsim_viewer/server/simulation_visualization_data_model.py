@@ -1102,11 +1102,11 @@ class SimulationVisualizationDataManager:
         return os.listdir(directory_path)
 
     @staticmethod
-    def get_saved_simulation_directory_path(simulation_id: str) -> str:
+    def get_saved_simulation_directory_path(simulation_id: str, should_create=False) -> str:
         directory_path = SimulationVisualizationDataManager.get_saved_simulations_directory_path()
         simulation_directory_path = f"{directory_path}/{simulation_id}"
 
-        if not os.path.exists(simulation_directory_path):
+        if should_create and not os.path.exists(simulation_directory_path):
             os.makedirs(simulation_directory_path)
 
         return simulation_directory_path
@@ -1115,7 +1115,7 @@ class SimulationVisualizationDataManager:
     @staticmethod
     def is_simulation_corrupted(simulation_id: str) -> bool:
         simulation_directory_path = SimulationVisualizationDataManager.get_saved_simulation_directory_path(
-            simulation_id
+            simulation_id, True
         )
 
         return os.path.exists(f"{simulation_directory_path}/{SimulationVisualizationDataManager.__CORRUPTED_FILE_NAME}")
@@ -1123,7 +1123,7 @@ class SimulationVisualizationDataManager:
     @staticmethod
     def mark_simulation_as_corrupted(simulation_id: str) -> None:
         simulation_directory_path = SimulationVisualizationDataManager.get_saved_simulation_directory_path(
-            simulation_id
+            simulation_id, True
         )
 
         file_path = f"{simulation_directory_path}/{SimulationVisualizationDataManager.__CORRUPTED_FILE_NAME}"
@@ -1135,7 +1135,7 @@ class SimulationVisualizationDataManager:
     @staticmethod
     def get_saved_simulation_information_file_path(simulation_id: str) -> str:
         simulation_directory_path = SimulationVisualizationDataManager.get_saved_simulation_directory_path(
-            simulation_id
+            simulation_id, True
         )
         file_path = (
             f"{simulation_directory_path}/{SimulationVisualizationDataManager.__SIMULATION_INFORMATION_FILE_NAME}"
@@ -1194,7 +1194,7 @@ class SimulationVisualizationDataManager:
     @staticmethod
     def get_saved_simulation_states_folder_path(simulation_id: str) -> str:
         simulation_directory_path = SimulationVisualizationDataManager.get_saved_simulation_directory_path(
-            simulation_id
+            simulation_id, True
         )
         folder_path = f"{simulation_directory_path}/{SimulationVisualizationDataManager.__STATES_DIRECTORY_NAME}"
 
@@ -1424,14 +1424,14 @@ class SimulationVisualizationDataManager:
     @staticmethod
     def get_saved_simulation_polylines_lock(simulation_id: str) -> FileLock:
         simulation_directory_path = SimulationVisualizationDataManager.get_saved_simulation_directory_path(
-            simulation_id
+            simulation_id, True
         )
         return FileLock(f"{simulation_directory_path}/polylines.lock")
 
     @staticmethod
     def get_saved_simulation_polylines_directory_path(simulation_id: str) -> str:
         simulation_directory_path = SimulationVisualizationDataManager.get_saved_simulation_directory_path(
-            simulation_id
+            simulation_id, True
         )
         directory_path = f"{simulation_directory_path}/{SimulationVisualizationDataManager.__POLYLINES_DIRECTORY_NAME}"
 
