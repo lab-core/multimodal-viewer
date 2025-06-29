@@ -106,20 +106,40 @@ p {
   padding: 0;
   background: none;
   cursor: pointer;
+
+  &::-webkit-color-swatch-wrapper {
+    padding: 0;
+  }
+  &::-webkit-color-swatch {
+    border: 1px solid black;
+    border-radius: 0;
+  }
+  &::-moz-color-swatch {
+    border: 1px solid black;
+    border-radius: 0;
+  }
 }
 
-.color-picker::-webkit-color-swatch-wrapper {
+.shape-color-picker {
+  border: none;
+  width: 24px;
+  height: 24px;
+  margin: 8px;
   padding: 0;
-}
+  background: none;
+  cursor: pointer;
 
-.color-picker::-webkit-color-swatch {
-  border: 1px solid black;
-  border-radius: 0;
-}
-
-.color-picker::-moz-color-swatch {
-  border: 1px solid black;
-  border-radius: 0;
+  &::-webkit-color-swatch-wrapper {
+    padding: 0;
+  }
+  &::-webkit-color-swatch {
+    border: 1px solid black;
+    border-radius: 0;
+  }
+  &::-moz-color-swatch {
+    border: 1px solid black;
+    border-radius: 0;
+  }
 }
 
 .color-list-container,
@@ -184,4 +204,8 @@ p {
 
 .default-icon-type {
   flex: 1;
+}
+
+mat-divider {
+  padding-block-end: 1rem;
 }

@@ -42,12 +42,15 @@ import { interpolateRgbBasis as d3InterpolateRgb } from 'd3-interpolate';
 import { Jimp } from 'jimp';
 import { ImageResource } from 'pixi.js';
 import {
-  CUSTOM_TEXTURE_TYPES,
-  CUSTOM_TEXTURE_ZOOMS,
+  BackgroundShape,
+  BackgroundShapeType,
+  CUSTOMIZATION_ENTITY_TYPES,
+  CUSTOMIZATION_ZOOMS,
   CustomTexture,
   SpritesService,
   TextureSaveData,
 } from '../../services/sprites.service';
+import { BackgroundShapeComponent } from '../background-shape/background-shape.component';
 
 export type EditMapIconsDialogData = null;
 
@@ -94,6 +97,7 @@ export type EditMapIconsDialogResult = null;
     CdkDrag,
     TitleCasePipe,
     MatChipsModule,
+    BackgroundShapeComponent,
   ],
   templateUrl: './edit-map-icons-dialog.component.html',
   styleUrl: './edit-map-icons-dialog.component.css',
@@ -103,8 +107,8 @@ export class EditMapIconsDialogComponent {
   readonly PRESET_LIGHT_COLOR_THEME;
   readonly PRESET_SATURATED_COLOR_THEME;
   readonly EDITABLE_DEFAULT_ICON_TYPES = EDITABLE_DEFAULT_ICON_TYPES;
-  readonly CUSTOM_TEXTURE_TYPES = CUSTOM_TEXTURE_TYPES;
-  readonly CUSTOM_TEXTURE_ZOOMS = CUSTOM_TEXTURE_ZOOMS;
+  readonly CUSTOMIZATION_ENTITY_TYPES = CUSTOMIZATION_ENTITY_TYPES;
+  readonly CUSTOMIZATION_ZOOMS = CUSTOMIZATION_ZOOMS;
 
   private readonly MIN_COLOR_COUNT = 2;
   private readonly MAX_COLOR_COUNT = 12;
@@ -118,6 +122,7 @@ export class EditMapIconsDialogComponent {
   testScaleColor = '#ffffff';
 
   customTexturesSignal: WritableSignal<CustomTexture[]> = signal([]);
+  backgroundShapesSignal: WritableSignal<BackgroundShape[]> = signal([]);
 
   vehicleTextureUrl: WritableSignal<string> = signal('');
   stopWithPassengerTextureUrl: WritableSignal<string> = signal('');
@@ -188,6 +193,8 @@ export class EditMapIconsDialogComponent {
     );
 
     this.customTexturesSignal.set(this.spritesService.customTextures);
+
+    this.backgroundShapesSignal.set(this.spritesService.backgroundShapes);
 
     this.colorPresetIndex = this.spritesService.colorPresetIndex;
     this.customColors.set(structuredClone(this.spritesService.customColors));
@@ -388,6 +395,8 @@ export class EditMapIconsDialogComponent {
 
         this.customTexturesSignal.set(spriteSaveData.customTextures);
 
+        this.backgroundShapesSignal.set(spriteSaveData.backgroundShapes);
+
         this.colorPresetIndex = spriteSaveData.colorPresetIndex;
 
         if (spriteSaveData.customColors.length >= 2)
@@ -555,6 +564,109 @@ export class EditMapIconsDialogComponent {
     });
   }
 
+  addBackgroundShape() {
+    this.backgroundShapesSignal.update((backgroundShapes) => {
+      return [
+        ...backgroundShapes,
+        {
+          color: '#ff000080', // Default color with half opacity
+          shape: 'circle',
+          mode: null,
+          tags: [],
+          type: 'vehicle',
+          zoom: 'any',
+        },
+      ];
+    });
+  }
+
+  removeBackgroundShape(index: number) {
+    if (index >= this.backgroundShapesSignal().length) return;
+    this.backgroundShapesSignal.update((backgroundShapes) => {
+      backgroundShapes.splice(index, 1);
+      return [...backgroundShapes];
+    });
+  }
+
+  dropBackgroundShape(event: CdkDragDrop<BackgroundShape[]>) {
+    this.backgroundShapesSignal.update((backgroundShapes) => {
+      moveItemInArray(
+        backgroundShapes,
+        event.previousIndex,
+        event.currentIndex,
+      );
+      return structuredClone(backgroundShapes);
+    });
+  }
+
+  addTagToBackgroundShape(index: number, event: MatChipInputEvent) {
+    if (index >= this.backgroundShapesSignal().length) return;
+    this.backgroundShapesSignal.update((backgroundShapes) => {
+      const backgroundShape = structuredClone(backgroundShapes[index]);
+      const tag = event.value.trim();
+      if (!tag) return backgroundShapes; // No tag to add
+      if (!backgroundShape.tags.includes(tag)) {
+        backgroundShape.tags.push(tag);
+        backgroundShape.tags.sort();
+      }
+      event.chipInput.clear();
+      backgroundShapes[index] = backgroundShape;
+      return [...backgroundShapes];
+    });
+  }
+
+  removeTagFromBackgroundShape(index: number, tag: string) {
+    if (index >= this.backgroundShapesSignal().length) return;
+    this.backgroundShapesSignal.update((backgroundShapes) => {
+      const backgroundShape = structuredClone(backgroundShapes[index]);
+      backgroundShape.tags = backgroundShape.tags.filter((t) => t !== tag);
+      backgroundShapes[index] = backgroundShape;
+      return [...backgroundShapes];
+    });
+  }
+
+  editTagInBackgroundShape(
+    index: number,
+    oldTag: string,
+    event: MatChipEditedEvent,
+  ) {
+    if (index >= this.backgroundShapesSignal().length) return;
+    this.backgroundShapesSignal.update((backgroundShapes) => {
+      const backgroundShape = structuredClone(backgroundShapes[index]);
+      const newTag = event.value.trim();
+      if (oldTag) {
+        backgroundShape.tags = backgroundShape.tags.filter((t) => t !== oldTag);
+      }
+      if (newTag && !backgroundShape.tags.includes(newTag)) {
+        backgroundShape.tags.push(newTag);
+        backgroundShape.tags.sort();
+      }
+      backgroundShapes[index] = backgroundShape;
+      return [...backgroundShapes];
+    });
+  }
+
+  onBackgroundShapeTypeChange(index: number, shape: BackgroundShapeType) {
+    if (index >= this.backgroundShapesSignal().length) return;
+    this.backgroundShapesSignal.update((backgroundShapes) => {
+      const backgroundShape = structuredClone(backgroundShapes[index]);
+      backgroundShape.shape = shape;
+      backgroundShapes[index] = backgroundShape;
+      return [...backgroundShapes];
+    });
+  }
+
+  onBackgroundShapeColorChange(index: number, event: Event) {
+    if (index >= this.backgroundShapesSignal().length) return;
+    const color = (event.target as HTMLInputElement).value;
+    this.backgroundShapesSignal.update((backgroundShapes) => {
+      const backgroundShape = structuredClone(backgroundShapes[index]);
+      backgroundShape.color = color + '80'; // Ensure half opacity
+      backgroundShapes[index] = backgroundShape;
+      return [...backgroundShapes];
+    });
+  }
+
   exportTextures() {
     const saveData: TextureSaveData = {
       version: this.spritesService.VERSION,
@@ -566,6 +678,7 @@ export class EditMapIconsDialogComponent {
         this.zoomedOutStopWithPassengerTextureUrl(),
       zoomedOutEmptyStopTextureUrl: this.zoomedOutEmptyStopTextureUrl(),
       customTextures: this.customTexturesSignal(),
+      backgroundShapes: this.backgroundShapesSignal(),
       colorPresetIndex: this.colorPresetIndex,
       customColors: this.customColors(),
     };
@@ -591,6 +704,7 @@ export class EditMapIconsDialogComponent {
       this.zoomedOutStopWithPassengerTextureUrl(),
       this.zoomedOutEmptyStopTextureUrl(),
       this.customTexturesSignal(),
+      this.backgroundShapesSignal(),
       this.colorPresetIndex,
       this.customColors(),
     );
