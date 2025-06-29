@@ -22,16 +22,18 @@
 
   <div>
     <div class="text-content">
-      <p>The icons should not be too wide or too thin.</p>
-
       <p>
-        The uploaded icons will be rescaled to {{ SPRITE_SIZE }}px in width.
+        The uploaded icons will be rescaled to {{ SPRITE_SIZE }}px in width. For
+        a better result, the icons should not be too wide or too thin.
       </p>
 
       <p>
         The icons are in decreasing order of priority, meaning that if two icons
         match for an entity, the one that appears first in the list will be
         used. You can drag and drop the icons lines to change their order.
+        Background shapes are also in decreasing order of priority, but have no
+        effect on the icons. These shapes are displayed behind the icons and are
+        generally used to visually group entities.
       </p>
 
       @if (currentError !== "") {
@@ -43,10 +45,195 @@
       <button class="add-button" mat-button (click)="addCustomTexture()">
         Add Custom Icon
       </button>
+      <button class="add-button" mat-button (click)="addBackgroundShape()">
+        Add Background Shape
+      </button>
     </div>
 
-    @if (customTexturesSignal().length === 0) {
-      <p>You have no custom icons.</p>
+    @if (backgroundShapesSignal().length <= 0) {
+      <div class="no-custom-textures">
+        <p>No background shapes added yet.</p>
+      </div>
+    }
+
+    <section
+      class="icon-list"
+      cdkDropList
+      cdkDropListOrientation="vertical"
+      (cdkDropListDropped)="dropBackgroundShape($event)"
+    >
+      <!-- MARK: +- Background Shape
+      -->
+      @for (
+        backgroundShape of backgroundShapesSignal();
+        track $index;
+        let backgroundShapeIndex = $index
+      ) {
+        <div class="icon-list-item" cdkDrag>
+          <!-- Placeholder
+          -->
+          <div
+            *cdkDragPlaceholder
+            class="icon-placeholder-container icon-list-item"
+          >
+            <div class="icon-placeholder icon"></div>
+
+            <div class="icon-button-placeholder"></div>
+
+            <div class="form-fields">
+              <div class="form-field-row">
+                <div
+                  class="form-field-placeholder custom-icon-form-field"
+                ></div>
+
+                <div
+                  class="form-field-placeholder custom-icon-form-field"
+                ></div>
+
+                @if (backgroundShape.type === "vehicle") {
+                  <div
+                    class="form-field-placeholder custom-icon-form-field"
+                  ></div>
+                }
+              </div>
+
+              <div class="form-field-row">
+                <div
+                  class="form-field-placeholder custom-icon-form-field"
+                ></div>
+              </div>
+            </div>
+
+            <div class="icon-button-placeholder"></div>
+          </div>
+
+          <!-- Actual Icon
+          -->
+          <div class="icon">
+            <app-background-shape
+              [backgroundShape]="backgroundShape"
+              (shapeChange)="
+                onBackgroundShapeTypeChange(backgroundShapeIndex, $event)
+              "
+            />
+          </div>
+
+          <input
+            class="shape-color-picker"
+            type="color"
+            [value]="backgroundShape.color.substring(0, 7)"
+            (input)="onBackgroundShapeColorChange(backgroundShapeIndex, $event)"
+          />
+
+          <div class="form-fields">
+            <div class="form-field-row">
+              <mat-form-field
+                class="compact-input custom-icon-form-field"
+                appearance="outline"
+                subscriptSizing="dynamic"
+              >
+                <mat-label>Type</mat-label>
+                <mat-select [(value)]="backgroundShape.type">
+                  @for (
+                    entity_type of CUSTOMIZATION_ENTITY_TYPES;
+                    track $index
+                  ) {
+                    <mat-option [value]="entity_type">
+                      {{ entity_type.replaceAll("-", " ") | titlecase }}
+                    </mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field
+                class="compact-input custom-icon-form-field"
+                appearance="outline"
+                subscriptSizing="dynamic"
+              >
+                <mat-label>Zoom</mat-label>
+                <mat-select [(value)]="backgroundShape.zoom">
+                  @for (zoom of CUSTOMIZATION_ZOOMS; track $index) {
+                    <mat-option [value]="zoom">
+                      {{ zoom.replaceAll("-", " ") | titlecase }}
+                    </mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              @if (backgroundShape.type === "vehicle") {
+                <mat-form-field
+                  class="compact-input custom-icon-form-field"
+                  appearance="outline"
+                  subscriptSizing="dynamic"
+                >
+                  <mat-label>Vehicle Mode</mat-label>
+                  <input matInput [(ngModel)]="backgroundShape.mode" />
+                </mat-form-field>
+              }
+            </div>
+
+            <div class="form-field-row">
+              <mat-form-field
+                class="compact-input custom-icon-form-field"
+                appearance="outline"
+                subscriptSizing="dynamic"
+              >
+                <mat-label>Tags</mat-label>
+                <mat-chip-grid #chipGrid aria-label="Enter fruits">
+                  @for (tag of backgroundShape.tags; track tag) {
+                    <mat-chip-row
+                      [aria-description]="'press enter to edit ' + tag"
+                      [editable]="true"
+                      (removed)="
+                        removeTagFromBackgroundShape(backgroundShapeIndex, tag)
+                      "
+                      (edited)="
+                        editTagInBackgroundShape(
+                          backgroundShapeIndex,
+                          tag,
+                          $event
+                        )
+                      "
+                    >
+                      {{ tag }}
+                      <button matChipRemove [attr.aria-label]="'remove ' + tag">
+                        <mat-icon>cancel</mat-icon>
+                      </button>
+                    </mat-chip-row>
+                  }
+                  <input
+                    [matChipInputAddOnBlur]="true"
+                    [matChipInputFor]="chipGrid"
+                    (matChipInputTokenEnd)="
+                      addTagToBackgroundShape(backgroundShapeIndex, $event)
+                    "
+                  />
+                </mat-chip-grid>
+                <mat-hint>
+                  If multiple tags are selected, the shape will be used for
+                  entities that have all of them.
+                </mat-hint>
+              </mat-form-field>
+            </div>
+          </div>
+
+          <button
+            mat-icon-button
+            [matTooltip]="'Remove background shape'"
+            (click)="removeBackgroundShape(backgroundShapeIndex)"
+          >
+            <mat-icon>cancel</mat-icon>
+          </button>
+        </div>
+      }
+
+      <mat-divider></mat-divider>
+    </section>
+
+    @if (customTexturesSignal().length <= 0) {
+      <div class="no-custom-textures">
+        <p>No custom icons added yet.</p>
+      </div>
     }
 
     <section
@@ -57,7 +244,11 @@
     >
       <!-- MARK: +- Custom Icons
       -->
-      @for (customTexture of customTexturesSignal(); track $index) {
+      @for (
+        customTexture of customTexturesSignal();
+        track $index;
+        let customTextureIndex = $index
+      ) {
         <div class="icon-list-item" cdkDrag>
           <!-- Placeholder
           -->
@@ -105,7 +296,7 @@
           <button
             mat-icon-button
             matTooltip="Upload image"
-            (click)="uploadCustomTexture($index)"
+            (click)="uploadCustomTexture(customTextureIndex)"
           >
             <mat-icon>upload</mat-icon>
           </button>
@@ -120,11 +311,11 @@
                 <mat-label>Type</mat-label>
                 <mat-select [(value)]="customTexture.type">
                   @for (
-                    customTextureType of CUSTOM_TEXTURE_TYPES;
+                    entityType of CUSTOMIZATION_ENTITY_TYPES;
                     track $index
                   ) {
-                    <mat-option [value]="customTextureType">
-                      {{ customTextureType.replaceAll("-", " ") | titlecase }}
+                    <mat-option [value]="entityType">
+                      {{ entityType.replaceAll("-", " ") | titlecase }}
                     </mat-option>
                   }
                 </mat-select>
@@ -137,12 +328,9 @@
               >
                 <mat-label>Zoom</mat-label>
                 <mat-select [(value)]="customTexture.zoom">
-                  @for (
-                    customTextureZoom of CUSTOM_TEXTURE_ZOOMS;
-                    track $index
-                  ) {
-                    <mat-option [value]="customTextureZoom">
-                      {{ customTextureZoom.replaceAll("-", " ") | titlecase }}
+                  @for (zoom of CUSTOMIZATION_ZOOMS; track $index) {
+                    <mat-option [value]="zoom">
+                      {{ zoom.replaceAll("-", " ") | titlecase }}
                     </mat-option>
                   }
                 </mat-select>
@@ -172,8 +360,12 @@
                     <mat-chip-row
                       [aria-description]="'press enter to edit ' + tag"
                       [editable]="true"
-                      (removed)="removeTagFromCustomTexture($index, tag)"
-                      (edited)="editTagInCustomTexture($index, tag, $event)"
+                      (removed)="
+                        removeTagFromCustomTexture(customTextureIndex, tag)
+                      "
+                      (edited)="
+                        editTagInCustomTexture(customTextureIndex, tag, $event)
+                      "
                     >
                       {{ tag }}
                       <button matChipRemove [attr.aria-label]="'remove ' + tag">
@@ -185,7 +377,7 @@
                     [matChipInputAddOnBlur]="true"
                     [matChipInputFor]="chipGrid"
                     (matChipInputTokenEnd)="
-                      addTagToCustomTexture($index, $event)
+                      addTagToCustomTexture(customTextureIndex, $event)
                     "
                   />
                 </mat-chip-grid>
@@ -200,7 +392,7 @@
           <button
             mat-icon-button
             [matTooltip]="'Remove custom icon'"
-            (click)="removeCustomTexture($index)"
+            (click)="removeCustomTexture(customTextureIndex)"
           >
             <mat-icon>cancel</mat-icon>
           </button>
