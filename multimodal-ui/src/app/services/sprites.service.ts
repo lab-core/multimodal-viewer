@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Signal, signal, WritableSignal } from '@angular/core';
 import { ColorSource } from '@pixi/color';
 import { Texture } from '@pixi/core';
 import { Graphics } from '@pixi/graphics';
@@ -174,6 +174,9 @@ export class SpritesService {
 
   private _textureMap = new Map<string, Texture>();
 
+  private readonly _customizationUpdatedSignal: WritableSignal<number> =
+    signal(0);
+
   // MARK: Getters
   get useZoomedOutSprites(): boolean {
     return this._useZoomedOutSprites;
@@ -229,6 +232,10 @@ export class SpritesService {
 
   get backgroundShapes(): BackgroundShape[] {
     return structuredClone(this._backgroundShapes);
+  }
+
+  get customizationUpdatedSignal(): Signal<void> {
+    return this._customizationUpdatedSignal;
   }
 
   // MARK: Constructor
@@ -510,6 +517,8 @@ export class SpritesService {
 
     // Create background shapes
     this._backgroundShapes = structuredClone(textureSaveData.backgroundShapes);
+
+    this._customizationUpdatedSignal.update((i) => i + 1);
   }
 
   private drawShape(
