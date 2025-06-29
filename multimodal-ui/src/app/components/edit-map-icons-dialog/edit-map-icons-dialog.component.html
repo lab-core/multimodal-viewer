@@ -60,11 +60,15 @@
       class="icon-list"
       cdkDropList
       cdkDropListOrientation="vertical"
-      (cdkDropListDropped)="dropCustomTexture($event)"
+      (cdkDropListDropped)="dropBackgroundShape($event)"
     >
-      <!-- MARK: +- Background
+      <!-- MARK: +- Background Shape
       -->
-      @for (backgroundShape of backgroundShapesSignal(); track $index) {
+      @for (
+        backgroundShape of backgroundShapesSignal();
+        track $index;
+        let backgroundShapeIndex = $index
+      ) {
         <div class="icon-list-item" cdkDrag>
           <!-- Placeholder
           -->
@@ -108,7 +112,9 @@
           <div class="icon">
             <app-background-shape
               [backgroundShape]="backgroundShape"
-              (shapeChange)="onBackgroundShapeTypeChange($index, $event)"
+              (shapeChange)="
+                onBackgroundShapeTypeChange(backgroundShapeIndex, $event)
+              "
             />
           </div>
 
@@ -116,7 +122,7 @@
             class="shape-color-picker"
             type="color"
             [value]="backgroundShape.color.substring(0, 7)"
-            (input)="onBackgroundShapeColorChange($index, $event)"
+            (input)="onBackgroundShapeColorChange(backgroundShapeIndex, $event)"
           />
 
           <div class="form-fields">
@@ -178,8 +184,16 @@
                     <mat-chip-row
                       [aria-description]="'press enter to edit ' + tag"
                       [editable]="true"
-                      (removed)="removeTagFromBackgroundShape($index, tag)"
-                      (edited)="editTagInBackgroundShape($index, tag, $event)"
+                      (removed)="
+                        removeTagFromBackgroundShape(backgroundShapeIndex, tag)
+                      "
+                      (edited)="
+                        editTagInBackgroundShape(
+                          backgroundShapeIndex,
+                          tag,
+                          $event
+                        )
+                      "
                     >
                       {{ tag }}
                       <button matChipRemove [attr.aria-label]="'remove ' + tag">
@@ -191,7 +205,7 @@
                     [matChipInputAddOnBlur]="true"
                     [matChipInputFor]="chipGrid"
                     (matChipInputTokenEnd)="
-                      addTagToBackgroundShape($index, $event)
+                      addTagToBackgroundShape(backgroundShapeIndex, $event)
                     "
                   />
                 </mat-chip-grid>
@@ -206,7 +220,7 @@
           <button
             mat-icon-button
             [matTooltip]="'Remove background shape'"
-            (click)="removeBackgroundShape($index)"
+            (click)="removeBackgroundShape(backgroundShapeIndex)"
           >
             <mat-icon>cancel</mat-icon>
           </button>
@@ -230,7 +244,11 @@
     >
       <!-- MARK: +- Custom Icons
       -->
-      @for (customTexture of customTexturesSignal(); track $index) {
+      @for (
+        customTexture of customTexturesSignal();
+        track $index;
+        let customTextureIndex = $index
+      ) {
         <div class="icon-list-item" cdkDrag>
           <!-- Placeholder
           -->
@@ -278,7 +296,7 @@
           <button
             mat-icon-button
             matTooltip="Upload image"
-            (click)="uploadCustomTexture($index)"
+            (click)="uploadCustomTexture(customTextureIndex)"
           >
             <mat-icon>upload</mat-icon>
           </button>
@@ -342,8 +360,12 @@
                     <mat-chip-row
                       [aria-description]="'press enter to edit ' + tag"
                       [editable]="true"
-                      (removed)="removeTagFromCustomTexture($index, tag)"
-                      (edited)="editTagInCustomTexture($index, tag, $event)"
+                      (removed)="
+                        removeTagFromCustomTexture(customTextureIndex, tag)
+                      "
+                      (edited)="
+                        editTagInCustomTexture(customTextureIndex, tag, $event)
+                      "
                     >
                       {{ tag }}
                       <button matChipRemove [attr.aria-label]="'remove ' + tag">
@@ -355,7 +377,7 @@
                     [matChipInputAddOnBlur]="true"
                     [matChipInputFor]="chipGrid"
                     (matChipInputTokenEnd)="
-                      addTagToCustomTexture($index, $event)
+                      addTagToCustomTexture(customTextureIndex, $event)
                     "
                   />
                 </mat-chip-grid>
@@ -370,7 +392,7 @@
           <button
             mat-icon-button
             [matTooltip]="'Remove custom icon'"
-            (click)="removeCustomTexture($index)"
+            (click)="removeCustomTexture(customTextureIndex)"
           >
             <mat-icon>cancel</mat-icon>
           </button>
