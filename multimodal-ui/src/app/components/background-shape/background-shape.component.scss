@@ -1,0 +1,47 @@
+@use "../../../styles/flex.styles.css";
+
+.select-shape {
+  cursor: pointer;
+}
+
+.rotate {
+  transform: translate(20px, -10px) rotate(45deg);
+}
+
+::ng-deep .shape-menu .mat-mdc-menu-content {
+  --menu-item-width: 40px;
+  --menu-item-height: 40px;
+  --menu-item-padding: 8px;
+
+  --max-number-of-items: 3;
+
+  --menu-gap: 0.5rem;
+
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--menu-gap);
+  padding: 1rem;
+
+  max-width: calc(
+    (
+        var(--max-number-of-items) *
+          (var(--menu-item-width) + 2 * var(--menu-item-padding))
+      ) +
+      (var(--max-number-of-items) - 1) * var(--menu-gap)
+  );
+
+  & > button {
+    box-sizing: content-box;
+    min-width: var(--menu-item-width);
+    max-width: var(--menu-item-width);
+    min-height: var(--menu-item-height);
+    max-height: var(--menu-item-height);
+    padding: var(--menu-item-padding);
+
+    & > span {
+      max-width: var(--menu-item-width);
+      max-height: var(--menu-item-height);
+    }
+  }
+}

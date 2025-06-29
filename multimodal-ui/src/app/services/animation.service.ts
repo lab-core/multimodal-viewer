@@ -312,6 +312,17 @@ export class AnimationService {
 
   private addVehicle(vehicle: AnimatedVehicle): void {
     const vehicleContainer = new PIXI.Container();
+
+    // Vehicle background shape
+    const graphics = new PIXI.Graphics();
+    this.spriteService.drawVehicleBackgroundShape(
+      graphics,
+      vehicle.mode ?? '',
+      vehicle.tags,
+    );
+    vehicleContainer.addChild(graphics);
+
+    // Vehicle Icon
     const sprite = PIXI.Sprite.from(
       this.spriteService.getVehicleTexture(vehicle.mode ?? '', vehicle.tags),
     );
@@ -319,6 +330,7 @@ export class AnimationService {
     sprite.anchor.set(0.5, 0.5); // Center texture on coordinate
     vehicleContainer.addChild(sprite);
 
+    // Vehicle passenger count text
     const passengerCountText = new PIXI.BitmapText('', this.BITMAP_TEXT_STYLE);
     passengerCountText.visible = !this.spriteService.useZoomedOutSprites;
     // Position at the top right corner of the vehicle
@@ -330,6 +342,7 @@ export class AnimationService {
       data: vehicle,
       sprites: [sprite],
       texts: [passengerCountText],
+      graphics: [graphics],
       show: true,
     };
 
@@ -351,6 +364,7 @@ export class AnimationService {
       data: passenger,
       sprites: [sprite],
       texts: [],
+      graphics: [],
       show: true,
     };
 
@@ -364,6 +378,15 @@ export class AnimationService {
     const stopContainer = new PIXI.Container();
     stopContainer.scale.set(this.spriteService.passengerSpriteScale);
 
+    // Background shape
+    const graphics = new PIXI.Graphics();
+    this.spriteService.drawStopWithPassengerBackgroundShape(
+      graphics,
+      stop.tags,
+      stop.passengerTags,
+    );
+    stopContainer.addChild(graphics);
+
     // Sprite
     const sprite = PIXI.Sprite.from(
       // Passenger tags are not available yet, so we pass an empty array.
@@ -374,6 +397,12 @@ export class AnimationService {
     );
     sprite.anchor.set(0.5, 0.5);
     stopContainer.addChild(sprite);
+
+    // Background shape (for the stop without passengers)
+    const otherGraphics = new PIXI.Graphics();
+    this.spriteService.drawEmptyStopBackgroundShape(otherGraphics, stop.tags);
+    otherGraphics.visible = false;
+    stopContainer.addChild(otherGraphics);
 
     // Other sprite (for the stop without passengers)
     const otherSprite = PIXI.Sprite.from(
@@ -410,6 +439,7 @@ export class AnimationService {
       },
       sprites: [sprite, otherSprite],
       texts: [passengerCountText, completePassengerCountText],
+      graphics: [graphics, otherGraphics],
       show: true,
     };
 
@@ -932,18 +962,24 @@ export class AnimationService {
 
     const adjustStopDisplay = (stopEntity: Entity<AnimatedStop>) => {
       if (!stopEntity.sprites[0].parent.visible) {
-        // Only show the stop image
+        // Show the empty stop
         stopEntity.sprites[0].parent.visible = true;
         stopEntity.sprites[0].visible = false;
         stopEntity.texts[0].visible = false;
         stopEntity.texts[1].visible = false;
+        stopEntity.graphics[0].visible = false;
+
         stopEntity.sprites[1].visible = true;
+        stopEntity.graphics[1].visible = true;
       } else {
-        // Show the passenger image and the text
+        // Show the stop with passengers
         stopEntity.sprites[0].visible = true;
+        stopEntity.graphics[0].visible = true;
         stopEntity.texts[0].visible = showText;
         stopEntity.texts[1].visible = showText;
+
         stopEntity.sprites[1].visible = false;
+        stopEntity.graphics[1].visible = false;
       }
     };
 
@@ -1505,40 +1541,7 @@ export class AnimationService {
   private onZoomEnd(event: L.LeafletEvent) {
     this.spriteService.calculateSpriteScales(this.utils);
 
-    const showText = !this.spriteService.useZoomedOutSprites;
-
-    this.vehicles.forEach((entity) => {
-      entity.sprites[0].parent.scale.set(this.spriteService.vehicleSpriteScale);
-      entity.sprites[0].texture = this.spriteService.getVehicleTexture(
-        entity.data.mode,
-        entity.data.tags,
-      );
-      entity.texts[0].visible = showText;
-    });
-
-    this.passengersEntities.forEach((entity) => {
-      entity.sprites[0].parent.scale.set(
-        this.spriteService.passengerSpriteScale,
-      );
-      entity.sprites[0].texture =
-        this.spriteService.getCurrentPassengerTexture();
-    });
-
-    this.passengerStopEntities.forEach((entity) => {
-      entity.sprites[0].parent.scale.set(
-        this.spriteService.passengerSpriteScale,
-      );
-      entity.sprites[0].texture =
-        this.spriteService.getStopWithPassengerTexture(
-          entity.data.tags,
-          entity.data.passengerTags,
-        );
-      entity.sprites[1].texture = this.spriteService.getEmptyStopTexture(
-        entity.data.tags,
-      );
-      entity.texts[0].visible = showText;
-      entity.texts[1].visible = showText;
-    });
+    this.updateTextures();
   }
 
   private onRedraw(event?: L.LeafletEvent) {
@@ -1846,5 +1849,56 @@ export class AnimationService {
       return;
     }
     return this.passengerEntitiesByPassengerId[id].data.name as string;
+  }
+
+  private updateTextures() {
+    const showText = !this.spriteService.useZoomedOutSprites;
+
+    this.vehicles.forEach((entity) => {
+      entity.sprites[0].parent.scale.set(this.spriteService.vehicleSpriteScale);
+      entity.sprites[0].texture = this.spriteService.getVehicleTexture(
+        entity.data.mode,
+        entity.data.tags,
+      );
+      entity.texts[0].visible = showText;
+      this.spriteService.drawVehicleBackgroundShape(
+        entity.graphics[0],
+        entity.data.mode,
+        entity.data.tags,
+      );
+    });
+
+    this.passengersEntities.forEach((entity) => {
+      entity.sprites[0].parent.scale.set(
+        this.spriteService.passengerSpriteScale,
+      );
+      entity.sprites[0].texture =
+        this.spriteService.getCurrentPassengerTexture();
+    });
+
+    this.passengerStopEntities.forEach((entity) => {
+      entity.sprites[0].parent.scale.set(
+        this.spriteService.passengerSpriteScale,
+      );
+      entity.sprites[0].texture =
+        this.spriteService.getStopWithPassengerTexture(
+          entity.data.tags,
+          entity.data.passengerTags,
+        );
+      entity.sprites[1].texture = this.spriteService.getEmptyStopTexture(
+        entity.data.tags,
+      );
+      entity.texts[0].visible = showText;
+      entity.texts[1].visible = showText;
+      this.spriteService.drawStopWithPassengerBackgroundShape(
+        entity.graphics[0],
+        entity.data.tags,
+        entity.data.passengerTags,
+      );
+      this.spriteService.drawEmptyStopBackgroundShape(
+        entity.graphics[1],
+        entity.data.tags,
+      );
+    });
   }
 }
