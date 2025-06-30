@@ -330,14 +330,11 @@ export class AnimationService {
 
     // Vehicle Icon
     const sprite = new PIXI.Sprite();
-    sprite.anchor.set(0.5, 0.5); // Center texture on coordinate
+    sprite.anchor.set(0.5, 0.5);
     vehicleContainer.addChild(sprite);
 
     // Vehicle passenger count text
     const passengerCountText = new PIXI.BitmapText('', this.BITMAP_TEXT_STYLE);
-    // Position at the top right corner of the vehicle
-    passengerCountText.x = sprite.width / 2;
-    passengerCountText.y = -sprite.height / 2;
     vehicleContainer.addChild(passengerCountText);
 
     const entity: Entity<AnimatedVehicle> = {
@@ -355,9 +352,10 @@ export class AnimationService {
   }
 
   private addPassenger(passenger: AnimatedPassenger): void {
-    const sprite = new PIXI.Sprite();
-    sprite.anchor.set(0.5, 0.5); // Center texture on coordinate
     const passengerContainer = new PIXI.Container();
+
+    const sprite = new PIXI.Sprite();
+    sprite.anchor.set(0.5, 0.5);
     passengerContainer.addChild(sprite);
 
     const entity: Entity<AnimatedPassenger> = {
@@ -376,42 +374,39 @@ export class AnimationService {
 
   private addPassengerStop(stop: AnimatedStop): void {
     const stopContainer = new PIXI.Container();
+    const stopWithPassengerContainer = new PIXI.Container();
+    stopContainer.addChild(stopWithPassengerContainer);
+    const emptyStopContainer = new PIXI.Container();
+    stopContainer.addChild(emptyStopContainer);
 
     // Background shape
     const graphics = new PIXI.Graphics();
-    stopContainer.addChild(graphics);
+    stopWithPassengerContainer.addChild(graphics);
 
     // Sprite
     const sprite = new PIXI.Sprite();
     sprite.anchor.set(0.5, 0.5);
-    stopContainer.addChild(sprite);
+    stopWithPassengerContainer.addChild(sprite);
 
     // Background shape (for the stop without passengers)
     const otherGraphics = new PIXI.Graphics();
-    stopContainer.addChild(otherGraphics);
+    emptyStopContainer.addChild(otherGraphics);
 
     // Other sprite (for the stop without passengers)
     const otherSprite = new PIXI.Sprite();
-    otherSprite.scale.set(0.25);
     otherSprite.anchor.set(0.5, 0.5);
-    stopContainer.addChild(otherSprite);
+    emptyStopContainer.addChild(otherSprite);
 
     // Number of passengers
     const passengerCountText = new PIXI.BitmapText('', this.BITMAP_TEXT_STYLE);
-    // Position at the top right corner of the stop
-    passengerCountText.x = sprite.width / 2;
-    passengerCountText.y = -sprite.height / 2;
-    stopContainer.addChild(passengerCountText);
+    stopWithPassengerContainer.addChild(passengerCountText);
 
     // Number of complete passengers
     const completePassengerCountText = new PIXI.BitmapText(
       '',
       this.BITMAP_TEXT_STYLE,
     );
-    // Position at the bottom right corner of the stop
-    completePassengerCountText.x = sprite.width / 2;
-    completePassengerCountText.y = sprite.height / 2;
-    stopContainer.addChild(completePassengerCountText);
+    stopWithPassengerContainer.addChild(completePassengerCountText);
 
     const entity: Entity<AnimatedStop> = {
       data: {
@@ -563,6 +558,7 @@ export class AnimationService {
 
     const showVehicles = !filters.has('vehicle');
     const showPassengers = !filters.has('passenger');
+    const shouldShowEmptyStops = !filters.has('stops');
     const showFavoritesOnly = this.filterMode === 'favorites';
     const shouldShowComplete = this.shouldShowComplete;
 
@@ -603,7 +599,14 @@ export class AnimationService {
     // Same for passengers since these stops are only shown when passengers are waiting
     // Filter the passengers of the stop instead of changing the stop container
     // TODO Changing this affects the selected entity panel. Use new `number...` field.
-    for (const stop of this.passengerStopEntities)
+    for (const stop of this.passengerStopEntities) {
+      const shouldShowStop =
+        stop.show &&
+        (!showFavoritesOnly ||
+          this.favoriteEntitiesService.favStopIds().has(stop.data.id));
+      stop.sprites[0].parent.visible = shouldShowStop; // Will not be shown if no displayed passenger is at this stop
+      stop.sprites[1].parent.visible = shouldShowStop && shouldShowEmptyStops; // Will be shown only if no displayed passenger is at this stop
+
       stop.data.passengerIds = stop.data.passengerIds.filter((passengerId) => {
         const passenger = this.passengerEntitiesByPassengerId[passengerId];
         return this.isPassengerFiltered(
@@ -613,6 +616,7 @@ export class AnimationService {
           shouldShowComplete,
         );
       });
+    }
 
     const preselectedEntity = this.preselectedEntitySignal();
 
@@ -627,7 +631,7 @@ export class AnimationService {
       if (vehicle) vehicle.sprites[0].parent.visible = true;
     }
 
-    // Always show  preselected or selected passenger
+    // Always show preselected or selected passenger
     const selectedPassengerId =
       preselectedEntity?.entityType === 'passenger'
         ? preselectedEntity.id
@@ -637,6 +641,19 @@ export class AnimationService {
       const passenger =
         this.passengerEntitiesByPassengerId[selectedPassengerId];
       if (passenger) passenger.sprites[0].parent.visible = true;
+    }
+
+    // Always show preselected or selected stop
+    const selectedStopId =
+      preselectedEntity?.entityType === 'stop'
+        ? preselectedEntity.id
+        : this.selectedStopIdSignal();
+    if (selectedStopId) {
+      const stop = this.passengerStopEntitiesByPosition[selectedStopId];
+      if (stop) {
+        stop.sprites[0].parent.visible = true;
+        stop.sprites[1].parent.visible = true;
+      }
     }
   }
 
@@ -857,6 +874,7 @@ export class AnimationService {
       stopEntity.texts[1].text = '';
       stopEntity.sprites[0].tint = this.WHITE;
       stopEntity.sprites[0].parent.visible = true;
+      stopEntity.sprites[1].parent.visible = false;
     }
   }
 
@@ -894,6 +912,7 @@ export class AnimationService {
         stopEntity.sprites[0].parent.visible = false;
         continue;
       }
+      stopEntity.sprites[1].parent.visible = false;
 
       if (numberOfPassengers === 0) {
         stopEntity.texts[0].text = '';
@@ -935,49 +954,6 @@ export class AnimationService {
         stopEntity.sprites[0].tint = tint;
       } else {
         console.warn('Color interpolation failed');
-      }
-    }
-
-    const showText = !this.spritesService.useZoomedOutSprites;
-
-    const adjustStopDisplay = (stopEntity: Entity<AnimatedStop>) => {
-      if (!stopEntity.sprites[0].parent.visible) {
-        // Show the empty stop
-        stopEntity.sprites[0].parent.visible = true;
-        stopEntity.sprites[0].visible = false;
-        stopEntity.texts[0].visible = false;
-        stopEntity.texts[1].visible = false;
-        stopEntity.graphics[0].visible = false;
-
-        stopEntity.sprites[1].visible = true;
-        stopEntity.graphics[1].visible = true;
-      } else {
-        // Show the stop with passengers
-        stopEntity.sprites[0].visible = true;
-        stopEntity.graphics[0].visible = true;
-        stopEntity.texts[0].visible = showText;
-        stopEntity.texts[1].visible = showText;
-
-        stopEntity.sprites[1].visible = false;
-        stopEntity.graphics[1].visible = false;
-      }
-    };
-
-    if (!this.filters.has('stops')) {
-      for (const stopEntity of this.passengerStopEntities) {
-        adjustStopDisplay(stopEntity);
-      }
-    } else {
-      // Always show preselected or selected stop
-      const preselectedStop = this.preselectedEntitySignal();
-      const selectedStopId =
-        preselectedStop?.entityType === 'stop'
-          ? preselectedStop.id
-          : this.selectedStopIdSignal();
-
-      if (selectedStopId) {
-        const stopEntity = this.passengerStopEntitiesByPosition[selectedStopId];
-        if (stopEntity) adjustStopDisplay(stopEntity);
       }
     }
   }
@@ -1169,14 +1145,11 @@ export class AnimationService {
 
     // Distances for all stops
     for (const stop of this.passengerStopEntities) {
-      if (
-        !stop.sprites[0].parent.visible ||
-        (!stop.sprites[0].visible && !stop.sprites[1].visible)
-      )
+      if (!stop.sprites[0].parent.visible && !stop.sprites[1].parent.visible)
         continue;
       const distance = this.distanceBetweenPoints(
         point,
-        stop.sprites[0].parent.position,
+        stop.sprites[0].parent.parent.position,
       );
       if (distance <= minVisualDistance) {
         nearStops.push({ id: stop.data.id, name: stop.data.id });
@@ -1606,9 +1579,9 @@ export class AnimationService {
 
     // Get all visible stops coordinates
     this.passengerStopEntities.forEach((stop) => {
-      if (stop.sprites[0].parent.visible) {
-        const x = stop.sprites[0].parent.x;
-        const y = stop.sprites[0].parent.y;
+      if (stop.sprites[0].parent.visible || stop.sprites[1].parent.visible) {
+        const x = stop.sprites[0].parent.parent.x;
+        const y = stop.sprites[0].parent.parent.y;
         updateBounds(x, y);
         points.push({
           x,
@@ -1842,7 +1815,12 @@ export class AnimationService {
         entity.data.mode,
         entity.data.tags,
       );
+
+      // Top right corner
       entity.texts[0].visible = showText;
+      entity.texts[0].x = entity.sprites[0].width / 2;
+      entity.texts[0].y = -entity.sprites[0].height / 2;
+
       this.spritesService.drawVehicleBackgroundShape(
         entity.graphics[0],
         entity.data.mode,
@@ -1860,18 +1838,31 @@ export class AnimationService {
 
     this.passengerStopEntities.forEach((entity) => {
       entity.sprites[0].parent.scale.set(
-        this.spritesService.passengerSpriteScale,
+        this.spritesService.stopWithPassengerSpriteScale,
       );
       entity.sprites[0].texture =
         this.spritesService.getStopWithPassengerTexture(
           entity.data.tags,
           entity.data.passengerTags,
         );
+
       entity.sprites[1].texture = this.spritesService.getEmptyStopTexture(
         entity.data.tags,
       );
+      entity.sprites[1].parent.scale.set(
+        this.spritesService.emptyStopSpriteScale,
+      );
+
+      // Top right corner
       entity.texts[0].visible = showText;
+      entity.texts[0].x = entity.sprites[0].width / 2;
+      entity.texts[0].y = -entity.sprites[0].height / 2;
+
+      // Bottom right corner
       entity.texts[1].visible = showText;
+      entity.texts[1].x = entity.sprites[0].width / 2;
+      entity.texts[1].y = entity.sprites[0].height / 2;
+
       this.spritesService.drawStopWithPassengerBackgroundShape(
         entity.graphics[0],
         entity.data.tags,

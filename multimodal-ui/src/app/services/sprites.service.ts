@@ -142,9 +142,13 @@ export class SpritesService {
     '#ff0000',
   ];
 
+  private readonly VEHICLE_SPRITE_SCALE_FACTOR = 1;
+  private readonly PASSENGER_SPRITE_SCALE_FACTOR = 0.75;
+  private readonly STOP_WITH_PASSENGER_SPRITE_SCALE_FACTOR = 0.75;
+  private readonly EMPTY_STOP_SPRITE_SCALE_FACTOR = 0.25;
+
   private _useZoomedOutSprites = false;
-  private _vehicleSpriteScale = 1;
-  private _passengerSpriteScale = 1;
+  private _globalSpriteScale = 1;
 
   private _vehicleTexture = Texture.from(this.DEFAULT_VEHICLE_TEXTURE_URL);
   private _stopWithPassengerTexture = Texture.from(
@@ -183,11 +187,21 @@ export class SpritesService {
   }
 
   get vehicleSpriteScale(): number {
-    return this._vehicleSpriteScale;
+    return this.VEHICLE_SPRITE_SCALE_FACTOR * this._globalSpriteScale;
   }
 
   get passengerSpriteScale(): number {
-    return this._passengerSpriteScale;
+    return this.PASSENGER_SPRITE_SCALE_FACTOR * this._globalSpriteScale;
+  }
+
+  get stopWithPassengerSpriteScale(): number {
+    return (
+      this.STOP_WITH_PASSENGER_SPRITE_SCALE_FACTOR * this._globalSpriteScale
+    );
+  }
+
+  get emptyStopSpriteScale(): number {
+    return this.EMPTY_STOP_SPRITE_SCALE_FACTOR * this._globalSpriteScale;
   }
 
   get vehicleTexture(): Texture {
@@ -266,8 +280,7 @@ export class SpritesService {
       MAX_SPRITE_SCALE,
     );
 
-    this._vehicleSpriteScale = wantedRelativeScale / utils.getScale();
-    this._passengerSpriteScale = this._vehicleSpriteScale * 0.75;
+    this._globalSpriteScale = wantedRelativeScale / utils.getScale();
   }
 
   saveTextureData(
