@@ -39,7 +39,7 @@ def terminate_server():
 
         print("Server terminated")
 
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"Error: {e}")
 
 
@@ -54,7 +54,7 @@ def terminate_ui():
         else:
             print(f"Failed to terminate UI: {response.status_code}")
 
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"Error: {e}")
 
 

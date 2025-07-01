@@ -59,7 +59,7 @@ from multimodalsim_viewer.server.simulation_visualization_data_model import (
 
 
 # MARK: Data Collector
-class SimulationVisualizationDataCollector(DataCollector):
+class SimulationVisualizationDataCollector(DataCollector):  # pylint: disable=too-many-instance-attributes
     simulation_id: str
     update_counter: int
     visualized_environment: VisualizedEnvironment
@@ -95,7 +95,7 @@ class SimulationVisualizationDataCollector(DataCollector):
     # Estimated end time
     last_estimated_end_time: float | None = None
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self,
         data_analyzer: DataAnalyzer,
         statistics_delta_time: int = 10,
@@ -222,7 +222,7 @@ class SimulationVisualizationDataCollector(DataCollector):
                     print("Trying to reconnect")
                     self.sio.connect(f"http://{HOST}:{SERVER_PORT}", auth={"type": "simulation"})
                     print("Connected")
-                except Exception as e:
+                except Exception as e:  # pylint: disable=broad-exception-caught
                     print(f"Failed to connect to server: {e}")
                     print("Continuing in offline mode")
 
@@ -276,7 +276,9 @@ class SimulationVisualizationDataCollector(DataCollector):
             )
 
     # MARK: +- Add Update
-    def add_update(self, update: Update, environment: Environment) -> None:
+    def add_update(  # pylint: disable=too-many-branches, too-many-statements
+        self, update: Update, environment: Environment
+    ) -> None:
         update.order = self.update_counter
         self.visualized_environment.order = self.update_counter
 
@@ -440,8 +442,8 @@ class SimulationVisualizationDataCollector(DataCollector):
             )
 
         for event in self.vehicle_notification_event_queue:
-            vehicle = event._VehicleNotification__vehicle
-            route = event._VehicleNotification__route
+            vehicle = event._VehicleNotification__vehicle  # pylint: disable=protected-access
+            route = event._VehicleNotification__route  # pylint: disable=protected-access
             existing_vehicle = self.visualized_environment.get_vehicle(vehicle.id)
             if vehicle.polylines != existing_vehicle.polylines:
                 existing_vehicle.polylines = vehicle.polylines
@@ -463,7 +465,9 @@ class SimulationVisualizationDataCollector(DataCollector):
         return len(self.passenger_assignment_event_queue) > 0 or len(self.vehicle_notification_event_queue) > 0
 
     # MARK: +- Process Event
-    def process_event(self, event: Event, environment: Environment) -> str:
+    def process_event(  # pylint: disable=too-many-branches, too-many-statements, too-many-return-statements
+        self, event: Event, environment: Environment
+    ) -> str:
         # In case that a queued event is not linked to EnvironmentIdle
         if self.has_to_flush and event.time > self.last_queued_event_time:
             self.flush(environment)
@@ -594,7 +598,7 @@ class SimulationVisualizationDataCollector(DataCollector):
 
         # VehicleDeparture
         if isinstance(event, VehicleDeparture):
-            route = event._VehicleDeparture__route
+            route = event._VehicleDeparture__route  # pylint: disable=protected-access
             vehicle = event.state_machine.owner
 
             self.add_update(
@@ -620,7 +624,7 @@ class SimulationVisualizationDataCollector(DataCollector):
 
         # VehicleArrival
         if isinstance(event, VehicleArrival):
-            route = event._VehicleArrival__route
+            route = event._VehicleArrival__route  # pylint: disable=protected-access
             vehicle = event.state_machine.owner
 
             self.add_update(
@@ -661,7 +665,9 @@ class SimulationVisualizationDataCollector(DataCollector):
 
         # VehicleReady
         if isinstance(event, VehicleReady):
-            vehicle = VisualizedVehicle.from_vehicle_and_route(event.vehicle, event._VehicleReady__route)
+            vehicle = VisualizedVehicle.from_vehicle_and_route(
+                event.vehicle, event._VehicleReady__route  # pylint: disable=protected-access
+            )
             self.add_update(
                 Update(
                     UpdateType.CREATE_VEHICLE,
