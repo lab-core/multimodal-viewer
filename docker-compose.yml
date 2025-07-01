@@ -14,6 +14,8 @@ services:
 
   publish:
     container_name: publish
+    environment:
+      - PYTHON_PACKAGE_VERSION=${PYTHON_PACKAGE_VERSION}
     build:
       context: .
       dockerfile: Dockerfile.publish
@@ -27,6 +29,8 @@ services:
 
   publish-test:
     container_name: publish-test
+    environment:
+      - PYTHON_PACKAGE_VERSION=${PYTHON_PACKAGE_VERSION}
     build:
       context: .
       dockerfile: Dockerfile.publish-test
@@ -40,6 +44,8 @@ services:
 
   publish-only: # Do not require build-angular
     container_name: publish-only
+    environment:
+      - PYTHON_PACKAGE_VERSION=${PYTHON_PACKAGE_VERSION}
     build:
       context: .
       dockerfile: Dockerfile.publish
@@ -50,6 +56,8 @@ services:
 
   publish-test-only: # Do not require build-angular
     container_name: publish-test-only
+    environment:
+      - PYTHON_PACKAGE_VERSION=${PYTHON_PACKAGE_VERSION}
     build:
       context: .
       dockerfile: Dockerfile.publish-test
@@ -64,6 +72,7 @@ services:
       - .env
     environment:
       - HOST=0.0.0.0
+      - PYTHON_PACKAGE_VERSION=${PYTHON_PACKAGE_VERSION}
     ports:
       - '${SERVER_PORT}:${SERVER_PORT}'
       - '${CLIENT_PORT}:${CLIENT_PORT}'

@@ -12,6 +12,9 @@ COPY .pypirc ./
 # Copy default environment file
 COPY .env /app/
 
+# Set the environment variable for the Python package version by getting it from the docker compose file
+ARG PYTHON_PACKAGE_VERSION
+
 # Publish the package to PyPI
 CMD \
   echo "Running: cd ./python" && \
@@ -20,7 +23,9 @@ CMD \
   cp ../.env ./multimodalsim_viewer/common/environments/.env && \
   echo "Running: rm -rf ./dist" && \
   rm -rf ./dist && \
-  echo "Running: python -m build" && \
-  python -m build && \
+  echo "Running: rm -rf multimodalsim_viewer.egg-info" && \
+  rm -rf multimodalsim_viewer.egg-info && \
+  echo "Running: PYTHON_PACKAGE_VERSION=${PYTHON_PACKAGE_VERSION} python -m build" && \
+  PYTHON_PACKAGE_VERSION=${PYTHON_PACKAGE_VERSION} python -m build && \
   echo "Running: python -m twine upload --repository pypi --verbose --config-file .pypirc ./dist/*" && \
   python -m twine upload --repository pypi --verbose --config-file ../.pypirc ./dist/* \ 

@@ -1,8 +1,20 @@
+import os
+
 from setuptools import find_packages, setup
+
+version = os.getenv("PYTHON_PACKAGE_VERSION")
+
+if not version:
+    raise ValueError(
+        "PYTHON_PACKAGE_VERSION environment variable is not set. "
+        "Please set it by adding PYTHON_PACKAGE_VERSION=0.0.1 before the command. "
+        "You can replace 0.0.1 with the desired version."
+    )
+
 
 setup(
     name="multimodalsim_viewer",
-    version="0.0.2",
+    version=version,
     description="Multimodal simulation viewer",
     license="MIT",
     keywords="flask angular ui multimodal server",

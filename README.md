@@ -56,10 +56,10 @@ To publish this project, you need to have the `build` and `twine` packages insta
 python -m pip install --upgrade build twine
 ```
 
-Then, you need to build the project:
+Then, you need to build the project. You need to specify the wanted version of the package. You can replace `0.0.1` with the version you want to use. 
 
 ```bash
-python -m build
+PYTHON_PACKAGE_VERSION='0.0.1' python -m build
 ```
 
 To publish the project to PyPI, you can use the following command:
@@ -74,6 +74,12 @@ If you want to publish but not affect the main index of PyPI, you can publish th
 python -m twine upload --repository testpypi ./dist/* --verbose
 ```
 
+If you want to test the TestPyPi publication, you can install the package from TestPyPI with the following command:
+
+```bash
+python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple multimodalsim-viewer==0.0.1
+```
+
 Docker scripts are also available to build and publish the project without having to install Python or Node.js. You can use one of the following commands:
 
 ```bash
@@ -81,12 +87,12 @@ Docker scripts are also available to build and publish the project without havin
 docker compose --profile build-angular up --build --force-recreate
 
 # To build the angular application and publish it to PyPI or TestPyPI
-docker compose --profile publish up --build --force-recreate
-docker compose --profile publish-test up --build --force-recreate
+PYTHON_PACKAGE_VERSION='0.0.1' docker compose --profile publish up --build --force-recreate
+PYTHON_PACKAGE_VERSION='0.0.1' docker compose --profile publish-test up --build --force-recreate
 
 # To only publish the package to PyPI or TestPyPI without building the angular application
-docker compose --profile publish-only up --build --force-recreate
-docker compose --profile publish-test-only up --build --force-recreate
+PYTHON_PACKAGE_VERSION='0.0.1' docker compose --profile publish-only up --build --force-recreate
+PYTHON_PACKAGE_VERSION='0.0.1' docker compose --profile publish-test-only up --build --force-recreate
 ```
 
 ## Development
