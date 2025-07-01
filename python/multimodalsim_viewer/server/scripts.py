@@ -68,16 +68,34 @@ def terminate_server():
 def terminate_ui():
     print("Terminating UI...")
 
+    terminated = False
+
     try:
         response = get(f"http://{HOST}:{CLIENT_PORT}/terminate", timeout=5)
 
         if response.status_code == 200:
             print("UI terminated")
+            terminated = True
         else:
             print(f"Failed to terminate UI: {response.status_code}")
 
     except RequestsConnectionError:  # pylint: disable=broad-exception-caught
         print("UI is not running or cannot be reached.")
+
+    if terminated:
+        return
+
+    print("Trying to terminate UI at server port...")
+    try:
+        response = get(f"http://{HOST}:{SERVER_PORT}/terminate", timeout=5)
+
+        if response.status_code == 200:
+            print("UI terminated at server port")
+        else:
+            print(f"Failed to terminate UI at server port: {response.status_code}")
+
+    except RequestsConnectionError:
+        print("UI is not running or cannot be reached at server port.")
 
 
 def main():
