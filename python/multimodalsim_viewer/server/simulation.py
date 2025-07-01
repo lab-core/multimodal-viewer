@@ -2,6 +2,7 @@ import argparse
 import os
 import sys
 import threading
+from argparse import ArgumentParser, Namespace
 
 import questionary
 from multimodalsim.observer.data_collector import DataContainer, StandardDataCollector
@@ -71,9 +72,12 @@ def run_simulation(
         stop_event.set()
 
 
-def run_simulation_cli():
+def configure_simulation_parser(
+    parser: ArgumentParser | None = None,  # pylint: disable=redefined-outer-name
+) -> ArgumentParser:
+    if parser is None:
+        parser = argparse.ArgumentParser(description="Run a simulation")
 
-    parser = argparse.ArgumentParser(description="Run a simulation")
     parser.add_argument("--name", type=str, help="The name of the simulation")
     parser.add_argument("--data", type=str, help="The data to use for the simulation")
     parser.add_argument("--max-duration", type=float, help="The maximum duration to run the simulation")
@@ -83,12 +87,14 @@ def run_simulation_cli():
         help="Run the simulation in offline mode (does not connect to the server)",
     )
 
-    args = parser.parse_args()
+    return parser
 
-    name = args.name
-    data = args.data
-    max_duration = args.max_duration
-    is_offline = args.offline
+
+def start_simulation_cli(parsed_arguments: Namespace) -> None:
+    name = parsed_arguments.name
+    data = parsed_arguments.data
+    max_duration = parsed_arguments.max_duration
+    is_offline = parsed_arguments.offline
 
     name_error = verify_simulation_name(name)
 
@@ -148,12 +154,14 @@ def run_simulation_cli():
 
     print("To run a simulation with the same configuration, use the following command:")
     print(
-        f"multimodalsim-simulation  --data {data} "
-        f"{f'--max-duration {max_duration}' if max_duration is not None else ''} "
-        f"{'--offline' if is_offline else ''} "
+        f"viewer simulate --data {data} "
+        f"{f'--max-duration {max_duration} ' if max_duration is not None else ''}"
+        f"{'--offline ' if is_offline else ''}"
         f"--name {name}"  # Name last to allow quick name change when re-running the command
     )
 
 
 if __name__ == "__main__":
-    run_simulation_cli()
+    parser = configure_simulation_parser()
+    args = parser.parse_args()
+    start_simulation_cli(args)

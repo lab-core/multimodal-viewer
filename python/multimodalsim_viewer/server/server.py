@@ -7,8 +7,6 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 
 from multimodalsim_viewer.common.utils import (
     CLIENT_ROOM,
-    HOST,
-    SERVER_PORT,
     get_available_data,
     get_session_id,
     log,
@@ -17,7 +15,7 @@ from multimodalsim_viewer.server.http_routes import http_routes
 from multimodalsim_viewer.server.simulation_manager import SimulationManager
 
 
-def run_server():  # pylint: disable=too-many-statements, too-many-locals
+def configure_server() -> tuple[Flask, SocketIO]:  # pylint: disable=too-many-statements, too-many-locals
     app = Flask(__name__)
 
     # Register HTTP routes
@@ -122,6 +120,8 @@ def run_server():  # pylint: disable=too-many-statements, too-many-locals
 
         socketio.stop()
 
+        print("Server terminated successfully.")
+
     # MARK: Simulation events
     @socketio.on("simulation-start")
     def on_simulation_start(simulation_id, simulation_start_time):
@@ -193,13 +193,4 @@ def run_server():  # pylint: disable=too-many-statements, too-many-locals
             get_session_id(),
         )
 
-    logging.basicConfig(level=logging.DEBUG)
-
-    log(f"Starting server at {HOST}:{SERVER_PORT}", "server", should_emit=False)
-
-    # MARK: Run server
-    socketio.run(app, host=HOST, port=SERVER_PORT)
-
-
-if __name__ == "__main__":
-    run_server()
+    return app, socketio

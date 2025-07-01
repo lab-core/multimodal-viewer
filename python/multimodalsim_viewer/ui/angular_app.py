@@ -2,20 +2,17 @@ import os
 import signal
 import threading
 import time
-import webbrowser
 
 from flask import Flask, send_from_directory
 
-from multimodalsim_viewer.common.utils import CLIENT_PORT, HOST, SERVER_PORT
 
+def configure_angular_app(app=None) -> Flask:
+    static_dir = os.path.join(os.path.dirname(__file__), "static")
 
-def serve_angular_app(static_dir, port=None, backend_port=None):
-    if port is None:
-        port = CLIENT_PORT
-    if backend_port is None:
-        backend_port = SERVER_PORT
-
-    app = Flask(__name__, static_folder=static_dir)
+    if app is None:
+        app = Flask(__name__, static_folder=static_dir)
+    else:
+        app.static_folder = static_dir
 
     @app.route("/<path:path>")
     def static_proxy(path):
@@ -40,9 +37,4 @@ def serve_angular_app(static_dir, port=None, backend_port=None):
 
         return "UI terminated", 200
 
-    print(f"Serving Angular app from {static_dir} at http://localhost:{port}")
-    print(f"Backend is expected at http://localhost:{backend_port}")
-
-    webbrowser.open(f"http://localhost:{port}")
-
-    app.run(host=HOST, port=port)
+    return app

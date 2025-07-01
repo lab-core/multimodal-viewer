@@ -28,13 +28,7 @@ setup(
     python_requires="==3.11.*",
     entry_points={
         "console_scripts": [
-            "multimodalsim-server=multimodalsim_viewer.server.server:run_server",
-            "multimodalsim-ui=multimodalsim_viewer.ui.cli:main",
-            "multimodalsim-simulation=multimodalsim_viewer.server.simulation:run_simulation_cli",
-            "multimodalsim-viewer=multimodalsim_viewer.server.scripts:run_server_and_ui",
-            "multimodalsim-stop-server=multimodalsim_viewer.server.scripts:terminate_server",
-            "multimodalsim-stop-ui=multimodalsim_viewer.server.scripts:terminate_ui",
-            "multimodalsim-stop-all=multimodalsim_viewer.server.scripts:terminate_all",
+            "viewer=multimodalsim_viewer.server.scripts:main",
         ]
     },
 )

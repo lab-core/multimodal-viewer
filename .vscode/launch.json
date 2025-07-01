@@ -5,23 +5,13 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Server Python Debugger",
+      "name": "Python Entry Point Debugger",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/multimodal-server/server.py",
+      "program": "${workspaceFolder}/python/multimodalsim_viewer/server/scripts.py",
       "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/multimodal-server"
-      // "justMyCode": false
-    },
-    {
-      "name": "Simulation Python Debugger",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "${workspaceFolder}/multimodal-server/simulation.py",
-      "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/multimodal-server"
-      // "justMyCode": false,
-      // "args": ["--name", "launch_large", "--data", "instance_07"]
+      "cwd": "${workspaceFolder}/python",
+      "args": ["start"]
     }
   ]
 }

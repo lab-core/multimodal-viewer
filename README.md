@@ -30,28 +30,22 @@ This project is an extension of the packaged [multimodal-simulation](https://git
 
 ## Installation
 
-This project is hosted on PyPI and can be installed with pip. The package is called `multimodalsim-viewer`. You can install it with the following command:
+You have access to several commands that will allow you to run the project easily.
 
 ```bash
-pip install multimodalsim-viewer
+viewer start 
+viewer start --ui     # only start the UI side
+viewer start --server # only start the server 
+
+viewer stop
+viewer stop --ui     # only stop the UI side
+viewer stop --server # only stop the server
 ```
 
-Now that the package is installed, you have access to several commands that will allow you to run the project easily.
+You can also run a simulation from the command line. Several arguments are available to customize the simulation and can be found with the --help option, but the required arguments will be asked interactively if not provided. The command to run a simulation is:
 
 ```bash
-multimodalsim-server  # To run the server
-multimodalsim-ui      # To run the frontend
-multimodalsim-viewer  # To run both the server and the frontend
-
-multimodalsim-stop-server # To stop the server
-multimodalsim-stop-ui # To stop the frontend
-multimodalsim-stop-all # To stop both the server and the frontend
-```
-
-You can also run a simulation from the command line. Several arguments are available to customize the simulation and can be found with the `--help` option, but the required arguments will be asked interactively if not provided. The command to run a simulation is:
-
-```bash
-multimodalsim-simulation
+viewer simulate
 ```
 
 ## Publication to PyPI
@@ -144,37 +138,7 @@ cd python
 python -m pip install -e .
 ```
 
-Now that the python environment is set up, you can run the following command to run the server:
-
-```bash
-multimodalsim-server
-```
-
-You can also host the frontend with the following command:
-
-```bash
-multimodalsim-ui
-```
-
-Both processes can be run in the same terminal using this command:
-
-```bash
-multimodalsim-viewer
-```
-
-A script to run a simulation from the command line is also available. You can run it with the following command:
-
-```bash
-multimodalsim-simulation
-```
-
-Additional scripts are available to stop the server and the client properly:
-
-```bash
-multimodalsim-stop-server
-multimodalsim-stop-ui
-multimodalsim-stop-all
-```
+Now that the python environment is set up, you can run the commands specified in the [installation](#installation) section.
 
 ### Docker
 
