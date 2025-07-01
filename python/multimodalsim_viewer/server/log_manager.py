@@ -1,15 +1,10 @@
-import os
+from multimodalsim_viewer.common.utils import get_saved_logs_directory_path
 
 
 def register_log(simulation_id, message):
-    current_directory = os.path.dirname(os.path.abspath(__file__))
-    log_directory_name = "saved_logs"
-    log_directory_path = f"{current_directory}/{log_directory_name}"
+    saved_logs_directory_path = get_saved_logs_directory_path()
     file_name = f"{simulation_id}.txt"
-    file_path = f"{log_directory_path}/{file_name}"
-
-    if not os.path.exists(log_directory_path):
-        os.makedirs(log_directory_path)
+    file_path = f"{saved_logs_directory_path}/{file_name}"
 
     with open(file_path, "a", encoding="utf-8") as file:
         file.write(message + "\n")

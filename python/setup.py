@@ -13,9 +13,6 @@ setup(
         ]
     ),
     include_package_data=True,
-    package_data={
-        "multimodalsim_viewer": ["ui/static/**/*", "common/environments/.env"],
-    },
     install_requires=[
         "flask==3.1.1",
         "flask-socketio==5.5.1",

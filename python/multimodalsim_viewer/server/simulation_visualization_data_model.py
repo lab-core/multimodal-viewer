@@ -15,6 +15,7 @@ from multimodalsim.state_machine.status import PassengerStatus, VehicleStatus
 from multimodalsim_viewer.common.utils import (
     SAVE_VERSION,
     SIMULATION_SAVE_FILE_SEPARATOR,
+    get_data_directory_path,
 )
 
 
@@ -1081,8 +1082,9 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
     # MARK: +- File paths
     @staticmethod
     def get_saved_simulations_directory_path() -> str:
-        current_directory = os.path.dirname(os.path.abspath(__file__))
-        directory_path = f"{current_directory}/{SimulationVisualizationDataManager.__SAVED_SIMULATIONS_DIRECTORY_NAME}"
+        directory_path = os.path.join(
+            get_data_directory_path(), SimulationVisualizationDataManager.__SAVED_SIMULATIONS_DIRECTORY_NAME
+        )
 
         if not os.path.exists(directory_path):
             os.makedirs(directory_path)

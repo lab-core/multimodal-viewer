@@ -4,34 +4,31 @@ venv
 # Python cache
 __pycache__
 
-# Saved logs
-saved_logs
+# Data files (saved_logs, saved_simulations, input_data)
+python/multimodalsim_viewer/data/saved_logs
+python/multimodalsim_viewer/data/saved_simulations
+python/multimodalsim_viewer/data/input_data/*
 
-# Saved simulations
-saved_simulations
-
-# Data folder except for some specific files
-data/*
 # instance_16, instance_full_day were too large to be uploaded to GitHub
-!data/instance_07
-!data/instance_10
-!data/instance_13
-!data/instance_19
-!data/instance_medium_07
-!data/instance_medium_10
-!data/instance_medium_13
-!data/instance_medium_16
-!data/instance_medium_19
-!data/instance_small_07
-!data/instance_small_10
-!data/instance_small_13
-!data/instance_small_16
-!data/instance_small_19
-!data/instance_very_small_07
-!data/instance_very_small_10
-!data/instance_very_small_13
-!data/instance_very_small_16
-!data/instance_very_small_19
+!python/multimodalsim_viewer/data/input_data/instance_07
+!python/multimodalsim_viewer/data/input_data/instance_10
+!python/multimodalsim_viewer/data/input_data/instance_13
+!python/multimodalsim_viewer/data/input_data/instance_19
+!python/multimodalsim_viewer/data/input_data/instance_medium_07
+!python/multimodalsim_viewer/data/input_data/instance_medium_10
+!python/multimodalsim_viewer/data/input_data/instance_medium_13
+!python/multimodalsim_viewer/data/input_data/instance_medium_16
+!python/multimodalsim_viewer/data/input_data/instance_medium_19
+!python/multimodalsim_viewer/data/input_data/instance_small_07
+!python/multimodalsim_viewer/data/input_data/instance_small_10
+!python/multimodalsim_viewer/data/input_data/instance_small_13
+!python/multimodalsim_viewer/data/input_data/instance_small_16
+!python/multimodalsim_viewer/data/input_data/instance_small_19
+!python/multimodalsim_viewer/data/input_data/instance_very_small_07
+!python/multimodalsim_viewer/data/input_data/instance_very_small_10
+!python/multimodalsim_viewer/data/input_data/instance_very_small_13
+!python/multimodalsim_viewer/data/input_data/instance_very_small_16
+!python/multimodalsim_viewer/data/input_data/instance_very_small_19
 
 
 # Python Packages
