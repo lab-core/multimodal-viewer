@@ -17,7 +17,7 @@ from multimodalsim_viewer.server.http_routes import http_routes
 from multimodalsim_viewer.server.simulation_manager import SimulationManager
 
 
-def run_server():
+def run_server():  # pylint: disable=too-many-statements, too-many-locals
     app = Flask(__name__)
 
     # Register HTTP routes
@@ -167,7 +167,7 @@ def run_server():
         simulation_manager.on_simulation_update_polylines_version(simulation_id)
 
     @socketio.on("simulation-identification")
-    def on_simulation_identification(
+    def on_simulation_identification(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         simulation_id,
         data,
         simulation_start_time,

@@ -20,7 +20,7 @@ from multimodalsim_viewer.server.simulation_visualization_data_model import (
 )
 
 
-class SimulationHandler:
+class SimulationHandler:  # pylint: disable=too-many-instance-attributes, too-few-public-methods
     simulation_id: str
     name: str
     start_time: float
@@ -41,7 +41,7 @@ class SimulationHandler:
 
     polylines_version: int | None
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self,
         simulation_id: str,
         name: str,
@@ -288,7 +288,7 @@ class SimulationManager:
 
         self.emit_simulations()
 
-    def on_simulation_identification(
+    def on_simulation_identification(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self,
         simulation_id,
         data,
@@ -404,7 +404,7 @@ class SimulationManager:
                 missing_states,
                 missing_updates,
                 state_orders_to_keep,
-                should_request_more_states,
+                should_request_more,
                 first_continuous_state_order,
                 last_continuous_state_order,
                 necessary_state_order,
@@ -421,7 +421,7 @@ class SimulationManager:
                     missing_states,
                     missing_updates,
                     state_orders_to_keep,
-                    should_request_more_states,
+                    should_request_more,
                     first_continuous_state_order,
                     last_continuous_state_order,
                     necessary_state_order,
@@ -429,7 +429,7 @@ class SimulationManager:
                 to=get_session_id(),
             )
 
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             log(
                 f"Error while emitting missing simulation states for {simulation_id}: {e}",
                 "server",
@@ -541,11 +541,11 @@ class SimulationManager:
 
                 if simulation_information.simulation_end_time is None:
                     # The simulation is not running but the end time is not set
-                    raise Exception("Simulation is corrupted")
+                    raise Exception("Simulation is corrupted")  # pylint: disable=broad-exception-raised
 
                 self.simulations[simulation_id] = simulation
 
-            except Exception:
+            except Exception:  # pylint: disable=broad-exception-caught
                 is_corrupted = True
 
         if is_corrupted:

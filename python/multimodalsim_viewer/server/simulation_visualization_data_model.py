@@ -1,9 +1,10 @@
+# pylint: disable=too-many-lines
 import json
 import math
 import os
 from enum import Enum
 
-import multimodalsim.optimization.dispatcher  # To avoid circular import error
+import multimodalsim.optimization.dispatcher  # (To avoid circular import error) pylint: disable=unused-import
 from filelock import FileLock
 from multimodalsim.simulator.environment import Environment
 from multimodalsim.simulator.request import Leg, Trip
@@ -102,7 +103,7 @@ class VisualizedLeg(Serializable):
     alighting_time: float | None
     assigned_time: float | None
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self,
         assigned_vehicle_id: str | None,
         boarding_stop_index: int | None,
@@ -119,7 +120,7 @@ class VisualizedLeg(Serializable):
         self.assigned_time = assigned_time
 
     @classmethod
-    def from_leg_environment_and_trip(
+    def from_leg_environment_and_trip(  # pylint: disable=too-many-locals, too-many-branches
         cls,
         leg: Leg,
         environment: Environment,
@@ -243,7 +244,7 @@ class VisualizedPassenger(Serializable):
     current_leg: VisualizedLeg | None
     next_legs: list[VisualizedLeg]
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self,
         passenger_id: str,
         name: str | None,
@@ -349,7 +350,7 @@ class VisualizedStop(Serializable):
     capacity: int | None
     label: str
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self,
         arrival_time: float,
         departure_time: float,
@@ -426,7 +427,7 @@ class VisualizedStop(Serializable):
 
 
 # MARK: Vehicle
-class VisualizedVehicle(Serializable):
+class VisualizedVehicle(Serializable):  # pylint: disable=too-many-instance-attributes
     vehicle_id: str
     mode: str | None
     status: VehicleStatus
@@ -437,7 +438,7 @@ class VisualizedVehicle(Serializable):
     capacity: int
     name: str | None
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self,
         vehicle_id: str | int,
         mode: str | None,
@@ -505,14 +506,15 @@ class VisualizedVehicle(Serializable):
         if isinstance(data, str):
             data = json.loads(data.replace("'", '"'))
 
-        if (
-            "id" not in data
-            or "status" not in data
-            or "previousStops" not in data
-            or "nextStops" not in data
-            or "capacity" not in data
-            or "name" not in data
-        ):
+        required_keys = [
+            "id",
+            "status",
+            "previousStops",
+            "nextStops",
+            "capacity",
+            "name",
+        ]
+        if any(key not in data for key in required_keys):
             raise ValueError("Invalid data for VisualizedVehicle")
 
         vehicle_id = str(data["id"])
@@ -588,14 +590,15 @@ class VisualizedEnvironment(Serializable):
         if isinstance(data, str):
             data = json.loads(data.replace("'", '"'))
 
-        if (
-            "passengers" not in data
-            or "vehicles" not in data
-            or "timestamp" not in data
-            or "estimatedEndTime" not in data
-            or "statistic" not in data
-            or "order" not in data
-        ):
+        required_keys = [
+            "passengers",
+            "vehicles",
+            "timestamp",
+            "estimatedEndTime",
+            "statistic",
+            "order",
+        ]
+        if any(key not in data for key in required_keys):
             raise ValueError("Invalid data for VisualizedEnvironment")
 
         environment = VisualizedEnvironment()
@@ -960,7 +963,7 @@ class VisualizedState(VisualizedEnvironment):
 
 
 # MARK: Simulation Information
-class SimulationInformation(Serializable):
+class SimulationInformation(Serializable):  # pylint: disable=too-many-instance-attributes
     version: int
     simulation_id: str
     name: str
@@ -970,7 +973,7 @@ class SimulationInformation(Serializable):
     simulation_end_time: float | None
     last_update_order: int | None
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self,
         simulation_id: str,
         data: str,
@@ -1036,7 +1039,7 @@ class SimulationInformation(Serializable):
 
 
 # MARK: SVDM
-class SimulationVisualizationDataManager:
+class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-methods
     """
     This class manage reads and writes of simulation data for visualization.
     """
@@ -1266,7 +1269,7 @@ class SimulationVisualizationDataManager:
                 SimulationVisualizationDataManager.__format_json_one_line(update.serialize(), file)
 
     @staticmethod
-    def get_missing_states(
+    def get_missing_states(  # pylint: disable=too-many-locals, too-many-branches, too-many-statements
         simulation_id: str,
         visualization_time: float,
         loaded_state_orders: list[int],
