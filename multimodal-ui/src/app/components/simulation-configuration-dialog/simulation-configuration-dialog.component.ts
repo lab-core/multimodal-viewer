@@ -25,10 +25,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import JSZip from 'jszip';
 import { Subject, takeUntil } from 'rxjs';
-import {
-  SIMULATION_SAVE_FILE_SEPARATOR,
-  SimulationConfiguration,
-} from '../../interfaces/simulation.model';
+import { SIMULATION_SAVE_FILE_SEPARATOR } from '../../../environments/environment';
+import { SimulationConfiguration } from '../../interfaces/simulation.model';
 import { DataService } from '../../services/data.service';
 import { HttpService } from '../../services/http.service';
 

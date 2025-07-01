@@ -1,7 +1,5 @@
 import { EntityType } from './entity.model';
 
-export const SIMULATION_SAVE_FILE_SEPARATOR = '---';
-
 export type SimulationStatus =
   | 'starting'
   | 'paused'
@@ -62,11 +60,6 @@ export interface Simulation {
   data: string;
 
   /**
-   * An indicator of the progress of the simulation
-   */
-  // completion: number;
-
-  /**
    * The current status of the simulation
    */
   status: SimulationStatus;
@@ -115,6 +108,11 @@ export interface Simulation {
    * Version of the polylines
    */
   polylinesVersion: number;
+
+  /**
+   * The size of the simulation in bytes
+   */
+  size: number | null;
 }
 
 export interface SimulationConfiguration {

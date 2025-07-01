@@ -1,5 +1,11 @@
-import { PercentPipe, TitleCasePipe } from '@angular/common';
-import { Component, computed, Signal } from '@angular/core';
+import { DatePipe, PercentPipe, TitleCasePipe } from '@angular/common';
+import {
+  Component,
+  computed,
+  signal,
+  Signal,
+  WritableSignal,
+} from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -15,6 +21,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import JSZip from 'jszip';
 import { firstValueFrom } from 'rxjs';
@@ -22,6 +29,7 @@ import {
   RUNNING_SIMULATION_STATUSES,
   Simulation,
 } from '../../interfaces/simulation.model';
+import { SimulationTimePipe } from '../../pipes/simulation-time.pipe';
 import { CommunicationService } from '../../services/communication.service';
 import { DataService } from '../../services/data.service';
 import { DialogService } from '../../services/dialog.service';
@@ -54,6 +62,8 @@ export type SimulationListGroup = 'running' | 'completed';
     MatDividerModule,
     TitleCasePipe,
     PercentPipe,
+    SimulationTimePipe,
+    DatePipe,
   ],
   templateUrl: './simulation-list-dialog.component.html',
   styleUrl: './simulation-list-dialog.component.css',
@@ -84,14 +94,23 @@ export class SimulationListDialogComponent {
       },
     ];
   });
+
+  private readonly _selectedSimulationIdSignal: WritableSignal<string | null> =
+    signal(null);
+
   constructor(
     private readonly dataService: DataService,
     private readonly simulationService: SimulationService,
     private readonly dialogService: DialogService,
     private readonly matDialogRef: MatDialogRef<SimulationListDialogComponent>,
-    private httpService: HttpService,
-    private communicationService: CommunicationService,
+    private readonly httpService: HttpService,
+    private readonly communicationService: CommunicationService,
+    private readonly snackBar: MatSnackBar,
   ) {}
+
+  get selectedSimulationIdSignal(): Signal<string | null> {
+    return this._selectedSimulationIdSignal;
+  }
 
   getColorFromStatus(status: Simulation['status']): string {
     switch (status) {
@@ -116,7 +135,12 @@ export class SimulationListDialogComponent {
     }
   }
 
-  async editSimulationConfiguration(simulation: Simulation) {
+  async editSimulationConfiguration(
+    simulation: Simulation,
+    event: Event,
+  ): Promise<void> {
+    event.stopPropagation(); // Prevent the click from toggling selection
+
     const result = await firstValueFrom(
       this.dialogService
         .openSimulationConfigurationDialog({
@@ -136,7 +160,9 @@ export class SimulationListDialogComponent {
     );
   }
 
-  async stopSimulation(simulation: Simulation): Promise<void> {
+  async stopSimulation(simulationId: string, event: Event): Promise<void> {
+    event.stopPropagation(); // Prevent the click from toggling selection
+
     const result = await firstValueFrom(
       this.dialogService
         .openInformationDialog({
@@ -155,10 +181,12 @@ export class SimulationListDialogComponent {
       return;
     }
 
-    this.simulationService.stopSimulation(simulation.id);
+    this.simulationService.stopSimulation(simulationId);
   }
 
-  visualizeSimulation(simulation: Simulation): void {
+  visualizeSimulation(simulation: Simulation, event: Event): void {
+    event.stopPropagation(); // Prevent the click from toggling selection
+
     this.matDialogRef.close({ simulationToVisualize: simulation });
   }
 
@@ -166,7 +194,9 @@ export class SimulationListDialogComponent {
     return this.dataService.simulationsSignal;
   }
 
-  pauseResumeHandler(simulationId: string, isRunning: boolean) {
+  pauseResumeHandler(simulationId: string, isRunning: boolean, event: Event) {
+    event.stopPropagation(); // Prevent the click from toggling selection
+
     if (isRunning) {
       this.simulationService.pauseSimulation(simulationId);
     } else {
@@ -227,7 +257,9 @@ export class SimulationListDialogComponent {
     input.click();
   }
 
-  exportSimulation(simulationId: string) {
+  exportSimulation(simulationId: string, event: Event) {
+    event.stopPropagation(); // Prevent the click from toggling selection
+
     const folderContents = 'simulation';
     this.httpService
       .exportFolder(folderContents, simulationId)
@@ -244,7 +276,13 @@ export class SimulationListDialogComponent {
       });
   }
 
-  async deleteSimulation(simulationId: string, simulationName: string) {
+  async deleteSimulation(
+    simulationId: string,
+    simulationName: string,
+    event: Event,
+  ) {
+    event.stopPropagation(); // Prevent the click from toggling selection
+
     const isConfirmed = await this.confirmDeletion(simulationName);
 
     if (!isConfirmed) {
@@ -280,5 +318,59 @@ export class SimulationListDialogComponent {
         })
         .afterClosed(),
     );
+  }
+
+  getDuration(simulation: Simulation): number {
+    if (simulation.simulationStartTime === null) {
+      return 0;
+    }
+
+    if (simulation.simulationEndTime !== null) {
+      return simulation.simulationEndTime - simulation.simulationStartTime;
+    }
+
+    if (simulation.simulationTime !== null) {
+      return simulation.simulationTime - simulation.simulationStartTime;
+    }
+
+    return 0;
+  }
+
+  megabytes(bytes: number | null): string {
+    if (bytes === null || bytes < 0) {
+      return 'unknown';
+    }
+    const megabytes = bytes / (1024 * 1024);
+    return `${megabytes.toFixed(2)} MB`;
+  }
+
+  toggleSelection(simulationId: string | null): void {
+    if (this._selectedSimulationIdSignal() === simulationId) {
+      this._selectedSimulationIdSignal.set(null);
+    } else {
+      this._selectedSimulationIdSignal.set(simulationId);
+    }
+  }
+
+  async copyToClipboard(text: string, event: Event): Promise<void> {
+    event.stopPropagation(); // Prevent the click from toggling selection
+
+    await navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        this.snackBar.open('Copied to clipboard!', 'Close', {
+          duration: 2000,
+        });
+      })
+      .catch((err) => {
+        console.error('Failed to copy text: ', err);
+        this.snackBar.open('Failed to copy!', 'Close', {
+          duration: 2000,
+        });
+      });
+  }
+
+  isSimulationRunning(simulation: Simulation): boolean {
+    return RUNNING_SIMULATION_STATUSES.includes(simulation.status);
   }
 }

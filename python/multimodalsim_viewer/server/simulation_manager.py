@@ -27,6 +27,8 @@ class SimulationHandler:
     data: str
     process: multiprocessing.Process | None
     status: SimulationStatus
+    size: int | None
+
     socket_id: str | None
 
     simulation_start_time: float | None
@@ -55,6 +57,7 @@ class SimulationHandler:
         self.data = data
         self.process = process
         self.status = status
+        self.size = None
 
         self.socket_id = None
 
@@ -367,6 +370,9 @@ class SimulationManager:
             if simulation.polylines_version is not None:
                 serialized_simulation["polylinesVersion"] = simulation.polylines_version
 
+            if simulation.size is not None:
+                serialized_simulation["size"] = simulation.size
+
             serialized_simulations.append(serialized_simulation)
 
         emit(
@@ -479,6 +485,8 @@ class SimulationManager:
             SimulationStatus.STARTING,
             SimulationStatus.LOST,
         ]:
+            simulation = self.simulations[simulation_id]
+            simulation.size = SimulationVisualizationDataManager.get_saved_simulation_size(simulation_id)
             return
 
         is_corrupted = SimulationVisualizationDataManager.is_simulation_corrupted(simulation_id)
@@ -523,6 +531,8 @@ class SimulationManager:
                     None,
                     None,
                 )
+
+                simulation.size = SimulationVisualizationDataManager.get_saved_simulation_size(simulation_id)
 
                 simulation.simulation_start_time = simulation_information.simulation_start_time
                 simulation.simulation_end_time = simulation_information.simulation_end_time

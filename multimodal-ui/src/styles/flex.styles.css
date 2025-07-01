@@ -34,6 +34,10 @@
   align-items: flex-start;
 }
 
+.align-cross-stretch {
+  align-items: stretch;
+}
+
 .gap-0-5-rem {
   gap: 0.5rem;
 }
