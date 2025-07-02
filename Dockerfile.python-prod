@@ -2,10 +2,10 @@ FROM python:3.11.12-alpine3.21
 
 WORKDIR /app/python
 
-COPY python/requirements.txt python/setup.py ./
+COPY python/requirements.txt /app/python/
 
-RUN echo "Running: pip install --upgrade pip -r requirements.txt -e ." && \
-  pip install --upgrade pip -r requirements.txt -e . 
+RUN echo "Running: pip install --upgrade pip -r requirements.txt" && \
+  pip install --upgrade pip -r requirements.txt
 
-CMD echo "Running: multimodalsim-server" && \
-  multimodalsim-viewer
+CMD echo "Running: viewer start" && \
+  viewer start

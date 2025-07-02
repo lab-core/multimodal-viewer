@@ -2,6 +2,7 @@ import os
 
 from setuptools import find_packages, setup
 
+# Get the version from the environment variable
 version = os.getenv("PYTHON_PACKAGE_VERSION")
 
 if not version:
@@ -11,11 +12,17 @@ if not version:
         "You can replace 0.0.1 with the desired version."
     )
 
+# Read README.md for the long description
+with open("README.md", "r", encoding="utf-8") as f:
+    long_description = f.read()
+
 
 setup(
     name="multimodalsim_viewer",
     version=version,
     description="Multimodal simulation viewer",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     license="MIT",
     keywords="flask angular ui multimodal server",
     packages=find_packages(
@@ -36,7 +43,7 @@ setup(
         "python-dotenv==1.1.0",
         "multimodalsim==0.0.1",
     ],
-    extras_require={"dev": ["black==25.1.0", "pylint==3.3.7", "isort==6.0.1"]},
+    extras_require={"dev": ["black==25.1.0", "pylint==3.3.7", "isort==6.0.1"], "build": ["build", "twine"]},
     python_requires="==3.11.*",
     entry_points={
         "console_scripts": [

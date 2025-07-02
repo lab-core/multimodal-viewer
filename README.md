@@ -179,9 +179,7 @@ npm run format       # Format the code
 The python code is formatted using Black, linted using Pylint and an additional library Isort is used to organize the imports. After installing all dev dependencies, you can run the following commands in the `python` folder:
 
 ```bash
-# Two options to install dev dependencies
-python -m pip install --upgrade multimodalsim-viewer[dev] 
-python -m pip install --upgrade -r requirements.txt
+python -m pip install --upgrade -r requirements.dev.txt
 
 pylint . # Detect linting errors
 black .  # Format the code
