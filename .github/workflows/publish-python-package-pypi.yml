@@ -1,0 +1,36 @@
+name: Publish Python package to PyPI
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  verify-branch:
+    uses: ./.github/workflows/only-on-main-branch.yml
+
+  extract-version:
+    runs-on: ubuntu-latest
+    needs: verify-branch
+    outputs:
+      version: ${{ steps.extract_version.outputs.version }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Extract version
+        id: extract_version
+        run: |
+          # Extract the version number from the tag
+          VERSION=$(echo ${{ github.ref }} | sed 's|.*/v\([0-9.]*\)|\1|')
+          echo "Extracted version: $VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+  publish-python-package:
+    uses: ./.github/workflows/publish-python-package.yml
+    needs: extract-version
+    with:
+      version: ${{ needs.extract-version.outputs.version }}
+      url: https://upload.pypi.org/legacy/
