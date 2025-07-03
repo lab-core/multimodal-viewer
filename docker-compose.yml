@@ -85,4 +85,4 @@ services:
       - ./python:/app/python
       - ./.env:/app/.env
       - ./data:/app/data
-    command: ["multimodalsim-viewer"]
+    command: ["viewer start"]
