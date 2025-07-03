@@ -82,5 +82,5 @@ services:
     volumes:
       - ./python:/app/python
       - ./.env:/app/.env
-      - ./data:/app/data
+      - ./data:/app/python/data
     command: ["viewer", "start"]

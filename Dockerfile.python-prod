@@ -2,14 +2,10 @@ FROM python:3.11.12-alpine3.21
 
 WORKDIR /app/python
 
-COPY python/requirements.txt /app/python/
+COPY python/requirements.txt python/setup.py /app/python/
 
 RUN pip install --upgrade pip -r requirements.txt
 
-COPY python/setup.py python/MANIFEST.in python/README.md /app/python/
-
-COPY python/multimodalsim_viewer/common python/multimodalsim_viewer/server python/multimodalsim_viewer/ui python/multimodalsim_viewer/__init__.py  /app/python/multimodalsim_viewer/
-
-RUN PYTHON_PACKAGE_VERSION=0.0.1 python -m pip install --upgrade -e .
+RUN python -m pip install --upgrade -e .
 
 CMD ["viewer", "start"]

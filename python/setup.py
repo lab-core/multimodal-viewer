@@ -1,21 +1,34 @@
 import os
 
+from get_latest_version.pypi import get_current_module_version
+from requests.exceptions import HTTPError
 from setuptools import find_packages, setup
 
 # Get the version from the environment variable
 version = os.getenv("PYTHON_PACKAGE_VERSION")
 
 if not version:
+    try:
+        # Get the latest version from PyPI
+        # This is only used if the version is not set in the environment variable
+        # and will probably never happen during builds.
+        version = get_current_module_version("multimodalsim_viewer")
+    except HTTPError:
+        print("Failed to get the latest version from PyPI.")
+
+if not version:
     raise ValueError(
-        "PYTHON_PACKAGE_VERSION environment variable is not set. "
-        "Please set it by adding PYTHON_PACKAGE_VERSION=0.0.1 before the command. "
-        "You can replace 0.0.1 with the desired version."
+        "Python package version is not set. "
+        "You can set it using the environment variable PYTHON_PACKAGE_VERSION. "
+        "(see README.md for more information)"
     )
 
 # Read README.md for the long description
-with open("README.md", "r", encoding="utf-8") as f:
-    long_description = f.read()
-
+# Pylint considers this variable as a constant for an unknown reason
+long_description = "multimodalsim-viewer"  # pylint: disable=invalid-name
+if os.path.exists("README.md"):
+    with open("README.md", "r", encoding="utf-8") as f:
+        long_description = f.read()
 
 setup(
     name="multimodalsim_viewer",
@@ -23,7 +36,6 @@ setup(
     description="Multimodal simulation viewer",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    license="MIT",
     keywords="flask angular ui multimodal server",
     packages=find_packages(
         include=[
@@ -42,6 +54,7 @@ setup(
         "questionary==2.1.0",
         "python-dotenv==1.1.0",
         "multimodalsim==0.0.1",
+        "get_latest_version==1.0.3",
     ],
     extras_require={"dev": ["black==25.1.0", "pylint==3.3.7", "isort==6.0.1"], "build": ["build", "twine"]},
     python_requires="==3.11.*",

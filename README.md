@@ -59,10 +59,9 @@ To publish this project, you need to have the `build` and `twine` packages insta
 python -m pip install --upgrade build twine
 ```
 
-Then, you need to build the project. You need to specify the wanted version of the package. You can replace `0.0.1` with the version you want to use. 
-
+Then, you need to build the project.
 ```bash
-PYTHON_PACKAGE_VERSION='0.0.1' python -m build
+python -m build
 ```
 
 To publish the project to PyPI, you can use the following command:
@@ -154,9 +153,7 @@ python -m pip install --upgrade pip
 
 # Installing the project package
 cd python
-# You need to specify the version that is required for setup.py.
-# Any version can be used, but chose wisely when publishing to PyPI (not the case when installing here).
-PYTHON_PACKAGE_VERSION=version python -m pip install -e . 
+python -m pip install -e . 
 ```
 
 Now that the python environment is set up, you can run the commands specified in the [installation](#installation) section.
