@@ -14,6 +14,7 @@ services:
       - angular-dev
     volumes:
       - ./multimodal-ui:/app/angular
+      - /app/angular/node_modules # Prevents node_modules from being overwritten by the host
       - ./.env:/app/.env
     
     command: ["npm", "start"]
