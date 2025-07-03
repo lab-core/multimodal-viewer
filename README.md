@@ -14,6 +14,7 @@ This project is an extension of the packaged [multimodal-simulation](https://git
     - [Lint and formatting](#lint-and-formatting)
     - [Building the Frontend](#building-the-frontend)
     - [Changing Environment Variables](#changing-environment-variables)
+  - [Input Data](#input-data)
   - [Frontend](#frontend)
     - [Wanted visualization time](#wanted-visualization-time)
     - [Data reception](#data-reception)
@@ -230,6 +231,14 @@ The `.env` file in the root folder of the repository defines the default environ
 After changing them, you will need to restart all processes for the changes to take effect.
 
 We strongly recommend to use `npm start` and `npm run build` and/or the provided docker scripts to run the application, as they will automatically load the correct environment.
+
+## Input Data
+
+To run a simulation, you need to provide input data. You can upload input data folders through the web interface. Some basic input data folders are available in the `data` submodule. You can update the submodule contents with the following command:
+
+```bash
+git submodule update --init --recursive
+```
 
 ## Frontend
 

@@ -153,7 +153,7 @@ def get_saved_logs_directory_path() -> str:
 
 
 def get_input_data_directory_path(data: str | None = None) -> str:
-    input_data_directory = os.path.join(get_data_directory_path(), "..", "data", "input_data")
+    input_data_directory = os.path.join(os.getcwd(), "data")
 
     if data is not None:
         input_data_directory = os.path.join(input_data_directory, data)
@@ -167,7 +167,12 @@ def get_available_data():
     if not os.path.exists(data_dir):
         return []
 
-    return os.listdir(data_dir)
+    # List all directories in the input data directory
+    return [
+        name
+        for name in os.listdir(data_dir)
+        if os.path.isdir(os.path.join(data_dir, name)) and not name.startswith(".")
+    ]
 
 
 def log(message: str, auth_type: str, level=logging.INFO, should_emit=True) -> None:

@@ -5,7 +5,3 @@ include multimodalsim_viewer/ui/static/**/*
 # Include environment files
 include multimodalsim_viewer/common/environments/*
 include multimodalsim_viewer/common/environments/**/*
-
-# Include input data directories
-include multimodalsim_viewer/data/input_data/instance_very_small_*/**
-include multimodalsim_viewer/data/input_data/instance_very_small_*/**/*
