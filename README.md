@@ -153,7 +153,9 @@ python -m pip install --upgrade pip
 
 # Installing the project package
 cd python
-python -m pip install -e .
+# You need to specify the version that is required for setup.py.
+# Any version can be used, but chose wisely when publishing to PyPI (not the case when installing here).
+PYTHON_PACKAGE_VERSION=version python -m pip install -e . 
 ```
 
 Now that the python environment is set up, you can run the commands specified in the [installation](#installation) section.

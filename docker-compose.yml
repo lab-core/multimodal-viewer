@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   build-angular:
     container_name: build-angular
@@ -72,7 +71,6 @@ services:
       - .env
     environment:
       - HOST=0.0.0.0
-      - PYTHON_PACKAGE_VERSION=${PYTHON_PACKAGE_VERSION}
     ports:
       - '${SERVER_PORT}:${SERVER_PORT}'
       - '${CLIENT_PORT}:${CLIENT_PORT}'
@@ -85,4 +83,4 @@ services:
       - ./python:/app/python
       - ./.env:/app/.env
       - ./data:/app/data
-    command: ["viewer start"]
+    command: ["viewer", "start"]

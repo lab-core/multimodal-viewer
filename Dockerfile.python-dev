@@ -4,8 +4,12 @@ WORKDIR /app/python
 
 COPY python/requirements.dev.txt python/requirements.txt /app/python/
 
-RUN echo "Running: pip install --upgrade pip -r requirements.dev.txt" && \
-  pip install --upgrade pip -r requirements.dev.txt
+RUN pip install --upgrade pip -r requirements.dev.txt
 
-CMD echo "Running: viewer start --server" && \
-  viewer start --server
+COPY python/setup.py python/MANIFEST.in python/README.md /app/python/
+
+COPY python/multimodalsim_viewer/common python/multimodalsim_viewer/server python/multimodalsim_viewer/ui python/multimodalsim_viewer/__init__.py  /app/python/multimodalsim_viewer/
+
+RUN PYTHON_PACKAGE_VERSION=0.0.1 python -m pip install --upgrade -e .
+
+CMD ["viewer", "start", "--server"]
