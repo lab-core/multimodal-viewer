@@ -5,6 +5,8 @@ This project is an extension of the packaged [multimodal-simulation](https://git
 - [Multimodal Simulation Visualization](#multimodal-simulation-visualization)
   - [Installation](#installation)
   - [Publication to PyPI](#publication-to-pypi)
+    - [Using Docker to publish](#using-docker-to-publish)
+    - [Using GitHub Actions to publish](#using-github-actions-to-publish)
   - [Development](#development)
     - [Angular](#angular)
     - [Python](#python)
@@ -80,6 +82,8 @@ If you want to test the TestPyPi publication, you can install the package from T
 python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple multimodalsim-viewer==0.0.1
 ```
 
+### Using Docker to publish
+
 Docker scripts are also available to build and publish the project without having to install Python or Node.js. You can use one of the following commands:
 
 ```bash
@@ -94,6 +98,14 @@ PYTHON_PACKAGE_VERSION='0.0.1' docker compose --profile publish-test up --build 
 PYTHON_PACKAGE_VERSION='0.0.1' docker compose --profile publish-only up --build --force-recreate
 PYTHON_PACKAGE_VERSION='0.0.1' docker compose --profile publish-test-only up --build --force-recreate
 ```
+
+### Using GitHub Actions to publish
+
+You can also use the provided GitHub Actions to build and publish the project. These actions are triggered when a new tag is pushed to the repository on a commit on the `main` branch. The tag should follow on of the following formats (where the x's are numbers):
+- `vx.x.x` 
+- `vx.x.x.x`
+- `vx.x.x-test` (for TestPyPI)
+- `vx.x.x.x-test` (for TestPyPI)
 
 ## Development
 
