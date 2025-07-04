@@ -80,7 +80,6 @@ class _Environment:
         return environment.get("INPUT_DATA_DIRECTORY_PATH")
 
 
-
 _environment = _Environment()
 SERVER_PORT = _environment.server_port
 CLIENT_PORT = _environment.client_port
@@ -98,7 +97,6 @@ STATE_SAVE_STEP = 1000
 
 # If the version is identical, the save file can be loaded
 SAVE_VERSION = 9
-
 
 
 class SimulationStatus(Enum):
