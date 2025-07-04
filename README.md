@@ -238,7 +238,7 @@ To run a simulation, you need to provide input data. You can upload input data f
 git submodule update --init --recursive
 ```
 
-If you want to use another folder containing input data folders, you can either upload each input data folder through the web interface or you can set the path to the input data folder when running the application with the `--input-data-directory` option. This will allow you to use a custom folder containing input data folders without having to upload them through the web interface.
+If you want to use another folder containing input data folders, you can either upload each input data folder through the web interface or you can set the path to the input data folder when running the application with the `INPUT_DATA_DIRECTORY_PATH` environment variable. This path will be used to load the input data folders when running the application and to save the uploaded input data folders.
 
 ## Frontend
 

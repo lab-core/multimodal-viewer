@@ -82,7 +82,7 @@ class SimulationManager:
     ) -> SimulationHandler:
         simulation_id, start_time = build_simulation_id(name)
 
-        simulation_process = multiprocessing.Process(target=run_simulation, args=(simulation_id, data, max_duration))
+        simulation_process = multiprocessing.Process(target=run_simulation, args=(simulation_id, data, max_duration), name="multimodalsim_viewer_simulation_" + simulation_id)
 
         simulation_handler = SimulationHandler(
             simulation_id,

@@ -59,8 +59,6 @@ class _Environment:
         _Environment.is_environment_loaded = True
         print(f"Environment loaded {environment}")
 
-        self.input_data_directory_path = "../data"
-
     @property
     def server_port(self) -> int:
         return int(environment.get("SERVER_PORT"))
@@ -79,15 +77,8 @@ class _Environment:
 
     @property
     def input_data_directory_path(self) -> str:
-        return self._input_data_directory_path
+        return environment.get("INPUT_DATA_DIRECTORY_PATH")
 
-    @input_data_directory_path.setter
-    def input_data_directory_path(self, path: str) -> None:
-        self._input_data_directory_path = path
-
-        # Ensure the data directory exists
-        if not os.path.exists(path):
-            os.makedirs(path)
 
 
 _environment = _Environment()
@@ -108,11 +99,6 @@ STATE_SAVE_STEP = 1000
 # If the version is identical, the save file can be loaded
 SAVE_VERSION = 9
 
-
-def set_input_data_directory_path(path: str) -> None:
-    _environment.input_data_directory_path = path
-
-    print(f"Data directory set to: {path}")
 
 
 class SimulationStatus(Enum):
@@ -173,7 +159,7 @@ def get_saved_logs_directory_path() -> str:
 
 
 def get_input_data_directory_path(data: str | None = None) -> str:
-    input_data_directory = _environment.input_data_directory_path
+    input_data_directory = INPUT_DATA_DIRECTORY_PATH
 
     if data is not None:
         input_data_directory = os.path.join(input_data_directory, data)
