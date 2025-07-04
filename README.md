@@ -194,9 +194,9 @@ The python code is formatted using Black, linted using Pylint and an additional 
 ```bash
 python -m pip install --upgrade -r requirements.dev.txt
 
-pylint . # Detect linting errors
-black .  # Format the code
-isort .  # Organize the imports
+python -m pylint . # Detect linting errors
+python -m black .  # Format the code
+python -m isort .  # Organize the imports
 ```
 
 

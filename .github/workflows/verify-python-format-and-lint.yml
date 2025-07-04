@@ -30,13 +30,13 @@ jobs:
         working-directory: ./python
 
       - name: Run format check
-        run: black --check .
+        run: python -m black --check .
         working-directory: ./python
 
       - name: Run import order check
-        run: isort --check .
+        run: python -m isort --check .
         working-directory: ./python
 
       - name: Run lint check
-        run: pylint .
+        run: python -m pylint .
         working-directory: ./python

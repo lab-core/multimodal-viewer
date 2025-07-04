@@ -45,9 +45,10 @@ setup(
         "python-dotenv==1.1.0",
         "multimodalsim==0.0.1",
         "get_latest_version==1.0.3",
+        "setuptools==80.9.0",
     ],
     extras_require={"dev": ["black==25.1.0", "pylint==3.3.7", "isort==6.0.1"], "build": ["build", "twine"]},
-    python_requires=">=3.9",
+    python_requires=">=3.10",
     entry_points={
         "console_scripts": [
             "viewer=multimodalsim_viewer.server.scripts:main",
