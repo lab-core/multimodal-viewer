@@ -1,7 +1,5 @@
 import os
 
-from get_latest_version.pypi import get_current_module_version
-from requests.exceptions import HTTPError
 from setuptools import find_packages, setup
 
 # Get the version from the environment variable
@@ -9,13 +7,26 @@ version = os.getenv("PYTHON_PACKAGE_VERSION")
 
 if not version:
     try:
-        # Get the latest version from PyPI
-        # This is only used if the version is not set in the environment variable
-        # and will probably never happen during builds.
-        version = get_current_module_version("multimodalsim_viewer")
-    except HTTPError:
-        print("Failed to get the latest version from PyPI.")
+        # Imports are done here because the libraries may not be installed
+        # in the environment where this script is run.
+        # During builds (python -m build), the library get_latest_version
+        # is not installed, so we need to handle the import error gracefully.
+        from get_latest_version.pypi import get_current_module_version
+        from requests.exceptions import HTTPError
 
+        print("PYTHON_PACKAGE_VERSION is not set. " "Trying to get the latest version from PyPI...")
+
+        # A second try-except block is used because we need the error class
+        # from the requests library, which may not be installed.
+        try:
+            # Get the latest version from PyPI
+            # This is only used if the version is not set in the environment variable
+            # and will probably never happen during builds.
+            version = get_current_module_version("multimodalsim_viewer")
+        except HTTPError:
+            print("Failed to get the latest version from PyPI.")
+    except ImportError:
+        print("get_latest_version library is not installed.Couldn't get the latest version from PyPI.")
 if not version:
     raise ValueError(
         "Python package version is not set. "
