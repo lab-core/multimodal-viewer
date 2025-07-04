@@ -1111,9 +1111,12 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
     def _get_folder_size(start_path: str) -> int:
         total_size = 0
         for directory_path, _, file_names in os.walk(start_path):
+            file_names = [name for name in file_names if not name.endswith(".lock")]
             for file_name in file_names:
                 file_path = os.path.join(directory_path, file_name)
-                total_size += os.path.getsize(file_path)
+                lock = FileLock(f"{file_path}.lock")
+                with lock:
+                    total_size += os.path.getsize(file_path)
         return total_size
 
     @staticmethod
