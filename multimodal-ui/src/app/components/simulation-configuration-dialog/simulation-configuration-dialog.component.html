@@ -19,7 +19,9 @@
               <mat-error>Name must be at most 50 characters long</mat-error>
             } @else if (nameFormControl.hasError("invalidPattern")) {
               <mat-error>
-                The name must not contain three successive dashes
+                The name must not contain the simulation save file separator ({{
+                  SIMULATION_SAVE_FILE_SEPARATOR
+                }})
               </mat-error>
             } @else if (nameFormControl.hasError("invalidCharacter")) {
               <mat-error>
