@@ -13,6 +13,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { EntityType } from '../../interfaces/entity.model';
 import { AnimationService } from '../../services/animation.service';
 import { VisualizationService } from '../../services/visualization.service';
+import { EntityNameComponent } from '../entity-name/entity-name.component';
 
 export interface HistoryItem {
   id: string;
@@ -27,6 +28,7 @@ export interface HistoryItem {
     MatChipsModule,
     MatIconModule,
     MatTooltipModule,
+    EntityNameComponent,
   ],
   templateUrl: './click-history.component.html',
   styleUrl: './click-history.component.scss',
@@ -81,6 +83,30 @@ export class ClickHistoryComponent {
     this.animationService.selectEntity(id, 'stop');
   }
 
+  getVehicle(id: string) {
+    const visualizationEnvironment =
+      this.visualizationService.visualizationEnvironmentSignal();
+    if (!visualizationEnvironment) return undefined;
+
+    return visualizationEnvironment.vehicles[id];
+  }
+
+  getPassenger(id: string) {
+    const visualizationEnvironment =
+      this.visualizationService.visualizationEnvironmentSignal();
+    if (!visualizationEnvironment) return undefined;
+
+    return visualizationEnvironment.passengers[id];
+  }
+
+  getStop(id: string) {
+    const visualizationEnvironment =
+      this.visualizationService.visualizationEnvironmentSignal();
+    if (!visualizationEnvironment) return undefined;
+
+    return visualizationEnvironment.stops[id];
+  }
+
   private effectOnVehicleSelected() {
     const vehicleId = this.animationService.selectedVehicleIdSignal();
     if (vehicleId === null) return;
@@ -123,7 +149,7 @@ export class ClickHistoryComponent {
     const stop = untracked(() => this.getStop(stopId));
     if (stop == null) return;
 
-    this.addHistory(stop.id, stop.label, 'stop');
+    this.addHistory(stop.id, stop.id, 'stop');
   }
 
   private addHistory(id: string, name: string, type: EntityType) {
@@ -132,29 +158,5 @@ export class ClickHistoryComponent {
       if (index !== -1) history.splice(index, 1);
       return [{ id, name, entityType: type }, ...history];
     });
-  }
-
-  private getVehicle(id: string) {
-    const visualizationEnvironment =
-      this.visualizationService.visualizationEnvironmentSignal();
-    if (!visualizationEnvironment) return undefined;
-
-    return visualizationEnvironment.vehicles[id];
-  }
-
-  private getPassenger(id: string) {
-    const visualizationEnvironment =
-      this.visualizationService.visualizationEnvironmentSignal();
-    if (!visualizationEnvironment) return undefined;
-
-    return visualizationEnvironment.passengers[id];
-  }
-
-  private getStop(id: string) {
-    const visualizationEnvironment =
-      this.visualizationService.visualizationEnvironmentSignal();
-    if (!visualizationEnvironment) return undefined;
-
-    return visualizationEnvironment.stops[id];
   }
 }

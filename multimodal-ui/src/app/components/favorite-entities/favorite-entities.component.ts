@@ -7,10 +7,17 @@ import { EntityInfo } from '../../interfaces/entity.model';
 import { AnimationService } from '../../services/animation.service';
 import { FavoriteEntitiesService } from '../../services/favorite-entities.service';
 import { VisualizationService } from '../../services/visualization.service';
+import { EntityNameComponent } from '../entity-name/entity-name.component';
 
 @Component({
   selector: 'app-favorite-entities',
-  imports: [MatCardModule, MatChipsModule, MatIconModule, MatTooltipModule],
+  imports: [
+    MatCardModule,
+    MatChipsModule,
+    MatIconModule,
+    MatTooltipModule,
+    EntityNameComponent,
+  ],
   templateUrl: './favorite-entities.component.html',
   styleUrl: './favorite-entities.component.css',
 })
@@ -77,5 +84,29 @@ export class FavoriteEntitiesComponent {
 
   selectStop(id: string) {
     this.animationService.selectEntity(id, 'stop');
+  }
+
+  getVehicle(id: string) {
+    const visualizationEnvironment =
+      this.visualizationService.visualizationEnvironmentSignal();
+    if (!visualizationEnvironment) return undefined;
+
+    return visualizationEnvironment.vehicles[id];
+  }
+
+  getPassenger(id: string) {
+    const visualizationEnvironment =
+      this.visualizationService.visualizationEnvironmentSignal();
+    if (!visualizationEnvironment) return undefined;
+
+    return visualizationEnvironment.passengers[id];
+  }
+
+  getStop(id: string) {
+    const visualizationEnvironment =
+      this.visualizationService.visualizationEnvironmentSignal();
+    if (!visualizationEnvironment) return undefined;
+
+    return visualizationEnvironment.stops[id];
   }
 }

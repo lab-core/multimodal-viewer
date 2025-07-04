@@ -16,6 +16,7 @@ import {
 import { AnimationService } from '../../services/animation.service';
 import { FavoriteEntitiesService } from '../../services/favorite-entities.service';
 import { VisualizationService } from '../../services/visualization.service';
+import { EntityNameComponent } from '../entity-name/entity-name.component';
 import { SelectedEntityRouteComponent } from '../selected-entity-route/selected-entity-route.component';
 
 @Component({
@@ -27,6 +28,7 @@ import { SelectedEntityRouteComponent } from '../selected-entity-route/selected-
     MatExpansionModule,
     SelectedEntityRouteComponent,
     MatDividerModule,
+    EntityNameComponent,
   ],
   templateUrl: './selected-entity-tab.component.html',
   styleUrl: './selected-entity-tab.component.css',

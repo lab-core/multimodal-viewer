@@ -18,8 +18,12 @@
                 (click)="selectVehicle(favorite.id)"
                 (removed)="toggleFavoriteVehicle(favorite.id, favorite.name)"
               >
-                <mat-icon matChipAvatar>directions_car</mat-icon
-                >{{ favorite.name }}
+                <mat-icon matChipAvatar>directions_car</mat-icon>
+                @let vehicle = getVehicle(favorite.id);
+                <app-entity-name
+                  [name]="favorite.name"
+                  [tags]="vehicle?.tags"
+                />
                 <button class="remove-btn" matChipRemove>
                   <mat-icon>favorite</mat-icon>
                 </button>
@@ -35,8 +39,12 @@
                 (click)="selectPassenger(favorite.id)"
                 (removed)="toggleFavoritePassenger(favorite.id, favorite.name)"
               >
-                <mat-icon matChipAvatar>accessibility</mat-icon
-                ><span class="chip-text">{{ favorite.name }}</span>
+                <mat-icon matChipAvatar>accessibility</mat-icon>
+                @let passenger = getPassenger(favorite.id);
+                <app-entity-name
+                  [name]="favorite.name"
+                  [tags]="passenger?.tags"
+                />
                 <button class="remove-btn" matChipRemove>
                   <mat-icon>favorite</mat-icon>
                 </button>
@@ -52,8 +60,9 @@
                 (click)="selectStop(favorite.id)"
                 (removed)="toggleFavoriteStop(favorite.id)"
               >
-                <mat-icon matChipAvatar>place</mat-icon
-                ><span class="chip-text">{{ favorite.name }}</span>
+                <mat-icon matChipAvatar>place</mat-icon>
+                @let stop = getStop(favorite.id);
+                <app-entity-name [name]="favorite.name" [tags]="stop?.tags" />
                 <button class="remove-btn" matChipRemove>
                   <mat-icon>favorite</mat-icon>
                 </button>

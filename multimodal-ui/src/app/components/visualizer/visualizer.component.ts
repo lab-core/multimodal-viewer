@@ -540,8 +540,11 @@ export class VisualizerComponent implements OnDestroy {
         this.visualizationService.visualizationEnvironmentSignal();
       if (animatedSimulationEnvironment == null) return;
 
-      this.animationService.synchronizeEnvironment(
-        animatedSimulationEnvironment,
+      // Synchronize the environment without tracking signals (to avoid unnecessary re-processes)
+      untracked(() =>
+        this.animationService.synchronizeEnvironment(
+          animatedSimulationEnvironment,
+        ),
       );
     });
 

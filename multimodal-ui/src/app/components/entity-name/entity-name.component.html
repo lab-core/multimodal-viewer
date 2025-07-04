@@ -1,0 +1,9 @@
+@let name = nameInputSignal() ?? "Unknown entity";
+@let tags = tagsInputSignal() ?? [];
+
+<span
+  >{{ name }}
+  @if (tags.length > 0) {
+    <span class="tags">{{ tags.join(", ") }}</span>
+  }
+</span>

@@ -11,8 +11,9 @@
                 (mouseenter)="preselectEntity(item)"
                 (mouseleave)="unpreselectEntity()"
               >
-                <mat-icon matChipAvatar> directions_car</mat-icon
-                >{{ item.name }}
+                <mat-icon matChipAvatar> directions_car</mat-icon>
+                @let vehicle = getVehicle(item.id);
+                <app-entity-name [name]="item.name" [tags]="vehicle?.tags" />
               </mat-chip>
             }
             @case ("passenger") {
@@ -21,7 +22,9 @@
                 (mouseenter)="preselectEntity(item)"
                 (mouseleave)="unpreselectEntity()"
               >
-                <mat-icon matChipAvatar> accessibility</mat-icon>{{ item.name }}
+                <mat-icon matChipAvatar> accessibility</mat-icon>
+                @let passenger = getPassenger(item.id);
+                <app-entity-name [name]="item.name" [tags]="passenger?.tags" />
               </mat-chip>
             }
             @case ("stop") {
@@ -30,7 +33,9 @@
                 (mouseenter)="preselectEntity(item)"
                 (mouseleave)="unpreselectEntity()"
               >
-                <mat-icon matChipAvatar> place</mat-icon>{{ item.name }}
+                <mat-icon matChipAvatar> place</mat-icon>
+                @let stop = getStop(item.id);
+                <app-entity-name [name]="item.name" [tags]="stop?.tags" />
               </mat-chip>
             }
           }
