@@ -358,9 +358,9 @@ export class SimulationService {
       return null;
     }
 
-    let name = data.name ?? null;
+    let name = data.name;
 
-    if (name === id || name === null) {
+    if (name === id || name === null || name === undefined) {
       name = (randomName as (args?: { seed: string }) => string)({ seed: id });
     }
 
@@ -724,6 +724,7 @@ export class SimulationService {
 
     return {
       id,
+      name: id, // Stops are displayed by their ID (position)
       entityType: 'stop',
       arrivalTime,
       departureTime,

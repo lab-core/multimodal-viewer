@@ -1,47 +1,34 @@
 <mat-card appearance="outlined">
   <mat-card-content>
     <p class="title">History</p>
+
     <div class="container">
       <div class="content">
-        @for (item of history(); track item.id) {
-          @switch (item.entityType) {
-            @case ("vehicle") {
-              <mat-chip
-                (click)="selectVehicle(item.id)"
-                (mouseenter)="preselectEntity(item)"
-                (mouseleave)="unpreselectEntity()"
-              >
-                <mat-icon matChipAvatar> directions_car</mat-icon>
-                @let vehicle = getVehicle(item.id);
-                <app-entity-name [name]="item.name" [tags]="vehicle?.tags" />
-              </mat-chip>
-            }
-            @case ("passenger") {
-              <mat-chip
-                (click)="selectPassenger(item.id)"
-                (mouseenter)="preselectEntity(item)"
-                (mouseleave)="unpreselectEntity()"
-              >
-                <mat-icon matChipAvatar> accessibility</mat-icon>
-                @let passenger = getPassenger(item.id);
-                <app-entity-name [name]="item.name" [tags]="passenger?.tags" />
-              </mat-chip>
-            }
-            @case ("stop") {
-              <mat-chip
-                (click)="selectStop(item.id)"
-                (mouseenter)="preselectEntity(item)"
-                (mouseleave)="unpreselectEntity()"
-              >
-                <mat-icon matChipAvatar> place</mat-icon>
-                @let stop = getStop(item.id);
-                <app-entity-name [name]="item.name" [tags]="stop?.tags" />
-              </mat-chip>
-            }
-          }
+        @for (entity of history(); track entity.id) {
+          <mat-chip
+            (click)="selectEntity(entity)"
+            (mouseenter)="preselectEntity(entity)"
+            (mouseleave)="unpreselectEntity()"
+          >
+            <mat-icon matChipAvatar>
+              @switch (entity.entityType) {
+                @case ("vehicle") {
+                  directions_car
+                }
+                @case ("passenger") {
+                  accessibility
+                }
+                @case ("stop") {
+                  place
+                }
+              }
+            </mat-icon>
+            <app-entity-name [name]="entity.name" [tags]="entity.tags" />
+          </mat-chip>
         }
       </div>
     </div>
+
     @if (history().length > 0) {
       <button class="clear-btn" mat-button (click)="clearHistory()">
         Clear

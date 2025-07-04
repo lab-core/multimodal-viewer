@@ -25,7 +25,6 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
-import { EntityType } from '../../interfaces/entity.model';
 import {
   AnimatedPassenger,
   AnimatedStop,
@@ -97,14 +96,6 @@ export class VisualizerComponent implements OnDestroy {
   private matDialogRef: MatDialogRef<InformationDialogComponent> | null = null;
   readonly selectedModeSignal: WritableSignal<string | null> = signal(null);
 
-  private isPreselectedEntity(type: EntityType) {
-    return (
-      this.animationService.showPreselectedInTabSignal() &&
-      this.animationService.preselectedEntitySignal() !== null &&
-      this.animationService.preselectedEntitySignal()?.entityType == type
-    );
-  }
-
   private readonly visualizerStatusSignal: Signal<VisualizerStatus> = computed(
     () => {
       const isConnected = this.communicationService.isConnectedSignal();
@@ -126,9 +117,29 @@ export class VisualizerComponent implements OnDestroy {
     () => {
       const environment =
         this.visualizationService.visualizationEnvironmentSignal();
-      const selectedPassengerId = this.isPreselectedEntity('passenger')
-        ? this.animationService.preselectedEntitySignal()?.id
-        : this.selectedPassengerIdSignal();
+      const preselectedEntity = this.animationService.preselectedEntitySignal();
+
+      // Return null if a preselected entity is set and it is not a passenger
+      if (
+        preselectedEntity !== null &&
+        preselectedEntity.shouldShowSelectedEntityTab &&
+        preselectedEntity.entityType !== 'passenger'
+      ) {
+        return null;
+      }
+
+      let selectedPassengerId = null;
+
+      if (
+        preselectedEntity !== null &&
+        preselectedEntity.shouldShowSelectedEntityTab
+      ) {
+        // If a preselected entity is set, use its ID
+        selectedPassengerId = preselectedEntity.id;
+      } else {
+        // Otherwise, use the selected passenger ID from the animation service
+        selectedPassengerId = this.animationService.selectedPassengerIdSignal();
+      }
 
       if (environment === null || selectedPassengerId == null) {
         return null;
@@ -141,9 +152,30 @@ export class VisualizerComponent implements OnDestroy {
     () => {
       const environment =
         this.visualizationService.visualizationEnvironmentSignal();
-      const selectedVehicleId = this.isPreselectedEntity('vehicle')
-        ? this.animationService.preselectedEntitySignal()?.id
-        : this.selectedVehicleIdSignal();
+
+      const preselectedEntity = this.animationService.preselectedEntitySignal();
+
+      // Return null if a preselected entity is set and it is not a vehicle
+      if (
+        preselectedEntity !== null &&
+        preselectedEntity.shouldShowSelectedEntityTab &&
+        preselectedEntity.entityType !== 'vehicle'
+      ) {
+        return null;
+      }
+
+      let selectedVehicleId = null;
+
+      if (
+        preselectedEntity !== null &&
+        preselectedEntity.shouldShowSelectedEntityTab
+      ) {
+        // If a preselected entity is set, use its ID
+        selectedVehicleId = preselectedEntity.id;
+      } else {
+        // Otherwise, use the selected vehicle ID from the animation service
+        selectedVehicleId = this.animationService.selectedVehicleIdSignal();
+      }
 
       if (environment === null || selectedVehicleId == null) {
         return null;
@@ -154,11 +186,32 @@ export class VisualizerComponent implements OnDestroy {
   );
 
   readonly selectedStopSignal: Signal<AnimatedStop | null> = computed(() => {
-    const selectedStopId = this.isPreselectedEntity('stop')
-      ? this.animationService.preselectedEntitySignal()?.id
-      : this.animationService.selectedStopIdSignal();
     const environment =
       this.visualizationService.visualizationEnvironmentSignal();
+
+    const preselectedEntity = this.animationService.preselectedEntitySignal();
+
+    // Return null if a preselected entity is set and it is not a stop
+    if (
+      preselectedEntity !== null &&
+      preselectedEntity.shouldShowSelectedEntityTab &&
+      preselectedEntity.entityType !== 'stop'
+    ) {
+      return null;
+    }
+
+    let selectedStopId = null;
+
+    if (
+      preselectedEntity !== null &&
+      preselectedEntity.shouldShowSelectedEntityTab
+    ) {
+      // If a preselected entity is set, use its ID
+      selectedStopId = preselectedEntity.id;
+    } else {
+      // Otherwise, use the selected stop ID from the animation service
+      selectedStopId = this.animationService.selectedStopIdSignal();
+    }
 
     if (environment === null || selectedStopId == null) {
       return null;
@@ -304,7 +357,7 @@ export class VisualizerComponent implements OnDestroy {
     const passengers = Object.values(environment.passengers).map(
       (passenger) => ({
         id: passenger.id,
-        displayedValue: `[PASSENGER] ${passenger.name ? passenger.name + ' (' + passenger.id + ')' : passenger.id}`,
+        displayedValue: `[PASSENGER] ${passenger.name + ' (' + passenger.id + ')'}`,
         type: 'passenger' as const,
         entity: passenger,
       }),
@@ -383,8 +436,7 @@ export class VisualizerComponent implements OnDestroy {
             const passenger = entity.entity as AnimatedPassenger;
             return (
               entity.displayedValue.toLowerCase().includes(searchLower) ||
-              (passenger.name &&
-                passenger.name.toLowerCase().includes(searchLower))
+              passenger.name.toLowerCase().includes(searchLower)
             );
           }
           return entity.displayedValue.toLowerCase().includes(searchLower);
@@ -477,9 +529,8 @@ export class VisualizerComponent implements OnDestroy {
       this.animationService.selectedVehicleIdSignal();
       this.animationService.selectedStopIdSignal();
 
-      const hasAndShowPreselectedEntity =
-        this.animationService.showPreselectedInTabSignal() &&
-        this.animationService.preselectedEntitySignal() != null;
+      const preselectedEntity = this.animationService.preselectedEntitySignal();
+
       untracked(() => {
         const selectedPassenger = this.selectedPassengerSignal();
         const selectedVehicle = this.selectedVehicleSignal();
@@ -493,10 +544,13 @@ export class VisualizerComponent implements OnDestroy {
           this.informationTabControl.setValue(['']);
         } else if (
           !this.showSelectedEntityTab &&
-          (selectedPassenger !== null ||
+          (((selectedPassenger !== null ||
             selectedVehicle !== null ||
-            selectedStop !== null ||
-            hasAndShowPreselectedEntity)
+            selectedStop !== null) &&
+            (preselectedEntity === null ||
+              preselectedEntity.shouldShowSelectedEntityTab)) ||
+            (preselectedEntity !== null &&
+              preselectedEntity.shouldShowSelectedEntityTab))
         ) {
           this.informationTabControl.setValue(['selectedEntity']);
         }

@@ -17,7 +17,6 @@ import * as PIXI from 'pixi.js';
 import {
   Entity,
   EntityFilterMode,
-  EntityInfo,
   EntityType,
 } from '../interfaces/entity.model';
 import {
@@ -25,10 +24,10 @@ import {
   AnimatedSimulationEnvironment,
   AnimatedStop,
   AnimatedVehicle,
-  DataEntity,
   DisplayedPolylines,
   DynamicPassengerAnimationData,
   DynamicVehicleAnimationData,
+  EntityMetadata,
   getAllStops,
   Polyline,
   StaticPassengerAnimationData,
@@ -51,42 +50,41 @@ export class AnimationService {
   private readonly _selectedStopIdSignal: WritableSignal<string | null> =
     signal(null);
 
-  private readonly _preselectedEntityIdSignal: WritableSignal<DataEntity | null> =
-    signal(null);
-
-  private readonly _showPreselectedInTabSignal: WritableSignal<boolean> =
-    signal(false);
+  private readonly _preselectedEntityIdSignal: WritableSignal<
+    (EntityMetadata & { shouldShowSelectedEntityTab: boolean }) | null
+  > = signal(null);
 
   private readonly _clickPositionSignal: WritableSignal<PIXI.Point> = signal(
     new PIXI.Point(0, 0),
   );
 
-  private readonly _nearVehiclesSignal: WritableSignal<EntityInfo[]> = signal(
+  private readonly _nearVehiclesSignal: WritableSignal<EntityMetadata[]> =
+    signal([]);
+  private readonly _nearPassengersSignal: WritableSignal<EntityMetadata[]> =
+    signal([]);
+  private readonly _nearStopsSignal: WritableSignal<EntityMetadata[]> = signal(
     [],
   );
-  private readonly _nearPassengersSignal: WritableSignal<EntityInfo[]> = signal(
-    [],
-  );
-  private readonly _nearStopsSignal: WritableSignal<EntityInfo[]> = signal([]);
 
-  get nearVehiclesSignal(): Signal<EntityInfo[]> {
+  get nearVehiclesSignal(): Signal<EntityMetadata[]> {
     return this._nearVehiclesSignal;
   }
 
-  get nearPassengersSignal(): Signal<EntityInfo[]> {
+  get nearPassengersSignal(): Signal<EntityMetadata[]> {
     return this._nearPassengersSignal;
   }
 
-  get nearStopsSignal(): Signal<EntityInfo[]> {
+  get nearStopsSignal(): Signal<EntityMetadata[]> {
     return this._nearStopsSignal;
   }
 
-  get preselectedEntitySignal(): Signal<DataEntity | null> {
+  get preselectedEntitySignal(): Signal<
+    | (EntityMetadata & {
+        shouldShowSelectedEntityTab: boolean;
+      })
+    | null
+  > {
     return this._preselectedEntityIdSignal;
-  }
-
-  get showPreselectedInTabSignal(): Signal<boolean> {
-    return this._showPreselectedInTabSignal;
   }
 
   get selectedVehicleIdSignal(): Signal<string | null> {
@@ -148,7 +146,9 @@ export class AnimationService {
     Entity<AnimatedStop>
   > = {};
 
-  private container = new PIXI.Container();
+  private entitiesContainer = new PIXI.Container();
+  private polylinesContainer = new PIXI.Container();
+  private mainContainer = new PIXI.Container();
 
   private startTimestamp: number | null = null;
   private endTimestamp: number | null = null;
@@ -186,6 +186,10 @@ export class AnimationService {
   ) {
     void PIXI.Assets.load(this.BITMAP_TEXT_URL);
 
+    // Initialize containers (entities over polylines)
+    this.mainContainer.addChild(this.polylinesContainer);
+    this.mainContainer.addChild(this.entitiesContainer);
+
     // Update the textures and background shapes when the customization is updated.
     effect(() => {
       this.spritesService.customizationUpdatedSignal();
@@ -203,11 +207,8 @@ export class AnimationService {
       simulationEnvironment.timestamp,
     );
 
+    this.entitiesContainer.removeChildren();
     this.selectedEntityPolylines.forEach((polyline) => polyline.clear());
-    this.container.removeChildren();
-    this.selectedEntityPolylines.forEach((polyline) =>
-      this.container.addChild(polyline),
-    );
     this.previousVehiclesEntities = this.vehicles;
     this.previousPassengerEntities = this.passengersEntities;
     this.vehicles = [];
@@ -227,8 +228,6 @@ export class AnimationService {
       this.addVehicle(vehicle);
       if (selectedVehicleId !== null && vehicle.id == selectedVehicleId) {
         isSelectedVehicleInEnvironment = true;
-        if (this._preselectedEntityIdSignal() == null)
-          this.highlightEntityId(vehicle.id, 'vehicle');
       }
     }
 
@@ -245,8 +244,6 @@ export class AnimationService {
       this.addPassenger(passenger);
       if (selectedPassengerId !== null && passenger.id == selectedPassengerId) {
         isSelectedPassengerInEnvironment = true;
-        if (this._preselectedEntityIdSignal() == null)
-          this.highlightEntityId(passenger.id, 'passenger');
       }
     }
 
@@ -269,8 +266,6 @@ export class AnimationService {
     for (const stop of Object.values(simulationEnvironment.stops)) {
       if (selectedStopId !== null && stop.id == selectedStopId) {
         isSelectedStopInEnvironment = true;
-        if (this._preselectedEntityIdSignal() == null)
-          this.highlightEntityId(stop.id, 'stop');
       }
     }
 
@@ -278,14 +273,6 @@ export class AnimationService {
       this.unselectStop();
       console.warn(
         'The stop you selected is not in the environment anymore. It has been deselected.',
-      );
-    }
-
-    const preselectedEntity = this._preselectedEntityIdSignal();
-    if (preselectedEntity !== null) {
-      this.highlightEntityId(
-        preselectedEntity.id,
-        preselectedEntity.entityType,
       );
     }
 
@@ -345,7 +332,7 @@ export class AnimationService {
       show: true,
     };
 
-    this.container.addChild(vehicleContainer);
+    this.entitiesContainer.addChild(vehicleContainer);
     this.vehicles.push(entity);
 
     this.vehicleEntitiesByVehicleId[vehicle.id] = entity;
@@ -366,7 +353,7 @@ export class AnimationService {
       show: true,
     };
 
-    this.container.addChild(passengerContainer);
+    this.entitiesContainer.addChild(passengerContainer);
     this.passengersEntities.push(entity);
 
     this.passengerEntitiesByPassengerId[passenger.id] = entity;
@@ -426,14 +413,15 @@ export class AnimationService {
     stopContainer.x = point.x;
     stopContainer.y = point.y;
 
-    this.container.addChild(stopContainer);
+    this.entitiesContainer.addChild(stopContainer);
     this.passengerStopEntities.push(entity);
 
     this.passengerStopEntitiesByPosition[stop.id] = entity;
   }
 
   clearAnimations() {
-    this.container.removeChildren();
+    this.entitiesContainer.removeChildren();
+    this.selectedEntityPolylines.forEach((polyline) => polyline.clear());
     this.hasCenteredInitially = false;
     this.vehicles = [];
     this.vehicleEntitiesByVehicleId = {};
@@ -545,9 +533,7 @@ export class AnimationService {
       showPassengers && // Are passengers not filtered
       passenger && // Is passenger in the environment
       (!showFavoritesOnly || // Is favorites filter on and is in favorites
-        this.favoriteEntitiesService
-          .favPassengerIds()
-          .has(passenger.data.id)) &&
+        this.favoriteEntitiesService.isFavoriteEntity(passenger.data)) &&
       (shouldShowComplete || // Is complete filter on or is not complete
         passenger.data.status !== 'complete')
     );
@@ -568,7 +554,7 @@ export class AnimationService {
         showVehicles && // Are vehicles not filtered
         !filters.has(vehicle.data.mode ?? 'unknown') && // Is mode not filtered
         (!showFavoritesOnly || // Is favorites filter on and is in favorites
-          this.favoriteEntitiesService.favVehicleIds().has(vehicle.data.id)) &&
+          this.favoriteEntitiesService.isFavoriteEntity(vehicle.data)) &&
         (shouldShowComplete || // Is complete filter on or is not complete
           vehicle.data.status !== 'complete');
 
@@ -603,7 +589,7 @@ export class AnimationService {
       const shouldShowStop =
         stop.show &&
         (!showFavoritesOnly ||
-          this.favoriteEntitiesService.favStopIds().has(stop.data.id));
+          this.favoriteEntitiesService.isFavoriteEntity(stop.data));
       stop.sprites[0].parent.visible = shouldShowStop; // Will not be shown if no displayed passenger is at this stop
       stop.sprites[1].parent.visible = shouldShowStop && shouldShowEmptyStops; // Will be shown only if no displayed passenger is at this stop
 
@@ -688,7 +674,6 @@ export class AnimationService {
 
       const polylineIndex: number =
         animationData.displayedPolylines.currentPolylineIndex;
-      let point: L.Point | null = null;
       if (animationData.notDisplayedReason !== null) {
         // Vehicle has an error
         vehicleEntity.show = false;
@@ -701,7 +686,7 @@ export class AnimationService {
         vehicleEntity.show = true;
         const staticVehicleAnimationData =
           animationData as StaticVehicleAnimationData;
-        point = this.utils.latLngToLayerPoint([
+        const point = this.utils.latLngToLayerPoint([
           staticVehicleAnimationData.position.latitude,
           staticVehicleAnimationData.position.longitude,
         ]);
@@ -721,7 +706,7 @@ export class AnimationService {
         const [lineNo, lineProgress] = this.getLineNoAndProgress(
           dynamicVehicleAnimationData.displayedPolylines,
         );
-        point = this.applyInterpolation(
+        this.applyInterpolation(
           vehicleEntity,
           dynamicVehicleAnimationData.displayedPolylines.polylines[
             Math.min(
@@ -737,32 +722,6 @@ export class AnimationService {
       } else {
         // Vehicle has an unknown error
         vehicleEntity.show = false;
-      }
-
-      const selectedVehicleId = this._selectedVehicleIdSignal();
-      const preselectedDataEntity = this._preselectedEntityIdSignal();
-      if (
-        (preselectedDataEntity?.id === vehicle.id ||
-          (selectedVehicleId === vehicle.id &&
-            preselectedDataEntity === null)) &&
-        vehicleEntity.data.currentLineIndex !== null &&
-        point !== null
-      ) {
-        if (this.selectedEntityPolylines.length === 0) {
-          this.selectedEntityPolylines.push(new PIXI.Graphics());
-          this.selectedEntityPolylines.forEach((polyline) =>
-            this.container.addChild(polyline),
-          );
-        }
-
-        this.frame_pointToFollow = this.utils.layerPointToLatLng(point);
-        this.redrawPolyline(
-          polylineIndex,
-          vehicleEntity.data.currentLineIndex,
-          point,
-          animationData.displayedPolylines.polylines,
-          this.selectedEntityPolylines[0],
-        );
       }
     }
   }
@@ -848,17 +807,6 @@ export class AnimationService {
         }
       } else {
         // Passenger has an unknown error
-      }
-
-      const selectedPassengerId = this._selectedPassengerIdSignal();
-
-      if (selectedPassengerId === passenger.id) {
-        this.frame_pointToFollow = this.utils.layerPointToLatLng(
-          new L.Point(
-            passengerEntity.sprites[0].parent.x,
-            passengerEntity.sprites[0].parent.y,
-          ),
-        );
       }
     }
   }
@@ -956,25 +904,6 @@ export class AnimationService {
         console.warn('Color interpolation failed');
       }
     }
-  }
-
-  private followSelectedStop() {
-    const selectedStopId = this._selectedStopIdSignal();
-
-    if (selectedStopId === null) return;
-
-    const stopEntity = this.passengerStopEntitiesByPosition[selectedStopId];
-
-    if (stopEntity === undefined) return;
-
-    const point = this.utils.layerPointToLatLng(
-      new L.Point(
-        stopEntity.sprites[0].parent.x,
-        stopEntity.sprites[0].parent.y,
-      ),
-    );
-
-    this.frame_pointToFollow = point;
   }
 
   private updateVehiclePassengerCounters() {
@@ -1114,9 +1043,9 @@ export class AnimationService {
     const minVisualDistance = 20 / this.utils.getScale();
     const point = this.utils.latLngToLayerPoint(event.latlng);
 
-    const nearVehicles: EntityInfo[] = [];
-    const nearPassengers: EntityInfo[] = [];
-    const nearStops: EntityInfo[] = [];
+    const nearVehicles: EntityMetadata[] = [];
+    const nearPassengers: EntityMetadata[] = [];
+    const nearStops: EntityMetadata[] = [];
 
     // Distances for all vehicles
     for (const vehicle of this.vehicles) {
@@ -1126,7 +1055,12 @@ export class AnimationService {
         vehicle.sprites[0].parent.position,
       );
       if (distance <= minVisualDistance)
-        nearVehicles.push({ id: vehicle.data.id, name: vehicle.data.name });
+        nearVehicles.push({
+          id: vehicle.data.id,
+          name: vehicle.data.name,
+          entityType: 'vehicle',
+          tags: vehicle.data.tags,
+        });
     }
 
     // Distances for all passengers
@@ -1139,7 +1073,9 @@ export class AnimationService {
       if (distance <= minVisualDistance)
         nearPassengers.push({
           id: passenger.data.id,
-          name: passenger.data.name ?? passenger.data.id,
+          name: passenger.data.name,
+          entityType: 'passenger',
+          tags: passenger.data.tags,
         });
     }
 
@@ -1152,7 +1088,12 @@ export class AnimationService {
         stop.sprites[0].parent.parent.position,
       );
       if (distance <= minVisualDistance) {
-        nearStops.push({ id: stop.data.id, name: stop.data.id });
+        nearStops.push({
+          id: stop.data.id,
+          name: stop.data.id,
+          entityType: 'stop',
+          tags: stop.data.tags,
+        });
       }
     }
 
@@ -1195,43 +1136,101 @@ export class AnimationService {
     return Math.sqrt(dx * dx + dy * dy);
   }
 
-  private redrawPassengerPolyline() {
+  private drawPolylines() {
+    this.selectedEntityPolylines.forEach((polyline) => polyline.clear());
+
     const preselectedEntity = this.preselectedEntitySignal();
-    const selectedPassengerId =
-      preselectedEntity?.entityType === 'passenger'
-        ? preselectedEntity.id
-        : this.selectedPassengerIdSignal();
 
-    if (!selectedPassengerId) return;
+    if (preselectedEntity !== null) {
+      if (preselectedEntity.entityType === 'vehicle') {
+        const vehicle = this.vehicleEntitiesByVehicleId[preselectedEntity.id];
+        if (vehicle && vehicle.sprites[0].parent.visible) {
+          this.drawVehiclePolylines(vehicle);
+        }
+      } else if (preselectedEntity.entityType === 'passenger') {
+        const passenger =
+          this.passengerEntitiesByPassengerId[preselectedEntity.id];
+        if (passenger && passenger.sprites[0].parent.visible) {
+          this.drawPassengerPolylines(passenger);
+        }
+      }
+      return;
+    }
 
-    const passenger = this.passengerEntitiesByPassengerId[selectedPassengerId];
-    if (!passenger) return;
+    const selectedVehicleId = this.selectedVehicleIdSignal();
+    if (selectedVehicleId) {
+      const vehicle = this.vehicleEntitiesByVehicleId[selectedVehicleId];
+      if (vehicle && vehicle.sprites[0].parent.visible) {
+        this.drawVehiclePolylines(vehicle);
+      }
+      return;
+    }
 
-    const passengerAnimationData = passenger.data.animationData.find(
+    const selectedPassengerId = this.selectedPassengerIdSignal();
+    if (selectedPassengerId) {
+      const passenger =
+        this.passengerEntitiesByPassengerId[selectedPassengerId];
+      if (passenger && passenger.sprites[0].parent.visible) {
+        this.drawPassengerPolylines(passenger);
+      }
+      return;
+    }
+  }
+
+  private drawVehiclePolylines(vehicleEntity: Entity<AnimatedVehicle>) {
+    if (vehicleEntity.data.currentLineIndex === null) {
+      return;
+    }
+
+    const interpolatedPoint = new L.Point(
+      vehicleEntity.sprites[0].parent.x,
+      vehicleEntity.sprites[0].parent.y,
+    );
+
+    const animationData = vehicleEntity.data.animationData.find(
       (data) =>
         data.startTimestamp <= this.animationVisualizationTime &&
         data.endTimestamp! >= this.animationVisualizationTime,
     );
 
-    const legs = passenger.data.currentLeg
+    if (!animationData) {
+      return;
+    }
+
+    if (this.selectedEntityPolylines.length === 0) {
+      this.addPolylineGraphics();
+    }
+
+    this.redrawPolyline(
+      animationData.displayedPolylines.currentPolylineIndex,
+      vehicleEntity.data.currentLineIndex,
+      interpolatedPoint,
+      animationData.displayedPolylines.polylines,
+      this.selectedEntityPolylines[0],
+    );
+  }
+
+  private drawPassengerPolylines(passengerEntity: Entity<AnimatedPassenger>) {
+    const passengerAnimationData = passengerEntity.data.animationData.find(
+      (data) =>
+        data.startTimestamp <= this.animationVisualizationTime &&
+        data.endTimestamp! >= this.animationVisualizationTime,
+    );
+
+    const legs = passengerEntity.data.currentLeg
       ? [
-          ...passenger.data.previousLegs,
-          passenger.data.currentLeg,
-          ...passenger.data.nextLegs,
+          ...passengerEntity.data.previousLegs,
+          passengerEntity.data.currentLeg,
+          ...passengerEntity.data.nextLegs,
         ]
-      : [...passenger.data.previousLegs, ...passenger.data.nextLegs];
+      : [
+          ...passengerEntity.data.previousLegs,
+          ...passengerEntity.data.nextLegs,
+        ];
 
     // If we have less entity polylines than legs, add the additional missing polylines
-    if (this.selectedEntityPolylines.length < legs.length) {
-      for (
-        let i = 0;
-        i < legs.length - this.selectedEntityPolylines.length;
-        ++i
-      ) {
-        const graphics = new PIXI.Graphics();
-        this.selectedEntityPolylines.push(new PIXI.Graphics());
-        this.container.addChild(graphics);
-      }
+    while (this.selectedEntityPolylines.length < legs.length) {
+      this.addPolylineGraphics();
     }
 
     // Collect all polylines
@@ -1297,8 +1296,8 @@ export class AnimationService {
         calculatedPolylineNo,
         lineNo,
         new L.Point(
-          passenger.sprites[0].parent.x,
-          passenger.sprites[0].parent.y,
+          passengerEntity.sprites[0].parent.x,
+          passengerEntity.sprites[0].parent.y,
         ),
         passengerPath,
         graphics,
@@ -1517,12 +1516,123 @@ export class AnimationService {
     this.resetStopCounters();
     this.setVehiclePositions();
     this.setPassengerPositions();
-    this.redrawPassengerPolyline();
     this.filterEntities();
+    this.drawPolylines();
+    this.highlightEntities();
     this.updateVehiclePassengerCounters();
     this.updateStopCounters();
-    this.followSelectedStop();
+    this.setSelectedEntityPosition();
     this.centerMapToFirstVisibleEntity();
+  }
+
+  private highlightEntities() {
+    for (const vehicle of this.vehicles) {
+      vehicle.sprites[0].parent.filters = [];
+    }
+
+    for (const passenger of this.passengersEntities) {
+      passenger.sprites[0].parent.filters = [];
+    }
+
+    for (const stop of this.passengerStopEntities) {
+      stop.sprites[0].parent.filters = [];
+      stop.sprites[1].parent.filters = [];
+    }
+
+    const preselectedEntity = this.preselectedEntitySignal();
+
+    if (preselectedEntity !== null) {
+      this.highlightEntityId(
+        preselectedEntity.id,
+        preselectedEntity.entityType,
+      );
+      return;
+    }
+
+    const selectedVehicleId = this._selectedVehicleIdSignal();
+    if (selectedVehicleId !== null) {
+      this.highlightEntityId(selectedVehicleId, 'vehicle');
+      return;
+    }
+
+    const selectedPassengerId = this._selectedPassengerIdSignal();
+    if (selectedPassengerId !== null) {
+      this.highlightEntityId(selectedPassengerId, 'passenger');
+      return;
+    }
+
+    const selectedStopId = this._selectedStopIdSignal();
+    if (selectedStopId !== null) {
+      this.highlightEntityId(selectedStopId, 'stop');
+      return;
+    }
+  }
+
+  private setSelectedEntityPosition() {
+    let entityToFollow: { id: string; entityType: EntityType } | null = null;
+
+    const preselectedEntity = this.preselectedEntitySignal();
+
+    const selectedVehicleId = this.selectedVehicleIdSignal();
+    const selectedPassengerId = this.selectedPassengerIdSignal();
+    const selectedStopId = this.selectedStopIdSignal();
+
+    if (preselectedEntity !== null) {
+      entityToFollow = {
+        id: preselectedEntity.id,
+        entityType: preselectedEntity.entityType,
+      };
+    } else if (selectedVehicleId !== null) {
+      entityToFollow = {
+        id: selectedVehicleId,
+        entityType: 'vehicle',
+      };
+    } else if (selectedPassengerId !== null) {
+      entityToFollow = {
+        id: selectedPassengerId,
+        entityType: 'passenger',
+      };
+    } else if (selectedStopId !== null) {
+      entityToFollow = {
+        id: selectedStopId,
+        entityType: 'stop',
+      };
+    }
+
+    switch (entityToFollow?.entityType) {
+      case 'vehicle':
+        {
+          const vehicle = this.vehicleEntitiesByVehicleId[entityToFollow.id];
+          const x = vehicle.sprites[0].parent.x;
+          const y = vehicle.sprites[0].parent.y;
+          this.frame_pointToFollow = this.utils.layerPointToLatLng(
+            new L.Point(x, y),
+          );
+        }
+        break;
+      case 'passenger':
+        {
+          const passenger =
+            this.passengerEntitiesByPassengerId[entityToFollow.id];
+          const x = passenger.sprites[0].parent.x;
+          const y = passenger.sprites[0].parent.y;
+          this.frame_pointToFollow = this.utils.layerPointToLatLng(
+            new L.Point(x, y),
+          );
+        }
+        break;
+
+      case 'stop':
+        {
+          const stop = this.passengerStopEntitiesByPosition[entityToFollow.id];
+          const x = stop.sprites[0].parent.parent.x;
+          const y = stop.sprites[0].parent.parent.y;
+          this.frame_pointToFollow = this.utils.layerPointToLatLng(
+            new L.Point(x, y),
+          );
+        }
+        break;
+    }
   }
 
   private centerMapToFirstVisibleEntity() {
@@ -1634,46 +1744,30 @@ export class AnimationService {
 
   private selectVehicle(vehicleId: string) {
     this.unselectEntity();
-    this.highlightEntityId(vehicleId, 'vehicle');
     this._selectedVehicleIdSignal.set(vehicleId);
   }
 
   private selectPassenger(passengerId: string) {
     this.unselectEntity();
-    this.highlightEntityId(passengerId, 'passenger');
     this._selectedPassengerIdSignal.set(passengerId);
   }
 
   private selectStop(stopId: string) {
     this.unselectEntity();
-    this.highlightEntityId(stopId, 'stop');
     this._selectedStopIdSignal.set(stopId);
   }
 
   private unselectVehicle() {
-    this.unhighlightEntityId(this._selectedVehicleIdSignal(), 'vehicle');
     this._selectedVehicleIdSignal.set(null);
-    this.selectedEntityPolylines.forEach((polyline) => polyline.clear());
   }
 
   private unselectPassenger() {
-    this.unhighlightEntityId(this._selectedPassengerIdSignal(), 'passenger');
     this._selectedPassengerIdSignal.set(null);
-    this.selectedEntityPolylines.forEach((polyline) => polyline.clear());
-    this.selectedEntityPolylines.forEach((polyline) =>
-      polyline.removeFromParent(),
-    );
     this.highlightedLegIndex = null;
   }
 
   private unselectStop() {
-    this.unhighlightEntityId(this._selectedStopIdSignal(), 'stop');
     this._selectedStopIdSignal.set(null);
-    this.selectedEntityPolylines.forEach((polyline) => polyline.clear());
-    this.selectedEntityPolylines.forEach((polyline) =>
-      polyline.removeFromParent(),
-    );
-    this.selectedEntityPolylines = [];
   }
 
   private highlightEntityId(entityId: string, type: EntityType) {
@@ -1698,28 +1792,18 @@ export class AnimationService {
     }
   }
 
-  private unhighlightEntityId(entityId: string | null, type: EntityType) {
-    if (!entityId) return;
-    let entity;
-    switch (type) {
-      case 'vehicle':
-        entity = this.vehicleEntitiesByVehicleId[entityId];
-        break;
-      case 'passenger':
-        entity = this.passengerEntitiesByPassengerId[entityId];
-        break;
-      case 'stop':
-        entity = this.passengerStopEntitiesByPosition[entityId];
-        break;
-    }
-    if (entity) entity.sprites[0].parent.filters = null;
+  unpreselectEntity() {
+    this._preselectedEntityIdSignal.set(null);
   }
 
-  preselectEntity(dataEntity: DataEntity | null, showInTab = false) {
-    this._preselectedEntityIdSignal.set(dataEntity);
-    this._showPreselectedInTabSignal.set(showInTab);
-    if (dataEntity)
-      this.highlightEntityId(dataEntity.id, dataEntity.entityType);
+  preselectEntity(
+    entityMetadata: EntityMetadata,
+    shouldShowSelectedEntityTab: boolean,
+  ) {
+    this._preselectedEntityIdSignal.set({
+      ...entityMetadata,
+      shouldShowSelectedEntityTab,
+    });
   }
 
   selectEntity(entityId: string, type: EntityType) {
@@ -1741,7 +1825,6 @@ export class AnimationService {
 
   unselectEntity() {
     this._preselectedEntityIdSignal.set(null);
-    this._showPreselectedInTabSignal.set(false);
     this.unselectVehicle();
     this.unselectPassenger();
     this.unselectStop();
@@ -1766,9 +1849,9 @@ export class AnimationService {
           if (event.type === 'add') this.onAdd(utils);
           if (event.type === 'moveend') this.onMoveEnd(event);
           if (event.type === 'redraw') this.onRedraw(event);
-          this.utils.getRenderer().render(this.container);
+          this.utils.getRenderer().render(this.mainContainer);
         },
-        this.container,
+        this.mainContainer,
         {
           doubleBuffering: true,
         },
@@ -1801,7 +1884,7 @@ export class AnimationService {
     if (!this.passengerEntitiesByPassengerId[id]) {
       return;
     }
-    return this.passengerEntitiesByPassengerId[id].data.name as string;
+    return this.passengerEntitiesByPassengerId[id].data.name;
   }
 
   private updateTextures() {
@@ -1873,5 +1956,11 @@ export class AnimationService {
         entity.data.tags,
       );
     });
+  }
+
+  private addPolylineGraphics() {
+    const newPolylineGraphics = new PIXI.Graphics();
+    this.selectedEntityPolylines.push(newPolylineGraphics);
+    this.polylinesContainer.addChild(newPolylineGraphics);
   }
 }

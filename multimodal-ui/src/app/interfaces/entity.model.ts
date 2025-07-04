@@ -10,9 +10,4 @@ export interface Entity<T> {
 
 export type EntityFilterMode = 'all' | 'favorites';
 
-export interface EntityInfo {
-  id: string;
-  name: string;
-}
-
 export type EntityType = 'vehicle' | 'passenger' | 'stop';

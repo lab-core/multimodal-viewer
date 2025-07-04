@@ -10,16 +10,11 @@ import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { EntityType } from '../../interfaces/entity.model';
+import { EntityMetadata } from '../../interfaces/simulation.model';
 import { AnimationService } from '../../services/animation.service';
 import { VisualizationService } from '../../services/visualization.service';
 import { EntityNameComponent } from '../entity-name/entity-name.component';
 
-export interface HistoryItem {
-  id: string;
-  name: string;
-  entityType: EntityType;
-}
 @Component({
   selector: 'app-click-history',
   imports: [
@@ -34,7 +29,7 @@ export interface HistoryItem {
   styleUrl: './click-history.component.scss',
 })
 export class ClickHistoryComponent {
-  history: WritableSignal<HistoryItem[]> = signal([]);
+  history: WritableSignal<EntityMetadata[]> = signal([]);
 
   // Don't make selects from the history change the order of the history
   _ignoreNextSelect = false;
@@ -61,29 +56,19 @@ export class ClickHistoryComponent {
   }
 
   unpreselectEntity() {
-    this.animationService.preselectEntity(null);
+    this.animationService.unpreselectEntity();
   }
 
-  preselectEntity(item: HistoryItem) {
-    this.animationService.preselectEntity(item, false);
+  preselectEntity(entity: EntityMetadata) {
+    this.animationService.preselectEntity(entity, true);
   }
 
-  selectVehicle(id: string) {
+  selectEntity(entity: EntityMetadata) {
     this._ignoreNextSelect = true;
-    this.animationService.selectEntity(id, 'vehicle');
+    this.animationService.selectEntity(entity.id, entity.entityType);
   }
 
-  selectPassenger(id: string) {
-    this._ignoreNextSelect = true;
-    this.animationService.selectEntity(id, 'passenger');
-  }
-
-  selectStop(id: string) {
-    this._ignoreNextSelect = true;
-    this.animationService.selectEntity(id, 'stop');
-  }
-
-  getVehicle(id: string) {
+  private getVehicle(id: string) {
     const visualizationEnvironment =
       this.visualizationService.visualizationEnvironmentSignal();
     if (!visualizationEnvironment) return undefined;
@@ -91,7 +76,7 @@ export class ClickHistoryComponent {
     return visualizationEnvironment.vehicles[id];
   }
 
-  getPassenger(id: string) {
+  private getPassenger(id: string) {
     const visualizationEnvironment =
       this.visualizationService.visualizationEnvironmentSignal();
     if (!visualizationEnvironment) return undefined;
@@ -99,7 +84,7 @@ export class ClickHistoryComponent {
     return visualizationEnvironment.passengers[id];
   }
 
-  getStop(id: string) {
+  private getStop(id: string) {
     const visualizationEnvironment =
       this.visualizationService.visualizationEnvironmentSignal();
     if (!visualizationEnvironment) return undefined;
@@ -119,7 +104,7 @@ export class ClickHistoryComponent {
     const vehicle = untracked(() => this.getVehicle(vehicleId));
     if (vehicle == null) return;
 
-    this.addHistory(vehicle.id, vehicle.name, 'vehicle');
+    this.addHistory(vehicle);
   }
 
   private effectOnPassengerSelected() {
@@ -134,7 +119,7 @@ export class ClickHistoryComponent {
     const passenger = untracked(() => this.getPassenger(passengerId));
     if (passenger == null) return;
 
-    this.addHistory(passenger.id, passenger.name ?? passenger.id, 'passenger');
+    this.addHistory(passenger);
   }
 
   private effectOnStopSelected() {
@@ -149,14 +134,26 @@ export class ClickHistoryComponent {
     const stop = untracked(() => this.getStop(stopId));
     if (stop == null) return;
 
-    this.addHistory(stop.id, stop.id, 'stop');
+    this.addHistory(stop);
   }
 
-  private addHistory(id: string, name: string, type: EntityType) {
+  private addHistory(entity: EntityMetadata) {
     this.history.update((history) => {
-      const index = history.findIndex((item) => item.id === id);
+      const index = history.findIndex(
+        (historyItem) => historyItem.id === entity.id,
+      );
+
       if (index !== -1) history.splice(index, 1);
-      return [{ id, name, entityType: type }, ...history];
+
+      return [
+        {
+          id: entity.id,
+          name: entity.name,
+          entityType: entity.entityType,
+          tags: entity.tags,
+        },
+        ...history,
+      ];
     });
   }
 }

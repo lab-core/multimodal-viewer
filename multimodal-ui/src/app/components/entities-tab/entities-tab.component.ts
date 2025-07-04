@@ -2,7 +2,7 @@ import { Component, computed, Signal } from '@angular/core';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import {
-  DataEntity,
+  EntityMetadata,
   Passenger,
   Vehicle,
 } from '../../interfaces/simulation.model';
@@ -109,12 +109,12 @@ export class EntitiesTabComponent {
     private readonly visualizationService: VisualizationService,
   ) {}
 
-  preselectEntity(entity: DataEntity) {
-    this.animationService.preselectEntity(entity);
+  preselectEntity(entity: EntityMetadata) {
+    this.animationService.preselectEntity(entity, false);
   }
 
   unpreselectEntity() {
-    this.animationService.preselectEntity(null);
+    this.animationService.unpreselectEntity();
   }
 
   selectPassenger(id: string) {

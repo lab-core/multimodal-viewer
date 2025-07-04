@@ -1,6 +1,7 @@
 <!--MARK: Selected Passenger
       -->
 @if (selectedPassenger !== null) {
+  @let isFavoritePassenger = isFavoriteEntity(selectedPassenger);
   <mat-card-title style="display: flex; align-items: center; gap: 8px"
     >Selected Passenger
     <button
@@ -8,19 +9,13 @@
       disableRipple
       style="padding: 0; border: none"
       [matTooltip]="
-        isFavoritePassenger(selectedPassenger.id)
-          ? 'Remove from favorite'
-          : 'Add to favorite'
+        isFavoritePassenger ? 'Remove from favorite' : 'Add to favorite'
       "
       [matTooltipPosition]="'after'"
-      (click)="
-        toggleFavoritePassenger(selectedPassenger.id, selectedPassenger.name)
-      "
+      (click)="toggleFavoriteEntity(selectedPassenger)"
     >
       <mat-icon>{{
-        isFavoritePassenger(selectedPassenger.id)
-          ? "favorite"
-          : "favorite_outline"
+        isFavoritePassenger ? "favorite" : "favorite_outline"
       }}</mat-icon>
     </button>
   </mat-card-title>
@@ -86,8 +81,14 @@
             [matTooltipPosition]="'after'"
             (click)="selectStop(selectedPassengerStop)"
             (keydown.enter)="selectStop(selectedPassengerStop)"
+            (mouseenter)="preselectEntity(selectedPassengerStop)"
+            (mouseleave)="unpreselectEntity()"
           >
-            <b>Stop:</b> {{ selectedPassengerStop.label }}
+            <b>Stop: </b>
+            <app-entity-name
+              [name]="selectedPassengerStop.id"
+              [tags]="selectedPassengerStop.tags"
+            />
           </mat-card-content>
         </mat-card>
       }
@@ -99,6 +100,8 @@
             [matTooltipPosition]="'after'"
             (click)="selectVehicle(selectedPassengerVehicle.id)"
             (keydown.enter)="selectVehicle(selectedPassengerVehicle.id)"
+            (mouseenter)="preselectEntity(selectedPassengerVehicle)"
+            (mouseleave)="unpreselectEntity()"
           >
             <b>Vehicle: </b>
             <app-entity-name
@@ -156,6 +159,7 @@
 <!--MARK: Selected Vehicle
       -->
 @if (selectedVehicle !== null) {
+  @let isFavoriteVehicle = isFavoriteEntity(selectedVehicle);
   <mat-card-title style="display: flex; align-items: center; gap: 8px"
     >Selected Vehicle
     <button
@@ -163,15 +167,13 @@
       disableRipple
       style="padding: 0; border: none"
       [matTooltip]="
-        isFavoriteVehicle(selectedVehicle.id)
-          ? 'Remove from favorite'
-          : 'Add to favorite'
+        isFavoriteVehicle ? 'Remove from favorite' : 'Add to favorite'
       "
       [matTooltipPosition]="'after'"
-      (click)="toggleFavoriteVehicle(selectedVehicle.id, selectedVehicle.name)"
+      (click)="toggleFavoriteEntity(selectedVehicle)"
     >
       <mat-icon>{{
-        isFavoriteVehicle(selectedVehicle.id) ? "favorite" : "favorite_outline"
+        isFavoriteVehicle ? "favorite" : "favorite_outline"
       }}</mat-icon>
     </button>
   </mat-card-title>
@@ -309,22 +311,19 @@
 <!--MARK: Selected Stop
       -->
 @if (selectedStop !== null) {
+  @let isFavoriteStop = isFavoriteEntity(selectedStop);
   <mat-card-title style="display: flex; align-items: center; gap: 8px"
     >Selected Stop
     <button
       mat-icon-button
       disableRipple
       style="padding: 0; border: none"
-      [matTooltip]="
-        isFavoriteStop(selectedStop)
-          ? 'Remove from favorite'
-          : 'Add to favorite'
-      "
+      [matTooltip]="isFavoriteStop ? 'Remove from favorite' : 'Add to favorite'"
       [matTooltipPosition]="'after'"
-      (click)="toggleFavoriteStop(selectedStop)"
+      (click)="toggleFavoriteEntity(selectedStop)"
     >
       <mat-icon>{{
-        isFavoriteStop(selectedStop) ? "favorite" : "favorite_outline"
+        isFavoriteStop ? "favorite" : "favorite_outline"
       }}</mat-icon>
     </button>
   </mat-card-title>

@@ -1,9 +1,9 @@
-import { Component, computed, Signal } from '@angular/core';
+import { Component, Signal } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { EntityInfo } from '../../interfaces/entity.model';
+import { EntityMetadata } from '../../interfaces/simulation.model';
 import { AnimationService } from '../../services/animation.service';
 import { FavoriteEntitiesService } from '../../services/favorite-entities.service';
 import { VisualizationService } from '../../services/visualization.service';
@@ -22,91 +22,46 @@ import { EntityNameComponent } from '../entity-name/entity-name.component';
   styleUrl: './favorite-entities.component.css',
 })
 export class FavoriteEntitiesComponent {
-  favVehicles: Signal<EntityInfo[]>;
-  favPassengers: Signal<EntityInfo[]>;
-  favStops: Signal<EntityInfo[]>;
-
-  readonly favoriteCount: Signal<number> = computed(() => {
-    return (
-      this.favVehicles().length +
-      this.favPassengers().length +
-      this.favStops().length
-    );
-  });
-
-  isVehicleInEnvironment(id: string) {
-    const visualizationEnvironment =
-      this.visualizationService.visualizationEnvironmentSignal();
-    if (!visualizationEnvironment) return false;
-
-    if (visualizationEnvironment.vehicles[id]) return true;
-    else return false;
-  }
-
-  isPassengerInEnvironment(id: string) {
-    const visualizationEnvironment =
-      this.visualizationService.visualizationEnvironmentSignal();
-    if (!visualizationEnvironment) return false;
-
-    if (visualizationEnvironment.passengers[id]) return true;
-    else return false;
-  }
-
   constructor(
     private readonly favoriteEntitiesService: FavoriteEntitiesService,
     private readonly visualizationService: VisualizationService,
     private readonly animationService: AnimationService,
-  ) {
-    this.favVehicles = favoriteEntitiesService.favVehicleArray;
-    this.favPassengers = favoriteEntitiesService.favPassengersArray;
-    this.favStops = favoriteEntitiesService.favStopsArray;
+  ) {}
+
+  get favoriteEntitiesSignal(): Signal<EntityMetadata[]> {
+    return this.favoriteEntitiesService.favoriteEntitiesSignal;
   }
 
-  toggleFavoriteVehicle(id: string, name: string) {
-    this.favoriteEntitiesService.toggleFavoriteVehicle(id, name);
+  unpreselectEntity() {
+    this.animationService.unpreselectEntity();
   }
 
-  toggleFavoritePassenger(id: string, name: string) {
-    this.favoriteEntitiesService.toggleFavoritePassenger(id, name);
+  preselectEntity(entity: EntityMetadata) {
+    this.animationService.preselectEntity(entity, true);
   }
 
-  toggleFavoriteStop(id: string) {
-    this.favoriteEntitiesService.toggleFavoriteStop(id);
+  selectEntity(entity: EntityMetadata): void {
+    this.animationService.selectEntity(entity.id, entity.entityType);
   }
 
-  selectVehicle(id: string) {
-    this.animationService.selectEntity(id, 'vehicle');
+  toggleFavoriteEntity(entity: EntityMetadata): void {
+    this.favoriteEntitiesService.toggleFavoriteEntity(entity);
   }
 
-  selectPassenger(id: string) {
-    this.animationService.selectEntity(id, 'passenger');
-  }
-
-  selectStop(id: string) {
-    this.animationService.selectEntity(id, 'stop');
-  }
-
-  getVehicle(id: string) {
+  isEntityInEnvironment(entity: EntityMetadata): boolean {
     const visualizationEnvironment =
       this.visualizationService.visualizationEnvironmentSignal();
-    if (!visualizationEnvironment) return undefined;
+    if (!visualizationEnvironment) return false;
 
-    return visualizationEnvironment.vehicles[id];
-  }
-
-  getPassenger(id: string) {
-    const visualizationEnvironment =
-      this.visualizationService.visualizationEnvironmentSignal();
-    if (!visualizationEnvironment) return undefined;
-
-    return visualizationEnvironment.passengers[id];
-  }
-
-  getStop(id: string) {
-    const visualizationEnvironment =
-      this.visualizationService.visualizationEnvironmentSignal();
-    if (!visualizationEnvironment) return undefined;
-
-    return visualizationEnvironment.stops[id];
+    switch (entity.entityType) {
+      case 'vehicle':
+        return visualizationEnvironment.vehicles[entity.id] !== undefined;
+      case 'passenger':
+        return visualizationEnvironment.passengers[entity.id] !== undefined;
+      case 'stop':
+        return visualizationEnvironment.stops[entity.id] !== undefined;
+      default:
+        return false;
+    }
   }
 }

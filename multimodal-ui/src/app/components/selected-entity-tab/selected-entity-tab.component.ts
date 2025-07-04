@@ -10,7 +10,7 @@ import {
   AnimatedSimulationEnvironment,
   AnimatedStop,
   AnimatedVehicle,
-  DataEntity,
+  EntityMetadata,
   getAllLegs,
 } from '../../interfaces/simulation.model';
 import { AnimationService } from '../../services/animation.service';
@@ -92,37 +92,20 @@ export class SelectedEntityTabComponent {
     return id.length > maxLength ? `${id.slice(0, maxLength)}...` : id;
   }
 
-  // Favorite function
-  isFavoritePassenger(id: string) {
-    return this.favoriteEntitiesService.favPassengerIds().has(id);
+  isFavoriteEntity(entity: EntityMetadata) {
+    return this.favoriteEntitiesService.isFavoriteEntity(entity);
   }
 
-  toggleFavoritePassenger(id: string, name: string | null) {
-    this.favoriteEntitiesService.toggleFavoritePassenger(id, name ?? id);
+  toggleFavoriteEntity(entity: EntityMetadata) {
+    this.favoriteEntitiesService.toggleFavoriteEntity(entity);
   }
 
-  isFavoriteVehicle(id: string) {
-    return this.favoriteEntitiesService.favVehicleIds().has(id);
-  }
-
-  toggleFavoriteVehicle(id: string, name: string) {
-    this.favoriteEntitiesService.toggleFavoriteVehicle(id, name);
-  }
-
-  isFavoriteStop(stop: AnimatedStop) {
-    return this.favoriteEntitiesService.favStopIds().has(stop.id);
-  }
-
-  toggleFavoriteStop(stop: AnimatedStop) {
-    this.favoriteEntitiesService.toggleFavoriteStop(stop.id);
-  }
-
-  preselectEntity(passenger: DataEntity) {
-    this.animationService.preselectEntity(passenger);
+  preselectEntity(passenger: EntityMetadata) {
+    this.animationService.preselectEntity(passenger, false);
   }
 
   unpreselectEntity() {
-    this.animationService.preselectEntity(null);
+    this.animationService.unpreselectEntity();
   }
 
   // Select function

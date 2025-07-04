@@ -156,9 +156,7 @@ export interface AnimatedLeg extends Leg {
   nextStops: Stop[];
 }
 
-export interface Passenger extends DataEntity, Tagged {
-  id: string;
-  name: string | null;
+export interface Passenger extends EntityMetadata, Tagged {
   status: PassengerStatus;
   previousLegs: Leg[];
   currentLeg: Leg | null;
@@ -240,11 +238,10 @@ export interface DisplayedPolylines {
   currentPolylineEndTime: number | null;
 }
 
-export interface Stop extends DataEntity, Tagged {
+export interface Stop extends EntityMetadata, Tagged {
   arrivalTime: number;
   departureTime: number | null; // null means infinite
   position: Position;
-  id: string;
   capacity: number;
   label: string;
 }
@@ -279,20 +276,19 @@ export interface AnimatedStop extends Stop {
 
 export const DEFAULT_STOP_CAPACITY = 10;
 
-export interface DataEntity {
+export interface EntityMetadata extends Tagged {
   id: string;
   entityType: EntityType;
+  name: string;
 }
 
-export interface Vehicle extends DataEntity, Tagged {
-  id: string;
+export interface Vehicle extends EntityMetadata {
   mode: string | null;
   status: VehicleStatus;
   previousStops: Stop[];
   currentStop: Stop | null;
   nextStops: Stop[];
   capacity: number;
-  name: string;
 }
 
 export interface VehicleStatusUpdate {
