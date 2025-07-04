@@ -130,11 +130,11 @@ The port is defined in the `.env` file. By default, it is set to `8085`. You can
 
 ### Python
 
-This project is currently built with Python 3.11. To make the installation easier, you should use a Python virtual environment. You can use the following scripts depending on your operating system.
+To make the installation easier, you should use a Python virtual environment. You can use the following scripts depending on your operating system.
 
 ```bash
 # For Windows
-py -3.11 -m venv venv
+py -3.13 -m venv venv # You can take the version you want
 .\venv\Scripts\activate
 
 # For Linux / MacOS
