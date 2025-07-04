@@ -14,7 +14,7 @@ if not version:
         from get_latest_version.pypi import get_current_module_version
         from requests.exceptions import HTTPError
 
-        print("PYTHON_PACKAGE_VERSION is not set. " "Trying to get the latest version from PyPI...")
+        print("PYTHON_PACKAGE_VERSION is not set. Trying to get the latest version from PyPI...")
 
         # A second try-except block is used because we need the error class
         # from the requests library, which may not be installed.
