@@ -59,6 +59,8 @@ class _Environment:
         _Environment.is_environment_loaded = True
         print(f"Environment loaded {environment}")
 
+        self.input_data_directory_path = "../data"
+
     @property
     def server_port(self) -> int:
         return int(environment.get("SERVER_PORT"))
@@ -75,12 +77,25 @@ class _Environment:
     def simulation_save_file_separator(self) -> str:
         return environment.get("SIMULATION_SAVE_FILE_SEPARATOR")
 
+    @property
+    def input_data_directory_path(self) -> str:
+        return self._input_data_directory_path
+
+    @input_data_directory_path.setter
+    def input_data_directory_path(self, path: str) -> None:
+        self._input_data_directory_path = path
+
+        # Ensure the data directory exists
+        if not os.path.exists(path):
+            os.makedirs(path)
+
 
 _environment = _Environment()
 SERVER_PORT = _environment.server_port
 CLIENT_PORT = _environment.client_port
 HOST = _environment.host
 SIMULATION_SAVE_FILE_SEPARATOR = _environment.simulation_save_file_separator
+INPUT_DATA_DIRECTORY_PATH = _environment.input_data_directory_path
 
 
 CLIENT_ROOM = "client"
@@ -92,6 +107,12 @@ STATE_SAVE_STEP = 1000
 
 # If the version is identical, the save file can be loaded
 SAVE_VERSION = 9
+
+
+def set_input_data_directory_path(path: str) -> None:
+    _environment.input_data_directory_path = path
+
+    print(f"Data directory set to: {path}")
 
 
 class SimulationStatus(Enum):
@@ -142,9 +163,8 @@ def get_data_directory_path() -> str:
 
 
 def get_saved_logs_directory_path() -> str:
-    current_file_path = os.path.abspath(__file__)
-    current_file_dir = os.path.dirname(current_file_path)
-    saved_logs_directory_path = os.path.join(current_file_dir, "..", "data", "saved_logs")
+    data_directory_path = get_data_directory_path()
+    saved_logs_directory_path = os.path.join(data_directory_path, "saved_logs")
 
     if not os.path.exists(saved_logs_directory_path):
         os.makedirs(saved_logs_directory_path)
@@ -153,7 +173,7 @@ def get_saved_logs_directory_path() -> str:
 
 
 def get_input_data_directory_path(data: str | None = None) -> str:
-    input_data_directory = os.path.join(os.getcwd(), "data")
+    input_data_directory = _environment.input_data_directory_path
 
     if data is not None:
         input_data_directory = os.path.join(input_data_directory, data)
@@ -162,16 +182,16 @@ def get_input_data_directory_path(data: str | None = None) -> str:
 
 
 def get_available_data():
-    data_dir = get_input_data_directory_path()
+    input_data_directory = get_input_data_directory_path()
 
-    if not os.path.exists(data_dir):
+    if not os.path.exists(input_data_directory):
         return []
 
     # List all directories in the input data directory
     return [
         name
-        for name in os.listdir(data_dir)
-        if os.path.isdir(os.path.join(data_dir, name)) and not name.startswith(".")
+        for name in os.listdir(input_data_directory)
+        if os.path.isdir(os.path.join(input_data_directory, name)) and not name.startswith(".")
     ]
 
 

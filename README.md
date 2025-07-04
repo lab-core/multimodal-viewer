@@ -238,6 +238,8 @@ To run a simulation, you need to provide input data. You can upload input data f
 git submodule update --init --recursive
 ```
 
+If you want to use another folder containing input data folders, you can either upload each input data folder through the web interface or you can set the path to the input data folder when running the application with the `--input-data-directory` option. This will allow you to use a custom folder containing input data folders without having to upload them through the web interface.
+
 ## Frontend
 
 The frontend contains three main components: the map, the user interface, and the environment build. In this section, we will focus on the last one.

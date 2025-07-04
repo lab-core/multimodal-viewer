@@ -7,7 +7,12 @@ from requests.exceptions import ConnectionError as RequestsConnectionError
 from socketio import Client
 from socketio.exceptions import ConnectionError as SocketIOConnectionError
 
-from multimodalsim_viewer.common.utils import CLIENT_PORT, HOST, SERVER_PORT
+from multimodalsim_viewer.common.utils import (
+    CLIENT_PORT,
+    HOST,
+    SERVER_PORT,
+    set_input_data_directory_path,
+)
 from multimodalsim_viewer.server.server import configure_server
 from multimodalsim_viewer.server.simulation import (
     configure_simulation_parser,
@@ -98,6 +103,21 @@ def terminate_ui():
         print("UI is not running or cannot be reached at server port.")
 
 
+def configure_data_directory_path(parser: argparse.ArgumentParser):
+    """
+    Configures the data directory path argument for the CLI.
+
+    This function adds an optional argument to specify the data directory path
+    where simulation data will be stored. If not provided, a default path is used.
+    """
+    parser.add_argument(
+        "--input-data-directory",
+        type=str,
+        default="../data",
+        help="Path to the data directory where simulation data will be stored (default: '../data')",
+    )
+
+
 def main():
     """
     Main entry point for the multimodal simulation viewer CLI.
@@ -113,6 +133,7 @@ def main():
     start_parser = subparsers.add_parser("start", help="Start the server and UI")
     start_parser.add_argument("--server", action="store_true", help="Start only the server")
     start_parser.add_argument("--ui", action="store_true", help="Start only the UI")
+    configure_data_directory_path(start_parser)
 
     stop_parser = subparsers.add_parser("stop", help="Stop the server and UI")
     stop_parser.add_argument("--ui", action="store_true", help="Stop only the UI")
@@ -120,9 +141,13 @@ def main():
 
     simulate_parser = subparsers.add_parser("simulate", help="Run a simulation")
     configure_simulation_parser(simulate_parser)
+    configure_data_directory_path(simulate_parser)
 
     # Parse the arguments
     args = parser.parse_args()
+
+    if "input_data_directory" in args:
+        set_input_data_directory_path(args.input_data_directory)
 
     if args.command == "start":
         should_start_ui = args.ui or not args.server
