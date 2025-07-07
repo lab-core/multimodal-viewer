@@ -3,8 +3,23 @@ name: Publish Python package to TestPyPI
 on:
   push:
     tags:
+      # Two-deep versioning patterns for TestPyPI
+      - 'v[0-9]+.[0-9]+-test'
+      - 'v[0-9]+.[0-9]+a[0-9]+-test' # alpha versions
+      - 'v[0-9]+.[0-9]+b[0-9]+-test' # beta versions
+      - 'v[0-9]+.[0-9]+rc[0-9]+-test' # release candidates
+
+      # Three-deep versioning patterns for TestPyPI
       - 'v[0-9]+.[0-9]+.[0-9]+-test'
+      - 'v[0-9]+.[0-9]+.[0-9]+a[0-9]+-test' # alpha versions
+      - 'v[0-9]+.[0-9]+.[0-9]+b[0-9]+-test' # beta versions
+      - 'v[0-9]+.[0-9]+.[0-9]+rc[0-9]+-test' # release candidates
+
+      # Four-deep versioning patterns for TestPyPI
       - 'v[0-9]+.[0-9]+.[0-9]+.[0-9]+-test'
+      - 'v[0-9]+.[0-9]+.[0-9]+.[0-9]+a[0-9]+-test' # alpha versions
+      - 'v[0-9]+.[0-9]+.[0-9]+.[0-9]+b[0-9]+-test' # beta versions
+      - 'v[0-9]+.[0-9]+.[0-9]+.[0-9]+rc[0-9]+-test' # release candidates
 
 jobs:
   extract-version:
@@ -19,8 +34,8 @@ jobs:
       - name: Extract version
         id: extract_version
         run: |
-          # Extract the version number from the tag
-          VERSION=$(echo ${{ github.ref }} | sed 's|.*/v\([0-9.]*\)-test|\1|;')
+          # Remove the : "refs/tags/v" prefix and "-test" suffix from the tag
+          VERSION=$(expr "${{ github.ref }}" : "refs/tags/v\(.*\)-test")
           echo "Extracted version: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
