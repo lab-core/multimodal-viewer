@@ -1085,7 +1085,7 @@ export class AnimationService {
       if (distance <= minVisualDistance) {
         nearStops.push({
           id: stop.data.id,
-          name: stop.data.id,
+          name: stop.data.label,
           entityType: 'stop',
           tags: stop.data.tags,
         });

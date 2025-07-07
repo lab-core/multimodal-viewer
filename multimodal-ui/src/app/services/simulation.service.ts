@@ -724,7 +724,7 @@ export class SimulationService {
 
     return {
       id,
-      name: id, // Stops are displayed by their ID (position)
+      name: label, // Stops are displayed by their label
       entityType: 'stop',
       arrivalTime,
       departureTime,

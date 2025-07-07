@@ -86,7 +86,7 @@
           >
             <b>Stop: </b>
             <app-entity-name
-              [name]="selectedPassengerStop.id"
+              [name]="selectedPassengerStop.name"
               [tags]="selectedPassengerStop.tags"
             />
           </mat-card-content>
@@ -254,7 +254,11 @@
             (click)="selectStop(selectedVehicleStop)"
             (keydown.enter)="selectStop(selectedVehicleStop)"
           >
-            <b>Stop:</b> {{ selectedVehicleStop.label }}
+            <b>Stop:</b>
+            <app-entity-name
+              [name]="selectedVehicleStop.name"
+              [tags]="selectedVehicleStop.tags"
+            />
           </mat-card-content>
         </mat-card>
       }
