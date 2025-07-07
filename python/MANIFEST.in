@@ -1,0 +1,7 @@
+# Include built web application files
+include multimodalsim_viewer/ui/static/*
+include multimodalsim_viewer/ui/static/**/*
+
+# Include environment files
+include multimodalsim_viewer/common/environments/*
+include multimodalsim_viewer/common/environments/**/*

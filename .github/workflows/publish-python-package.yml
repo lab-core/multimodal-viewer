@@ -1,0 +1,39 @@
+name: Publish Python package
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version of the Python package to build'
+        required: true
+        type: string
+      url:
+        description: 'URL of the Python package repository to publish to'
+        required: true
+        type: string
+
+jobs:
+  build-python:
+    uses: ./.github/workflows/build-python.yml
+    with:
+      version: ${{ inputs.version }}
+
+  publish-python-package:
+    runs-on: ubuntu-latest
+    needs: build-python
+    permissions: # Publishing without a token requires the `id-token: write` permission
+      id-token: write
+
+    steps:
+      - name: Download Python build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: python-build-artifacts
+          path: ./dist # The pypa/gh-action-pypi-publish action requires the package to be built in the root directory
+
+      - name: Publish Python package
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          verbose: true
+          attestations: false
+          repository-url: ${{ inputs.url }}

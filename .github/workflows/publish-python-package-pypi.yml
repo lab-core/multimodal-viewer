@@ -1,0 +1,47 @@
+name: Publish Python package to PyPI
+
+on:
+  push:
+    tags:
+      # Two-deep versioning patterns for PyPI
+      - 'v[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+a[0-9]+' # alpha versions
+      - 'v[0-9]+.[0-9]+b[0-9]+' # beta versions
+      - 'v[0-9]+.[0-9]+rc[0-9]+' # release candidates
+
+      # Three-deep versioning patterns for PyPI
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+a[0-9]+' # alpha versions
+      - 'v[0-9]+.[0-9]+.[0-9]+b[0-9]+' # beta versions
+      - 'v[0-9]+.[0-9]+.[0-9]+rc[0-9]+' # release candidates
+
+      # Four-deep versioning patterns for PyPI
+      - 'v[0-9]+.[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+.[0-9]+a[0-9]+' # alpha versions
+      - 'v[0-9]+.[0-9]+.[0-9]+.[0-9]+b[0-9]+' # beta versions
+      - 'v[0-9]+.[0-9]+.[0-9]+.[0-9]+rc[0-9]+' # release candidates
+
+jobs:
+  extract-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract_version.outputs.version }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Extract version
+        id: extract_version
+        run: |
+          # Remove the 'refs/tags/v' prefix from the tag
+          VERSION=$(expr "${{ github.ref }}" : "refs/tags/v\(.*\)")
+          echo "Extracted version: $VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+  publish-python-package:
+    uses: ./.github/workflows/publish-python-package.yml
+    needs: extract-version
+    with:
+      version: ${{ needs.extract-version.outputs.version }}
+      url: https://upload.pypi.org/legacy/

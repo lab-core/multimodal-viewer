@@ -75,12 +75,17 @@ class _Environment:
     def simulation_save_file_separator(self) -> str:
         return environment.get("SIMULATION_SAVE_FILE_SEPARATOR")
 
+    @property
+    def input_data_directory_path(self) -> str:
+        return environment.get("INPUT_DATA_DIRECTORY_PATH")
+
 
 _environment = _Environment()
 SERVER_PORT = _environment.server_port
 CLIENT_PORT = _environment.client_port
 HOST = _environment.host
 SIMULATION_SAVE_FILE_SEPARATOR = _environment.simulation_save_file_separator
+INPUT_DATA_DIRECTORY_PATH = _environment.input_data_directory_path
 
 
 CLIENT_ROOM = "client"
@@ -130,23 +135,48 @@ def build_simulation_id(name: str) -> tuple[str, str]:
     return simulation_id, start_time
 
 
-def get_data_directory_path(data: str | None = None) -> str:
-    cwd = os.getcwd()
-    data_directory = os.path.join(cwd, "data")
+def get_data_directory_path() -> str:
+    current_file_path = os.path.abspath(__file__)
+    current_file_dir = os.path.dirname(current_file_path)
+    data_directory_path = os.path.join(current_file_dir, "..", "data")
+
+    if not os.path.exists(data_directory_path):
+        os.makedirs(data_directory_path)
+
+    return data_directory_path
+
+
+def get_saved_logs_directory_path() -> str:
+    data_directory_path = get_data_directory_path()
+    saved_logs_directory_path = os.path.join(data_directory_path, "saved_logs")
+
+    if not os.path.exists(saved_logs_directory_path):
+        os.makedirs(saved_logs_directory_path)
+
+    return saved_logs_directory_path
+
+
+def get_input_data_directory_path(data: str | None = None) -> str:
+    input_data_directory = INPUT_DATA_DIRECTORY_PATH
 
     if data is not None:
-        data_directory = os.path.join(data_directory, data)
+        input_data_directory = os.path.join(input_data_directory, data)
 
-    return data_directory
+    return input_data_directory
 
 
 def get_available_data():
-    data_dir = get_data_directory_path()
+    input_data_directory = get_input_data_directory_path()
 
-    if not os.path.exists(data_dir):
+    if not os.path.exists(input_data_directory):
         return []
 
-    return os.listdir(data_dir)
+    # List all directories in the input data directory
+    return [
+        name
+        for name in os.listdir(input_data_directory)
+        if os.path.isdir(os.path.join(input_data_directory, name)) and not name.startswith(".")
+    ]
 
 
 def log(message: str, auth_type: str, level=logging.INFO, should_emit=True) -> None:

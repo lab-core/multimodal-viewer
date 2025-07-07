@@ -6,7 +6,7 @@ import zipfile
 
 from flask import Blueprint, jsonify, request, send_file
 
-from multimodalsim_viewer.common.utils import get_data_directory_path
+from multimodalsim_viewer.common.utils import get_input_data_directory_path
 from multimodalsim_viewer.server.simulation_visualization_data_model import (
     SimulationVisualizationDataManager,
 )
@@ -80,7 +80,7 @@ def handle_zip_upload(folder_path):
 # MARK: Input Data Routes
 @http_routes.route("/api/input_data/<folder_name>", methods=["GET"])
 def export_input_data(folder_name):
-    folder_path = get_data_directory_path(folder_name)
+    folder_path = get_input_data_directory_path(folder_name)
     logging.info("Requested folder: %s", folder_path)
 
     zip_path = zip_folder(folder_path, folder_name)
@@ -92,13 +92,13 @@ def export_input_data(folder_name):
 
 @http_routes.route("/api/input_data/<folder_name>", methods=["POST"])
 def import_input_data(folder_name):
-    folder_path = get_data_directory_path(folder_name)
+    folder_path = get_input_data_directory_path(folder_name)
     return handle_zip_upload(folder_path)
 
 
 @http_routes.route("/api/input_data/<folder_name>", methods=["DELETE"])
 def delete_input_data(folder_name):
-    folder_path = get_data_directory_path(folder_name)
+    folder_path = get_input_data_directory_path(folder_name)
     if not os.path.isdir(folder_path):
         return jsonify({"error": "Folder not found"}), 404
 

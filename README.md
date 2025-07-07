@@ -5,6 +5,8 @@ This project is an extension of the packaged [multimodal-simulation](https://git
 - [Multimodal Simulation Visualization](#multimodal-simulation-visualization)
   - [Installation](#installation)
   - [Publication to PyPI](#publication-to-pypi)
+    - [Using Docker to publish](#using-docker-to-publish)
+    - [Using GitHub Actions to publish](#using-github-actions-to-publish)
   - [Development](#development)
     - [Angular](#angular)
     - [Python](#python)
@@ -12,6 +14,7 @@ This project is an extension of the packaged [multimodal-simulation](https://git
     - [Lint and formatting](#lint-and-formatting)
     - [Building the Frontend](#building-the-frontend)
     - [Changing Environment Variables](#changing-environment-variables)
+  - [Input Data](#input-data)
   - [Frontend](#frontend)
     - [Wanted visualization time](#wanted-visualization-time)
     - [Data reception](#data-reception)
@@ -30,28 +33,22 @@ This project is an extension of the packaged [multimodal-simulation](https://git
 
 ## Installation
 
-This project is hosted on PyPI and can be installed with pip. The package is called `multimodalsim-viewer`. You can install it with the following command:
+You have access to several commands that will allow you to run the project easily.
 
 ```bash
-pip install multimodalsim-viewer
+viewer start 
+viewer start --ui     # only start the UI side
+viewer start --server # only start the server 
+
+viewer stop
+viewer stop --ui     # only stop the UI side
+viewer stop --server # only stop the server
 ```
 
-Now that the package is installed, you have access to several commands that will allow you to run the project easily.
+You can also run a simulation from the command line. Several arguments are available to customize the simulation and can be found with the --help option, but the required arguments will be asked interactively if not provided. The command to run a simulation is:
 
 ```bash
-multimodalsim-server  # To run the server
-multimodalsim-ui      # To run the frontend
-multimodalsim-viewer  # To run both the server and the frontend
-
-multimodalsim-stop-server # To stop the server
-multimodalsim-stop-ui # To stop the frontend
-multimodalsim-stop-all # To stop both the server and the frontend
-```
-
-You can also run a simulation from the command line. Several arguments are available to customize the simulation and can be found with the `--help` option, but the required arguments will be asked interactively if not provided. The command to run a simulation is:
-
-```bash
-multimodalsim-simulation
+viewer simulate
 ```
 
 ## Publication to PyPI
@@ -62,10 +59,10 @@ To publish this project, you need to have the `build` and `twine` packages insta
 python -m pip install --upgrade build twine
 ```
 
-Then, you need to build the project:
-
+Then, you need to build the project. You also need to set the `PYTHON_PACKAGE_VERSION` environment variable to the version you want to publish.
+ 
 ```bash
-python -m build
+PYTHON_PACKAGE_VERSION='0.0.1' python -m build
 ```
 
 To publish the project to PyPI, you can use the following command:
@@ -80,6 +77,14 @@ If you want to publish but not affect the main index of PyPI, you can publish th
 python -m twine upload --repository testpypi ./dist/* --verbose
 ```
 
+If you want to test the TestPyPi publication, you can install the package from TestPyPI with the following command:
+
+```bash
+python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple multimodalsim-viewer==0.0.1
+```
+
+### Using Docker to publish
+
 Docker scripts are also available to build and publish the project without having to install Python or Node.js. You can use one of the following commands:
 
 ```bash
@@ -87,13 +92,21 @@ Docker scripts are also available to build and publish the project without havin
 docker compose --profile build-angular up --build --force-recreate
 
 # To build the angular application and publish it to PyPI or TestPyPI
-docker compose --profile publish up --build --force-recreate
-docker compose --profile publish-test up --build --force-recreate
+PYTHON_PACKAGE_VERSION='0.0.1' docker compose --profile publish up --build --force-recreate
+PYTHON_PACKAGE_VERSION='0.0.1' docker compose --profile publish-test up --build --force-recreate
 
 # To only publish the package to PyPI or TestPyPI without building the angular application
-docker compose --profile publish-only up --build --force-recreate
-docker compose --profile publish-test-only up --build --force-recreate
+PYTHON_PACKAGE_VERSION='0.0.1' docker compose --profile publish-only up --build --force-recreate
+PYTHON_PACKAGE_VERSION='0.0.1' docker compose --profile publish-test-only up --build --force-recreate
 ```
+
+### Using GitHub Actions to publish
+
+You can also use the provided GitHub Actions to build and publish the project. These actions are triggered when a new tag is pushed to the repository on a commit on the `main` branch. The tag should follow on of the following formats (where the x's are numbers):
+- `vx.x.x` 
+- `vx.x.x.x`
+- `vx.x.x-test` (for TestPyPI)
+- `vx.x.x.x-test` (for TestPyPI)
 
 ## Development
 
@@ -117,11 +130,11 @@ The port is defined in the `.env` file. By default, it is set to `8085`. You can
 
 ### Python
 
-This project is currently built with Python 3.11. To make the installation easier, you should use a Python virtual environment. You can use the following scripts depending on your operating system.
+To make the installation easier, you should use a Python virtual environment. You can use the following scripts depending on your operating system.
 
 ```bash
 # For Windows
-py -3.11 -m venv venv
+py -3.13 -m venv venv # You can take the version you want
 .\venv\Scripts\activate
 
 # For Linux / MacOS
@@ -141,40 +154,10 @@ python -m pip install --upgrade pip
 
 # Installing the project package
 cd python
-python -m pip install -e .
+python -m pip install -e . 
 ```
 
-Now that the python environment is set up, you can run the following command to run the server:
-
-```bash
-multimodalsim-server
-```
-
-You can also host the frontend with the following command:
-
-```bash
-multimodalsim-ui
-```
-
-Both processes can be run in the same terminal using this command:
-
-```bash
-multimodalsim-viewer
-```
-
-A script to run a simulation from the command line is also available. You can run it with the following command:
-
-```bash
-multimodalsim-simulation
-```
-
-Additional scripts are available to stop the server and the client properly:
-
-```bash
-multimodalsim-stop-server
-multimodalsim-stop-ui
-multimodalsim-stop-all
-```
+Now that the python environment is set up, you can run the commands specified in the [installation](#installation) section.
 
 ### Docker
 
@@ -209,13 +192,11 @@ npm run format       # Format the code
 The python code is formatted using Black, linted using Pylint and an additional library Isort is used to organize the imports. After installing all dev dependencies, you can run the following commands in the `python` folder:
 
 ```bash
-# Two options to install dev dependencies
-python -m pip install --upgrade multimodalsim-viewer[dev] 
-python -m pip install --upgrade -r requirements.txt
+python -m pip install --upgrade -r requirements.dev.txt
 
-pylint . # Detect linting errors
-black .  # Format the code
-isort .  # Organize the imports
+python -m pylint . # Detect linting errors
+python -m black .  # Format the code
+python -m isort .  # Organize the imports
 ```
 
 
@@ -248,6 +229,16 @@ The `.env` file in the root folder of the repository defines the default environ
 After changing them, you will need to restart all processes for the changes to take effect.
 
 We strongly recommend to use `npm start` and `npm run build` and/or the provided docker scripts to run the application, as they will automatically load the correct environment.
+
+## Input Data
+
+To run a simulation, you need to provide input data. You can upload input data folders through the web interface. Some basic input data folders are available in the `data` submodule. You can update the submodule contents with the following command:
+
+```bash
+git submodule update --init --recursive
+```
+
+If you want to use another folder containing input data folders, you can either upload each input data folder through the web interface or you can set the path to the input data folder when running the application with the `INPUT_DATA_DIRECTORY_PATH` environment variable. This path will be used to load the input data folders when running the application and to save the uploaded input data folders.
 
 ## Frontend
 

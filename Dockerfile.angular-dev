@@ -4,10 +4,8 @@ WORKDIR /app/angular
 
 COPY multimodal-ui/package.json multimodal-ui/package-lock.json ./
 
-RUN echo "Running: npm install" && \
-  npm install
+RUN npm install
 
-CMD echo "Running: npm start" && \
-  npm start
+CMD ["npm", "start"]
 
 

@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   build-angular:
     container_name: build-angular
@@ -14,6 +13,8 @@ services:
 
   publish:
     container_name: publish
+    environment:
+      - PYTHON_PACKAGE_VERSION=${PYTHON_PACKAGE_VERSION}
     build:
       context: .
       dockerfile: Dockerfile.publish
@@ -27,6 +28,8 @@ services:
 
   publish-test:
     container_name: publish-test
+    environment:
+      - PYTHON_PACKAGE_VERSION=${PYTHON_PACKAGE_VERSION}
     build:
       context: .
       dockerfile: Dockerfile.publish-test
@@ -40,6 +43,8 @@ services:
 
   publish-only: # Do not require build-angular
     container_name: publish-only
+    environment:
+      - PYTHON_PACKAGE_VERSION=${PYTHON_PACKAGE_VERSION}
     build:
       context: .
       dockerfile: Dockerfile.publish
@@ -50,6 +55,8 @@ services:
 
   publish-test-only: # Do not require build-angular
     container_name: publish-test-only
+    environment:
+      - PYTHON_PACKAGE_VERSION=${PYTHON_PACKAGE_VERSION}
     build:
       context: .
       dockerfile: Dockerfile.publish-test
@@ -75,5 +82,5 @@ services:
     volumes:
       - ./python:/app/python
       - ./.env:/app/.env
-      - ./data:/app/data
-    command: ["multimodalsim-viewer"]
+      - ./data:/app/python/data
+    command: ["viewer", "start"]

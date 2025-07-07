@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   angular-dev:
     container_name: angular-dev
@@ -15,6 +14,7 @@ services:
       - angular-dev
     volumes:
       - ./multimodal-ui:/app/angular
+      - /app/angular/node_modules # Prevents node_modules from being overwritten by the host
       - ./.env:/app/.env
     
     command: ["npm", "start"]
@@ -35,5 +35,5 @@ services:
     volumes:
       - ./python:/app/python
       - ./.env:/app/.env
-      - ./data:/app/data
-    command: ["multimodalsim-server"]
+      - ./data:/app/python/data
+    command: ["viewer", "start", "--server"]
