@@ -56,19 +56,19 @@ export type EditMapIconsDialogData = null;
 
 type EditableDefaultIconType =
   | 'vehicle'
-  | 'stop-with-passenger'
-  | 'empty-stop'
+  | 'passenger'
+  | 'stop'
   | 'zoomed-out-vehicle'
-  | 'zoomed-out-stop-with-passenger'
-  | 'zoomed-out-empty-stop';
+  | 'zoomed-out-passenger'
+  | 'zoomed-out-stop';
 
 const EDITABLE_DEFAULT_ICON_TYPES: EditableDefaultIconType[] = [
   'vehicle',
-  'stop-with-passenger',
-  'empty-stop',
+  'passenger',
+  'stop',
   'zoomed-out-vehicle',
-  'zoomed-out-stop-with-passenger',
-  'zoomed-out-empty-stop',
+  'zoomed-out-passenger',
+  'zoomed-out-stop',
 ];
 
 export type EditMapIconsDialogResult = null;
@@ -124,13 +124,13 @@ export class EditMapIconsDialogComponent {
   customTexturesSignal: WritableSignal<CustomTexture[]> = signal([]);
   backgroundShapesSignal: WritableSignal<BackgroundShape[]> = signal([]);
 
-  vehicleTextureUrl: WritableSignal<string> = signal('');
-  stopWithPassengerTextureUrl: WritableSignal<string> = signal('');
-  emptyStopTextureUrl: WritableSignal<string> = signal('');
+  vehicleTextureUrlSignal: WritableSignal<string> = signal('');
+  passengerTextureUrlSignal: WritableSignal<string> = signal('');
+  stopTextureUrlSignal: WritableSignal<string> = signal('');
 
-  zoomedOutVehicleTextureUrl: WritableSignal<string> = signal('');
-  zoomedOutStopWithPassengerTextureUrl: WritableSignal<string> = signal('');
-  zoomedOutEmptyStopTextureUrl: WritableSignal<string> = signal('');
+  zoomedOutVehicleTextureUrlSignal: WritableSignal<string> = signal('');
+  zoomedOutPassengerTextureUrlSignal: WritableSignal<string> = signal('');
+  zoomedOutStopTextureUrlSignal: WritableSignal<string> = signal('');
 
   uploadButton =
     viewChild.required<ElementRef<HTMLButtonElement>>('iconFileUpload');
@@ -152,42 +152,40 @@ export class EditMapIconsDialogComponent {
       this.spritesService.PRESET_SATURATED_COLOR_THEME;
 
     // Safe to assume it's an ImageResource with a url because they are all loaded from a url.
-    this.vehicleTextureUrl.set(
+    this.vehicleTextureUrlSignal.set(
       (this.spritesService.vehicleTexture.baseTexture.resource as ImageResource)
         .url,
     );
 
-    this.stopWithPassengerTextureUrl.set(
+    this.passengerTextureUrlSignal.set(
       (
-        this.spritesService.stopWithPassengerTexture.baseTexture
+        this.spritesService.passengerTexture.baseTexture
           .resource as ImageResource
       ).url,
     );
 
-    this.emptyStopTextureUrl.set(
-      (
-        this.spritesService.emptyStopTexture.baseTexture
-          .resource as ImageResource
-      ).url,
+    this.stopTextureUrlSignal.set(
+      (this.spritesService.stopTexture.baseTexture.resource as ImageResource)
+        .url,
     );
 
-    this.zoomedOutVehicleTextureUrl.set(
+    this.zoomedOutVehicleTextureUrlSignal.set(
       (
         this.spritesService.zoomedOutVehicleTexture.baseTexture
           .resource as ImageResource
       ).url,
     );
 
-    this.zoomedOutStopWithPassengerTextureUrl.set(
+    this.zoomedOutPassengerTextureUrlSignal.set(
       (
-        this.spritesService.zoomedOutStopWithPassengerTexture.baseTexture
+        this.spritesService.zoomedOutPassengerTexture.baseTexture
           .resource as ImageResource
       ).url,
     );
 
-    this.zoomedOutEmptyStopTextureUrl.set(
+    this.zoomedOutStopTextureUrlSignal.set(
       (
-        this.spritesService.zoomedOutEmptyStopTexture.baseTexture
+        this.spritesService.zoomedOutStopTexture.baseTexture
           .resource as ImageResource
       ).url,
     );
@@ -333,14 +331,13 @@ export class EditMapIconsDialogComponent {
           return;
         }
 
-        if (spriteSaveData.stopWithPassengerTextureUrl === undefined) {
-          this.currentError =
-            'JSON has missing data: stopWithPassengerTextureUrl';
+        if (spriteSaveData.passengerTextureUrl === undefined) {
+          this.currentError = 'JSON has missing data: passengerTextureUrl';
           return;
         }
 
-        if (spriteSaveData.emptyStopTextureUrl === undefined) {
-          this.currentError = 'JSON has missing data: emptyStopTextureUrl';
+        if (spriteSaveData.stopTextureUrl === undefined) {
+          this.currentError = 'JSON has missing data: stopTextureUrl';
           return;
         }
 
@@ -350,15 +347,14 @@ export class EditMapIconsDialogComponent {
           return;
         }
 
-        if (spriteSaveData.zoomedOutStopWithPassengerTextureUrl === undefined) {
+        if (spriteSaveData.zoomedOutPassengerTextureUrl === undefined) {
           this.currentError =
-            'JSON has missing data: zoomedOutStopWithPassengerTextureUrl';
+            'JSON has missing data: zoomedOutPassengerTextureUrl';
           return;
         }
 
-        if (spriteSaveData.zoomedOutEmptyStopTextureUrl === undefined) {
-          this.currentError =
-            'JSON has missing data: zoomedOutEmptyStopTextureUrl';
+        if (spriteSaveData.zoomedOutStopTextureUrl === undefined) {
+          this.currentError = 'JSON has missing data: zoomedOutStopTextureUrl';
           return;
         }
 
@@ -377,20 +373,18 @@ export class EditMapIconsDialogComponent {
           return;
         }
 
-        this.vehicleTextureUrl.set(spriteSaveData.vehicleTextureUrl);
-        this.stopWithPassengerTextureUrl.set(
-          spriteSaveData.stopWithPassengerTextureUrl,
-        );
-        this.emptyStopTextureUrl.set(spriteSaveData.emptyStopTextureUrl);
+        this.vehicleTextureUrlSignal.set(spriteSaveData.vehicleTextureUrl);
+        this.passengerTextureUrlSignal.set(spriteSaveData.passengerTextureUrl);
+        this.stopTextureUrlSignal.set(spriteSaveData.stopTextureUrl);
 
-        this.zoomedOutVehicleTextureUrl.set(
+        this.zoomedOutVehicleTextureUrlSignal.set(
           spriteSaveData.zoomedOutVehicleTextureUrl,
         );
-        this.zoomedOutStopWithPassengerTextureUrl.set(
-          spriteSaveData.zoomedOutStopWithPassengerTextureUrl,
+        this.zoomedOutPassengerTextureUrlSignal.set(
+          spriteSaveData.zoomedOutPassengerTextureUrl,
         );
-        this.zoomedOutEmptyStopTextureUrl.set(
-          spriteSaveData.zoomedOutEmptyStopTextureUrl,
+        this.zoomedOutStopTextureUrlSignal.set(
+          spriteSaveData.zoomedOutStopTextureUrl,
         );
 
         this.customTexturesSignal.set(spriteSaveData.customTextures);
@@ -422,53 +416,52 @@ export class EditMapIconsDialogComponent {
   getTextureUrlSignal(type: EditableDefaultIconType) {
     switch (type) {
       case 'vehicle':
-        return this.vehicleTextureUrl;
-      case 'stop-with-passenger':
-        return this.stopWithPassengerTextureUrl;
-      case 'empty-stop':
-        return this.emptyStopTextureUrl;
+        return this.vehicleTextureUrlSignal;
+      case 'passenger':
+        return this.passengerTextureUrlSignal;
+      case 'stop':
+        return this.stopTextureUrlSignal;
       case 'zoomed-out-vehicle':
-        return this.zoomedOutVehicleTextureUrl;
-      case 'zoomed-out-stop-with-passenger':
-        return this.zoomedOutStopWithPassengerTextureUrl;
-      case 'zoomed-out-empty-stop':
-        return this.zoomedOutEmptyStopTextureUrl;
+        return this.zoomedOutVehicleTextureUrlSignal;
+      case 'zoomed-out-passenger':
+        return this.zoomedOutPassengerTextureUrlSignal;
+      case 'zoomed-out-stop':
+        return this.zoomedOutStopTextureUrlSignal;
     }
   }
 
   resetDefaultTexture(type: EditableDefaultIconType) {
     switch (type) {
       case 'vehicle':
-        this.vehicleTextureUrl.set(
+        this.vehicleTextureUrlSignal.set(
           this.spritesService.DEFAULT_VEHICLE_TEXTURE_URL,
         );
         break;
-      case 'stop-with-passenger':
-        this.stopWithPassengerTextureUrl.set(
-          this.spritesService.DEFAULT_STOP_WITH_PASSENGER_TEXTURE_URL,
+      case 'passenger':
+        this.passengerTextureUrlSignal.set(
+          this.spritesService.DEFAULT_PASSENGER_TEXTURE_URL,
         );
         break;
 
-      case 'empty-stop':
-        this.emptyStopTextureUrl.set(
-          this.spritesService.DEFAULT_EMPTY_STOP_TEXTURE_URL,
+      case 'stop':
+        this.stopTextureUrlSignal.set(
+          this.spritesService.DEFAULT_STOP_TEXTURE_URL,
         );
         break;
       case 'zoomed-out-vehicle':
-        this.zoomedOutVehicleTextureUrl.set(
+        this.zoomedOutVehicleTextureUrlSignal.set(
           this.spritesService.DEFAULT_ZOOMED_OUT_VEHICLE_TEXTURE_URL,
         );
         break;
 
-      case 'zoomed-out-stop-with-passenger':
-        this.zoomedOutStopWithPassengerTextureUrl.set(
-          this.spritesService
-            .DEFAULT_ZOOMED_OUT_STOP_WITH_PASSENGER_TEXTURE_URL,
+      case 'zoomed-out-passenger':
+        this.zoomedOutPassengerTextureUrlSignal.set(
+          this.spritesService.DEFAULT_ZOOMED_OUT_PASSENGER_TEXTURE_URL,
         );
         break;
-      case 'zoomed-out-empty-stop':
-        this.zoomedOutEmptyStopTextureUrl.set(
-          this.spritesService.DEFAULT_ZOOMED_OUT_EMPTY_STOP_TEXTURE_URL,
+      case 'zoomed-out-stop':
+        this.zoomedOutStopTextureUrlSignal.set(
+          this.spritesService.DEFAULT_ZOOMED_OUT_STOP_TEXTURE_URL,
         );
     }
   }
@@ -670,13 +663,12 @@ export class EditMapIconsDialogComponent {
   exportTextures() {
     const saveData: TextureSaveData = {
       version: this.spritesService.VERSION,
-      vehicleTextureUrl: this.vehicleTextureUrl(),
-      stopWithPassengerTextureUrl: this.stopWithPassengerTextureUrl(),
-      emptyStopTextureUrl: this.emptyStopTextureUrl(),
-      zoomedOutVehicleTextureUrl: this.zoomedOutVehicleTextureUrl(),
-      zoomedOutStopWithPassengerTextureUrl:
-        this.zoomedOutStopWithPassengerTextureUrl(),
-      zoomedOutEmptyStopTextureUrl: this.zoomedOutEmptyStopTextureUrl(),
+      vehicleTextureUrl: this.vehicleTextureUrlSignal(),
+      passengerTextureUrl: this.passengerTextureUrlSignal(),
+      stopTextureUrl: this.stopTextureUrlSignal(),
+      zoomedOutVehicleTextureUrl: this.zoomedOutVehicleTextureUrlSignal(),
+      zoomedOutPassengerTextureUrl: this.zoomedOutPassengerTextureUrlSignal(),
+      zoomedOutStopTextureUrl: this.zoomedOutStopTextureUrlSignal(),
       customTextures: this.customTexturesSignal(),
       backgroundShapes: this.backgroundShapesSignal(),
       colorPresetIndex: this.colorPresetIndex,
@@ -697,12 +689,12 @@ export class EditMapIconsDialogComponent {
 
   onSave() {
     this.spritesService.saveTextureData(
-      this.vehicleTextureUrl(),
-      this.stopWithPassengerTextureUrl(),
-      this.emptyStopTextureUrl(),
-      this.zoomedOutVehicleTextureUrl(),
-      this.zoomedOutStopWithPassengerTextureUrl(),
-      this.zoomedOutEmptyStopTextureUrl(),
+      this.vehicleTextureUrlSignal(),
+      this.passengerTextureUrlSignal(),
+      this.stopTextureUrlSignal(),
+      this.zoomedOutVehicleTextureUrlSignal(),
+      this.zoomedOutPassengerTextureUrlSignal(),
+      this.zoomedOutStopTextureUrlSignal(),
       this.customTexturesSignal(),
       this.backgroundShapesSignal(),
       this.colorPresetIndex,

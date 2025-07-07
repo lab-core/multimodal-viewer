@@ -235,6 +235,16 @@
           }}
         </mat-card-content>
       </mat-card>
+      <mat-card>
+        <mat-card-content>
+          <b>Passenger Tags:</b>
+          {{
+            selectedVehicle.passengerTags.length > 0
+              ? selectedVehicle.passengerTags.join(", ")
+              : "None"
+          }}
+        </mat-card-content>
+      </mat-card>
       @if (selectedVehicleStop !== null) {
         <mat-card>
           <mat-card-content

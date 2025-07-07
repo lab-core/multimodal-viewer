@@ -525,57 +525,21 @@
       <span>*Test the color gradient using the slider below.</span>
 
       <div class="color-tester">
-        <div class="icon wrapper-icon">
-          <img width="40" alt="icon" [src]="vehicleTextureUrl()" />
-          <div
-            class="color-overlay"
-            [style.background-color]="testScaleColor"
-            [style.mask-image]="'url(' + vehicleTextureUrl() + ')'"
-            [style.webkitMaskImage]="'url(' + vehicleTextureUrl() + ')'"
-          ></div>
-        </div>
-
-        <div class="icon wrapper-icon">
-          <img width="40" alt="icon" [src]="stopWithPassengerTextureUrl()" />
-          <div
-            class="color-overlay"
-            [style.background-color]="testScaleColor"
-            [style.mask-image]="'url(' + stopWithPassengerTextureUrl() + ')'"
-            [style.webkitMaskImage]="
-              'url(' + stopWithPassengerTextureUrl() + ')'
-            "
-          ></div>
-        </div>
-
-        <div class="icon wrapper-icon">
-          <img width="40" alt="icon" [src]="zoomedOutVehicleTextureUrl()" />
-          <div
-            class="color-overlay"
-            [style.background-color]="testScaleColor"
-            [style.mask-image]="'url(' + zoomedOutVehicleTextureUrl() + ')'"
-            [style.webkitMaskImage]="
-              'url(' + zoomedOutVehicleTextureUrl() + ')'
-            "
-          ></div>
-        </div>
-
-        <div class="icon wrapper-icon">
-          <img
-            width="40"
-            alt="icon"
-            [src]="zoomedOutStopWithPassengerTextureUrl()"
-          />
-          <div
-            class="color-overlay"
-            [style.background-color]="testScaleColor"
-            [style.mask-image]="
-              'url(' + zoomedOutStopWithPassengerTextureUrl() + ')'
-            "
-            [style.webkitMaskImage]="
-              'url(' + zoomedOutStopWithPassengerTextureUrl() + ')'
-            "
-          ></div>
-        </div>
+        @for (
+          defaultIconType of EDITABLE_DEFAULT_ICON_TYPES;
+          track defaultIconType
+        ) {
+          <div class="icon wrapper-icon">
+            @let textureUrl = getTextureUrlSignal(defaultIconType)();
+            <img width="40" alt="icon" [src]="textureUrl" />
+            <div
+              class="color-overlay"
+              [style.background-color]="testScaleColor"
+              [style.mask-image]="'url(' + textureUrl + ')'"
+              [style.webkitMaskImage]="'url(' + textureUrl + ')'"
+            ></div>
+          </div>
+        }
 
         <mat-slider min="0" max="100" discrete showTickMarks>
           <input matSliderThumb (input)="onColorScaleChange($event)" />

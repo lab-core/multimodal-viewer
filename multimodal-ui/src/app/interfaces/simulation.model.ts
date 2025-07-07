@@ -258,20 +258,20 @@ export interface AnimatedStop extends Stop {
   vehicleIds: string[];
 
   /**
-   * The number of passengers that are waiting at the stop.
-   *
-   * This is different from the length of the passengerIds array because
-   * one passenger can account for multiple people and passengerIds contains
-   * only the displayed passengers.
+   * The ids of the passengers that will be used for the animation.
+   * We need a different variable because the animation service will modify it.
    */
-  numberOfPassengers: number;
-
-  numberOfCompletePassengers: number;
+  animatedPassengerIds: string[];
 
   /**
    * Tags of passengers that are waiting at the stop (not the complete passengers).
    */
   passengerTags: string[];
+
+  /**
+   * The ids of the passengers that are actually displayed (different to avoid filters affecting the side panel)
+   */
+  displayedPassengerIds: string[];
 }
 
 export const DEFAULT_STOP_CAPACITY = 10;
@@ -415,15 +415,26 @@ export interface AnimatedPassenger extends displayed<Passenger> {
 
 export interface AnimatedVehicle extends displayed<Vehicle> {
   animationData: AnyVehicleAnimationData[];
+
   passengerIds: string[];
-  /**
-   * The number of passengers that are on board the vehicle.
-   * This is different from the length of the passengerIds array because
-   * one passenger can account for multiple people and passengerIds contains
-   * only the displayed passengers.
-   */
-  numberOfPassengers: number;
+
   currentLineIndex: number | null;
+
+  /**
+   * The ids of the passengers that will be used for the animation.
+   * We need a different variable because the animation service will modify it.
+   */
+  animatedPassengerIds: string[];
+
+  /**
+   * The tags of the passengers that are on board.
+   */
+  passengerTags: string[];
+
+  /**
+   * The ids of the passengers that are actually displayed (different to avoid filters affecting the side panel)
+   */
+  displayedPassengerIds: string[];
 }
 
 /**
