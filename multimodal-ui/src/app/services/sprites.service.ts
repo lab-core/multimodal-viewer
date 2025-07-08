@@ -103,7 +103,7 @@ export interface TextureSaveData {
 })
 export class SpritesService {
   // MARK: Properties
-  readonly VERSION = 5;
+  readonly VERSION = 4;
   readonly SPRITE_SIZE = 40; // px
   readonly BACKGROUND_SHAPE_SIZE = 60; // px
 
@@ -446,6 +446,7 @@ export class SpritesService {
   }
 
   private applyTexturesData(textureSaveData: TextureSaveData) {
+    console.log(textureSaveData);
     // Create default textures
     this._vehicleTexture = Texture.from(textureSaveData.vehicleTextureUrl);
 
