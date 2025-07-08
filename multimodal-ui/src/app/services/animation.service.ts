@@ -623,7 +623,6 @@ export class AnimationService {
       const stop = this.stopEntitiesByPosition[selectedStopId];
       if (stop) {
         stop.container.visible = true;
-        stop.container.visible = true;
       }
     }
 
@@ -1618,6 +1617,7 @@ export class AnimationService {
           const vehicle = this.vehicleEntitiesByVehicleId[entityToFollow.id];
           const x = vehicle.container.x;
           const y = vehicle.container.y;
+          if (x === 0 && y === 0) break;
           this.frame_pointToFollow = this.utils.layerPointToLatLng(
             new L.Point(x, y),
           );
@@ -1629,6 +1629,7 @@ export class AnimationService {
             this.passengerEntitiesByPassengerId[entityToFollow.id];
           const x = passenger.container.x;
           const y = passenger.container.y;
+          if (x === 0 && y === 0) break;
           this.frame_pointToFollow = this.utils.layerPointToLatLng(
             new L.Point(x, y),
           );
@@ -1640,6 +1641,7 @@ export class AnimationService {
           const stop = this.stopEntitiesByPosition[entityToFollow.id];
           const x = stop.container.x;
           const y = stop.container.y;
+          if (x === 0 && y === 0) break;
           this.frame_pointToFollow = this.utils.layerPointToLatLng(
             new L.Point(x, y),
           );
