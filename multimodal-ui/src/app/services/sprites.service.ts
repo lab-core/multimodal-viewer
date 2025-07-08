@@ -446,7 +446,6 @@ export class SpritesService {
   }
 
   private applyTexturesData(textureSaveData: TextureSaveData) {
-    console.log(textureSaveData);
     // Create default textures
     this._vehicleTexture = Texture.from(textureSaveData.vehicleTextureUrl);
 

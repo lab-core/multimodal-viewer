@@ -1,6 +1,6 @@
 import { Component, inject, OnDestroy } from '@angular/core';
 import { LeafletModule } from '@bluehalo/ngx-leaflet';
-import { latLng, Map, LatLngExpression } from 'leaflet';
+import { latLng, LatLngExpression, Map } from 'leaflet';
 import { AnimationService } from '../../services/animation.service';
 import { MapService } from '../../services/map.service';
 import { CloseEntitiesMenuComponent } from '../close-entities-menu/close-entities-menu.component';

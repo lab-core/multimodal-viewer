@@ -2,7 +2,6 @@ import 'leaflet-pixi-overlay';
 
 import {
   computed,
-  effect,
   Injectable,
   Signal,
   signal,
@@ -131,7 +130,7 @@ export class AnimationService {
 
   private hasCenteredInitially = false;
 
-  private vehiclesEntities: Entity<AnimatedVehicle>[] = [];
+  private vehicleEntities: Entity<AnimatedVehicle>[] = [];
   private vehicleEntitiesByVehicleId: Record<string, Entity<AnimatedVehicle>> =
     {};
   private passengersEntities: Entity<AnimatedPassenger>[] = [];
@@ -189,13 +188,6 @@ export class AnimationService {
     this.mainContainer.addChild(this.backgroundContainer);
     this.mainContainer.addChild(this.polylinesContainer);
     this.mainContainer.addChild(this.entitiesContainer);
-
-    // Update the textures and background shapes when the customization is updated.
-    effect(() => {
-      this.spritesService.customizationUpdatedSignal();
-
-      this.updateTextures();
-    });
   }
 
   synchronizeEnvironment(simulationEnvironment: AnimatedSimulationEnvironment) {
@@ -210,10 +202,10 @@ export class AnimationService {
     this.entitiesContainer.removeChildren();
     this.backgroundContainer.removeChildren();
     this.selectedEntityPolylines.forEach((polyline) => polyline.clear());
-    this.previousVehicleEntities = this.vehiclesEntities;
+    this.previousVehicleEntities = this.vehicleEntities;
     this.previousPassengerEntities = this.passengersEntities;
     this.previousStopEntities = this.stopEntities;
-    this.vehiclesEntities = [];
+    this.vehicleEntities = [];
     this.vehicleEntitiesByVehicleId = {};
     this.passengersEntities = [];
     this.passengerEntitiesByPassengerId = {};
@@ -278,9 +270,6 @@ export class AnimationService {
       );
     }
 
-    // Configure the textures and background shapes of all entities.
-    this.updateTextures();
-
     // Call redraw to update the environment.
     this.onRedraw();
   }
@@ -327,9 +316,14 @@ export class AnimationService {
     const passengerCountText = new PIXI.BitmapText('', this.BITMAP_TEXT_STYLE);
     vehicleContainer.addChild(passengerCountText);
 
+    // Vehicle Passenger Icon
+    const passengerIcon = new PIXI.Sprite();
+    passengerIcon.anchor.set(0.5, 0.5);
+    vehicleContainer.addChild(passengerIcon);
+
     const entity: Entity<AnimatedVehicle> = {
       data: vehicle,
-      sprites: [sprite],
+      sprites: [sprite, passengerIcon],
       texts: [passengerCountText],
       graphics: [graphics],
       container: vehicleContainer,
@@ -338,7 +332,7 @@ export class AnimationService {
 
     this.entitiesContainer.addChild(vehicleContainer);
     this.backgroundContainer.addChild(backgroundContainer);
-    this.vehiclesEntities.push(entity);
+    this.vehicleEntities.push(entity);
 
     this.vehicleEntitiesByVehicleId[vehicle.id] = entity;
   }
@@ -391,9 +385,14 @@ export class AnimationService {
     );
     stopContainer.addChild(completePassengerCountText);
 
+    // Passenger Icon
+    const passengerIcon = new PIXI.Sprite();
+    passengerIcon.anchor.set(0.5, 0.5);
+    stopContainer.addChild(passengerIcon);
+
     const entity: Entity<AnimatedStop> = {
       data: stop,
-      sprites: [sprite],
+      sprites: [sprite, passengerIcon],
       texts: [passengerCountText, completePassengerCountText],
       graphics: [graphics],
       container: stopContainer,
@@ -420,7 +419,7 @@ export class AnimationService {
     this.backgroundContainer.removeChildren();
     this.selectedEntityPolylines.forEach((polyline) => polyline.clear());
     this.hasCenteredInitially = false;
-    this.vehiclesEntities = [];
+    this.vehicleEntities = [];
     this.vehicleEntitiesByVehicleId = {};
     this.passengersEntities = [];
     this.passengerEntitiesByPassengerId = {};
@@ -447,9 +446,7 @@ export class AnimationService {
   }
 
   centerMap() {
-    if (this.vehiclesEntities.length == 0) return;
-
-    this.unselectVehicle();
+    this._shouldFollowEntitySignal.set(false);
 
     const allVisibleVehicleEntities = this.previousVehicleEntities.filter(
       (vehicle) => vehicle.container.visible,
@@ -545,7 +542,24 @@ export class AnimationService {
     const shouldShowFavoritesOnly = this.filterMode === 'favorites';
     const shouldShowComplete = this.shouldShowComplete;
 
-    // Filter passengers first, since this is used by the vehicles and stops (for the counters)
+    for (const vehicle of this.vehicleEntities) {
+      vehicle.data.displayedPassengerIds =
+        vehicle.data.animatedPassengerIds.filter((passengerId) => {
+          const passenger = this.passengerEntitiesByPassengerId[passengerId];
+          return passenger.container.visible;
+        });
+
+      vehicle.container.visible =
+        vehicle.data.displayedPassengerIds.length > 0 || // Contains any passengers
+        (vehicle.container.visible &&
+          shouldShowVehicles && // Are vehicles not filtered
+          !filters.has(vehicle.data.mode ?? 'unknown') && // Is mode not filtered
+          (!shouldShowFavoritesOnly || // Is favorites filter on and is in favorites
+            this.favoriteEntitiesService.isFavoriteEntity(vehicle.data)) &&
+          (shouldShowComplete || // Is complete filter on or is not complete
+            vehicle.data.status !== 'complete'));
+    }
+
     for (const passenger of this.passengersEntities) {
       passenger.container.visible =
         passenger.container.visible &&
@@ -556,23 +570,6 @@ export class AnimationService {
           passenger.data.status !== 'complete');
     }
 
-    for (const vehicle of this.vehiclesEntities) {
-      vehicle.container.visible =
-        vehicle.container.visible &&
-        shouldShowVehicles && // Are vehicles not filtered
-        !filters.has(vehicle.data.mode ?? 'unknown') && // Is mode not filtered
-        (!shouldShowFavoritesOnly || // Is favorites filter on and is in favorites
-          this.favoriteEntitiesService.isFavoriteEntity(vehicle.data)) &&
-        (shouldShowComplete || // Is complete filter on or is not complete
-          vehicle.data.status !== 'complete');
-
-      vehicle.data.displayedPassengerIds =
-        vehicle.data.animatedPassengerIds.filter((passengerId) => {
-          const passenger = this.passengerEntitiesByPassengerId[passengerId];
-          return passenger.container.visible;
-        });
-    }
-
     for (const stop of this.stopEntities) {
       stop.data.displayedPassengerIds = stop.data.animatedPassengerIds.filter(
         (passengerId) => {
@@ -581,9 +578,8 @@ export class AnimationService {
         },
       );
 
-      // Displayed if any of the passengers on board are displayed
       stop.container.visible =
-        stop.data.displayedPassengerIds.length > 0 ||
+        stop.data.displayedPassengerIds.length > 0 || // Contains any passengers
         (stop.container.visible &&
           shouldShowStops && // Are stops not filtered
           (!shouldShowFavoritesOnly || // Is favorites filter on and is in favorites
@@ -630,18 +626,44 @@ export class AnimationService {
         stop.container.visible = true;
       }
     }
+
+    // Now that everything is filtered, we can turn visible the stops and vehicles
+    // that have passengers.
+    for (const vehicle of this.vehicleEntities) {
+      vehicle.data.displayedPassengerIds =
+        vehicle.data.animatedPassengerIds.filter((passengerId) => {
+          const passenger = this.passengerEntitiesByPassengerId[passengerId];
+          return passenger.container.visible;
+        });
+
+      vehicle.container.visible =
+        vehicle.container.visible ||
+        vehicle.data.displayedPassengerIds.length > 0; // Contains any passengers
+    }
+    for (const stop of this.stopEntities) {
+      stop.data.displayedPassengerIds = stop.data.animatedPassengerIds.filter(
+        (passengerId) => {
+          const passenger = this.passengerEntitiesByPassengerId[passengerId];
+          return passenger.container.visible;
+        },
+      );
+
+      stop.container.visible =
+        stop.container.visible || stop.data.displayedPassengerIds.length > 0; // Contains any passengers
+    }
   }
 
   private setVehiclePositions() {
     // For loop with index are faster
     // eslint-disable-next-line @typescript-eslint/prefer-for-of
-    for (let index = 0; index < this.vehiclesEntities.length; ++index) {
-      const vehicleEntity = this.vehiclesEntities[index];
+    for (let index = 0; index < this.vehicleEntities.length; ++index) {
+      const vehicleEntity = this.vehicleEntities[index];
+
+      vehicleEntity.container.visible = false;
 
       vehicleEntity.data.animatedPassengerIds = [];
 
       if (!vehicleEntity.data.animationData) {
-        vehicleEntity.container.visible = false;
         continue;
       }
 
@@ -654,7 +676,6 @@ export class AnimationService {
       // Vehicle has no animation data
       // This can happen if the vehicle is not in the environment yet
       if (!animationData) {
-        vehicleEntity.container.visible = false;
         continue;
       }
 
@@ -664,7 +685,6 @@ export class AnimationService {
         animationData.displayedPolylines.currentPolylineIndex;
       if (animationData.notDisplayedReason !== null) {
         // Vehicle has an error
-        vehicleEntity.container.visible = false;
       } else if (
         (animationData as StaticVehicleAnimationData).position !== undefined
       ) {
@@ -706,7 +726,6 @@ export class AnimationService {
         vehicleEntity.data.currentLineIndex = lineNo;
       } else {
         // Vehicle has an unknown error
-        vehicleEntity.container.visible = false;
       }
     }
   }
@@ -717,7 +736,6 @@ export class AnimationService {
     for (let index = 0; index < this.passengersEntities.length; ++index) {
       const passengerEntity = this.passengersEntities[index];
 
-      // Never show passengers
       passengerEntity.container.visible = false;
 
       const animationData = passengerEntity.data.animationData.find(
@@ -736,7 +754,6 @@ export class AnimationService {
 
       if (animationData.notDisplayedReason !== null) {
         // Passenger has an error
-        passengerEntity.container.visible = false;
       } else if (
         (animationData as StaticPassengerAnimationData).stopIndex !==
           undefined &&
@@ -782,17 +799,18 @@ export class AnimationService {
         }
       } else {
         // Passenger has an unknown error
-        passengerEntity.container.visible = false;
       }
     }
   }
 
   private resetStopCounters() {
     for (const stopEntity of this.stopEntities) {
+      stopEntity.container.visible = true;
       stopEntity.data.animatedPassengerIds = [];
       stopEntity.texts[0].text = '';
       stopEntity.texts[1].text = '';
       stopEntity.sprites[0].tint = this.WHITE;
+      stopEntity.sprites[1].tint = this.WHITE;
     }
   }
 
@@ -872,6 +890,7 @@ export class AnimationService {
         stopEntity.texts[0].tint = 0xffffff;
         stopEntity.texts[1].tint = 0xffffff;
         stopEntity.sprites[0].tint = 0xffffff;
+        stopEntity.sprites[1].tint = 0xffffff;
       }
 
       const interpolate = d3InterpolateRgb(
@@ -888,6 +907,7 @@ export class AnimationService {
         stopEntity.texts[0].tint = tint;
         stopEntity.texts[1].tint = tint;
         stopEntity.sprites[0].tint = tint;
+        stopEntity.sprites[1].tint = tint;
       } else {
         console.warn('Color interpolation failed');
       }
@@ -901,8 +921,8 @@ export class AnimationService {
 
     // For loop with index are faster
     // eslint-disable-next-line @typescript-eslint/prefer-for-of
-    for (let index = 0; index < this.vehiclesEntities.length; ++index) {
-      const vehicleEntity = this.vehiclesEntities[index];
+    for (let index = 0; index < this.vehicleEntities.length; ++index) {
+      const vehicleEntity = this.vehicleEntities[index];
 
       const passengers = vehicleEntity.data.animatedPassengerIds.map(
         (passengerId) => this.passengerEntitiesByPassengerId[passengerId],
@@ -931,6 +951,7 @@ export class AnimationService {
       if (numberOfPassengers === 0) {
         vehicleEntity.texts[0].tint = 0xffffff;
         vehicleEntity.sprites[0].tint = 0xffffff;
+        vehicleEntity.sprites[1].tint = 0xffffff;
         continue;
       }
 
@@ -941,6 +962,7 @@ export class AnimationService {
       const tint = 256 * (color.r * 256 + color.g) + color.b;
       vehicleEntity.texts[0].tint = tint;
       vehicleEntity.sprites[0].tint = tint;
+      vehicleEntity.sprites[1].tint = tint;
     }
   }
 
@@ -1044,7 +1066,7 @@ export class AnimationService {
     const nearStops: EntityMetadata[] = [];
 
     // Distances for all vehicles
-    for (const vehicle of this.vehiclesEntities) {
+    for (const vehicle of this.vehicleEntities) {
       if (!vehicle.container.visible) continue;
       const distance = this.distanceBetweenPoints(
         point,
@@ -1258,7 +1280,7 @@ export class AnimationService {
 
       const graphics = this.selectedEntityPolylines[i];
 
-      if (graphics == null) return; // Safe check return when unkown bug
+      if (graphics == null) return; // Safe check return when unknown bug
 
       const shouldHighlightLeg = i === this.highlightedLegIndex;
       if (shouldHighlightLeg) {
@@ -1484,8 +1506,6 @@ export class AnimationService {
 
   private onZoomEnd(event: L.LeafletEvent) {
     this.spritesService.calculateSpriteScales(this.utils);
-
-    this.updateTextures();
   }
 
   private onRedraw(event?: L.LeafletEvent) {
@@ -1516,11 +1536,10 @@ export class AnimationService {
     this.updateTextures();
     this.setSelectedEntityPosition();
     this.centerMapToFirstVisibleEntity();
-    this.synchronizeBackgroundWithEntities();
   }
 
   private highlightEntities() {
-    for (const vehicle of this.vehiclesEntities) {
+    for (const vehicle of this.vehicleEntities) {
       vehicle.container.filters = [];
     }
 
@@ -1652,7 +1671,7 @@ export class AnimationService {
     };
 
     // Get all visible vehicles coordinates
-    this.vehiclesEntities.forEach((vehicle) => {
+    this.vehicleEntities.forEach((vehicle) => {
       if (
         vehicle.container.visible &&
         vehicle.container.x !== 0 &&
@@ -1884,12 +1903,10 @@ export class AnimationService {
   private updateTextures() {
     const showText = !this.spritesService.useZoomedOutSprites;
 
-    this.vehiclesEntities.forEach((entity) => {
+    this.vehicleEntities.forEach((entity) => {
+      // Configure containers
       entity.container.scale.set(this.spritesService.vehicleSpriteScale);
-      entity.sprites[0].texture = this.spritesService.getVehicleTexture(
-        entity.data.mode,
-        entity.data.tags,
-      );
+      this.synchronizeBackgroundWithEntity(entity);
 
       // Top right corner
       entity.texts[0].visible = showText;
@@ -1901,10 +1918,32 @@ export class AnimationService {
         entity.data.mode,
         entity.data.tags,
       );
+
+      entity.sprites[0].texture = this.spritesService.getVehicleTexture(
+        entity.data.mode,
+        entity.data.tags,
+      );
+
+      // Passenger Icon
+      entity.sprites[1].texture = this.spritesService.getPassengerTexture(
+        entity.data.displayedPassengerIds
+          .map(
+            (passengerId) =>
+              this.passengerEntitiesByPassengerId[passengerId].data.tags,
+          )
+          .flat(),
+      );
+      entity.sprites[1].visible = entity.data.displayedPassengerIds.length > 0;
+      entity.sprites[1].scale.set(
+        this.spritesService.passengerSpriteScale /
+          this.spritesService.vehicleSpriteScale,
+      );
     });
 
     this.passengersEntities.forEach((entity) => {
+      // Configure container
       entity.container.scale.set(this.spritesService.passengerSpriteScale);
+      this.synchronizeBackgroundWithEntity(entity);
 
       this.spritesService.drawPassengerBackgroundShape(
         entity.graphics[0],
@@ -1913,30 +1952,43 @@ export class AnimationService {
     });
 
     this.stopEntities.forEach((entity) => {
-      const hasPassengers = entity.data.displayedPassengerIds.length > 0;
-      entity.container.scale.set(
-        hasPassengers
-          ? this.spritesService.passengerSpriteScale
-          : this.spritesService.stopSpriteScale,
+      // Configure container
+      entity.container.scale.set(this.spritesService.passengerSpriteScale);
+      this.synchronizeBackgroundWithEntity(entity);
+
+      entity.sprites[0].texture = this.spritesService.getStopTexture(
+        entity.data.tags,
       );
-      entity.sprites[0].texture = hasPassengers
-        ? this.spritesService.getPassengerTexture(entity.data.tags)
-        : this.spritesService.getStopTexture(entity.data.tags);
-
-      // Top right corner
-      entity.texts[0].visible = showText;
-      entity.texts[0].x = entity.sprites[0].width / 2;
-      entity.texts[0].y = -entity.sprites[0].height / 2;
-
-      // Bottom right corner
-      entity.texts[1].visible = showText;
-      entity.texts[1].x = entity.sprites[0].width / 2;
-      entity.texts[1].y = entity.sprites[0].height / 2;
+      entity.sprites[0].scale.set(
+        this.spritesService.stopSpriteScale /
+          this.spritesService.passengerSpriteScale,
+      );
 
       this.spritesService.drawStopBackgroundShape(
         entity.graphics[0],
         entity.data.tags,
       );
+
+      // Passenger Icon
+      entity.sprites[1].texture = this.spritesService.getPassengerTexture(
+        entity.data.displayedPassengerIds
+          .map(
+            (passengerId) =>
+              this.passengerEntitiesByPassengerId[passengerId].data.tags,
+          )
+          .flat(),
+      );
+      entity.sprites[1].visible = entity.data.displayedPassengerIds.length > 0;
+
+      // Top right corner
+      entity.texts[0].visible = showText;
+      entity.texts[0].x = entity.sprites[1].width / 2;
+      entity.texts[0].y = -entity.sprites[1].height / 2;
+
+      // Bottom right corner
+      entity.texts[1].visible = showText;
+      entity.texts[1].x = entity.sprites[1].width / 2;
+      entity.texts[1].y = entity.sprites[1].height / 2;
     });
   }
 
@@ -1944,20 +1996,6 @@ export class AnimationService {
     const newPolylineGraphics = new PIXI.Graphics();
     this.selectedEntityPolylines.push(newPolylineGraphics);
     this.polylinesContainer.addChild(newPolylineGraphics);
-  }
-
-  private synchronizeBackgroundWithEntities() {
-    this.vehiclesEntities.forEach((vehicleEntity) => {
-      this.synchronizeBackgroundWithEntity(vehicleEntity);
-    });
-
-    this.passengersEntities.forEach((passengerEntity) => {
-      this.synchronizeBackgroundWithEntity(passengerEntity);
-    });
-
-    this.stopEntities.forEach((stopEntity) => {
-      this.synchronizeBackgroundWithEntity(stopEntity);
-    });
   }
 
   private synchronizeBackgroundWithEntity(
