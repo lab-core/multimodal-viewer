@@ -867,29 +867,33 @@ export class AnimationService {
         continue;
       }
 
-      if (numberOfPassengers === 0) {
+      if (numberOfDisplayedPassengers === 0) {
         stopEntity.texts[0].text = '';
       } else if (numberOfDisplayedPassengers === numberOfPassengers) {
         stopEntity.texts[0].text = numberOfPassengers.toString();
       } else {
-        stopEntity.texts[0].text = `${numberOfDisplayedPassengers} (${numberOfPassengers})`;
+        stopEntity.texts[0].text = `${numberOfPassengers} (${numberOfDisplayedPassengers})`;
       }
 
-      if (numberOfCompletePassengers === 0) {
+      if (numberOfDisplayedCompletePassengers === 0) {
         stopEntity.texts[1].text = '';
       } else if (
         numberOfDisplayedCompletePassengers === numberOfCompletePassengers
       ) {
         stopEntity.texts[1].text = numberOfCompletePassengers.toString();
       } else {
-        stopEntity.texts[1].text = `${numberOfDisplayedCompletePassengers} (${numberOfCompletePassengers})`;
+        stopEntity.texts[1].text = `${numberOfCompletePassengers} (${numberOfDisplayedCompletePassengers})`;
       }
 
-      if (numberOfPassengers === 0) {
+      if (
+        numberOfDisplayedPassengers === 0 &&
+        numberOfDisplayedCompletePassengers === 0
+      ) {
         stopEntity.texts[0].tint = 0xffffff;
         stopEntity.texts[1].tint = 0xffffff;
         stopEntity.sprites[0].tint = 0xffffff;
         stopEntity.sprites[1].tint = 0xffffff;
+        return;
       }
 
       const interpolate = d3InterpolateRgb(
@@ -940,18 +944,16 @@ export class AnimationService {
         0,
       );
 
-      if (numberOfPassengers === 0) vehicleEntity.texts[0].text = '';
-      else if (numberOfDisplayedPassengers === numberOfPassengers) {
-        vehicleEntity.texts[0].text = numberOfPassengers.toString();
-      } else {
-        vehicleEntity.texts[0].text = `${numberOfDisplayedPassengers} (${numberOfPassengers})`;
-      }
-
-      if (numberOfPassengers === 0) {
+      if (numberOfDisplayedPassengers === 0) {
+        vehicleEntity.texts[0].text = '';
         vehicleEntity.texts[0].tint = 0xffffff;
         vehicleEntity.sprites[0].tint = 0xffffff;
         vehicleEntity.sprites[1].tint = 0xffffff;
         continue;
+      } else if (numberOfDisplayedPassengers === numberOfPassengers) {
+        vehicleEntity.texts[0].text = numberOfPassengers.toString();
+      } else {
+        vehicleEntity.texts[0].text = `${numberOfPassengers} (${numberOfDisplayedPassengers})`;
       }
 
       const t = Math.min(1, numberOfPassengers / vehicleEntity.data.capacity);
