@@ -47,22 +47,29 @@ export const BACKGROUND_SHAPE_TYPES: BackgroundShapeType[] = [
 
 export interface CustomizationFields {
   /**
-   * The tags of the entity this texture is for.
+   * The tags of the entity this configuration is for.
    *
-   * If multiple tags are provided, the texture will be applied only if all tags match.
+   * If multiple tags are provided, the configuration will be applied only if all tags match.
    */
   tags: string[];
 
   /**
-   * The mode of the vehicle this texture is for.
+   * The mode of the vehicle this configuration is for.
    *
-   * If null, the mode will not be considered when applying the texture.
+   * If null, the mode will not be considered when applying the configuration.
    */
   mode: string | null;
 
   type: CustomizationEntityType;
 
   zoom: CUSTOMIZATION_ZOOM;
+
+  /**
+   * Is the configuration active for this entity?
+   *
+   * Users can disable configurations without removing them.
+   */
+  isActive: boolean;
 }
 
 export interface CustomTexture extends CustomizationFields {
@@ -305,6 +312,7 @@ export class SpritesService {
 
     const firstMatchingTexture = this._customTextures.find(
       (texture) =>
+        texture.isActive &&
         ['vehicle', 'all'].includes(texture.type) &&
         [currentZoom, 'any'].includes(texture.zoom) &&
         texture.tags.every((tag) => tags.includes(tag)) &&
@@ -325,6 +333,7 @@ export class SpritesService {
 
     const firstMatchingTexture = this._customTextures.find(
       (texture) =>
+        texture.isActive &&
         ['passenger', 'all'].includes(texture.type) &&
         [currentZoom, 'any'].includes(texture.zoom) &&
         texture.tags.every((tag) => tags.includes(tag)),
@@ -344,6 +353,7 @@ export class SpritesService {
 
     const firstMatchingTexture = this._customTextures.find(
       (texture) =>
+        texture.isActive &&
         ['stop', 'all'].includes(texture.type) &&
         [currentZoom, 'any'].includes(texture.zoom) &&
         texture.tags.every((tag) => tags.includes(tag)),
@@ -368,6 +378,7 @@ export class SpritesService {
 
     const firstMatchingBackgroundShape = this._backgroundShapes.find(
       (backgroundShape) =>
+        backgroundShape.isActive &&
         ['vehicle', 'all'].includes(backgroundShape.type) &&
         [currentZoom, 'any'].includes(backgroundShape.zoom) &&
         backgroundShape.tags.every((tag) => tags.includes(tag)) &&
@@ -391,6 +402,7 @@ export class SpritesService {
 
     const firstMatchingBackgroundShape = this._backgroundShapes.find(
       (backgroundShape) =>
+        backgroundShape.isActive &&
         ['passenger', 'all'].includes(backgroundShape.type) &&
         [currentZoom, 'any'].includes(backgroundShape.zoom) &&
         backgroundShape.tags.every((tag) => tags.includes(tag)),
@@ -413,6 +425,7 @@ export class SpritesService {
 
     const firstMatchingBackgroundShape = this._backgroundShapes.find(
       (backgroundShape) =>
+        backgroundShape.isActive &&
         ['stop', 'all'].includes(backgroundShape.type) &&
         [currentZoom, 'any'].includes(backgroundShape.zoom) &&
         backgroundShape.tags.every((tag) => tags.includes(tag)),

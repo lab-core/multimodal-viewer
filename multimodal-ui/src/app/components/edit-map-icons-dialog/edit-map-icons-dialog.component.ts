@@ -482,6 +482,7 @@ export class EditMapIconsDialogComponent {
           tags: [],
           type: 'vehicle',
           zoom: 'any',
+          isActive: true,
         },
       ];
     });
@@ -568,6 +569,7 @@ export class EditMapIconsDialogComponent {
           tags: [],
           type: 'vehicle',
           zoom: 'any',
+          isActive: true,
         },
       ];
     });
@@ -701,5 +703,49 @@ export class EditMapIconsDialogComponent {
       this.customColors(),
     );
     this.dialogRef.close();
+  }
+
+  duplicateCustomTexture(index: number) {
+    if (index >= this.customTexturesSignal().length) return;
+    this.customTexturesSignal.update((customTextures) => {
+      const texture = structuredClone(customTextures[index]);
+      return [
+        ...customTextures.slice(0, index + 1),
+        texture,
+        ...customTextures.slice(index + 1),
+      ];
+    });
+  }
+
+  duplicateBackgroundShape(index: number) {
+    if (index >= this.backgroundShapesSignal().length) return;
+    this.backgroundShapesSignal.update((backgroundShapes) => {
+      const shape = structuredClone(backgroundShapes[index]);
+      return [
+        ...backgroundShapes.slice(0, index + 1),
+        shape,
+        ...backgroundShapes.slice(index + 1),
+      ];
+    });
+  }
+
+  toggleCustomTextureIsActive(index: number) {
+    if (index >= this.customTexturesSignal().length) return;
+    this.customTexturesSignal.update((customTextures) => {
+      const texture = structuredClone(customTextures[index]);
+      texture.isActive = !texture.isActive;
+      customTextures[index] = texture;
+      return [...customTextures];
+    });
+  }
+
+  toggleBackgroundShapeIsActive(index: number) {
+    if (index >= this.backgroundShapesSignal().length) return;
+    this.backgroundShapesSignal.update((backgroundShapes) => {
+      const shape = structuredClone(backgroundShapes[index]);
+      shape.isActive = !shape.isActive;
+      backgroundShapes[index] = shape;
+      return [...backgroundShapes];
+    });
   }
 }
