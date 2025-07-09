@@ -34,7 +34,10 @@
                   (mouseleave)="unpreselectEntity()"
                   (keydown.enter)="selectPassenger(passenger.id)"
                 >
-                  <span>{{ passenger.name }}</span>
+                  <app-entity-name
+                    [name]="passenger.name"
+                    [tags]="passenger.tags"
+                  />
                 </div>
               }
             </div>
@@ -79,7 +82,10 @@
                   (mouseleave)="unpreselectEntity()"
                   (keydown.enter)="selectVehicle(vehicle.id)"
                 >
-                  <span>{{ vehicle.name }}</span>
+                  <app-entity-name
+                    [name]="vehicle.name"
+                    [tags]="vehicle.tags"
+                  />
                 </div>
               }
             </div>

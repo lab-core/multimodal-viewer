@@ -122,6 +122,10 @@ export interface SimulationConfiguration {
   maxDuration: number | null;
 }
 
+export interface Tagged {
+  tags: string[];
+}
+
 export type PassengerStatus =
   | 'release'
   | 'assigned'
@@ -137,7 +141,7 @@ export const PASSENGER_STATUSES: PassengerStatus[] = [
   'complete',
 ];
 
-export interface Leg {
+export interface Leg extends Tagged {
   assignedVehicleId: string | null;
   boardingStopIndex: number | null;
   alightingStopIndex: number | null;
@@ -152,9 +156,7 @@ export interface AnimatedLeg extends Leg {
   nextStops: Stop[];
 }
 
-export interface Passenger extends DataEntity {
-  id: string;
-  name: string | null;
+export interface Passenger extends EntityMetadata, Tagged {
   status: PassengerStatus;
   previousLegs: Leg[];
   currentLeg: Leg | null;
@@ -236,11 +238,10 @@ export interface DisplayedPolylines {
   currentPolylineEndTime: number | null;
 }
 
-export interface Stop extends DataEntity {
+export interface Stop extends EntityMetadata, Tagged {
   arrivalTime: number;
   departureTime: number | null; // null means infinite
   position: Position;
-  id: string;
   capacity: number;
   label: string;
 }
@@ -257,33 +258,37 @@ export interface AnimatedStop extends Stop {
   vehicleIds: string[];
 
   /**
-   * The number of passengers that are waiting at the stop.
-   *
-   * This is different from the length of the passengerIds array because
-   * one passenger can account for multiple people and passengerIds contains
-   * only the displayed passengers.
+   * The ids of the passengers that will be used for the animation.
+   * We need a different variable because the animation service will modify it.
    */
-  numberOfPassengers: number;
+  animatedPassengerIds: string[];
 
-  numberOfCompletePassengers: number;
+  /**
+   * Tags of passengers that are waiting at the stop (not the complete passengers).
+   */
+  passengerTags: string[];
+
+  /**
+   * The ids of the passengers that are actually displayed (different to avoid filters affecting the side panel)
+   */
+  displayedPassengerIds: string[];
 }
 
 export const DEFAULT_STOP_CAPACITY = 10;
 
-export interface DataEntity {
+export interface EntityMetadata extends Tagged {
   id: string;
   entityType: EntityType;
+  name: string;
 }
 
-export interface Vehicle extends DataEntity {
-  id: string;
+export interface Vehicle extends EntityMetadata {
   mode: string | null;
   status: VehicleStatus;
   previousStops: Stop[];
   currentStop: Stop | null;
   nextStops: Stop[];
   capacity: number;
-  name: string;
 }
 
 export interface VehicleStatusUpdate {
@@ -410,15 +415,26 @@ export interface AnimatedPassenger extends displayed<Passenger> {
 
 export interface AnimatedVehicle extends displayed<Vehicle> {
   animationData: AnyVehicleAnimationData[];
+
   passengerIds: string[];
-  /**
-   * The number of passengers that are on board the vehicle.
-   * This is different from the length of the passengerIds array because
-   * one passenger can account for multiple people and passengerIds contains
-   * only the displayed passengers.
-   */
-  numberOfPassengers: number;
+
   currentLineIndex: number | null;
+
+  /**
+   * The ids of the passengers that will be used for the animation.
+   * We need a different variable because the animation service will modify it.
+   */
+  animatedPassengerIds: string[];
+
+  /**
+   * The tags of the passengers that are on board.
+   */
+  passengerTags: string[];
+
+  /**
+   * The ids of the passengers that are actually displayed (different to avoid filters affecting the side panel)
+   */
+  displayedPassengerIds: string[];
 }
 
 /**

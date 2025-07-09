@@ -25,6 +25,7 @@
     "startswith",
     "SVDM",
     "titlecase",
+    "unpreselect",
     "venv"
   ],
   "pylint.cwd": "${workspaceFolder}/python",

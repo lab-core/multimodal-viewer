@@ -1,17 +1,18 @@
 import { Component, computed, Signal } from '@angular/core';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import {
-  DataEntity,
+  EntityMetadata,
   Passenger,
   Vehicle,
 } from '../../interfaces/simulation.model';
-import { MatExpansionModule } from '@angular/material/expansion';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { AnimationService } from '../../services/animation.service';
 import { VisualizationService } from '../../services/visualization.service';
+import { EntityNameComponent } from '../entity-name/entity-name.component';
 
 @Component({
   selector: 'app-entities-tab',
-  imports: [MatExpansionModule, MatTooltipModule],
+  imports: [MatExpansionModule, MatTooltipModule, EntityNameComponent],
   templateUrl: './entities-tab.component.html',
   styleUrl: './entities-tab.component.css',
 })
@@ -108,12 +109,12 @@ export class EntitiesTabComponent {
     private readonly visualizationService: VisualizationService,
   ) {}
 
-  preselectEntity(entity: DataEntity) {
-    this.animationService.preselectEntity(entity);
+  preselectEntity(entity: EntityMetadata) {
+    this.animationService.preselectEntity(entity, false);
   }
 
   unpreselectEntity() {
-    this.animationService.preselectEntity(null);
+    this.animationService.unpreselectEntity();
   }
 
   selectPassenger(id: string) {

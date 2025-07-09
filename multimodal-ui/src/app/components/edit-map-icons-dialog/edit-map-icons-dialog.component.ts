@@ -1,4 +1,12 @@
 import {
+  CdkDrag,
+  CdkDragDrop,
+  CdkDragPlaceholder,
+  CdkDropList,
+  moveItemInArray,
+} from '@angular/cdk/drag-drop';
+import { TitleCasePipe } from '@angular/common';
+import {
   Component,
   computed,
   ElementRef,
@@ -10,51 +18,60 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import {
+  MatChipEditedEvent,
+  MatChipInputEvent,
+  MatChipsModule,
+} from '@angular/material/chips';
+import {
   MatDialogActions,
   MatDialogClose,
   MatDialogContent,
   MatDialogRef,
   MatDialogTitle,
 } from '@angular/material/dialog';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import {
-  TextureSaveData,
-  SpritesService,
-  CustomTexture,
-} from '../../services/sprites.service';
-import { MatDividerModule } from '@angular/material/divider';
-import { Jimp } from 'jimp';
-import { MatSliderModule } from '@angular/material/slider';
-import { ImageResource } from 'pixi.js';
-import {
-  CdkDragDrop,
-  CdkDragPlaceholder,
-  CdkDropList,
-  CdkDrag,
-  moveItemInArray,
-} from '@angular/cdk/drag-drop';
 import { MatRadioChange, MatRadioModule } from '@angular/material/radio';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSliderModule } from '@angular/material/slider';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { color as d3Color } from 'd3-color';
 import { interpolateRgbBasis as d3InterpolateRgb } from 'd3-interpolate';
+import { Jimp } from 'jimp';
+import { ImageResource } from 'pixi.js';
+import {
+  BackgroundShape,
+  BackgroundShapeType,
+  CUSTOMIZATION_ENTITY_TYPES,
+  CUSTOMIZATION_ZOOMS,
+  CustomTexture,
+  SpritesService,
+  TextureSaveData,
+} from '../../services/sprites.service';
+import { BackgroundShapeComponent } from '../background-shape/background-shape.component';
 
 export type EditMapIconsDialogData = null;
 
-type EditableDefaultIconTypes =
+type EditableDefaultIconType =
   | 'vehicle'
   | 'passenger'
-  | 'zoom-out-vehicle'
-  | 'zoom-out-passenger'
-  | 'stop';
+  | 'stop'
+  | 'zoomed-out-vehicle'
+  | 'zoomed-out-passenger'
+  | 'zoomed-out-stop';
 
-export interface EditMapIconsDialogResult {
-  name: string;
-  url: string;
-  attribution: string | null;
-}
+const EDITABLE_DEFAULT_ICON_TYPES: EditableDefaultIconType[] = [
+  'vehicle',
+  'passenger',
+  'stop',
+  'zoomed-out-vehicle',
+  'zoomed-out-passenger',
+  'zoomed-out-stop',
+];
+
+export type EditMapIconsDialogResult = null;
 
 @Component({
   selector: 'app-edit-map-icons-dialog',
@@ -78,6 +95,9 @@ export interface EditMapIconsDialogResult {
     CdkDragPlaceholder,
     CdkDropList,
     CdkDrag,
+    TitleCasePipe,
+    MatChipsModule,
+    BackgroundShapeComponent,
   ],
   templateUrl: './edit-map-icons-dialog.component.html',
   styleUrl: './edit-map-icons-dialog.component.css',
@@ -86,6 +106,9 @@ export class EditMapIconsDialogComponent {
   readonly SPRITE_SIZE;
   readonly PRESET_LIGHT_COLOR_THEME;
   readonly PRESET_SATURATED_COLOR_THEME;
+  readonly EDITABLE_DEFAULT_ICON_TYPES = EDITABLE_DEFAULT_ICON_TYPES;
+  readonly CUSTOMIZATION_ENTITY_TYPES = CUSTOMIZATION_ENTITY_TYPES;
+  readonly CUSTOMIZATION_ZOOMS = CUSTOMIZATION_ZOOMS;
 
   private readonly MIN_COLOR_COUNT = 2;
   private readonly MAX_COLOR_COUNT = 12;
@@ -98,21 +121,22 @@ export class EditMapIconsDialogComponent {
   testScaleValue = 0;
   testScaleColor = '#ffffff';
 
-  vehicleModeTextures: WritableSignal<CustomTexture[]> = signal([]);
+  customTexturesSignal: WritableSignal<CustomTexture[]> = signal([]);
+  backgroundShapesSignal: WritableSignal<BackgroundShape[]> = signal([]);
 
-  vehicleTextureUrl: WritableSignal<string> = signal('');
-  zoomOutVehicleTextureUrl: WritableSignal<string> = signal('');
+  vehicleTextureUrlSignal: WritableSignal<string> = signal('');
+  passengerTextureUrlSignal: WritableSignal<string> = signal('');
+  stopTextureUrlSignal: WritableSignal<string> = signal('');
 
-  passengerTextureUrl: WritableSignal<string> = signal('');
-  zoomOutPassengerTextureUrl: WritableSignal<string> = signal('');
-
-  stopTextureUrl: WritableSignal<string> = signal('');
+  zoomedOutVehicleTextureUrlSignal: WritableSignal<string> = signal('');
+  zoomedOutPassengerTextureUrlSignal: WritableSignal<string> = signal('');
+  zoomedOutStopTextureUrlSignal: WritableSignal<string> = signal('');
 
   uploadButton =
-    viewChild.required<ElementRef<HTMLButtonElement>>('fileUpload');
+    viewChild.required<ElementRef<HTMLButtonElement>>('iconFileUpload');
 
-  private selectedTextureIndex = 0;
-  private selectedDefaultTextureType: EditableDefaultIconTypes = 'vehicle';
+  private selectedTextureIndex: number | null = null;
+  private selectedDefaultTextureType: EditableDefaultIconType | null = null;
 
   constructor(
     private readonly dialogRef: MatDialogRef<
@@ -128,39 +152,47 @@ export class EditMapIconsDialogComponent {
       this.spritesService.PRESET_SATURATED_COLOR_THEME;
 
     // Safe to assume it's an ImageResource with a url because they are all loaded from a url.
-
-    this.vehicleTextureUrl.set(
+    this.vehicleTextureUrlSignal.set(
       (this.spritesService.vehicleTexture.baseTexture.resource as ImageResource)
         .url,
     );
 
-    this.zoomOutVehicleTextureUrl.set(
-      (
-        this.spritesService.zoomOutVehicleTexture.baseTexture
-          .resource as ImageResource
-      ).url,
-    );
-
-    this.passengerTextureUrl.set(
+    this.passengerTextureUrlSignal.set(
       (
         this.spritesService.passengerTexture.baseTexture
           .resource as ImageResource
       ).url,
     );
 
-    this.zoomOutPassengerTextureUrl.set(
-      (
-        this.spritesService.zoomOutPassengerTexture.baseTexture
-          .resource as ImageResource
-      ).url,
-    );
-
-    this.stopTextureUrl.set(
+    this.stopTextureUrlSignal.set(
       (this.spritesService.stopTexture.baseTexture.resource as ImageResource)
         .url,
     );
 
-    this.vehicleModeTextures.set(this.spritesService.vehicleModeTextures);
+    this.zoomedOutVehicleTextureUrlSignal.set(
+      (
+        this.spritesService.zoomedOutVehicleTexture.baseTexture
+          .resource as ImageResource
+      ).url,
+    );
+
+    this.zoomedOutPassengerTextureUrlSignal.set(
+      (
+        this.spritesService.zoomedOutPassengerTexture.baseTexture
+          .resource as ImageResource
+      ).url,
+    );
+
+    this.zoomedOutStopTextureUrlSignal.set(
+      (
+        this.spritesService.zoomedOutStopTexture.baseTexture
+          .resource as ImageResource
+      ).url,
+    );
+
+    this.customTexturesSignal.set(this.spritesService.customTextures);
+
+    this.backgroundShapesSignal.set(this.spritesService.backgroundShapes);
 
     this.colorPresetIndex = this.spritesService.colorPresetIndex;
     this.customColors.set(structuredClone(this.spritesService.customColors));
@@ -242,7 +274,7 @@ export class EditMapIconsDialogComponent {
     this.testScaleColor = color;
   }
 
-  onFileSelected(event: Event) {
+  onIconFileUpload(event: Event) {
     const input = event.target as HTMLInputElement;
     if (!input || !input.files) return;
 
@@ -254,12 +286,15 @@ export class EditMapIconsDialogComponent {
         const image = await Jimp.read(reader.result);
         image.resize({ w: this.SPRITE_SIZE });
         const base64url = await image.getBase64('image/png');
-        if (this.selectedTextureIndex !== -1) {
-          this.setVehicleModeTexture(this.selectedTextureIndex, base64url);
-        } else {
+        if (this.selectedTextureIndex !== null) {
+          this.setCustomTexture(this.selectedTextureIndex, base64url);
+        } else if (this.selectedDefaultTextureType !== null) {
           this.getTextureUrlSignal(this.selectedDefaultTextureType).set(
             base64url,
           );
+        } else {
+          this.currentError = 'No texture selected for upload.';
+          return;
         }
 
         this.currentError = '';
@@ -273,7 +308,7 @@ export class EditMapIconsDialogComponent {
     reader.readAsDataURL(input.files[0]);
   }
 
-  onFileImport(event: Event) {
+  onConfigurationFileUpload(event: Event) {
     const input = event.target as HTMLInputElement;
     if (!input || !input.files) return;
 
@@ -286,54 +321,76 @@ export class EditMapIconsDialogComponent {
           reader.result as string,
         ) as TextureSaveData;
 
-        if (
-          !spriteSaveData.version ||
-          spriteSaveData.version !== this.spritesService.VERSION
-        ) {
+        if (spriteSaveData.version !== this.spritesService.VERSION) {
           this.currentError = 'Import data format is outdated.';
           return;
         }
 
-        if (!spriteSaveData.vehicleTextureUrl) {
+        if (spriteSaveData.vehicleTextureUrl === undefined) {
           this.currentError = 'JSON has missing data: vehicleTextureUrl';
           return;
         }
 
-        if (!spriteSaveData.passengerTextureUrl) {
+        if (spriteSaveData.passengerTextureUrl === undefined) {
           this.currentError = 'JSON has missing data: passengerTextureUrl';
           return;
         }
 
-        if (!spriteSaveData.vehicleModeTextures) {
-          this.currentError = 'JSON has missing data: vehicleModeTextures';
-          return;
-        }
-
-        if (!spriteSaveData.stopTextureUrl) {
+        if (spriteSaveData.stopTextureUrl === undefined) {
           this.currentError = 'JSON has missing data: stopTextureUrl';
           return;
         }
 
-        if (!spriteSaveData.colorPresetIndex) {
+        if (spriteSaveData.zoomedOutVehicleTextureUrl === undefined) {
+          this.currentError =
+            'JSON has missing data: zoomedOutVehicleTextureUrl';
+          return;
+        }
+
+        if (spriteSaveData.zoomedOutPassengerTextureUrl === undefined) {
+          this.currentError =
+            'JSON has missing data: zoomedOutPassengerTextureUrl';
+          return;
+        }
+
+        if (spriteSaveData.zoomedOutStopTextureUrl === undefined) {
+          this.currentError = 'JSON has missing data: zoomedOutStopTextureUrl';
+          return;
+        }
+
+        if (spriteSaveData.customTextures === undefined) {
+          this.currentError = 'JSON has missing data: customTextures';
+          return;
+        }
+
+        if (spriteSaveData.colorPresetIndex === undefined) {
           this.currentError = 'JSON has missing data: colorPresetIndex';
           return;
         }
 
-        if (!spriteSaveData.customColors) {
+        if (spriteSaveData.customColors === undefined) {
           this.currentError = 'JSON has missing data: customColors';
           return;
         }
 
-        this.vehicleTextureUrl.set(spriteSaveData.vehicleTextureUrl);
-        this.passengerTextureUrl.set(spriteSaveData.passengerTextureUrl);
-        this.zoomOutVehicleTextureUrl.set(
-          spriteSaveData.zoomOutVehicleTextureUrl,
+        this.vehicleTextureUrlSignal.set(spriteSaveData.vehicleTextureUrl);
+        this.passengerTextureUrlSignal.set(spriteSaveData.passengerTextureUrl);
+        this.stopTextureUrlSignal.set(spriteSaveData.stopTextureUrl);
+
+        this.zoomedOutVehicleTextureUrlSignal.set(
+          spriteSaveData.zoomedOutVehicleTextureUrl,
         );
-        this.zoomOutPassengerTextureUrl.set(
-          spriteSaveData.zoomOutPassengerTextureUrl,
+        this.zoomedOutPassengerTextureUrlSignal.set(
+          spriteSaveData.zoomedOutPassengerTextureUrl,
         );
-        this.stopTextureUrl.set(spriteSaveData.stopTextureUrl);
-        this.vehicleModeTextures.set(spriteSaveData.vehicleModeTextures);
+        this.zoomedOutStopTextureUrlSignal.set(
+          spriteSaveData.zoomedOutStopTextureUrl,
+        );
+
+        this.customTexturesSignal.set(spriteSaveData.customTextures);
+
+        this.backgroundShapesSignal.set(spriteSaveData.backgroundShapes);
+
         this.colorPresetIndex = spriteSaveData.colorPresetIndex;
 
         if (spriteSaveData.customColors.length >= 2)
@@ -350,93 +407,272 @@ export class EditMapIconsDialogComponent {
     reader.readAsText(input.files[0]);
   }
 
-  uploadDefaultTexture(type: EditableDefaultIconTypes) {
-    this.selectedTextureIndex = -1;
+  uploadDefaultTexture(type: EditableDefaultIconType) {
+    this.selectedTextureIndex = null;
     this.selectedDefaultTextureType = type;
     this.uploadButton().nativeElement.click();
   }
 
-  getTextureUrlSignal(type: EditableDefaultIconTypes) {
+  getTextureUrlSignal(type: EditableDefaultIconType) {
     switch (type) {
       case 'vehicle':
-        return this.vehicleTextureUrl;
+        return this.vehicleTextureUrlSignal;
       case 'passenger':
-        return this.passengerTextureUrl;
-      case 'zoom-out-vehicle':
-        return this.zoomOutVehicleTextureUrl;
-      case 'zoom-out-passenger':
-        return this.zoomOutPassengerTextureUrl;
+        return this.passengerTextureUrlSignal;
       case 'stop':
-        return this.stopTextureUrl;
+        return this.stopTextureUrlSignal;
+      case 'zoomed-out-vehicle':
+        return this.zoomedOutVehicleTextureUrlSignal;
+      case 'zoomed-out-passenger':
+        return this.zoomedOutPassengerTextureUrlSignal;
+      case 'zoomed-out-stop':
+        return this.zoomedOutStopTextureUrlSignal;
     }
   }
 
-  resetDefaultTexture(type: EditableDefaultIconTypes) {
+  resetDefaultTexture(type: EditableDefaultIconType) {
     switch (type) {
       case 'vehicle':
-        this.vehicleTextureUrl.set(
+        this.vehicleTextureUrlSignal.set(
           this.spritesService.DEFAULT_VEHICLE_TEXTURE_URL,
         );
         break;
       case 'passenger':
-        this.passengerTextureUrl.set(
+        this.passengerTextureUrlSignal.set(
           this.spritesService.DEFAULT_PASSENGER_TEXTURE_URL,
         );
         break;
-      case 'zoom-out-vehicle':
-        this.zoomOutVehicleTextureUrl.set(
-          this.spritesService.DEFAULT_ZOOM_OUT_VEHICLE_TEXTURE_URL,
-        );
-        break;
-      case 'zoom-out-passenger':
-        this.zoomOutPassengerTextureUrl.set(
-          this.spritesService.DEFAULT_ZOOM_OUT_PASSENGER_TEXTURE_URL,
-        );
-        break;
+
       case 'stop':
-        this.stopTextureUrl.set(this.spritesService.DEFAULT_STOP_TEXTURE_URL);
+        this.stopTextureUrlSignal.set(
+          this.spritesService.DEFAULT_STOP_TEXTURE_URL,
+        );
+        break;
+      case 'zoomed-out-vehicle':
+        this.zoomedOutVehicleTextureUrlSignal.set(
+          this.spritesService.DEFAULT_ZOOMED_OUT_VEHICLE_TEXTURE_URL,
+        );
+        break;
+
+      case 'zoomed-out-passenger':
+        this.zoomedOutPassengerTextureUrlSignal.set(
+          this.spritesService.DEFAULT_ZOOMED_OUT_PASSENGER_TEXTURE_URL,
+        );
+        break;
+      case 'zoomed-out-stop':
+        this.zoomedOutStopTextureUrlSignal.set(
+          this.spritesService.DEFAULT_ZOOMED_OUT_STOP_TEXTURE_URL,
+        );
     }
   }
 
-  uploadVehicleModeTexture(index: number) {
+  uploadCustomTexture(index: number) {
     this.selectedTextureIndex = index;
+    this.selectedDefaultTextureType = null;
     this.uploadButton().nativeElement.click();
   }
 
-  addVehicleModeTexture() {
-    this.vehicleModeTextures.update((vehicleModeTexture) => {
+  addCustomTexture() {
+    this.customTexturesSignal.update((customTexture) => {
       return [
-        ...vehicleModeTexture,
-        { mode: '', url: this.spritesService.DEFAULT_VEHICLE_TEXTURE_URL },
+        ...customTexture,
+        {
+          mode: null,
+          url: this.spritesService.DEFAULT_UNDEFINED_TEXTURE_URL,
+          tags: [],
+          type: 'vehicle',
+          zoom: 'any',
+          isActive: true,
+        },
       ];
     });
   }
 
-  removeVehicleModeTexture(index: number) {
-    if (index >= this.vehicleModeTextures().length) return;
-    this.vehicleModeTextures.update((vehicleModeTexture) => {
-      vehicleModeTexture.splice(index, 1);
-      return [...vehicleModeTexture];
+  removeCustomTexture(index: number) {
+    if (index >= this.customTexturesSignal().length) return;
+    this.customTexturesSignal.update((customTextures) => {
+      customTextures.splice(index, 1);
+      return [...customTextures];
     });
   }
 
-  setVehicleModeTexture(index: number, url: string) {
-    if (index >= this.vehicleModeTextures().length) return;
-    this.vehicleModeTextures.update((vehicleModeTexture) => {
-      vehicleModeTexture[index].url = url;
-      return [...vehicleModeTexture];
+  setCustomTexture(index: number, url: string) {
+    if (index >= this.customTexturesSignal().length) return;
+    this.customTexturesSignal.update((customTextures) => {
+      customTextures[index].url = url;
+      return [...customTextures];
+    });
+  }
+
+  dropCustomTexture(event: CdkDragDrop<CustomTexture[]>) {
+    this.customTexturesSignal.update((customTextures) => {
+      moveItemInArray(customTextures, event.previousIndex, event.currentIndex);
+      return structuredClone(customTextures);
+    });
+  }
+
+  addTagToCustomTexture(index: number, event: MatChipInputEvent) {
+    if (index >= this.customTexturesSignal().length) return;
+    this.customTexturesSignal.update((customTextures) => {
+      const texture = structuredClone(customTextures[index]);
+      const tag = event.value.trim();
+      if (!tag) return customTextures; // No tag to add
+      if (!texture.tags.includes(tag)) {
+        texture.tags.push(tag);
+        texture.tags.sort();
+      }
+      event.chipInput.clear();
+      customTextures[index] = texture;
+      return [...customTextures];
+    });
+  }
+
+  removeTagFromCustomTexture(index: number, tag: string) {
+    if (index >= this.customTexturesSignal().length) return;
+    this.customTexturesSignal.update((customTextures) => {
+      const texture = structuredClone(customTextures[index]);
+      texture.tags = texture.tags.filter((t) => t !== tag);
+      customTextures[index] = texture;
+      return [...customTextures];
+    });
+  }
+
+  editTagInCustomTexture(
+    index: number,
+    oldTag: string,
+    event: MatChipEditedEvent,
+  ) {
+    if (index >= this.customTexturesSignal().length) return;
+    this.customTexturesSignal.update((customTextures) => {
+      const texture = structuredClone(customTextures[index]);
+      const newTag = event.value.trim();
+      if (oldTag) {
+        texture.tags = texture.tags.filter((t) => t !== oldTag);
+      }
+      if (newTag && !texture.tags.includes(newTag)) {
+        texture.tags.push(newTag);
+        texture.tags.sort();
+      }
+      customTextures[index] = texture;
+      return [...customTextures];
+    });
+  }
+
+  addBackgroundShape() {
+    this.backgroundShapesSignal.update((backgroundShapes) => {
+      return [
+        ...backgroundShapes,
+        {
+          color: '#ff000080', // Default color with half opacity
+          shape: 'circle',
+          mode: null,
+          tags: [],
+          type: 'vehicle',
+          zoom: 'any',
+          isActive: true,
+        },
+      ];
+    });
+  }
+
+  removeBackgroundShape(index: number) {
+    if (index >= this.backgroundShapesSignal().length) return;
+    this.backgroundShapesSignal.update((backgroundShapes) => {
+      backgroundShapes.splice(index, 1);
+      return [...backgroundShapes];
+    });
+  }
+
+  dropBackgroundShape(event: CdkDragDrop<BackgroundShape[]>) {
+    this.backgroundShapesSignal.update((backgroundShapes) => {
+      moveItemInArray(
+        backgroundShapes,
+        event.previousIndex,
+        event.currentIndex,
+      );
+      return structuredClone(backgroundShapes);
+    });
+  }
+
+  addTagToBackgroundShape(index: number, event: MatChipInputEvent) {
+    if (index >= this.backgroundShapesSignal().length) return;
+    this.backgroundShapesSignal.update((backgroundShapes) => {
+      const backgroundShape = structuredClone(backgroundShapes[index]);
+      const tag = event.value.trim();
+      if (!tag) return backgroundShapes; // No tag to add
+      if (!backgroundShape.tags.includes(tag)) {
+        backgroundShape.tags.push(tag);
+        backgroundShape.tags.sort();
+      }
+      event.chipInput.clear();
+      backgroundShapes[index] = backgroundShape;
+      return [...backgroundShapes];
+    });
+  }
+
+  removeTagFromBackgroundShape(index: number, tag: string) {
+    if (index >= this.backgroundShapesSignal().length) return;
+    this.backgroundShapesSignal.update((backgroundShapes) => {
+      const backgroundShape = structuredClone(backgroundShapes[index]);
+      backgroundShape.tags = backgroundShape.tags.filter((t) => t !== tag);
+      backgroundShapes[index] = backgroundShape;
+      return [...backgroundShapes];
+    });
+  }
+
+  editTagInBackgroundShape(
+    index: number,
+    oldTag: string,
+    event: MatChipEditedEvent,
+  ) {
+    if (index >= this.backgroundShapesSignal().length) return;
+    this.backgroundShapesSignal.update((backgroundShapes) => {
+      const backgroundShape = structuredClone(backgroundShapes[index]);
+      const newTag = event.value.trim();
+      if (oldTag) {
+        backgroundShape.tags = backgroundShape.tags.filter((t) => t !== oldTag);
+      }
+      if (newTag && !backgroundShape.tags.includes(newTag)) {
+        backgroundShape.tags.push(newTag);
+        backgroundShape.tags.sort();
+      }
+      backgroundShapes[index] = backgroundShape;
+      return [...backgroundShapes];
+    });
+  }
+
+  onBackgroundShapeTypeChange(index: number, shape: BackgroundShapeType) {
+    if (index >= this.backgroundShapesSignal().length) return;
+    this.backgroundShapesSignal.update((backgroundShapes) => {
+      const backgroundShape = structuredClone(backgroundShapes[index]);
+      backgroundShape.shape = shape;
+      backgroundShapes[index] = backgroundShape;
+      return [...backgroundShapes];
+    });
+  }
+
+  onBackgroundShapeColorChange(index: number, event: Event) {
+    if (index >= this.backgroundShapesSignal().length) return;
+    const color = (event.target as HTMLInputElement).value;
+    this.backgroundShapesSignal.update((backgroundShapes) => {
+      const backgroundShape = structuredClone(backgroundShapes[index]);
+      backgroundShape.color = color + '80'; // Ensure half opacity
+      backgroundShapes[index] = backgroundShape;
+      return [...backgroundShapes];
     });
   }
 
   exportTextures() {
     const saveData: TextureSaveData = {
       version: this.spritesService.VERSION,
-      vehicleTextureUrl: this.vehicleTextureUrl(),
-      passengerTextureUrl: this.passengerTextureUrl(),
-      zoomOutVehicleTextureUrl: this.zoomOutVehicleTextureUrl(),
-      zoomOutPassengerTextureUrl: this.zoomOutPassengerTextureUrl(),
-      stopTextureUrl: this.stopTextureUrl(),
-      vehicleModeTextures: this.vehicleModeTextures(),
+      vehicleTextureUrl: this.vehicleTextureUrlSignal(),
+      passengerTextureUrl: this.passengerTextureUrlSignal(),
+      stopTextureUrl: this.stopTextureUrlSignal(),
+      zoomedOutVehicleTextureUrl: this.zoomedOutVehicleTextureUrlSignal(),
+      zoomedOutPassengerTextureUrl: this.zoomedOutPassengerTextureUrlSignal(),
+      zoomedOutStopTextureUrl: this.zoomedOutStopTextureUrlSignal(),
+      customTextures: this.customTexturesSignal(),
+      backgroundShapes: this.backgroundShapesSignal(),
       colorPresetIndex: this.colorPresetIndex,
       customColors: this.customColors(),
     };
@@ -455,15 +691,61 @@ export class EditMapIconsDialogComponent {
 
   onSave() {
     this.spritesService.saveTextureData(
-      this.vehicleTextureUrl(),
-      this.passengerTextureUrl(),
-      this.zoomOutVehicleTextureUrl(),
-      this.zoomOutPassengerTextureUrl(),
-      this.stopTextureUrl(),
-      this.vehicleModeTextures(),
+      this.vehicleTextureUrlSignal(),
+      this.passengerTextureUrlSignal(),
+      this.stopTextureUrlSignal(),
+      this.zoomedOutVehicleTextureUrlSignal(),
+      this.zoomedOutPassengerTextureUrlSignal(),
+      this.zoomedOutStopTextureUrlSignal(),
+      this.customTexturesSignal(),
+      this.backgroundShapesSignal(),
       this.colorPresetIndex,
       this.customColors(),
     );
     this.dialogRef.close();
+  }
+
+  duplicateCustomTexture(index: number) {
+    if (index >= this.customTexturesSignal().length) return;
+    this.customTexturesSignal.update((customTextures) => {
+      const texture = structuredClone(customTextures[index]);
+      return [
+        ...customTextures.slice(0, index + 1),
+        texture,
+        ...customTextures.slice(index + 1),
+      ];
+    });
+  }
+
+  duplicateBackgroundShape(index: number) {
+    if (index >= this.backgroundShapesSignal().length) return;
+    this.backgroundShapesSignal.update((backgroundShapes) => {
+      const shape = structuredClone(backgroundShapes[index]);
+      return [
+        ...backgroundShapes.slice(0, index + 1),
+        shape,
+        ...backgroundShapes.slice(index + 1),
+      ];
+    });
+  }
+
+  toggleCustomTextureIsActive(index: number) {
+    if (index >= this.customTexturesSignal().length) return;
+    this.customTexturesSignal.update((customTextures) => {
+      const texture = structuredClone(customTextures[index]);
+      texture.isActive = !texture.isActive;
+      customTextures[index] = texture;
+      return [...customTextures];
+    });
+  }
+
+  toggleBackgroundShapeIsActive(index: number) {
+    if (index >= this.backgroundShapesSignal().length) return;
+    this.backgroundShapesSignal.update((backgroundShapes) => {
+      const shape = structuredClone(backgroundShapes[index]);
+      shape.isActive = !shape.isActive;
+      backgroundShapes[index] = shape;
+      return [...backgroundShapes];
+    });
   }
 }

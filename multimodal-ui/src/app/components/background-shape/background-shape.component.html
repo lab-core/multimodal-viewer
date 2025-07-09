@@ -1,0 +1,66 @@
+@let backgroundShape = backgroundShapeInputSignal();
+
+<div
+  class="select-shape flex-row align-cross-center"
+  [matMenuTriggerFor]="shapeMenu"
+>
+  <ng-container *ngTemplateOutlet="shape; context: backgroundShape" />
+</div>
+
+<mat-menu #shapeMenu="matMenu" class="shape-menu">
+  @for (shapeType of BACKGROUND_SHAPE_TYPES; track shapeType) {
+    <button mat-menu-item (click)="shapeOutputEmitter.emit(shapeType)">
+      <ng-container *ngTemplateOutlet="shape; context: { shape: shapeType }" />
+    </button>
+  }
+</mat-menu>
+
+<ng-template #shape let-shape="shape">
+  <svg
+    width="40px"
+    height="40px"
+    viewBox="0 0 40 40"
+    [attr.fill]="backgroundShape.color"
+  >
+    @switch (shape) {
+      @case ("circle") {
+        <circle cx="20" cy="20" r="20" />
+      }
+      @case ("square") {
+        <rect x="0" y="0" width="40" height="40" />
+      }
+      @case ("triangle") {
+        <polygon
+          points="19.999999999999996,0 37.32050807568878,29.999999999999986 2.679491924311222,29.999999999999996 "
+        />
+      }
+      @case ("pentagon") {
+        <polygon
+          points="19.999999999999996,0 39.02113032590307,13.819660112501047 31.755705045849467,36.180339887498945 8.244294954150542,36.18033988749895 0.9788696740969272,13.819660112501058 "
+        />
+      }
+      @case ("hexagon") {
+        <polygon
+          points="40,20 30,37.32050807568877 10.000000000000004,37.32050807568878 0,20.000000000000004 9.999999999999991,2.6794919243112325 30,2.679491924311229 "
+        />
+      }
+      @case ("octagon") {
+        <polygon
+          points="38.477590650225736,27.653668647301796 27.653668647301796,38.477590650225736 12.346331352698206,38.477590650225736 1.5224093497742643,27.6536686473018 1.5224093497742643,12.346331352698208 12.346331352698193,1.5224093497742714 27.6536686473018,1.522409349774268 38.47759065022573,12.346331352698192 "
+        />
+      }
+      @case ("star") {
+        <polygon
+          points="19.999999999999996,0 24.702282018339783,13.52786404500042 39.02113032590307,13.819660112501047 27.60845213036123,22.472135954999576 31.755705045849467,36.180339887498945 20.000000000000004,28 8.244294954150542,36.18033988749895 12.391547869638773,22.472135954999583 0.9788696740969272,13.819660112501058 15.297717981660213,13.527864045000422 "
+        />
+      }
+      @case ("cross") {
+        <rect x="15" y="0" width="10" height="40" class="rotate" />
+        <rect x="0" y="15" width="40" height="10" class="rotate" />
+      }
+      @case ("diamond") {
+        <polygon points="20,0 40,20 20,40 0,20" />
+      }
+    }
+  </svg>
+</ng-template>

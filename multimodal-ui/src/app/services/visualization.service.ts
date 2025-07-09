@@ -553,8 +553,9 @@ export class VisualizationService {
             ...stop,
             passengerIds: [],
             vehicleIds: [],
-            numberOfPassengers: 0,
-            numberOfCompletePassengers: 0,
+            passengerTags: [],
+            animatedPassengerIds: [],
+            displayedPassengerIds: [],
           };
         }
       }
@@ -586,8 +587,10 @@ export class VisualizationService {
         animationData: vehicleAnimationData,
         notDisplayedReason: currentAnimationData?.notDisplayedReason ?? null,
         passengerIds: [],
-        numberOfPassengers: 0,
         currentLineIndex: null,
+        passengerTags: [],
+        animatedPassengerIds: [],
+        displayedPassengerIds: [],
       };
 
       if (currentAnimationData === undefined) {
@@ -661,7 +664,11 @@ export class VisualizationService {
 
       if ((currentAnimationData as DynamicPassengerAnimationData).isOnBoard) {
         vehicle.passengerIds.push(passengerId);
-        vehicle.numberOfPassengers += passenger.numberOfPassengers;
+        passenger.tags.forEach((tag) => {
+          if (!vehicle.passengerTags.includes(tag)) {
+            vehicle.passengerTags.push(tag);
+          }
+        });
       } else if (
         (currentAnimationData as StaticPassengerAnimationData).stopIndex !==
         undefined
@@ -686,11 +693,12 @@ export class VisualizationService {
 
         animatedStop.passengerIds.push(passengerId);
 
-        if (passenger.status === 'complete') {
-          animatedStop.numberOfCompletePassengers +=
-            passenger.numberOfPassengers;
-        } else {
-          animatedStop.numberOfPassengers += passenger.numberOfPassengers;
+        if (passenger.status !== 'complete') {
+          passenger.tags.forEach((tag) => {
+            if (!animatedStop.passengerTags.includes(tag)) {
+              animatedStop.passengerTags.push(tag);
+            }
+          });
         }
       }
     }

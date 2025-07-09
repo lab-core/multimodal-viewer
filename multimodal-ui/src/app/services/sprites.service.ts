@@ -1,10 +1,88 @@
-import * as L from 'leaflet';
-import { Injectable } from '@angular/core';
+import { Injectable, Signal, signal, WritableSignal } from '@angular/core';
+import { ColorSource } from '@pixi/color';
 import { Texture } from '@pixi/core';
+import { Graphics } from '@pixi/graphics';
+import * as L from 'leaflet';
 
-export interface CustomTexture {
-  mode: string;
+// MARK: Models
+export type CustomizationEntityType = 'vehicle' | 'stop' | 'passenger' | 'all';
+
+export const CUSTOMIZATION_ENTITY_TYPES: CustomizationEntityType[] = [
+  'vehicle',
+  'stop',
+  'passenger',
+  'all',
+];
+
+export type CUSTOMIZATION_ZOOM = 'zoomed-in' | 'zoomed-out' | 'any';
+
+export const CUSTOMIZATION_ZOOMS: CUSTOMIZATION_ZOOM[] = [
+  'zoomed-in',
+  'zoomed-out',
+  'any',
+];
+
+export type BackgroundShapeType =
+  | 'circle'
+  | 'square'
+  | 'triangle'
+  | 'pentagon'
+  | 'hexagon'
+  | 'octagon'
+  | 'star'
+  | 'cross'
+  | 'diamond';
+
+export const BACKGROUND_SHAPE_TYPES: BackgroundShapeType[] = [
+  'circle',
+  'square',
+  'triangle',
+  'pentagon',
+  'hexagon',
+  'octagon',
+  'star',
+  'cross',
+  'diamond',
+];
+
+export interface CustomizationFields {
+  /**
+   * The tags of the entity this configuration is for.
+   *
+   * If multiple tags are provided, the configuration will be applied only if all tags match.
+   */
+  tags: string[];
+
+  /**
+   * The mode of the vehicle this configuration is for.
+   *
+   * If null, the mode will not be considered when applying the configuration.
+   */
+  mode: string | null;
+
+  type: CustomizationEntityType;
+
+  zoom: CUSTOMIZATION_ZOOM;
+
+  /**
+   * Is the configuration active for this entity?
+   *
+   * Users can disable configurations without removing them.
+   */
+  isActive: boolean;
+}
+
+export interface CustomTexture extends CustomizationFields {
   url: string;
+}
+
+export interface BackgroundShape extends CustomizationFields {
+  shape: BackgroundShapeType;
+
+  /**
+   * The color of the background shape.
+   */
+  color: string;
 }
 
 export interface TextureSaveData {
@@ -13,12 +91,15 @@ export interface TextureSaveData {
   vehicleTextureUrl: string;
   passengerTextureUrl: string;
 
-  zoomOutVehicleTextureUrl: string;
-  zoomOutPassengerTextureUrl: string;
+  zoomedOutVehicleTextureUrl: string;
+  zoomedOutPassengerTextureUrl: string;
 
   stopTextureUrl: string;
+  zoomedOutStopTextureUrl: string;
 
-  vehicleModeTextures: CustomTexture[];
+  customTextures: CustomTexture[];
+
+  backgroundShapes: BackgroundShape[];
 
   colorPresetIndex: number;
   customColors: string[];
@@ -28,18 +109,22 @@ export interface TextureSaveData {
   providedIn: 'root',
 })
 export class SpritesService {
-  readonly VERSION = 3;
-  readonly SPRITE_SIZE = 40;
+  // MARK: Properties
+  readonly VERSION = 4;
+  readonly SPRITE_SIZE = 40; // px
+  readonly BACKGROUND_SHAPE_SIZE = 60; // px
 
   private readonly KEY_TEXTURES = 'multimodal.textures';
 
-  readonly DEFAULT_VEHICLE_TEXTURE_URL = '/images/sample-bus.png';
-  readonly DEFAULT_PASSENGER_TEXTURE_URL = '/images/sample-wait.png';
-  readonly DEFAULT_ZOOM_OUT_VEHICLE_TEXTURE_URL =
-    '/images/zoom-out-vehicle.png';
-  readonly DEFAULT_ZOOM_OUT_PASSENGER_TEXTURE_URL =
-    '/images/zoom-out-passenger.png';
-  readonly DEFAULT_STOP_TEXTURE_URL = '/images/sample-stop.png';
+  readonly DEFAULT_UNDEFINED_TEXTURE_URL = '/images/undefined-texture.png';
+  readonly DEFAULT_VEHICLE_TEXTURE_URL = '/images/vehicle.png';
+  readonly DEFAULT_PASSENGER_TEXTURE_URL = '/images/passenger.png';
+  readonly DEFAULT_STOP_TEXTURE_URL = '/images/stop.png';
+  readonly DEFAULT_ZOOMED_OUT_VEHICLE_TEXTURE_URL =
+    '/images/zoomed-out-vehicle.png';
+  readonly DEFAULT_ZOOMED_OUT_PASSENGER_TEXTURE_URL =
+    '/images/zoomed-out-passenger.png';
+  readonly DEFAULT_ZOOMED_OUT_STOP_TEXTURE_URL = '/images/zoomed-out-stop.png';
 
   readonly PRESET_LIGHT_COLOR_THEME = [
     '#ccffcc',
@@ -58,23 +143,30 @@ export class SpritesService {
     '#ff0000',
   ];
 
+  private readonly VEHICLE_SPRITE_SCALE_FACTOR = 1;
+  private readonly PASSENGER_SPRITE_SCALE_FACTOR = 0.75;
+  private readonly STOP_SPRITE_SCALE_FACTOR = 0.25;
+
   private _useZoomedOutSprites = false;
-  private _vehicleSpriteScale = 1;
-  private _passengerSpriteScale = 1;
+  private _globalSpriteScale = 1;
 
   private _vehicleTexture = Texture.from(this.DEFAULT_VEHICLE_TEXTURE_URL);
   private _passengerTexture = Texture.from(this.DEFAULT_PASSENGER_TEXTURE_URL);
-
-  private _zoomOutVehicleTexture = Texture.from(
-    this.DEFAULT_ZOOM_OUT_VEHICLE_TEXTURE_URL,
-  );
-  private _zoomOutPassengerTexture = Texture.from(
-    this.DEFAULT_ZOOM_OUT_PASSENGER_TEXTURE_URL,
-  );
-
   private _stopTexture = Texture.from(this.DEFAULT_STOP_TEXTURE_URL);
 
-  private _vehicleModeTextures: CustomTexture[] = [];
+  private _zoomedOutVehicleTexture = Texture.from(
+    this.DEFAULT_ZOOMED_OUT_VEHICLE_TEXTURE_URL,
+  );
+  private _zoomedOutPassengerTexture = Texture.from(
+    this.DEFAULT_ZOOMED_OUT_PASSENGER_TEXTURE_URL,
+  );
+  private _zoomedOutStopTexture = Texture.from(
+    this.DEFAULT_ZOOMED_OUT_STOP_TEXTURE_URL,
+  );
+
+  private _customTextures: CustomTexture[] = [];
+
+  private _backgroundShapes: BackgroundShape[] = [];
 
   private _colorPresetIndex = 0;
 
@@ -84,17 +176,24 @@ export class SpritesService {
 
   private _textureMap = new Map<string, Texture>();
 
-  // Getters
+  private readonly _customizationUpdatedSignal: WritableSignal<number> =
+    signal(0);
+
+  // MARK: Getters
   get useZoomedOutSprites(): boolean {
     return this._useZoomedOutSprites;
   }
 
   get vehicleSpriteScale(): number {
-    return this._vehicleSpriteScale;
+    return this.VEHICLE_SPRITE_SCALE_FACTOR * this._globalSpriteScale;
   }
 
   get passengerSpriteScale(): number {
-    return this._passengerSpriteScale;
+    return this.PASSENGER_SPRITE_SCALE_FACTOR * this._globalSpriteScale;
+  }
+
+  get stopSpriteScale(): number {
+    return this.STOP_SPRITE_SCALE_FACTOR * this._globalSpriteScale;
   }
 
   get vehicleTexture(): Texture {
@@ -105,16 +204,20 @@ export class SpritesService {
     return this._passengerTexture;
   }
 
-  get zoomOutVehicleTexture(): Texture {
-    return this._zoomOutVehicleTexture;
-  }
-
-  get zoomOutPassengerTexture(): Texture {
-    return this._zoomOutPassengerTexture;
-  }
-
   get stopTexture(): Texture {
     return this._stopTexture;
+  }
+
+  get zoomedOutVehicleTexture(): Texture {
+    return this._zoomedOutVehicleTexture;
+  }
+
+  get zoomedOutPassengerTexture(): Texture {
+    return this._zoomedOutPassengerTexture;
+  }
+
+  get zoomedOutStopTexture(): Texture {
+    return this._zoomedOutStopTexture;
   }
 
   get colorPresetIndex(): number {
@@ -128,16 +231,25 @@ export class SpritesService {
   get currentColorPreset(): string[] {
     return this._currentColorPreset;
   }
-  ///////////
 
-  get vehicleModeTextures(): CustomTexture[] {
-    return structuredClone(this._vehicleModeTextures);
+  get customTextures(): CustomTexture[] {
+    return structuredClone(this._customTextures);
   }
 
+  get backgroundShapes(): BackgroundShape[] {
+    return structuredClone(this._backgroundShapes);
+  }
+
+  get customizationUpdatedSignal(): Signal<void> {
+    return this._customizationUpdatedSignal;
+  }
+
+  // MARK: Constructor
   constructor() {
     this.loadTexturesData();
   }
 
+  // MARK: Utilities
   calculateSpriteScales(utils: L.PixiOverlayUtils) {
     const MAX_SPRITE_SCALE = 1;
     const MIN_SPRITE_SCALE = 0.2;
@@ -160,17 +272,18 @@ export class SpritesService {
       MAX_SPRITE_SCALE,
     );
 
-    this._vehicleSpriteScale = wantedRelativeScale / utils.getScale();
-    this._passengerSpriteScale = this._vehicleSpriteScale * 0.75;
+    this._globalSpriteScale = wantedRelativeScale / utils.getScale();
   }
 
   saveTextureData(
     vehicleTextureUrl: string,
     passengerTextureUrl: string,
-    zoomOutVehicleTextureUrl: string,
-    zoomOutPassengerTextureUrl: string,
     stopTextureUrl: string,
-    vehicleModeTextures: CustomTexture[],
+    zoomedOutVehicleTextureUrl: string,
+    zoomedOutPassengerTextureUrl: string,
+    zoomedOutStopTextureUrl: string,
+    customTextures: CustomTexture[],
+    backgroundShapes: BackgroundShape[],
     colorPresetIndex: number,
     customColors: string[],
   ) {
@@ -178,10 +291,12 @@ export class SpritesService {
       version: this.VERSION,
       vehicleTextureUrl,
       passengerTextureUrl,
-      zoomOutVehicleTextureUrl,
-      zoomOutPassengerTextureUrl,
       stopTextureUrl,
-      vehicleModeTextures,
+      zoomedOutVehicleTextureUrl,
+      zoomedOutPassengerTextureUrl,
+      zoomedOutStopTextureUrl,
+      customTextures,
+      backgroundShapes,
       colorPresetIndex,
       customColors,
     };
@@ -191,24 +306,144 @@ export class SpritesService {
     this.applyTexturesData(saveData);
   }
 
-  /**
-   * Vehicle texture respective of the map zoom.
-   */
-  getCurrentVehicleTexture(mode: string | null) {
-    if (this._useZoomedOutSprites) return this._zoomOutVehicleTexture;
-    const url = this._textureMap.get(mode ?? '');
-    return url ?? this._vehicleTexture;
+  // MARK: Textures
+  getVehicleTexture(mode: string | null, tags: string[]): Texture {
+    const currentZoom = this._useZoomedOutSprites ? 'zoomed-out' : 'zoomed-in';
+
+    const firstMatchingTexture = this._customTextures.find(
+      (texture) =>
+        texture.isActive &&
+        ['vehicle', 'all'].includes(texture.type) &&
+        [currentZoom, 'any'].includes(texture.zoom) &&
+        texture.tags.every((tag) => tags.includes(tag)) &&
+        (texture.mode === null || texture.mode === mode),
+    );
+
+    const defaultTexture = this._useZoomedOutSprites
+      ? this._zoomedOutVehicleTexture
+      : this._vehicleTexture;
+
+    return (
+      this._textureMap.get(firstMatchingTexture?.url ?? '') ?? defaultTexture
+    );
   }
 
-  /**
-   * Passenger texture respective of the map zoom.
-   */
-  getCurrentPassengerTexture() {
-    return this._useZoomedOutSprites
-      ? this._zoomOutPassengerTexture
+  getPassengerTexture(tags: string[]): Texture {
+    const currentZoom = this._useZoomedOutSprites ? 'zoomed-out' : 'zoomed-in';
+
+    const firstMatchingTexture = this._customTextures.find(
+      (texture) =>
+        texture.isActive &&
+        ['passenger', 'all'].includes(texture.type) &&
+        [currentZoom, 'any'].includes(texture.zoom) &&
+        texture.tags.every((tag) => tags.includes(tag)),
+    );
+
+    const defaultTexture = this._useZoomedOutSprites
+      ? this._zoomedOutPassengerTexture
       : this._passengerTexture;
+
+    return (
+      this._textureMap.get(firstMatchingTexture?.url ?? '') ?? defaultTexture
+    );
   }
 
+  getStopTexture(tags: string[]): Texture {
+    const currentZoom = this._useZoomedOutSprites ? 'zoomed-out' : 'zoomed-in';
+
+    const firstMatchingTexture = this._customTextures.find(
+      (texture) =>
+        texture.isActive &&
+        ['stop', 'all'].includes(texture.type) &&
+        [currentZoom, 'any'].includes(texture.zoom) &&
+        texture.tags.every((tag) => tags.includes(tag)),
+    );
+
+    const defaultTexture = this._useZoomedOutSprites
+      ? this._zoomedOutStopTexture
+      : this._stopTexture;
+
+    return (
+      this._textureMap.get(firstMatchingTexture?.url ?? '') ?? defaultTexture
+    );
+  }
+
+  // MARK: Background shapes
+  drawVehicleBackgroundShape(
+    graphics: Graphics,
+    mode: string | null,
+    tags: string[],
+  ): void {
+    const currentZoom = this._useZoomedOutSprites ? 'zoomed-out' : 'zoomed-in';
+
+    const firstMatchingBackgroundShape = this._backgroundShapes.find(
+      (backgroundShape) =>
+        backgroundShape.isActive &&
+        ['vehicle', 'all'].includes(backgroundShape.type) &&
+        [currentZoom, 'any'].includes(backgroundShape.zoom) &&
+        backgroundShape.tags.every((tag) => tags.includes(tag)) &&
+        (backgroundShape.mode === null || backgroundShape.mode === mode),
+    );
+
+    if (!firstMatchingBackgroundShape) {
+      graphics.clear();
+      return;
+    }
+
+    this.drawShape(
+      graphics,
+      firstMatchingBackgroundShape.shape,
+      firstMatchingBackgroundShape.color,
+    );
+  }
+
+  drawPassengerBackgroundShape(graphics: Graphics, tags: string[]): void {
+    const currentZoom = this._useZoomedOutSprites ? 'zoomed-out' : 'zoomed-in';
+
+    const firstMatchingBackgroundShape = this._backgroundShapes.find(
+      (backgroundShape) =>
+        backgroundShape.isActive &&
+        ['passenger', 'all'].includes(backgroundShape.type) &&
+        [currentZoom, 'any'].includes(backgroundShape.zoom) &&
+        backgroundShape.tags.every((tag) => tags.includes(tag)),
+    );
+
+    if (!firstMatchingBackgroundShape) {
+      graphics.clear();
+      return;
+    }
+
+    this.drawShape(
+      graphics,
+      firstMatchingBackgroundShape.shape,
+      firstMatchingBackgroundShape.color,
+    );
+  }
+
+  drawStopBackgroundShape(graphics: Graphics, tags: string[]) {
+    const currentZoom = this._useZoomedOutSprites ? 'zoomed-out' : 'zoomed-in';
+
+    const firstMatchingBackgroundShape = this._backgroundShapes.find(
+      (backgroundShape) =>
+        backgroundShape.isActive &&
+        ['stop', 'all'].includes(backgroundShape.type) &&
+        [currentZoom, 'any'].includes(backgroundShape.zoom) &&
+        backgroundShape.tags.every((tag) => tags.includes(tag)),
+    );
+
+    if (!firstMatchingBackgroundShape) {
+      graphics.clear();
+      return;
+    }
+
+    this.drawShape(
+      graphics,
+      firstMatchingBackgroundShape.shape,
+      firstMatchingBackgroundShape.color,
+    );
+  }
+
+  // MARK: Private utilities
   private loadTexturesData() {
     const savedTexturesJson = localStorage.getItem(this.KEY_TEXTURES);
     if (!savedTexturesJson) return;
@@ -224,18 +459,26 @@ export class SpritesService {
   }
 
   private applyTexturesData(textureSaveData: TextureSaveData) {
+    // Create default textures
     this._vehicleTexture = Texture.from(textureSaveData.vehicleTextureUrl);
-    this._passengerTexture = Texture.from(textureSaveData.passengerTextureUrl);
 
-    this._zoomOutVehicleTexture = Texture.from(
-      textureSaveData.zoomOutVehicleTextureUrl,
-    );
-    this._zoomOutPassengerTexture = Texture.from(
-      textureSaveData.zoomOutPassengerTextureUrl,
-    );
+    this._passengerTexture = Texture.from(textureSaveData.passengerTextureUrl);
 
     this._stopTexture = Texture.from(textureSaveData.stopTextureUrl);
 
+    this._zoomedOutVehicleTexture = Texture.from(
+      textureSaveData.zoomedOutVehicleTextureUrl,
+    );
+
+    this._zoomedOutPassengerTexture = Texture.from(
+      textureSaveData.zoomedOutPassengerTextureUrl,
+    );
+
+    this._zoomedOutStopTexture = Texture.from(
+      textureSaveData.zoomedOutStopTextureUrl,
+    );
+
+    // Copy color presets
     this._colorPresetIndex = textureSaveData.colorPresetIndex;
     this._customColors = textureSaveData.customColors;
 
@@ -249,12 +492,113 @@ export class SpritesService {
     )
       this._currentColorPreset = textureSaveData.customColors;
 
-    this._vehicleModeTextures = textureSaveData.vehicleModeTextures;
+    // Create custom textures
+    this._customTextures = textureSaveData.customTextures;
+
+    const urls = Array.from(new Set(this._customTextures.map((t) => t.url)));
+
     this._textureMap.clear();
-    for (const vehicleModeTexture of textureSaveData.vehicleModeTextures)
-      this._textureMap.set(
-        vehicleModeTexture.mode,
-        Texture.from(vehicleModeTexture.url),
-      );
+    urls.forEach((url) => {
+      this._textureMap.set(url, Texture.from(url));
+    });
+
+    // Create background shapes
+    this._backgroundShapes = structuredClone(textureSaveData.backgroundShapes);
+
+    this._customizationUpdatedSignal.update((i) => i + 1);
+  }
+
+  private drawShape(
+    graphics: Graphics,
+    shape: BackgroundShapeType,
+    color: ColorSource,
+  ) {
+    const size = this.BACKGROUND_SHAPE_SIZE;
+
+    graphics.clear();
+    graphics.beginFill(color);
+
+    switch (shape) {
+      case 'circle':
+        graphics.drawCircle(0, 0, size / 2);
+        graphics.scale.set(4 / Math.PI);
+        break;
+      case 'square':
+        graphics.drawRect(-size / 2, -size / 2, size, size);
+        break;
+      case 'triangle':
+        graphics.drawPolygon(this.createPolygonCoordinates(3, size / 2));
+        graphics.scale.set(1.5);
+        break;
+      case 'pentagon':
+        graphics.drawPolygon(this.createPolygonCoordinates(5, size / 2));
+        graphics.scale.set(4 / Math.PI);
+        break;
+      case 'hexagon':
+        graphics.drawPolygon(this.createPolygonCoordinates(6, size / 2, 0));
+        graphics.scale.set(4 / Math.PI);
+        break;
+      case 'octagon':
+        graphics.drawPolygon(
+          this.createPolygonCoordinates(8, size / 2, 360 / 16),
+        );
+        graphics.scale.set(4 / Math.PI);
+        break;
+      case 'star':
+        {
+          const outerRadius = size / 2;
+          const innerRadius = outerRadius / 2.5; // Adjust inner radius for star
+
+          const outerPolygon = this.createPolygonCoordinates(
+            5,
+            outerRadius,
+            90,
+          );
+
+          const innerPolygon = this.createPolygonCoordinates(
+            5,
+            innerRadius,
+            90 + 36, // Offset by 36 degrees for star points
+          );
+
+          const starCoordinates = [];
+          for (let i = 0; i < outerPolygon.length; i += 2) {
+            starCoordinates.push(innerPolygon[i], innerPolygon[i + 1]);
+            starCoordinates.push(outerPolygon[i], outerPolygon[i + 1]);
+          }
+
+          graphics.drawPolygon(starCoordinates);
+          graphics.scale.set(1.8);
+        }
+        break;
+      case 'cross':
+        graphics.drawRect(-size / 2, -size / 8, size, size / 4);
+        graphics.drawRect(-size / 8, -size / 2, size / 4, size);
+        graphics.rotation = Math.PI / 4; // Rotate to make it a cross
+        graphics.scale.set(1.5);
+        break;
+      case 'diamond':
+        graphics.drawPolygon(this.createPolygonCoordinates(4, size / 2));
+        graphics.scale.set(Math.SQRT2);
+        break;
+    }
+
+    graphics.endFill();
+  }
+
+  private createPolygonCoordinates(
+    numberOfPoints: number,
+    radius: number,
+    startAngle = 90, // In degrees, starting at 90 degrees
+  ): number[] {
+    const coordinates: number[] = [];
+    for (let i = 0; i < numberOfPoints; i++) {
+      // Start at 90 degrees and go clockwise
+      const angle = ((i * 360) / numberOfPoints - startAngle) * (Math.PI / 180);
+      const x = radius * Math.cos(angle);
+      const y = radius * Math.sin(angle);
+      coordinates.push(x, y);
+    }
+    return coordinates;
   }
 }

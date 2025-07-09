@@ -69,6 +69,8 @@ export interface ImportFolderResponse {
   styleUrl: './simulation-configuration-dialog.component.css',
 })
 export class SimulationConfigurationDialogComponent implements OnDestroy {
+  readonly SIMULATION_SAVE_FILE_SEPARATOR = SIMULATION_SAVE_FILE_SEPARATOR;
+
   readonly formGroup: FormGroup;
   readonly generalFormGroup: FormGroup;
   readonly configurationFormGroup: FormGroup;

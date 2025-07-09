@@ -11,12 +11,13 @@ import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { Point } from 'pixi.js';
+import { EntityMetadata } from '../../interfaces/simulation.model';
 import { AnimationService } from '../../services/animation.service';
-import { EntityInfo } from '../../interfaces/entity.model';
+import { EntityNameComponent } from '../entity-name/entity-name.component';
 
 @Component({
   selector: 'app-close-entities-menu',
-  imports: [MatCardModule, MatChipsModule, MatIconModule],
+  imports: [MatCardModule, MatChipsModule, MatIconModule, EntityNameComponent],
   templateUrl: './close-entities-menu.component.html',
   styleUrl: './close-entities-menu.component.css',
 })
@@ -30,9 +31,12 @@ export class CloseEntitiesMenuComponent {
   container = viewChild.required<ElementRef<HTMLDivElement>>('container');
   cardContent = viewChild.required<ElementRef<HTMLDivElement>>('cardContent');
 
-  nearVehiclesSignal: Signal<EntityInfo[]>;
-  nearPassengersSignal: Signal<EntityInfo[]>;
-  nearStopsSignal: Signal<EntityInfo[]>;
+  readonly nearEntitiesSignal = computed(() => {
+    const vehicles = this.animationService.nearVehiclesSignal();
+    const passengers = this.animationService.nearPassengersSignal();
+    const stops = this.animationService.nearStopsSignal();
+    return [...vehicles, ...passengers, ...stops];
+  });
 
   show = signal(false);
 
@@ -66,9 +70,6 @@ export class CloseEntitiesMenuComponent {
 
   constructor(private readonly animationService: AnimationService) {
     this.clickPositionSignal = animationService.clickPositionSignal;
-    this.nearVehiclesSignal = animationService.nearVehiclesSignal;
-    this.nearPassengersSignal = animationService.nearPassengersSignal;
-    this.nearStopsSignal = animationService.nearStopsSignal;
 
     // Show menu when click position triggered
     effect(() => {
@@ -84,66 +85,22 @@ export class CloseEntitiesMenuComponent {
     });
   }
 
-  onClickVehicle(id: string) {
-    this.selectedEntity = true;
-    this.show.set(false);
-    this.animationService.selectEntity(id, 'vehicle');
-  }
-
-  onClickPassenger(id: string) {
-    this.selectedEntity = true;
-    this.show.set(false);
-    this.animationService.selectEntity(id, 'passenger');
-  }
-
-  onClickStop(id: string) {
-    this.selectedEntity = true;
-    this.show.set(false);
-    this.animationService.selectEntity(id, 'stop');
-  }
-
   unpreselectEntity() {
-    this.animationService.preselectEntity(null);
+    this.animationService.unpreselectEntity();
   }
 
-  preselectVehicle(id: string) {
-    this.animationService.preselectEntity({ id, entityType: 'vehicle' }, true);
+  preselectEntity(entity: EntityMetadata) {
+    this.animationService.preselectEntity(entity, true);
   }
 
-  preselectPassenger(id: string) {
-    this.animationService.preselectEntity(
-      { id, entityType: 'passenger' },
-      true,
-    );
-  }
-
-  preselectStop(id: string) {
-    this.animationService.preselectEntity({ id, entityType: 'stop' }, true);
-  }
-
-  selectVehicle(id: string) {
-    this.animationService.selectEntity(id, 'vehicle');
-  }
-
-  selectPassenger(id: string) {
-    this.animationService.selectEntity(id, 'passenger');
-  }
-
-  selectStop(id: string) {
-    this.animationService.selectEntity(id, 'stop');
-  }
-
-  unselectEntity() {
-    if (this.selectedEntity) return;
-    this.animationService.unselectEntity();
+  selectEntity(entity: EntityMetadata) {
+    this.selectedEntity = true;
+    this.show.set(false);
+    this.animationService.selectEntity(entity.id, entity.entityType);
   }
 
   onBlur() {
-    this.animationService.preselectEntity(null, false);
+    this.unpreselectEntity();
     this.show.set(false);
-  }
-
-  getPassengerName(id: string): string {
-    return this.animationService.findPassengerName(id) || id;
   }
 }

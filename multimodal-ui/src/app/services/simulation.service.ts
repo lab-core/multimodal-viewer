@@ -358,9 +358,9 @@ export class SimulationService {
       return null;
     }
 
-    let name = data.name ?? null;
+    let name = data.name;
 
-    if (name === id || name === null) {
+    if (name === id || name === null || name === undefined) {
       name = (randomName as (args?: { seed: string }) => string)({ seed: id });
     }
 
@@ -412,6 +412,8 @@ export class SimulationService {
       return null;
     }
 
+    const tags = data.tags ?? [];
+
     return {
       entityType: 'passenger',
       id,
@@ -421,6 +423,7 @@ export class SimulationService {
       currentLeg,
       nextLegs,
       numberOfPassengers,
+      tags,
     };
   }
 
@@ -440,6 +443,8 @@ export class SimulationService {
 
     const assignedTime = data.assignedTime ?? null;
 
+    const tags = data.tags ?? [];
+
     return {
       assignedVehicleId,
       boardingStopIndex,
@@ -447,6 +452,7 @@ export class SimulationService {
       boardingTime,
       alightingTime,
       assignedTime,
+      tags,
     };
   }
 
@@ -587,6 +593,8 @@ export class SimulationService {
       return null;
     }
 
+    const tags = data.tags ?? [];
+
     return {
       entityType: 'vehicle',
       id,
@@ -597,6 +605,7 @@ export class SimulationService {
       nextStops,
       capacity,
       name,
+      tags,
     };
   }
 
@@ -711,14 +720,18 @@ export class SimulationService {
       return null;
     }
 
+    const tags = data.tags ?? [];
+
     return {
       id,
+      name: label, // Stops are displayed by their label
       entityType: 'stop',
       arrivalTime,
       departureTime,
       position,
       capacity,
       label,
+      tags,
     };
   }
 

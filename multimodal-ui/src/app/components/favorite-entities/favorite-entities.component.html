@@ -1,66 +1,42 @@
 <mat-card appearance="outlined">
   <mat-card-content>
-    @let passengers = favPassengers();
-    @let vehicles = favVehicles();
-    @let stops = favStops();
+    @let favoriteEntities = favoriteEntitiesSignal();
 
-    @let nbFavorites = favoriteCount();
     <p class="title">Favorites</p>
-    <div class="container">
-      @if (nbFavorites === 0) {
-        <p>You have no favorites in this simulation.</p>
-      } @else {
-        @if (vehicles.length > 0) {
-          <div class="content">
-            @for (favorite of vehicles; track favorite.id) {
-              <mat-chip
-                [class.disabled]="!isVehicleInEnvironment(favorite.id)"
-                (click)="selectVehicle(favorite.id)"
-                (removed)="toggleFavoriteVehicle(favorite.id, favorite.name)"
-              >
-                <mat-icon matChipAvatar>directions_car</mat-icon
-                >{{ favorite.name }}
-                <button class="remove-btn" matChipRemove>
-                  <mat-icon>favorite</mat-icon>
-                </button>
-              </mat-chip>
-            }
-          </div>
-        }
-        @if (passengers.length > 0) {
-          <div class="content">
-            @for (favorite of passengers; track favorite.id) {
-              <mat-chip
-                [class.disabled]="!isPassengerInEnvironment(favorite.id)"
-                (click)="selectPassenger(favorite.id)"
-                (removed)="toggleFavoritePassenger(favorite.id, favorite.name)"
-              >
-                <mat-icon matChipAvatar>accessibility</mat-icon
-                ><span class="chip-text">{{ favorite.name }}</span>
-                <button class="remove-btn" matChipRemove>
-                  <mat-icon>favorite</mat-icon>
-                </button>
-              </mat-chip>
-            }
-          </div>
-        }
 
-        @if (stops.length > 0) {
-          <div class="content">
-            @for (favorite of stops; track favorite.id) {
-              <mat-chip
-                (click)="selectStop(favorite.id)"
-                (removed)="toggleFavoriteStop(favorite.id)"
-              >
-                <mat-icon matChipAvatar>place</mat-icon
-                ><span class="chip-text">{{ favorite.name }}</span>
-                <button class="remove-btn" matChipRemove>
-                  <mat-icon>favorite</mat-icon>
-                </button>
-              </mat-chip>
-            }
-          </div>
+    <div class="container">
+      <div class="content">
+        @for (entity of favoriteEntities; track entity.id) {
+          <mat-chip
+            [class.disabled]="!isEntityInEnvironment(entity)"
+            (removed)="toggleFavoriteEntity(entity)"
+            (click)="selectEntity(entity)"
+            (mouseenter)="preselectEntity(entity)"
+            (mouseleave)="unpreselectEntity()"
+          >
+            <mat-icon matChipAvatar>
+              @switch (entity.entityType) {
+                @case ("vehicle") {
+                  directions_car
+                }
+                @case ("passenger") {
+                  accessibility
+                }
+                @case ("stop") {
+                  place
+                }
+              }
+            </mat-icon>
+            <app-entity-name [name]="entity.name" [tags]="entity.tags" />
+            <button class="remove-btn" matChipRemove>
+              <mat-icon>favorite</mat-icon>
+            </button>
+          </mat-chip>
         }
+      </div>
+
+      @if (favoriteEntities.length === 0) {
+        <p>You have no favorites in this simulation.</p>
       }
     </div>
   </mat-card-content>

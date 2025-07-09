@@ -6,14 +6,12 @@ import {
   signal,
   WritableSignal,
 } from '@angular/core';
+import { EntityMetadata } from '../interfaces/simulation.model';
 import { SimulationService } from './simulation.service';
-import { EntityInfo } from '../interfaces/entity.model';
 
 interface FavoritesSaveData {
   version: number;
-  vehicles: EntityInfo[];
-  passengers: EntityInfo[];
-  stops: EntityInfo[];
+  favoriteEntities: EntityMetadata[];
 }
 
 @Injectable({
@@ -23,12 +21,12 @@ export class FavoriteEntitiesService {
   // Arrays to have them sorted
   // Sets to quickly search
 
-  readonly VERSION = 1;
+  readonly VERSION = 2;
   private readonly KEY_FAVORITES_PREFIX = 'multimodal.favorites.';
 
-  private _favVehicleArray: WritableSignal<EntityInfo[]> = signal([]);
-  private _favPassengersArray: WritableSignal<EntityInfo[]> = signal([]);
-  private _favStopsArray: WritableSignal<EntityInfo[]> = signal([]);
+  private _favoriteEntitiesSignal: WritableSignal<EntityMetadata[]> = signal(
+    [],
+  );
 
   private _simulationFavKey: Signal<string | null> = computed(() => {
     const simulation = this.simulationService.activeSimulationSignal();
@@ -36,27 +34,9 @@ export class FavoriteEntitiesService {
     return `${this.KEY_FAVORITES_PREFIX}${simulation.id}`;
   });
 
-  get favVehicleArray(): Signal<EntityInfo[]> {
-    return this._favVehicleArray;
+  get favoriteEntitiesSignal(): Signal<EntityMetadata[]> {
+    return this._favoriteEntitiesSignal;
   }
-
-  get favPassengersArray(): Signal<EntityInfo[]> {
-    return this._favPassengersArray;
-  }
-
-  get favStopsArray(): Signal<EntityInfo[]> {
-    return this._favStopsArray;
-  }
-
-  favVehicleIds: Signal<Set<string>> = computed(
-    () => new Set(this._favVehicleArray().map((favorite) => favorite.id)),
-  );
-  favPassengerIds: Signal<Set<string>> = computed(
-    () => new Set(this.favPassengersArray().map((favorite) => favorite.id)),
-  );
-  favStopIds: Signal<Set<string>> = computed(
-    () => new Set(this._favStopsArray().map((favorite) => favorite.id)),
-  );
 
   constructor(private simulationService: SimulationService) {
     effect(() => {
@@ -68,46 +48,48 @@ export class FavoriteEntitiesService {
     });
   }
 
-  toggleFavoriteVehicle(id: string, name: string) {
-    this._favVehicleArray.update((favVehicleArray) => {
-      return this.toggleFavoriteEntity(favVehicleArray, id, name);
+  toggleFavoriteEntity(entity: EntityMetadata): void {
+    this._favoriteEntitiesSignal.update((favorites) => {
+      // If is in the list
+      if (
+        favorites.find(
+          (favorite) =>
+            favorite.id === entity.id &&
+            favorite.entityType === entity.entityType,
+        )
+      ) {
+        // Remove from list
+        favorites = favorites.filter(
+          (favorite) =>
+            favorite.id !== entity.id ||
+            favorite.entityType !== entity.entityType,
+        );
+      } else {
+        favorites.push({
+          id: entity.id,
+          name: entity.name,
+          entityType: entity.entityType,
+          tags: entity.tags,
+        });
+      }
+      return [...this.sortFavorites(favorites)];
     });
   }
 
-  toggleFavoritePassenger(id: string, name: string) {
-    this._favPassengersArray.update((favPassengerArray) => {
-      return this.toggleFavoriteEntity(favPassengerArray, id, name);
-    });
-  }
-
-  toggleFavoriteStop(id: string) {
-    this._favStopsArray.update((favStopsArray) => {
-      return this.toggleFavoriteEntity(favStopsArray, id, id);
-    });
-  }
-
-  toggleFavoriteEntity(favorites: EntityInfo[], id: string, name: string) {
-    // If is in the list
-    if (favorites.find((favorite) => favorite.id === id)) {
-      // Remove from list
-      favorites = favorites.filter((favorite) => favorite.id !== id);
-    } else {
-      favorites.push({ id, name });
-      favorites.sort((a, b) => a.name.localeCompare(b.name));
-    }
-    return [...favorites];
+  isFavoriteEntity(entity: EntityMetadata): boolean {
+    return this._favoriteEntitiesSignal().some(
+      (favorite) =>
+        favorite.id === entity.id && favorite.entityType === entity.entityType,
+    );
   }
 
   private loadFavoritesFromLocalStorage() {
-    const simulationFavKey = this._simulationFavKey();
-    if (simulationFavKey === null) {
-      this._favVehicleArray.set([]);
-      this._favPassengersArray.set([]);
-      this._favStopsArray.set([]);
+    const simulationFavoritesKey = this._simulationFavKey();
+    if (simulationFavoritesKey === null) {
       return;
     }
 
-    const favoritesSaveDataJson = localStorage.getItem(simulationFavKey);
+    const favoritesSaveDataJson = localStorage.getItem(simulationFavoritesKey);
     if (!favoritesSaveDataJson) return;
 
     const favoritesSaveData = JSON.parse(
@@ -120,9 +102,11 @@ export class FavoriteEntitiesService {
     )
       return;
 
-    this._favVehicleArray.set(favoritesSaveData.vehicles);
-    this._favPassengersArray.set(favoritesSaveData.passengers);
-    this._favStopsArray.set(favoritesSaveData.stops);
+    if (!Array.isArray(favoritesSaveData.favoriteEntities)) return;
+
+    this._favoriteEntitiesSignal.set(
+      this.sortFavorites(favoritesSaveData.favoriteEntities),
+    );
   }
 
   private saveFavoritesToLocalStorage() {
@@ -131,11 +115,18 @@ export class FavoriteEntitiesService {
 
     const favoritesSaveData: FavoritesSaveData = {
       version: this.VERSION,
-      vehicles: this._favVehicleArray(),
-      passengers: this._favPassengersArray(),
-      stops: this._favStopsArray(),
+      favoriteEntities: this._favoriteEntitiesSignal(),
     };
 
     localStorage.setItem(simulationFavKey, JSON.stringify(favoritesSaveData));
+  }
+
+  private sortFavorites(favorites: EntityMetadata[]): EntityMetadata[] {
+    return favorites.sort((a, b) => {
+      if (a.entityType !== b.entityType) {
+        return a.entityType.localeCompare(b.entityType);
+      }
+      return a.name.localeCompare(b.name);
+    });
   }
 }
