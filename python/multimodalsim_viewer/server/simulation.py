@@ -17,7 +17,7 @@ from multimodalsim_viewer.common.utils import (
     set_event_on_input,
     verify_simulation_name,
 )
-from multimodalsim_viewer.server.simulation_visualization_data_collector import (
+from multimodalsim_viewer.server.data_collector import (
     SimulationVisualizationDataCollector,
 )
 

@@ -14,10 +14,8 @@ from multimodalsim_viewer.common.utils import (
     get_session_id,
     log,
 )
+from multimodalsim_viewer.server.data_manager import SimulationVisualizationDataManager
 from multimodalsim_viewer.server.simulation import run_simulation
-from multimodalsim_viewer.server.simulation_visualization_data_model import (
-    SimulationVisualizationDataManager,
-)
 
 
 class SimulationHandler:  # pylint: disable=too-many-instance-attributes, too-few-public-methods

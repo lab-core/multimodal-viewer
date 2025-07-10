@@ -1,4 +1,6 @@
 import { EntityType } from './entity.model';
+import { Leg } from './leg.model';
+import { Tagged } from './tags.model';
 
 export type SimulationStatus =
   | 'starting'
@@ -122,10 +124,6 @@ export interface SimulationConfiguration {
   maxDuration: number | null;
 }
 
-export interface Tagged {
-  tags: string[];
-}
-
 export type PassengerStatus =
   | 'release'
   | 'assigned'
@@ -141,13 +139,8 @@ export const PASSENGER_STATUSES: PassengerStatus[] = [
   'complete',
 ];
 
-export interface Leg extends Tagged {
-  assignedVehicleId: string | null;
-  boardingStopIndex: number | null;
-  alightingStopIndex: number | null;
-  boardingTime: number | null;
-  alightingTime: number | null;
-  assignedTime: number | null;
+export function isPassengerStatus(value: unknown): value is PassengerStatus {
+  return PASSENGER_STATUSES.includes(value as PassengerStatus);
 }
 
 export interface AnimatedLeg extends Leg {
@@ -155,7 +148,6 @@ export interface AnimatedLeg extends Leg {
   currentStop: Stop | null;
   nextStops: Stop[];
 }
-
 export interface Passenger extends EntityMetadata, Tagged {
   status: PassengerStatus;
   previousLegs: Leg[];

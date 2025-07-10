@@ -40,14 +40,10 @@ from multimodalsim_viewer.common.utils import (
     SimulationStatus,
     build_simulation_id,
 )
-from multimodalsim_viewer.server.log_manager import register_log
-from multimodalsim_viewer.server.simulation_visualization_data_model import (
-    PassengerLegsUpdate,
-    PassengerStatusUpdate,
-    SimulationInformation,
-    SimulationVisualizationDataManager,
-    StatisticUpdate,
-    Update,
+from multimodalsim_viewer.server.data_manager import SimulationVisualizationDataManager
+from multimodalsim_viewer.server.model import SimulationInformation, StatisticUpdate
+from multimodalsim_viewer.server.model import Update as OldUpdate
+from multimodalsim_viewer.server.model import (
     UpdateType,
     VehicleStatusUpdate,
     VehicleStopsUpdate,
@@ -56,6 +52,7 @@ from multimodalsim_viewer.server.simulation_visualization_data_model import (
     VisualizedStop,
     VisualizedVehicle,
 )
+from multimodalsim_viewer.server.update import PassengerUpdate, Update
 
 
 # MARK: Data Collector
@@ -255,11 +252,7 @@ class SimulationVisualizationDataCollector(DataCollector):  # pylint: disable=to
         if current_event is None:
             return
 
-        message = self.process_event(current_event, env)
-        register_log(self.simulation_id, message)
-
-        if self.is_connected:
-            self.sio.emit("log", (self.simulation_id, message))
+        self.process_event(current_event, env)
 
         if (
             self.last_statistics_update_time is None
@@ -267,7 +260,7 @@ class SimulationVisualizationDataCollector(DataCollector):  # pylint: disable=to
         ):
             self.last_statistics_update_time = current_event.time
             self.add_update(
-                Update(
+                OldUpdate(
                     UpdateType.UPDATE_STATISTIC,
                     StatisticUpdate(self.data_analyzer.get_statistics()),
                     current_event.time,
@@ -277,7 +270,7 @@ class SimulationVisualizationDataCollector(DataCollector):  # pylint: disable=to
 
     # MARK: +- Add Update
     def add_update(  # pylint: disable=too-many-branches, too-many-statements
-        self, update: Update, environment: Environment
+        self, update: OldUpdate | Update, environment: Environment
     ) -> None:
         update.order = self.update_counter
         self.visualized_environment.order = self.update_counter
@@ -332,22 +325,11 @@ class SimulationVisualizationDataCollector(DataCollector):  # pylint: disable=to
                 self.simulation_id, self.visualized_environment
             )
 
-        if update.update_type == UpdateType.CREATE_PASSENGER:
-            self.visualized_environment.add_passenger(update.data)
-        elif update.update_type == UpdateType.CREATE_VEHICLE:
+        if update.update_type == UpdateType.CREATE_VEHICLE:
             self.visualized_environment.add_vehicle(update.data)
             data: VisualizedVehicle = update.data
             if data.polylines is not None:
                 self.update_polylines_if_needed(data)
-        elif update.update_type == UpdateType.UPDATE_PASSENGER_STATUS:
-            passenger = self.visualized_environment.get_passenger(update.data.passenger_id)
-            passenger.status = update.data.status
-        elif update.update_type == UpdateType.UPDATE_PASSENGER_LEGS:
-            passenger = self.visualized_environment.get_passenger(update.data.passenger_id)
-            legs_update: PassengerLegsUpdate = update.data
-            passenger.previous_legs = legs_update.previous_legs
-            passenger.next_legs = legs_update.next_legs
-            passenger.current_leg = legs_update.current_leg
         elif update.update_type == UpdateType.UPDATE_VEHICLE_STATUS:
             vehicle = self.visualized_environment.get_vehicle(update.data.vehicle_id)
             vehicle.status = update.data.status
@@ -362,6 +344,8 @@ class SimulationVisualizationDataCollector(DataCollector):  # pylint: disable=to
         elif update.update_type == UpdateType.UPDATE_STATISTIC:
             statistic_update: StatisticUpdate = update.data
             self.visualized_environment.statistic = statistic_update.statistic
+        else:
+            update.apply(self.visualized_environment)
 
         SimulationVisualizationDataManager.save_update(self.current_save_file_path, update)
 
@@ -419,25 +403,11 @@ class SimulationVisualizationDataCollector(DataCollector):  # pylint: disable=to
     # MARK: +- Flush
     def flush(self, environment) -> None:
         for event in self.passenger_assignment_event_queue:
+            old_passenger = self.visualized_environment.get_passenger(event.state_machine.owner.id)
+            new_passenger = VisualizedPassenger.from_trip_and_environment(event.state_machine.owner, environment)
+
             self.add_update(
-                Update(
-                    UpdateType.UPDATE_PASSENGER_STATUS,
-                    PassengerStatusUpdate.from_trip(
-                        event.state_machine.owner,
-                    ),
-                    event.time,
-                ),
-                environment,
-            )
-            previous_passenger = self.visualized_environment.get_passenger(event.state_machine.owner.id)
-            self.add_update(
-                Update(
-                    UpdateType.UPDATE_PASSENGER_LEGS,
-                    PassengerLegsUpdate.from_trip_environment_and_previous_passenger(
-                        event.state_machine.owner, environment, previous_passenger
-                    ),
-                    event.time,
-                ),
+                PassengerUpdate(self.update_counter, event.index, event.name, event.time, old_passenger, new_passenger),
                 environment,
             )
 
@@ -449,7 +419,7 @@ class SimulationVisualizationDataCollector(DataCollector):  # pylint: disable=to
                 existing_vehicle.polylines = vehicle.polylines
 
             self.add_update(
-                Update(
+                OldUpdate(
                     UpdateType.UPDATE_VEHICLE_STOPS,
                     VehicleStopsUpdate.from_vehicle_and_route(vehicle, route),
                     event.time,
@@ -467,125 +437,114 @@ class SimulationVisualizationDataCollector(DataCollector):  # pylint: disable=to
     # MARK: +- Process Event
     def process_event(  # pylint: disable=too-many-branches, too-many-statements, too-many-return-statements
         self, event: Event, environment: Environment
-    ) -> str:
+    ) -> None:
         # In case that a queued event is not linked to EnvironmentIdle
         if self.has_to_flush and event.time > self.last_queued_event_time:
             self.flush(environment)
 
         # Optimize
         if isinstance(event, Optimize):
-            # Do nothing ?
-            return f"{event.time} TODO Optimize"
+            return
 
         # EnvironmentUpdate
         if isinstance(event, EnvironmentUpdate):
-            # Do nothing ?
-            return f"{event.time} TODO EnvironmentUpdate"
+            return
 
         # EnvironmentIdle
         if isinstance(event, EnvironmentIdle):
+            # Now that the optimisations are done, we can flush the queued events.
             self.flush(environment)
-            return f"{event.time} TODO EnvironmentIdle"
+            return
 
         # PassengerRelease
         if isinstance(event, PassengerRelease):
-            passenger = VisualizedPassenger.from_trip_and_environment(event.trip, environment)
+            new_passenger = VisualizedPassenger.from_trip_and_environment(event.trip, environment)
             self.add_update(
-                Update(
-                    UpdateType.CREATE_PASSENGER,
-                    passenger,
+                PassengerUpdate(
+                    self.update_counter,
+                    event.index,
+                    event.name,
                     event.time,
+                    None,  # no previous passenger
+                    new_passenger,
                 ),
                 environment,
             )
-            return f"{event.time} TODO PassengerRelease"
+            return
 
         # PassengerAssignment
         if isinstance(event, PassengerAssignment):
             self.passenger_assignment_event_queue.append(event)
             self.last_queued_event_time = event.time
-            return f"{event.time} TODO PassengerAssignment"
+            return
 
         # PassengerReady
         if isinstance(event, PassengerReady):
+            old_passenger = self.visualized_environment.get_passenger(event.state_machine.owner.id)
+            new_passenger = VisualizedPassenger.from_trip_and_environment(event.state_machine.owner, environment)
             self.add_update(
-                Update(
-                    UpdateType.UPDATE_PASSENGER_STATUS,
-                    PassengerStatusUpdate.from_trip(
-                        event.state_machine.owner,
-                    ),
+                PassengerUpdate(
+                    self.update_counter,
+                    event.index,
+                    event.name,
                     event.time,
+                    old_passenger,
+                    new_passenger,
                 ),
                 environment,
             )
-            return f"{event.time} TODO PassengerReady"
+            return
 
         # PassengerToBoard
         if isinstance(event, PassengerToBoard):
+            old_passenger = self.visualized_environment.get_passenger(event.state_machine.owner.id)
+            new_passenger = VisualizedPassenger.from_trip_and_environment(event.state_machine.owner, environment)
             self.add_update(
-                Update(
-                    UpdateType.UPDATE_PASSENGER_STATUS,
-                    PassengerStatusUpdate.from_trip(
-                        event.state_machine.owner,
-                    ),
+                PassengerUpdate(
+                    self.update_counter,
+                    event.index,
+                    event.name,
                     event.time,
+                    old_passenger,
+                    new_passenger,
                 ),
                 environment,
             )
-            previous_passenger = self.visualized_environment.get_passenger(event.state_machine.owner.id)
-            self.add_update(
-                Update(
-                    UpdateType.UPDATE_PASSENGER_LEGS,
-                    PassengerLegsUpdate.from_trip_environment_and_previous_passenger(
-                        event.state_machine.owner, environment, previous_passenger
-                    ),
-                    event.time,
-                ),
-                environment,
-            )
-            return f"{event.time} TODO PassengerToBoard"
+            return
 
         # PassengerAlighting
         if isinstance(event, PassengerAlighting):
+            old_passenger = self.visualized_environment.get_passenger(event.state_machine.owner.id)
+            new_passenger = VisualizedPassenger.from_trip_and_environment(event.state_machine.owner, environment)
             self.add_update(
-                Update(
-                    UpdateType.UPDATE_PASSENGER_STATUS,
-                    PassengerStatusUpdate.from_trip(
-                        event.state_machine.owner,
-                    ),
+                PassengerUpdate(
+                    self.update_counter,
+                    event.index,
+                    event.name,
                     event.time,
+                    old_passenger,
+                    new_passenger,
                 ),
                 environment,
             )
-            previous_passenger = self.visualized_environment.get_passenger(event.state_machine.owner.id)
-            self.add_update(
-                Update(
-                    UpdateType.UPDATE_PASSENGER_LEGS,
-                    PassengerLegsUpdate.from_trip_environment_and_previous_passenger(
-                        event.state_machine.owner, environment, previous_passenger
-                    ),
-                    event.time,
-                ),
-                environment,
-            )
-            return f"{event.time} TODO PassengerAlighting"
+            return
 
         # VehicleWaiting
         if isinstance(event, VehicleWaiting):
             self.add_update(
-                Update(
+                OldUpdate(
                     UpdateType.UPDATE_VEHICLE_STATUS,
                     VehicleStatusUpdate.from_vehicle(event.state_machine.owner),
                     event.time,
                 ),
                 environment,
             )
-            return f"{event.time} TODO VehicleWaiting"
+            return
 
         # VehicleBoarding
         if isinstance(event, VehicleBoarding):
             self.add_update(
-                Update(
+                OldUpdate(
                     UpdateType.UPDATE_VEHICLE_STATUS,
                     VehicleStatusUpdate.from_vehicle(
                         event.state_machine.owner,
@@ -594,7 +553,7 @@ class SimulationVisualizationDataCollector(DataCollector):  # pylint: disable=to
                 ),
                 environment,
             )
-            return f"{event.time} TODO VehicleBoarding"
+            return
 
         # VehicleDeparture
         if isinstance(event, VehicleDeparture):
@@ -602,7 +561,7 @@ class SimulationVisualizationDataCollector(DataCollector):  # pylint: disable=to
             vehicle = event.state_machine.owner
 
             self.add_update(
-                Update(
+                OldUpdate(
                     UpdateType.UPDATE_VEHICLE_STATUS,
                     VehicleStatusUpdate.from_vehicle(
                         event.state_machine.owner,
@@ -613,14 +572,14 @@ class SimulationVisualizationDataCollector(DataCollector):  # pylint: disable=to
             )
 
             self.add_update(
-                Update(
+                OldUpdate(
                     UpdateType.UPDATE_VEHICLE_STOPS,
                     VehicleStopsUpdate.from_vehicle_and_route(vehicle, route),
                     event.time,
                 ),
                 environment,
             )
-            return f"{event.time} TODO VehicleDeparture"
+            return
 
         # VehicleArrival
         if isinstance(event, VehicleArrival):
@@ -628,7 +587,7 @@ class SimulationVisualizationDataCollector(DataCollector):  # pylint: disable=to
             vehicle = event.state_machine.owner
 
             self.add_update(
-                Update(
+                OldUpdate(
                     UpdateType.UPDATE_VEHICLE_STATUS,
                     VehicleStatusUpdate.from_vehicle(
                         event.state_machine.owner,
@@ -639,7 +598,7 @@ class SimulationVisualizationDataCollector(DataCollector):  # pylint: disable=to
             )
 
             self.add_update(
-                Update(
+                OldUpdate(
                     UpdateType.UPDATE_VEHICLE_STOPS,
                     VehicleStopsUpdate.from_vehicle_and_route(vehicle, route),
                     event.time,
@@ -647,12 +606,12 @@ class SimulationVisualizationDataCollector(DataCollector):  # pylint: disable=to
                 environment,
             )
 
-            return f"{event.time} TODO VehicleArrival"
+            return
 
         # VehicleComplete
         if isinstance(event, VehicleComplete):
             self.add_update(
-                Update(
+                OldUpdate(
                     UpdateType.UPDATE_VEHICLE_STATUS,
                     VehicleStatusUpdate.from_vehicle(
                         event.state_machine.owner,
@@ -661,7 +620,7 @@ class SimulationVisualizationDataCollector(DataCollector):  # pylint: disable=to
                 ),
                 environment,
             )
-            return f"{event.time} TODO VehicleComplete"
+            return
 
         # VehicleReady
         if isinstance(event, VehicleReady):
@@ -669,45 +628,42 @@ class SimulationVisualizationDataCollector(DataCollector):  # pylint: disable=to
                 event.vehicle, event._VehicleReady__route  # pylint: disable=protected-access
             )
             self.add_update(
-                Update(
+                OldUpdate(
                     UpdateType.CREATE_VEHICLE,
                     vehicle,
                     event.time,
                 ),
                 environment,
             )
-            return f"{event.time} TODO VehicleReady"
+            return
 
         # VehicleNotification
         if isinstance(event, VehicleNotification):
             self.vehicle_notification_event_queue.append(event)
             self.last_queued_event_time = event.time
-            return f"{event.time} TODO VehicleNotification"
+            return
 
         # VehicleBoarded
         if isinstance(event, VehicleBoarded):
-            return f"{event.time} TODO VehicleBoarded"
+            return
 
         # VehicleAlighted
         if isinstance(event, VehicleAlighted):
-            return f"{event.time} TODO VehicleAlighted"
+            return
 
         # VehicleUpdatePositionEvent
         if isinstance(event, VehicleUpdatePositionEvent):
-            # Do nothing ?
-            return f"{event.time} TODO VehicleUpdatePositionEvent"
+            return
 
         # RecurrentTimeSyncEvent
         if isinstance(event, RecurrentTimeSyncEvent):
-            # Do nothing ?
-            return f"{event.time} TODO RecurrentTimeSyncEvent"
+            return
 
         # Hold
         if isinstance(event, Hold):
-            # Do nothing ?
-            return f"{event.time} TODO Hold"
+            return
 
-        raise NotImplementedError(f"Event {event} not implemented")
+        raise NotImplementedError(f"Event {event.name} not handled by the data collector")
 
     # MARK: +- Clean Up
     def clean_up(self, env):

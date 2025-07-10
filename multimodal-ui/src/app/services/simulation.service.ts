@@ -7,6 +7,7 @@ import {
 } from '@angular/core';
 import randomName from 'node-random-name';
 import { decode } from 'polyline';
+import { extractLeg, Leg } from '../interfaces/leg.model';
 import {
   AllPolylines,
   AnimatedSimulationState,
@@ -21,7 +22,6 @@ import {
   DynamicVehicleAnimationData,
   getAllStops,
   getStopId,
-  Leg,
   Passenger,
   PASSENGER_STATUSES,
   PassengerAnimationData,
@@ -388,7 +388,7 @@ export class SimulationService {
       return null;
     }
 
-    const previousLegs = data.previousLegs.map((leg) => this.extractLeg(leg));
+    const previousLegs = data.previousLegs.map((leg) => extractLeg(leg));
     if (!previousLegs.every((leg) => leg !== null)) {
       console.error('Passenger previous legs invalid: ', previousLegs);
       return null;
@@ -400,13 +400,13 @@ export class SimulationService {
     }
 
     const currentLeg =
-      data.currentLeg !== undefined ? this.extractLeg(data.currentLeg!) : null;
+      data.currentLeg !== undefined ? extractLeg(data.currentLeg!) : null;
     if (data.currentLeg !== undefined && currentLeg === null) {
       console.error('Passenger current leg invalid: ', data.currentLeg);
       return null;
     }
 
-    const nextLegs = data.nextLegs.map((leg) => this.extractLeg(leg));
+    const nextLegs = data.nextLegs.map((leg) => extractLeg(leg));
     if (!nextLegs.every((leg) => leg !== null)) {
       console.error('Passenger next legs invalid: ', nextLegs);
       return null;
@@ -423,35 +423,6 @@ export class SimulationService {
       currentLeg,
       nextLegs,
       numberOfPassengers,
-      tags,
-    };
-  }
-
-  private extractLeg(data: Leg): Leg | null {
-    // TODO Uncomment for debugging
-    // console.debug('Extracting leg: ', data);
-
-    const assignedVehicleId = data.assignedVehicleId ?? null;
-
-    const boardingStopIndex = data.boardingStopIndex ?? null;
-
-    const alightingStopIndex = data.alightingStopIndex ?? null;
-
-    const boardingTime = data.boardingTime ?? null;
-
-    const alightingTime = data.alightingTime ?? null;
-
-    const assignedTime = data.assignedTime ?? null;
-
-    const tags = data.tags ?? [];
-
-    return {
-      assignedVehicleId,
-      boardingStopIndex,
-      alightingStopIndex,
-      boardingTime,
-      alightingTime,
-      assignedTime,
       tags,
     };
   }
@@ -498,14 +469,14 @@ export class SimulationService {
       return null;
     }
 
-    const previousLegs = data.previousLegs.map((leg) => this.extractLeg(leg));
+    const previousLegs = data.previousLegs.map((leg) => extractLeg(leg));
     if (!previousLegs.every((leg) => leg !== null)) {
       console.error('Passenger previous legs invalid: ', previousLegs);
       return null;
     }
 
     const currentLeg =
-      data.currentLeg !== undefined ? this.extractLeg(data.currentLeg!) : null;
+      data.currentLeg !== undefined ? extractLeg(data.currentLeg!) : null;
     if (data.currentLeg !== undefined && currentLeg === null) {
       console.error('Passenger current leg invalid: ', data.currentLeg);
       return null;
@@ -516,7 +487,7 @@ export class SimulationService {
       return null;
     }
 
-    const nextLegs = data.nextLegs.map((leg) => this.extractLeg(leg));
+    const nextLegs = data.nextLegs.map((leg) => extractLeg(leg));
     if (!nextLegs.every((leg) => leg !== null)) {
       console.error('Passenger next legs invalid: ', nextLegs);
       return null;
@@ -1388,7 +1359,7 @@ export class SimulationService {
       return basicAnimationData;
     }
 
-    if (leg.assignedVehicleId === null || leg.assignedTime === null) {
+    if (leg.assignedVehicleId === null) {
       basicAnimationData.notDisplayedReason = 'Leg has no assigned vehicle';
       return basicAnimationData;
     } else if (leg.boardingStopIndex === null) {

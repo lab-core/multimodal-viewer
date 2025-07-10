@@ -8,6 +8,7 @@ import {
   signal,
   WritableSignal,
 } from '@angular/core';
+import { Leg } from '../interfaces/leg.model';
 import {
   AnimatedLeg,
   AnimatedPassenger,
@@ -18,7 +19,6 @@ import {
   AnimationData,
   DynamicPassengerAnimationData,
   getAllStops,
-  Leg,
   RUNNING_SIMULATION_STATUSES,
   Simulation,
   SimulationEnvironment,
