@@ -51,7 +51,7 @@ class VisualizedVehicle(Serializable):  # pylint: disable=too-many-instance-attr
         current_stop: VisualizedStop | None,
         next_stops: list[VisualizedStop],
         capacity: int,
-        name: str | None,
+        name: str,
         tags: list[str],
     ) -> None:
         self.vehicle_id: str = str(vehicle_id)
@@ -64,7 +64,7 @@ class VisualizedVehicle(Serializable):  # pylint: disable=too-many-instance-attr
         self.next_stops: list[VisualizedStop] = next_stops
 
         self.capacity: int = capacity
-        self.name: str | None = name
+        self.name: str = name
 
         self.tags: list[str] = tags
 
@@ -136,7 +136,7 @@ class VisualizedVehicle(Serializable):  # pylint: disable=too-many-instance-attr
         previous_stops = [VisualizedStop.deserialize(stop_data) for stop_data in serialized_data["previousStops"]]
         next_stops = [VisualizedStop.deserialize(stop_data) for stop_data in serialized_data["nextStops"]]
         capacity = int(serialized_data["capacity"])
-        name = serialized_data.get("name", None)
+        name = serialized_data.get("name")
 
         current_stop = serialized_data.get("currentStop", None)
         if current_stop is not None:

@@ -1,3 +1,4 @@
+import getName from 'node-random-name';
 import { SimulationEnvironment } from './environment.model';
 import { extractLeg, isLegType, Leg } from './leg.model';
 import { getAllLegs, isPassengerStatus, Passenger } from './passenger.model';
@@ -103,7 +104,8 @@ export type WithIndex<T> = T & {
 
 // MARK: PassengerUpdate
 export type PassengerDifferences = Partial<
-  Pick<Passenger, 'name' | 'status' | 'numberOfPassengers' | 'tags'>
+  // Name is not included in the differences because it is overridden by the random name generator.
+  Pick<Passenger, 'status' | 'numberOfPassengers' | 'tags'>
 >;
 
 export type LegDifferences = WithIndex<
@@ -145,7 +147,6 @@ export class PassengerUpdate extends Update {
   override apply(environment: SimulationEnvironment): void {
     super.apply(environment);
 
-    const name = this.differences.name;
     const status = this.differences.status;
     const numberOfPassengers = this.differences.numberOfPassengers;
     const tags = this.differences.tags;
@@ -153,12 +154,6 @@ export class PassengerUpdate extends Update {
     let passenger: Passenger = environment.passengers[this.passengerId];
 
     if (passenger === undefined) {
-      if (name === undefined) {
-        console.error(
-          `Passenger with ID ${this.passengerId} does not exist and no name provided.`,
-        );
-        return;
-      }
       if (status === undefined) {
         console.error(
           `Passenger with ID ${this.passengerId} does not exist and no status provided.`,
@@ -181,7 +176,7 @@ export class PassengerUpdate extends Update {
       passenger = {
         id: this.passengerId,
         entityType: 'passenger',
-        name,
+        name: getName({ seed: this.passengerId }),
         status,
         numberOfPassengers,
         tags,
@@ -355,10 +350,6 @@ export class PassengerUpdate extends Update {
     value: unknown,
   ): value is PassengerUpdate['differences'] {
     if (typeof value !== 'object' || value === null) {
-      return false;
-    }
-
-    if ('name' in value && typeof value.name !== 'string') {
       return false;
     }
 
@@ -717,7 +708,11 @@ export class VehicleUpdate extends Update {
       return false;
     }
 
-    if ('mode' in value && typeof value.mode !== 'string') {
+    if (
+      'mode' in value &&
+      typeof value.mode !== 'string' &&
+      value.mode !== null
+    ) {
       return false;
     }
 
