@@ -92,6 +92,8 @@ class VisualizedVehicle(Serializable):  # pylint: disable=too-many-instance-attr
             vehicle.tags,
         )
 
+    # Similar to VisualizedPassenger
+    # pylint: disable=duplicate-code
     def serialize(self) -> dict:
         serialized = {
             "id": self.vehicle_id,
@@ -120,10 +122,10 @@ class VisualizedVehicle(Serializable):  # pylint: disable=too-many-instance-attr
         required_keys = [
             "id",
             "status",
+            "name",
             "previousStops",
             "nextStops",
             "capacity",
-            "name",
         ]
 
         cls.verify_required_fields(serialized_data, required_keys, "VisualizedVehicle")
@@ -145,3 +147,5 @@ class VisualizedVehicle(Serializable):  # pylint: disable=too-many-instance-attr
         return VisualizedVehicle(
             vehicle_id, mode, status, None, previous_stops, current_stop, next_stops, capacity, name, tags
         )
+
+    # pylint: enable=duplicate-code

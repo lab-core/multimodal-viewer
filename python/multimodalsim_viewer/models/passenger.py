@@ -89,6 +89,8 @@ class VisualizedPassenger(Serializable):  # pylint: disable=too-many-instance-at
         """
         return self.previous_legs + ([self.current_leg] if self.current_leg is not None else []) + self.next_legs
 
+    # Similar to VisualizedVehicle
+    # pylint: disable=duplicate-code
     def serialize(self) -> dict:
         serialized = {
             "id": self.passenger_id,
@@ -142,3 +144,5 @@ class VisualizedPassenger(Serializable):  # pylint: disable=too-many-instance-at
         return VisualizedPassenger(
             passenger_id, name, status, number_of_passengers, previous_legs, current_leg, next_legs, tags
         )
+
+    # pylint: enable=duplicate-code
