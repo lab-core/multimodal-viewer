@@ -79,6 +79,8 @@ export function extractSimulationStates(
         );
         return null;
       }
+
+      updates.push(update);
     }
 
     if (!updates.every((update) => update !== null)) {

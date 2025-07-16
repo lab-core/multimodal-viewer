@@ -4,6 +4,7 @@ import { Passenger, PassengerStatus } from './passenger.model';
 import { Polyline } from './polylines.model';
 import { Position } from './position.model';
 import { SimulationState } from './state.model';
+import { Statistics } from './statistics.model';
 import { Stop } from './stop.model';
 import { Vehicle, VehicleStatus } from './vehicle.model';
 
@@ -79,12 +80,19 @@ export type displayed<T> = T & {
   notDisplayedReason: string | null;
 };
 
-export interface EntityAnimationData {
+export interface BaseAnimationData {
   startTimestamp: number;
   startUpdateIndex: number;
-  endTimestamp: number | null;
+  endTimestamp: number | null; // null when the data is the last one and the animated environment is not fully built
   endUpdateIndex: number | null; // null when the data is the last one and the animated environment is not fully built
-  notDisplayedReason: string | null; // null when the data is the last one and the animated environment is not fully built
+}
+
+export interface EntityAnimationData extends BaseAnimationData {
+  notDisplayedReason: string | null;
+}
+
+export interface StatisticsAnimationData extends BaseAnimationData {
+  statistics: Statistics;
 }
 
 export interface PassengerAnimationData extends EntityAnimationData {
@@ -159,6 +167,7 @@ export interface AnimatedVehicle extends displayed<Vehicle> {
 export interface AnimationData {
   passengers: Record<string, AnyPassengerAnimationData[]>;
   vehicles: Record<string, AnyVehicleAnimationData[]>;
+  statistics: StatisticsAnimationData[];
   startTimestamp: number;
   endTimestamp: number;
   startUpdateIndex: number;

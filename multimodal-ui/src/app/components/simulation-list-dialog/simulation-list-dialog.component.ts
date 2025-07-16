@@ -236,7 +236,6 @@ export class SimulationListDialogComponent {
         .subscribe({
           next: (response: { message?: string; error?: string }) => {
             if (response.message) {
-              console.log('Upload successful:', response.message);
               this.communicationService.emit('get-simulations');
             } else if (response.error) {
               console.error('Upload failed:', response.error);
@@ -292,9 +291,7 @@ export class SimulationListDialogComponent {
     const folderContents = 'simulation';
     this.httpService.deleteFolder(folderContents, simulationId).subscribe({
       next: (response: { message?: string; error?: string }) => {
-        if (response.message) {
-          console.log(response.message);
-        } else if (response.error) {
+        if (response.error) {
           console.error('Failed to delete simulation:', response.error);
         }
         this.communicationService.emit('get-simulations');

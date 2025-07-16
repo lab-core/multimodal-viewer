@@ -133,7 +133,7 @@ export class PassengerUpdate extends Update {
     eventIndex: number,
     eventName: string,
     timestamp: number,
-    private readonly passengerId: string,
+    readonly passengerId: string,
     private readonly differences: PassengerDifferences,
     private readonly numberOfLegsToRemove: number,
     private readonly legsToAdd: Leg[],
@@ -482,7 +482,7 @@ export class VehicleUpdate extends Update {
     eventIndex: number,
     eventName: string,
     timestamp: number,
-    private readonly vehicleId: string,
+    readonly vehicleId: string,
     private readonly differences: VehicleDifferences,
     private readonly numberOfStopsToRemove: number,
     private readonly stopsToAdd: Stop[],
@@ -796,14 +796,18 @@ export class VehicleUpdate extends Update {
 
 // MARK: StatisticsUpdate
 export class StatisticsUpdate extends Update {
+  readonly statistics: Readonly<Statistics>;
+
   constructor(
     updateIndex: number,
     eventIndex: number,
     eventName: string,
     timestamp: number,
-    private readonly statistics: Statistics,
+    statistics: Statistics,
   ) {
     super('statistics', updateIndex, eventIndex, eventName, timestamp);
+
+    this.statistics = Object.freeze(statistics);
   }
 
   override apply(environment: SimulationEnvironment): void {

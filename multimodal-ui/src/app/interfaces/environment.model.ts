@@ -29,56 +29,48 @@ export function extractSimulationEnvironment(
     return null;
   }
 
-  if (
-    !('passengers' in data) ||
-    typeof data.passengers !== 'object' ||
-    data.passengers === null
-  ) {
+  if (!('passengers' in data) || !Array.isArray(data.passengers)) {
     console.error('Invalid passengers in simulation environment', data);
     return null;
   }
 
   const passengers: Record<string, Passenger> = {};
-  for (const [key, value] of Object.entries(data.passengers)) {
-    const passenger = extractPassenger(value);
+  for (const serializedPassenger of data.passengers) {
+    const passenger = extractPassenger(serializedPassenger);
 
     if (passenger === null) {
       console.error(
-        `Invalid passenger for key ${key}`,
-        value,
+        `Invalid passenger`,
+        serializedPassenger,
         ' in simulation environment',
         data,
       );
       return null;
     }
 
-    passengers[key] = passenger;
+    passengers[passenger.id] = passenger;
   }
 
-  if (
-    !('vehicles' in data) ||
-    typeof data.vehicles !== 'object' ||
-    data.vehicles === null
-  ) {
+  if (!('vehicles' in data) || !Array.isArray(data.vehicles)) {
     console.error('Invalid vehicles in simulation environment', data);
     return null;
   }
 
   const vehicles: Record<string, Vehicle> = {};
-  for (const [key, value] of Object.entries(data.vehicles)) {
-    const vehicle = extractVehicle(value);
+  for (const serializedVehicle of data.vehicles) {
+    const vehicle = extractVehicle(serializedVehicle);
 
     if (vehicle === null) {
       console.error(
-        `Invalid vehicle for key ${key}`,
-        value,
+        `Invalid vehicle`,
+        serializedVehicle,
         ' in simulation environment',
         data,
       );
       return null;
     }
 
-    vehicles[key] = vehicle;
+    vehicles[vehicle.id] = vehicle;
   }
 
   if (!('statistics' in data) || !isStatistics(data.statistics)) {

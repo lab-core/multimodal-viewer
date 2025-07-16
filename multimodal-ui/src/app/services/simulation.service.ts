@@ -17,6 +17,7 @@ import {
   PassengerAnimationData,
   StaticPassengerAnimationData,
   StaticVehicleAnimationData,
+  StatisticsAnimationData,
   VehicleAnimationData,
 } from '../interfaces/animation.model';
 import { SimulationEnvironment } from '../interfaces/environment.model';
@@ -33,6 +34,11 @@ import {
   SimulationState,
 } from '../interfaces/state.model';
 import { Stop } from '../interfaces/stop.model';
+import {
+  PassengerUpdate,
+  StatisticsUpdate,
+  VehicleUpdate,
+} from '../interfaces/update.model';
 import { getAllStops, Vehicle } from '../interfaces/vehicle.model';
 import { CommunicationService } from './communication.service';
 import { DataService } from './data.service';
@@ -411,8 +417,122 @@ export class SimulationService {
       animatedSimulationState.animationData.endTimestamp = update.timestamp;
 
       switch (update.updateType) {
-        // TODO
-        default:
+        case 'passenger':
+          {
+            const passengerUpdate = update as PassengerUpdate;
+            const passengerId = passengerUpdate.passengerId;
+            const passenger = state.passengers[passengerId];
+
+            if (
+              animatedSimulationState.animationData.passengers[passengerId] ===
+              undefined
+            ) {
+              animatedSimulationState.animationData.passengers[passengerId] =
+                [];
+            }
+            const currentAnimationData =
+              animatedSimulationState.animationData.passengers[passengerId];
+
+            const lastAnimationData: AnyPassengerAnimationData =
+              currentAnimationData[currentAnimationData.length - 1];
+
+            const animationData = this.getPassengerAnimationDataFromPassenger(
+              passenger,
+              update.timestamp,
+              update.updateIndex,
+              update.timestamp,
+            );
+
+            if (lastAnimationData !== undefined) {
+              if (
+                lastAnimationData.startTimestamp ===
+                animationData.startTimestamp
+              ) {
+                currentAnimationData.pop();
+              } else {
+                lastAnimationData.endTimestamp = update.timestamp;
+                lastAnimationData.endUpdateIndex = update.updateIndex;
+              }
+            }
+
+            currentAnimationData.push(animationData);
+          }
+          break;
+        case 'vehicle':
+          {
+            const vehicleUpdate = update as VehicleUpdate;
+            const vehicleId = vehicleUpdate.vehicleId;
+            const vehicle = state.vehicles[vehicleId];
+
+            if (
+              animatedSimulationState.animationData.vehicles[vehicleId] ===
+              undefined
+            ) {
+              animatedSimulationState.animationData.vehicles[vehicleId] = [];
+            }
+            const currentAnimationData =
+              animatedSimulationState.animationData.vehicles[vehicleId];
+
+            const lastAnimationData: AnyVehicleAnimationData =
+              currentAnimationData[currentAnimationData.length - 1];
+
+            const animationData = this.getVehicleAnimationDataFromVehicle(
+              vehicle,
+              polylines,
+              update.timestamp,
+              update.updateIndex,
+            );
+
+            if (lastAnimationData !== undefined) {
+              if (
+                lastAnimationData.startTimestamp ===
+                animationData.startTimestamp
+              ) {
+                currentAnimationData.pop();
+              } else {
+                lastAnimationData.endTimestamp = update.timestamp;
+                lastAnimationData.endUpdateIndex = update.updateIndex;
+              }
+            }
+
+            currentAnimationData.push(animationData);
+          }
+          break;
+        case 'statistics':
+          {
+            const statisticsUpdate = update as StatisticsUpdate;
+
+            const animationData: StatisticsAnimationData = {
+              statistics: statisticsUpdate.statistics,
+              startTimestamp: statisticsUpdate.timestamp,
+              endTimestamp: null,
+              startUpdateIndex: statisticsUpdate.updateIndex,
+              endUpdateIndex: null,
+            };
+
+            const lastStatisticsAnimationData: StatisticsAnimationData =
+              animatedSimulationState.animationData.statistics[
+                animatedSimulationState.animationData.statistics.length - 1
+              ];
+
+            if (lastStatisticsAnimationData !== undefined) {
+              if (
+                lastStatisticsAnimationData.startTimestamp ===
+                statisticsUpdate.timestamp
+              ) {
+                animatedSimulationState.animationData.statistics.pop();
+              } else {
+                lastStatisticsAnimationData.endTimestamp =
+                  statisticsUpdate.timestamp;
+                lastStatisticsAnimationData.endUpdateIndex =
+                  statisticsUpdate.updateIndex;
+              }
+            }
+
+            animatedSimulationState.animationData.statistics.push(
+              animationData,
+            );
+          }
           break;
       }
     }
@@ -435,6 +555,7 @@ export class SimulationService {
         startUpdateIndex: state.updateIndex,
         endTimestamp: state.timestamp,
         endUpdateIndex: state.updateIndex,
+        statistics: [],
       },
     };
 
@@ -459,6 +580,14 @@ export class SimulationService {
         ),
       ];
     }
+
+    animatedSimulationState.animationData.statistics.push({
+      statistics: state.statistics,
+      startTimestamp: state.timestamp,
+      endTimestamp: null,
+      startUpdateIndex: state.updateIndex,
+      endUpdateIndex: null,
+    });
 
     return animatedSimulationState;
   }
@@ -620,6 +749,15 @@ export class SimulationService {
       vehicleAnimationData[vehicleAnimationData.length - 1].endTimestamp =
         animatedSimulationState.animationData.endTimestamp;
     }
+
+    const lastStatisticsAnimationData: StatisticsAnimationData =
+      animatedSimulationState.animationData.statistics[
+        animatedSimulationState.animationData.statistics.length - 1
+      ];
+    if (lastStatisticsAnimationData !== undefined) {
+      lastStatisticsAnimationData.endTimestamp =
+        animatedSimulationState.animationData.endTimestamp;
+    }
   }
 
   private getDisplayedPolylines(
@@ -749,6 +887,13 @@ export class SimulationService {
       }
     }
 
+    const firstStatistics = firstAnimationData.statistics;
+    const secondStatistics = secondAnimationData.statistics;
+    const mergedStatistics: StatisticsAnimationData[] = [
+      ...firstStatistics,
+      ...secondStatistics,
+    ];
+
     return {
       passengers: mergedPassengerAnimationData,
       vehicles: mergedVehicleAnimationData,
@@ -756,6 +901,7 @@ export class SimulationService {
       startUpdateIndex: firstAnimationData.startUpdateIndex,
       endTimestamp: secondAnimationData.endTimestamp,
       endUpdateIndex: secondAnimationData.endUpdateIndex,
+      statistics: mergedStatistics,
     };
   }
 }
