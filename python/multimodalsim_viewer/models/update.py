@@ -1,16 +1,16 @@
 from enum import Enum
 
-from multimodalsim_viewer.common.utils import Serializable
-from multimodalsim_viewer.server.model import (
-    LegType,
-    StopType,
-    VisualizedEnvironment,
-    VisualizedLeg,
+from multimodalsim_viewer.models.environment import VisualizedEnvironment
+from multimodalsim_viewer.models.leg import LegType, VisualizedLeg
+from multimodalsim_viewer.models.passenger import (
     VisualizedPassenger,
-    VisualizedStop,
-    VisualizedVehicle,
     convert_passenger_status_to_string,
     convert_string_to_passenger_status,
+)
+from multimodalsim_viewer.models.serializable import Serializable
+from multimodalsim_viewer.models.stop import StopType, VisualizedStop
+from multimodalsim_viewer.models.vehicle import (
+    VisualizedVehicle,
     convert_string_to_vehicle_status,
     convert_vehicle_status_to_string,
 )
@@ -570,3 +570,37 @@ class VehicleUpdate(Update):
         # pylint: enable=unused-private-member
 
         return vehicle_update
+
+
+# MARK: StatisticsUpdate
+class StatisticsUpdate(Update):
+    """
+    New statistics computed by the simulation.
+    """
+
+    def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
+        self, update_index: int, event_index: int, event_name: str, timestamp: float, statistics: dict
+    ):
+        super().__init__(UpdateType.STATISTICS, update_index, event_index, event_name, timestamp)
+        self.__statistics: dict = statistics
+
+    def apply(self, environment: VisualizedEnvironment) -> None:
+        environment.statistics = self.__statistics
+
+    def serialize(self) -> dict:
+        serialized_data = super().serialize()
+        serialized_data["statistics"] = self.__statistics
+        return serialized_data
+
+    @classmethod
+    def deserialize(cls, serialized_data: dict | str) -> "StatisticsUpdate":
+        serialized_data = cls.serialized_data_to_dict(serialized_data)
+
+        update = Update.deserialize(serialized_data)
+
+        required_fields = ["statistics"]
+        cls.verify_required_fields(serialized_data, required_fields, "StatisticsUpdate")
+
+        return cls(
+            update.update_index, update.event_index, update.event_name, update.timestamp, serialized_data["statistics"]
+        )

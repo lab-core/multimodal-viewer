@@ -17,68 +17,16 @@ export interface Leg extends Tagged {
   alightingTime: number | null;
 }
 
-export function isLeg(value: unknown): value is Leg {
-  if (typeof value !== 'object' || value === null) {
-    return false;
-  }
-
-  if (!isTagged(value)) {
-    return false;
-  }
-
-  if (!('legType' in value) || !isLegType(value.legType)) {
-    return false;
-  }
-
-  if (
-    !('assignedVehicleId' in value) ||
-    (value.assignedVehicleId !== null &&
-      typeof value.assignedVehicleId !== 'string')
-  ) {
-    return false;
-  }
-
-  if (
-    !('boardingStopIndex' in value) ||
-    (value.boardingStopIndex !== null &&
-      typeof value.boardingStopIndex !== 'number')
-  ) {
-    return false;
-  }
-
-  if (
-    !('alightingStopIndex' in value) ||
-    (value.alightingStopIndex !== null &&
-      typeof value.alightingStopIndex !== 'number')
-  ) {
-    return false;
-  }
-
-  if (
-    !('boardingTime' in value) ||
-    (value.boardingTime !== null && typeof value.boardingTime !== 'number')
-  ) {
-    return false;
-  }
-
-  if (
-    !('alightingTime' in value) ||
-    (value.alightingTime !== null && typeof value.alightingTime !== 'number')
-  ) {
-    return false;
-  }
-
-  return true;
-}
-
 export function extractLeg(data: unknown): Leg | null {
   if (typeof data !== 'object' || data === null) {
+    console.error('Invalid data type for leg', data);
     return null;
   }
 
   let tags: Leg['tags'] = [];
   if ('tags' in data) {
     if (!isTagged(data)) {
+      console.error('Invalid tags in leg', data);
       return null;
     }
 
@@ -86,6 +34,7 @@ export function extractLeg(data: unknown): Leg | null {
   }
 
   if (!('legType' in data) || !isLegType(data.legType)) {
+    console.error('Invalid leg type', data);
     return null;
   }
   const legType = data.legType;
@@ -96,6 +45,12 @@ export function extractLeg(data: unknown): Leg | null {
       data.assignedVehicleId !== null &&
       typeof data.assignedVehicleId !== 'string'
     ) {
+      console.error(
+        'Invalid assigned vehicle ID',
+        data.assignedVehicleId,
+        'for leg',
+        data,
+      );
       return null;
     }
     assignedVehicleId = data.assignedVehicleId;
@@ -107,6 +62,12 @@ export function extractLeg(data: unknown): Leg | null {
       data.boardingStopIndex !== null &&
       typeof data.boardingStopIndex !== 'number'
     ) {
+      console.error(
+        'Invalid boarding stop index',
+        data.boardingStopIndex,
+        'for leg',
+        data,
+      );
       return null;
     }
     boardingStopIndex = data.boardingStopIndex;
@@ -118,6 +79,12 @@ export function extractLeg(data: unknown): Leg | null {
       data.alightingStopIndex !== null &&
       typeof data.alightingStopIndex !== 'number'
     ) {
+      console.error(
+        'Invalid alighting stop index',
+        data.alightingStopIndex,
+        'for leg',
+        data,
+      );
       return null;
     }
     alightingStopIndex = data.alightingStopIndex;
@@ -126,6 +93,12 @@ export function extractLeg(data: unknown): Leg | null {
   let boardingTime: Leg['boardingTime'] = null;
   if ('boardingTime' in data) {
     if (data.boardingTime !== null && typeof data.boardingTime !== 'number') {
+      console.error(
+        'Invalid boarding time',
+        data.boardingTime,
+        'for leg',
+        data,
+      );
       return null;
     }
     boardingTime = data.boardingTime;
@@ -134,6 +107,12 @@ export function extractLeg(data: unknown): Leg | null {
   let alightingTime: Leg['alightingTime'] = null;
   if ('alightingTime' in data) {
     if (data.alightingTime !== null && typeof data.alightingTime !== 'number') {
+      console.error(
+        'Invalid alighting time',
+        data.alightingTime,
+        'for leg',
+        data,
+      );
       return null;
     }
     alightingTime = data.alightingTime;

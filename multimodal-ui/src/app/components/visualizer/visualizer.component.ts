@@ -29,6 +29,8 @@ import {
   AnimatedPassenger,
   AnimatedStop,
   AnimatedVehicle,
+} from '../../interfaces/animation.model';
+import {
   RUNNING_SIMULATION_STATUSES,
   Simulation,
   SimulationStatus,
@@ -46,7 +48,7 @@ import { EntitiesTabComponent } from '../entities-tab/entities-tab.component';
 import { FavoriteEntitiesComponent } from '../favorite-entities/favorite-entities.component';
 import { InformationDialogComponent } from '../information-dialog/information-dialog.component';
 import { MapLayersComponent } from '../map-tiles/map-tiles.component';
-import { RecursiveStatisticComponent } from '../recursive-statistic/recursive-statistic.component';
+import { RecursiveStatisticsComponent } from '../recursive-statistics/recursive-statistics.component';
 import { SelectedEntityTabComponent } from '../selected-entity-tab/selected-entity-tab.component';
 import { SimulationControlBarComponent } from '../simulation-control-bar/simulation-control-bar.component';
 import { SimulationControlPanelComponent } from '../simulation-control-panel/simulation-control-panel.component';
@@ -82,7 +84,7 @@ export interface EntitySearch {
     MatExpansionModule,
     MatButtonToggleModule,
     MatTabsModule,
-    RecursiveStatisticComponent,
+    RecursiveStatisticsComponent,
     EntitiesTabComponent,
     SelectedEntityTabComponent,
   ],
@@ -382,7 +384,7 @@ export class VisualizerComponent implements OnDestroy {
 
   readonly informationTabControl: FormControl<string[] | null>;
   showSimulationInformation = false;
-  showStatistic = false;
+  showStatistics = false;
   showEntitiesTab = false;
   showSelectedEntityTab = false;
 
@@ -509,8 +511,8 @@ export class VisualizerComponent implements OnDestroy {
 
         this.showSimulationInformation =
           this.informationTabControl.value[0] === 'information';
-        this.showStatistic =
-          this.informationTabControl.value[0] === 'statistic';
+        this.showStatistics =
+          this.informationTabControl.value[0] === 'statistics';
         this.showEntitiesTab =
           this.informationTabControl.value[0] === 'entities';
         this.showSelectedEntityTab =
@@ -787,14 +789,14 @@ export class VisualizerComponent implements OnDestroy {
 
   // MARK: Getters
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  get statisticSignal(): Signal<Record<string, any>> {
+  get statisticsSignal(): Signal<Record<string, any>> {
     return computed(() => {
       const environment =
         this.visualizationService.visualizationEnvironmentSignal();
       if (!environment) {
         return {};
       }
-      return environment.statistic;
+      return environment.statistics;
     });
   }
 

@@ -5,7 +5,6 @@ import { RouterOutlet } from '@angular/router';
 import 'leaflet-pixi-overlay';
 import { ConnectionStatusComponent } from './components/connection-status/connection-status.component';
 import { MapComponent } from './components/map/map.component';
-import { DataService } from './services/data.service';
 import { MetricsComponent } from './components/metrics/metrics.component';
 
 @Component({
@@ -19,6 +18,4 @@ import { MetricsComponent } from './components/metrics/metrics.component';
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
 })
-export class AppComponent {
-  constructor(private readonly dataService: DataService) {}
-}
+export class AppComponent {}

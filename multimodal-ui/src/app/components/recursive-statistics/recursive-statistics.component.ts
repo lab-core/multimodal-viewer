@@ -1,15 +1,15 @@
 import { Component, Input } from '@angular/core';
 import { MatExpansionModule } from '@angular/material/expansion';
-import { Statistic } from '../../interfaces/simulation.model';
+import { Statistics } from '../../interfaces/statistics.model';
 
 @Component({
-  selector: 'app-recursive-statistic',
+  selector: 'app-recursive-statistics',
   imports: [MatExpansionModule],
-  templateUrl: './recursive-statistic.component.html',
-  styleUrl: './recursive-statistic.component.css',
+  templateUrl: './recursive-statistics.component.html',
+  styleUrl: './recursive-statistics.component.css',
 })
-export class RecursiveStatisticComponent {
-  @Input() recursiveDict: Statistic;
+export class RecursiveStatisticsComponent {
+  @Input() recursiveDict: Statistics;
 
   constructor() {
     this.recursiveDict = {};
@@ -49,5 +49,13 @@ export class RecursiveStatisticComponent {
     } else if (typeof entry === 'string') {
       return this.capitalize(entry);
     } else return '';
+  }
+
+  isStatistics(value: unknown): value is Statistics {
+    return typeof value === 'object';
+  }
+
+  isGeneric(value: unknown): boolean {
+    return typeof value === 'string' || typeof value === 'number';
   }
 }

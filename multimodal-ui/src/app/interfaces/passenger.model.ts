@@ -1,6 +1,6 @@
 import getName from 'node-random-name';
-import { EntityMetadata, isEntityMetadata } from './entity.model';
-import { extractLeg, isLeg, Leg } from './leg.model';
+import { EntityMetadata } from './entity.model';
+import { extractLeg, Leg } from './leg.model';
 import { isTagged } from './tags.model';
 
 export type PassengerStatus =
@@ -30,58 +30,14 @@ export interface Passenger extends EntityMetadata {
   numberOfPassengers: number;
 }
 
-export function isPassenger(value: unknown): value is Passenger {
-  if (typeof value !== 'object' || value === null) {
-    return false;
-  }
-
-  if (!isEntityMetadata(value) || value.entityType !== 'passenger') {
-    return false;
-  }
-
-  if (!('status' in value) || !isPassengerStatus(value.status)) {
-    return false;
-  }
-
-  if (
-    !('previousLegs' in value) ||
-    !Array.isArray(value.previousLegs) ||
-    !value.previousLegs.every(isLeg)
-  ) {
-    return false;
-  }
-
-  if (
-    !('currentLeg' in value) ||
-    (value.currentLeg !== null && !isLeg(value.currentLeg))
-  ) {
-    return false;
-  }
-
-  if (
-    !('nextLegs' in value) ||
-    !Array.isArray(value.nextLegs) ||
-    !value.nextLegs.every(isLeg)
-  ) {
-    return false;
-  }
-
-  if (
-    !('numberOfPassengers' in value) ||
-    typeof value.numberOfPassengers !== 'number'
-  ) {
-    return false;
-  }
-
-  return true;
-}
-
 export function extractPassenger(data: unknown): Passenger | null {
   if (typeof data !== 'object' || data === null) {
+    console.error('Invalid data type for passenger', data);
     return null;
   }
 
   if (!('id' in data) || typeof data.id !== 'string') {
+    console.error('Invalid ID for passenger', data);
     return null;
   }
   const id = data.id;
@@ -89,6 +45,7 @@ export function extractPassenger(data: unknown): Passenger | null {
   let name = getName({ seed: id });
   if ('name' in data) {
     if (typeof data.name !== 'string') {
+      console.error('Invalid name', data.name, 'in passenger', data);
       return null;
     }
 
@@ -96,6 +53,7 @@ export function extractPassenger(data: unknown): Passenger | null {
   }
 
   if (!('status' in data) || !isPassengerStatus(data.status)) {
+    console.error('Invalid status for passenger', data);
     return null;
   }
   const status = data.status;
@@ -104,15 +62,24 @@ export function extractPassenger(data: unknown): Passenger | null {
     !('numberOfPassengers' in data) ||
     typeof data.numberOfPassengers !== 'number'
   ) {
+    console.error('Invalid number of passengers for passenger', data);
     return null;
   }
   const numberOfPassengers = data.numberOfPassengers;
 
   if (!('previousLegs' in data) || !Array.isArray(data.previousLegs)) {
+    console.error('Invalid previous legs in passenger', data);
     return null;
   }
   const previousLegs = data.previousLegs.map(extractLeg);
-  if (!previousLegs.every(isLeg)) {
+  if (!previousLegs.every((leg) => leg !== null)) {
+    const firstInvalidLeg = previousLegs.find((leg) => leg === null);
+    console.error(
+      'Invalid previous legs, including',
+      firstInvalidLeg,
+      'in passenger',
+      data,
+    );
     return null;
   }
 
@@ -120,22 +87,32 @@ export function extractPassenger(data: unknown): Passenger | null {
   if ('currentLeg' in data) {
     currentLeg = extractLeg(data.currentLeg);
 
-    if (!isLeg(currentLeg)) {
+    if (currentLeg === null) {
+      console.error('Invalid current leg in passenger', data);
       return null;
     }
   }
 
   if (!('nextLegs' in data) || !Array.isArray(data.nextLegs)) {
+    console.error('Invalid next legs in passenger', data);
     return null;
   }
   const nextLegs = data.nextLegs.map(extractLeg);
-  if (!nextLegs.every(isLeg)) {
+  if (!nextLegs.every((leg) => leg !== null)) {
+    const firstInvalidLeg = nextLegs.find((leg) => leg === null);
+    console.error(
+      'Invalid next legs, including',
+      firstInvalidLeg,
+      'in passenger',
+      data,
+    );
     return null;
   }
 
   let tags: EntityMetadata['tags'] = [];
   if ('tags' in data) {
     if (!isTagged(data)) {
+      console.error('Invalid tags', data.tags, 'in passenger', data);
       return null;
     }
 

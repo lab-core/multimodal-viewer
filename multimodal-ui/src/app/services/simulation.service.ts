@@ -5,38 +5,35 @@ import {
   Signal,
   WritableSignal,
 } from '@angular/core';
-import { decode } from 'polyline';
-import { Leg } from '../interfaces/leg.model';
-import { extractPassenger, Passenger } from '../interfaces/passenger.model';
 import {
-  AllPolylines,
   AnimatedSimulationState,
   AnimatedSimulationStates,
   AnimationData,
   AnyPassengerAnimationData,
-  AnySimulationUpdate,
   AnyVehicleAnimationData,
   DisplayedPolylines,
   DynamicPassengerAnimationData,
   DynamicVehicleAnimationData,
   PassengerAnimationData,
-  Polyline,
-  RawSimulationEnvironment,
-  RawSimulationState,
-  Simulation,
-  SIMULATION_UPDATE_TYPES,
-  SimulationEnvironment,
-  SimulationState,
   StaticPassengerAnimationData,
   StaticVehicleAnimationData,
   VehicleAnimationData,
-} from '../interfaces/simulation.model';
-import { Stop } from '../interfaces/stop.model';
+} from '../interfaces/animation.model';
+import { SimulationEnvironment } from '../interfaces/environment.model';
+import { Leg } from '../interfaces/leg.model';
+import { Passenger } from '../interfaces/passenger.model';
 import {
-  extractVehicle,
-  getAllStops,
-  Vehicle,
-} from '../interfaces/vehicle.model';
+  AllPolylines,
+  extractAllPolylines,
+  Polyline,
+} from '../interfaces/polylines.model';
+import { Simulation } from '../interfaces/simulation.model';
+import {
+  extractSimulationStates,
+  SimulationState,
+} from '../interfaces/state.model';
+import { Stop } from '../interfaces/stop.model';
+import { getAllStops, Vehicle } from '../interfaces/vehicle.model';
 import { CommunicationService } from './communication.service';
 import { DataService } from './data.service';
 
@@ -81,35 +78,27 @@ export class SimulationService {
     this.communicationService.on(
       'missing-simulation-states',
       (
-        rawMissingStates,
-        rawMissingUpdates,
+        serializedMissingStatesEnvironments,
+        serializedMissingStatesUpdates,
         stateUpdateIndexesToKeep,
         shouldRequestMoreStates,
         firstContinuousStateUpdateIndex,
         lastContinuousStateUpdateIndex,
         currentStateUpdateIndex,
       ) => {
-        this._simulationStatesSignal.update((states) => {
-          const parsedMissingStates = (rawMissingStates as string[]).map(
-            (rawState) => JSON.parse(rawState) as RawSimulationState,
-          );
-          const parsedMissingUpdates = Object.entries(
-            rawMissingUpdates as Record<string, string[]>,
-          ).reduce(
-            (acc, [updateIndex, rawUpdates]) => {
-              acc[parseInt(updateIndex)] = rawUpdates.map(
-                (rawUpdate) => JSON.parse(rawUpdate) as AnySimulationUpdate,
-              );
-              return acc;
-            },
-            {} as Record<number, AnySimulationUpdate[]>,
-          );
-          const missingStates = parsedMissingStates
-            .map((rawState) =>
-              this.extractSimulationState(rawState, parsedMissingUpdates),
-            )
-            .filter((state) => state !== null);
+        const missingStates = extractSimulationStates(
+          serializedMissingStatesEnvironments,
+          serializedMissingStatesUpdates,
+        );
 
+        if (missingStates === null) {
+          console.error(
+            'Failed to extract missing simulation states from the server response.',
+          );
+          return;
+        }
+
+        this._simulationStatesSignal.update((states) => {
           return this.mergeStates(
             states,
             missingStates,
@@ -131,10 +120,7 @@ export class SimulationService {
         this._isFetchingPolylinesSignal.set(false);
 
         this._simulationPolylinesSignal.set(
-          this.extractPolylines(
-            polylinesByCoordinates as unknown as string[],
-            version as number,
-          ) ?? null,
+          extractAllPolylines(polylinesByCoordinates, version),
         );
       },
     );
@@ -230,278 +216,6 @@ export class SimulationService {
     this.communicationService.emit('get-polylines', simulationId);
   }
 
-  // MARK: Data extraction
-  /**
-   * Validate and extract simulation update from the raw data.
-   */
-  private extractSimulationUpdate(
-    simulationUpdate: AnySimulationUpdate,
-  ): AnySimulationUpdate | null {
-    // TODO Uncomment for debugging
-    // console.debug('Extracting simulation update: ', simulationUpdate);
-
-    const type = simulationUpdate.type;
-
-    if (!type) {
-      console.error('Simulation update type not found: ', type);
-      return null;
-    }
-    if (!SIMULATION_UPDATE_TYPES.includes(type)) {
-      console.error('Simulation update type not recognized: ', type);
-      return null;
-    }
-
-    const updateIndex = simulationUpdate.updateIndex;
-    if (updateIndex === undefined) {
-      console.error('Simulation update update index not found: ', updateIndex);
-      return null;
-    }
-
-    const timestamp = simulationUpdate.timestamp;
-    if (timestamp === undefined) {
-      console.error('Simulation update timestamp not found: ', timestamp);
-      return null;
-    }
-
-    const data = simulationUpdate.data;
-    switch (type) {
-      case 'updateStatistic': {
-        return {
-          type,
-          updateIndex: updateIndex,
-          timestamp,
-          data,
-        };
-      }
-
-      default:
-        return null;
-    }
-  }
-
-  private extractSimulationEnvironment(
-    data: RawSimulationEnvironment,
-  ): SimulationEnvironment | null {
-    // TODO Uncomment for debugging
-    // console.debug('Extracting simulation environment: ', data);
-
-    const passengers: SimulationEnvironment['passengers'] = {};
-    for (const passenger of data.passengers) {
-      const extractedPassenger = extractPassenger(passenger);
-      if (!extractedPassenger) {
-        console.error('Invalid passenger: ', passenger);
-        return null;
-      }
-      passengers[extractedPassenger.id] = extractedPassenger;
-    }
-
-    const vehicles: SimulationEnvironment['vehicles'] = {};
-    for (const vehicle of data.vehicles) {
-      const extractedVehicle = extractVehicle(vehicle);
-      if (!extractedVehicle) {
-        console.error('Invalid vehicle: ', vehicle);
-        return null;
-      }
-      vehicles[extractedVehicle.id] = extractedVehicle;
-    }
-
-    const timestamp = data.timestamp;
-    if (timestamp === undefined) {
-      console.error('Simulation environment timestamp not found: ', timestamp);
-      return null;
-    }
-
-    const statistic = data.statistic;
-    if (timestamp === undefined) {
-      console.error('Simulation statistic not found: ', timestamp);
-      return null;
-    }
-
-    const updateIndex = data.updateIndex;
-    if (updateIndex === undefined) {
-      console.error(
-        'Simulation environment updateIndex not found: ',
-        updateIndex,
-      );
-      return null;
-    }
-
-    return {
-      passengers,
-      vehicles,
-      timestamp,
-      statistic,
-      updateIndex: updateIndex,
-    };
-  }
-
-  private extractSimulationState(
-    rawSimulationState: RawSimulationState,
-    allUpdates: Record<number, AnySimulationUpdate[]>,
-  ): SimulationState | null {
-    // TODO Uncomment for debugging
-    // console.debug('Extracting simulation state: ', rawSimulationState);
-
-    const environment = this.extractSimulationEnvironment(rawSimulationState);
-    if (!environment) {
-      console.error('Invalid simulation environment: ', rawSimulationState);
-      return null;
-    }
-
-    const rawUpdates = allUpdates[environment.updateIndex];
-    if (!Array.isArray(rawUpdates)) {
-      console.error('Simulation state updates not found: ', rawUpdates);
-      return null;
-    }
-
-    const updates: AnySimulationUpdate[] = [];
-
-    for (const rawUpdate of rawUpdates) {
-      const update = this.extractSimulationUpdate(rawUpdate);
-
-      if (update) {
-        updates.push(update);
-      } else {
-        console.error('Invalid simulation update: ', rawUpdate);
-        return null;
-      }
-    }
-
-    return { ...environment, updates };
-  }
-
-  private extractPolylines(
-    polylinesByCoordinates: string[],
-    version: number,
-  ): AllPolylines | null {
-    if (!Array.isArray(polylinesByCoordinates)) {
-      console.error('Polylines not found: ', polylinesByCoordinates);
-      return null;
-    }
-
-    const parsedPolylinesByCoordinates: Record<string, Polyline> | null =
-      polylinesByCoordinates.reduce<Record<string, Polyline> | null>(
-        (acc, rawPolyline) => {
-          if (acc === null) {
-            return null;
-          }
-
-          const parsedPolyline: Record<string, unknown> = JSON.parse(
-            rawPolyline,
-          ) as Record<string, unknown>;
-
-          const coordinatesString: string = parsedPolyline[
-            'coordinatesString'
-          ] as string;
-          if (coordinatesString === undefined) {
-            console.error('Coordinates string not found: ', coordinatesString);
-            return null;
-          }
-          if (typeof coordinatesString !== 'string') {
-            console.error('Invalid coordinates string: ', coordinatesString);
-            return null;
-          }
-
-          const coefficients: number[] = parsedPolyline[
-            'coefficients'
-          ] as number[];
-          if (coefficients === undefined) {
-            console.error('Coefficients not found: ', coefficients);
-            return null;
-          }
-          if (!Array.isArray(coefficients)) {
-            console.error('Invalid coefficients: ', coefficients);
-            return null;
-          }
-
-          const encodedPolyline: string = parsedPolyline[
-            'encodedPolyline'
-          ] as string;
-          if (encodedPolyline === undefined) {
-            console.error(
-              'Polyline not found: ',
-              encodedPolyline,
-              parsedPolyline,
-            );
-            return null;
-          }
-          if (typeof encodedPolyline !== 'string') {
-            console.error('Invalid polyline: ', encodedPolyline);
-            return null;
-          }
-
-          const decodedPolyline = decode(encodedPolyline).map((point) => ({
-            latitude: point[0],
-            longitude: point[1],
-          }));
-
-          if (!Array.isArray(decodedPolyline)) {
-            console.error('Decoded polyline not found: ', decodedPolyline);
-            return null;
-          }
-
-          if (
-            decodedPolyline.length > 1 &&
-            coefficients.length !== decodedPolyline.length - 1
-          ) {
-            if (coefficients.length === 1 && coefficients[0] === 1) {
-              // The simulation was unable to calculate the coefficients, but
-              // we can still make the vehicle move at a constant speed.
-              const distances = [];
-
-              for (let index = 0; index < decodedPolyline.length - 1; index++) {
-                const point1 = decodedPolyline[index];
-                const point2 = decodedPolyline[index + 1];
-
-                const distance = Math.sqrt(
-                  (point2.latitude - point1.latitude) ** 2 +
-                    (point2.longitude - point1.longitude) ** 2,
-                );
-
-                distances.push(distance);
-              }
-
-              const totalDistance = distances.reduce((a, b) => a + b, 0);
-
-              if (totalDistance === 0) {
-                console.error('Total distance is zero: ', decodedPolyline);
-                return null;
-              }
-
-              coefficients.splice(
-                0,
-                coefficients.length,
-                ...distances.map((distance) => distance / totalDistance),
-              );
-            } else {
-              console.error(
-                'Polyline coefficients length mismatch: ',
-                decodedPolyline,
-                coefficients,
-              );
-              return null;
-            }
-          }
-
-          acc[coordinatesString] = { polyline: decodedPolyline, coefficients };
-
-          return acc;
-        },
-        {} as Record<string, Polyline>,
-      );
-
-    if (parsedPolylinesByCoordinates === null) {
-      return null;
-    }
-
-    if (typeof version !== 'number') {
-      console.error('Polylines version not found: ', version);
-      return null;
-    }
-    return { version, polylinesByCoordinates: parsedPolylinesByCoordinates };
-  }
-
-  // MARK: Build environment
   get simulationStatesSignal(): Signal<AnimatedSimulationStates> {
     return this._simulationStatesSignal;
   }
@@ -518,6 +232,7 @@ export class SimulationService {
     return this._isFetchingPolylinesSignal;
   }
 
+  // MARK: Build environment
   /**
    * Apply an update to the simulation environment in place.
    */
@@ -525,40 +240,15 @@ export class SimulationService {
     state: SimulationState,
     visualizationTime: number,
   ): SimulationEnvironment {
-    let lastUpdate: AnySimulationUpdate | null = null;
-
     for (const update of state.updates) {
       if (update.timestamp > visualizationTime) {
         break;
       }
 
-      this.applyUpdate(update, state);
-
-      lastUpdate = update;
-    }
-
-    if (lastUpdate) {
-      state.updateIndex = lastUpdate.updateIndex;
-      state.timestamp = lastUpdate.timestamp;
+      update.apply(state);
     }
 
     return state;
-  }
-
-  applyUpdate(
-    update: AnySimulationUpdate,
-    simulationEnvironment: SimulationEnvironment,
-  ) {
-    simulationEnvironment.updateIndex = update.updateIndex;
-    simulationEnvironment.timestamp = update.timestamp;
-
-    switch (update.type) {
-      case 'updateStatistic':
-        {
-          simulationEnvironment.statistic = update.data.statistic;
-        }
-        break;
-    }
   }
 
   private mergeStates(
@@ -716,13 +406,13 @@ export class SimulationService {
     );
 
     for (const update of state.updates) {
-      this.applyUpdate(update, animatedSimulationState);
+      update.apply(animatedSimulationState);
       animatedSimulationState.animationData.endUpdateIndex = update.updateIndex;
       animatedSimulationState.animationData.endTimestamp = update.timestamp;
 
-      switch (update.type) {
-        case 'updateStatistic':
-          // Do nothing
+      switch (update.updateType) {
+        // TODO
+        default:
           break;
       }
     }

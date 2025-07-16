@@ -1,0 +1,25 @@
+<mat-accordion multi="true">
+  @for (key of keys(); track key) {
+    @if (isStatistics(recursiveDict[key])) {
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            {{ capitalize(key) }}
+          </mat-panel-title>
+        </mat-expansion-panel-header>
+        <div class="flex-column gap-0-5-rem">
+          <app-recursive-statistics [recursiveDict]="recursiveDict[key]" />
+        </div>
+      </mat-expansion-panel>
+    } @else {
+      <div class="flex-column gap-0-5-rem indent">
+        <span style="white-space: normal">
+          {{ capitalize(key) }}:
+          <span style="white-space: nowrap">
+            {{ formatEntry(recursiveDict[key]) }}
+          </span>
+        </span>
+      </div>
+    }
+  }
+</mat-accordion>

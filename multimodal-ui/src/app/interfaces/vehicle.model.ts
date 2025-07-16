@@ -1,5 +1,5 @@
-import { EntityMetadata, isEntityMetadata } from './entity.model';
-import { extractStop, isStop, Stop } from './stop.model';
+import { EntityMetadata } from './entity.model';
+import { extractStop, Stop } from './stop.model';
 import { isTagged } from './tags.model';
 
 export type VehicleStatus =
@@ -32,67 +32,20 @@ export interface Vehicle extends EntityMetadata {
   capacity: number;
 }
 
-export function isVehicle(value: unknown): value is Vehicle {
-  if (typeof value !== 'object' || value === null) {
-    return false;
-  }
-
-  if (!isEntityMetadata(value) || value.entityType !== 'vehicle') {
-    return false;
-  }
-
-  if (
-    !('mode' in value) ||
-    (value.mode !== null && typeof value.mode !== 'string')
-  ) {
-    return false;
-  }
-
-  if (!('status' in value) || !isVehicleStatus(value.status)) {
-    return false;
-  }
-
-  if (
-    !('previousStops' in value) ||
-    !Array.isArray(value.previousStops) ||
-    !value.previousStops.every(isStop)
-  ) {
-    return false;
-  }
-
-  if (
-    !('currentStop' in value) ||
-    (value.currentStop !== null && !isStop(value.currentStop))
-  ) {
-    return false;
-  }
-
-  if (
-    !('nextStops' in value) ||
-    !Array.isArray(value.nextStops) ||
-    !value.nextStops.every(isStop)
-  ) {
-    return false;
-  }
-
-  if (!('capacity' in value) || typeof value.capacity !== 'number') {
-    return false;
-  }
-
-  return true;
-}
-
 export function extractVehicle(data: unknown): Vehicle | null {
   if (typeof data !== 'object' || data === null) {
+    console.error('Invalid data type for vehicle', data);
     return null;
   }
 
   if (!('id' in data) || typeof data.id !== 'string') {
+    console.error('Invalid ID for vehicle', data);
     return null;
   }
   const id = data.id;
 
   if (!('name' in data) || typeof data.name !== 'string') {
+    console.error('Invalid name for vehicle', data);
     return null;
   }
   const name = data.name;
@@ -100,6 +53,7 @@ export function extractVehicle(data: unknown): Vehicle | null {
   let mode = null;
   if ('mode' in data) {
     if (typeof data.mode !== 'string') {
+      console.error('Invalid mode for vehicle', data.mode, 'in vehicle', data);
       return null;
     }
 
@@ -107,15 +61,24 @@ export function extractVehicle(data: unknown): Vehicle | null {
   }
 
   if (!('status' in data) || !isVehicleStatus(data.status)) {
+    console.error('Invalid status for vehicle', data);
     return null;
   }
   const status = data.status;
 
   if (!('previousStops' in data) || !Array.isArray(data.previousStops)) {
+    console.error('Invalid previous stops for vehicle', data);
     return null;
   }
   const previousStops = data.previousStops.map(extractStop);
-  if (!previousStops.every(isStop)) {
+  if (!previousStops.every((stop) => stop !== null)) {
+    const firstInvalidStop = previousStops.find((stop) => stop === null);
+    console.error(
+      'Invalid previous stops, including',
+      firstInvalidStop,
+      'in vehicle',
+      data,
+    );
     return null;
   }
 
@@ -123,20 +86,30 @@ export function extractVehicle(data: unknown): Vehicle | null {
   if ('currentStop' in data) {
     currentStop = extractStop(data.currentStop);
 
-    if (!isStop(currentStop)) {
+    if (currentStop === null) {
+      console.error('Invalid current stop for vehicle', data);
       return null;
     }
   }
 
   if (!('nextStops' in data) || !Array.isArray(data.nextStops)) {
+    console.error('Invalid next stops for vehicle', data);
     return null;
   }
   const nextStops = data.nextStops.map(extractStop);
-  if (!nextStops.every(isStop)) {
+  if (!nextStops.every((stop) => stop !== null)) {
+    const firstInvalidStop = nextStops.find((stop) => stop === null);
+    console.error(
+      'Invalid next stops, including',
+      firstInvalidStop,
+      'in vehicle',
+      data,
+    );
     return null;
   }
 
   if (!('capacity' in data) || typeof data.capacity !== 'number') {
+    console.error('Invalid capacity for vehicle', data);
     return null;
   }
   const capacity = data.capacity;
@@ -144,6 +117,7 @@ export function extractVehicle(data: unknown): Vehicle | null {
   let tags: EntityMetadata['tags'] = [];
   if ('tags' in data) {
     if (!isTagged(data)) {
+      console.error('Invalid tags', data.tags, 'for vehicle', data);
       return null;
     }
 

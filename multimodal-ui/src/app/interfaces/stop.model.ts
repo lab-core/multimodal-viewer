@@ -1,4 +1,4 @@
-import { EntityMetadata, isEntityMetadata } from './entity.model';
+import { EntityMetadata } from './entity.model';
 import { isPosition, Position } from './position.model';
 import { isTagged } from './tags.model';
 
@@ -28,53 +28,16 @@ export function getStopId(stopOrPosition: Stop | Position): string {
   return '' + position.latitude + ',' + position.longitude;
 }
 
-export function isStop(value: unknown): value is Stop {
-  if (typeof value !== 'object' || value === null) {
-    return false;
-  }
-
-  if (!isEntityMetadata(value) || value.entityType !== 'stop') {
-    return false;
-  }
-
-  if (!('stopType' in value) || !isStopType(value.stopType)) {
-    return false;
-  }
-
-  if (!('arrivalTime' in value) || typeof value.arrivalTime !== 'number') {
-    return false;
-  }
-
-  if (
-    !('departureTime' in value) ||
-    (value.departureTime !== null && typeof value.departureTime !== 'number')
-  ) {
-    return false;
-  }
-
-  if (!('position' in value) || !isPosition(value.position)) {
-    return false;
-  }
-
-  if (!('capacity' in value) || typeof value.capacity !== 'number') {
-    return false;
-  }
-
-  if (!('label' in value) || typeof value.label !== 'string') {
-    return false;
-  }
-
-  return true;
-}
-
 export function extractStop(data: unknown): Stop | null {
   if (typeof data !== 'object' || data === null) {
+    console.error('Invalid data type for stop', data);
     return null;
   }
 
   let tags: Stop['tags'] = [];
   if ('tags' in data) {
     if (!isTagged(data)) {
+      console.error('Invalid tags', data.tags, 'in stop', data);
       return null;
     }
 
@@ -82,11 +45,13 @@ export function extractStop(data: unknown): Stop | null {
   }
 
   if (!('stopType' in data) || !isStopType(data.stopType)) {
+    console.error('Invalid stop type in stop', data);
     return null;
   }
   const stopType = data.stopType;
 
   if (!('arrivalTime' in data) || typeof data.arrivalTime !== 'number') {
+    console.error('Invalid arrival time in stop', data);
     return null;
   }
   const arrivalTime = data.arrivalTime;
@@ -94,6 +59,12 @@ export function extractStop(data: unknown): Stop | null {
   let departureTime: Stop['departureTime'] = null;
   if ('departureTime' in data) {
     if (data.departureTime !== null && typeof data.departureTime !== 'number') {
+      console.error(
+        'Invalid departure time',
+        data.departureTime,
+        'in stop',
+        data,
+      );
       return null;
     }
 
@@ -101,6 +72,7 @@ export function extractStop(data: unknown): Stop | null {
   }
 
   if (!('position' in data) || !isPosition(data.position)) {
+    console.error('Invalid position in stop', data);
     return null;
   }
   const position = data.position;
@@ -108,6 +80,7 @@ export function extractStop(data: unknown): Stop | null {
   let capacity = DEFAULT_STOP_CAPACITY;
   if ('capacity' in data) {
     if (typeof data.capacity !== 'number') {
+      console.error('Invalid capacity', data.capacity, 'in stop', data);
       return null;
     }
 
@@ -115,6 +88,7 @@ export function extractStop(data: unknown): Stop | null {
   }
 
   if (!('label' in data) || typeof data.label !== 'string') {
+    console.error('Invalid label in stop', data);
     return null;
   }
   const label = data.label;

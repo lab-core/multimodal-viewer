@@ -5,14 +5,14 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { EntityMetadata } from '../../interfaces/entity.model';
-import { getAllLegs } from '../../interfaces/passenger.model';
 import {
   AnimatedPassenger,
   AnimatedSimulationEnvironment,
   AnimatedStop,
   AnimatedVehicle,
-} from '../../interfaces/simulation.model';
+} from '../../interfaces/animation.model';
+import { EntityMetadata } from '../../interfaces/entity.model';
+import { getAllLegs } from '../../interfaces/passenger.model';
 import { AnimationService } from '../../services/animation.service';
 import { FavoriteEntitiesService } from '../../services/favorite-entities.service';
 import { VisualizationService } from '../../services/visualization.service';

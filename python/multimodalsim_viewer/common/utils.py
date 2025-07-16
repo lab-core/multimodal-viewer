@@ -4,7 +4,7 @@ import os
 import shutil
 import threading
 from enum import Enum
-from json import dumps, loads
+from json import dumps
 
 from dotenv import dotenv_values
 from filelock import FileLock
@@ -135,50 +135,6 @@ def build_simulation_id(name: str) -> tuple[str, str]:
     return simulation_id, start_time
 
 
-def get_data_directory_path() -> str:
-    current_file_path = os.path.abspath(__file__)
-    current_file_dir = os.path.dirname(current_file_path)
-    data_directory_path = os.path.join(current_file_dir, "..", "data")
-
-    if not os.path.exists(data_directory_path):
-        os.makedirs(data_directory_path)
-
-    return data_directory_path
-
-
-def get_saved_logs_directory_path() -> str:
-    data_directory_path = get_data_directory_path()
-    saved_logs_directory_path = os.path.join(data_directory_path, "saved_logs")
-
-    if not os.path.exists(saved_logs_directory_path):
-        os.makedirs(saved_logs_directory_path)
-
-    return saved_logs_directory_path
-
-
-def get_input_data_directory_path(data: str | None = None) -> str:
-    input_data_directory = INPUT_DATA_DIRECTORY_PATH
-
-    if data is not None:
-        input_data_directory = os.path.join(input_data_directory, data)
-
-    return input_data_directory
-
-
-def get_available_data():
-    input_data_directory = get_input_data_directory_path()
-
-    if not os.path.exists(input_data_directory):
-        return []
-
-    # List all directories in the input data directory
-    return [
-        name
-        for name in os.listdir(input_data_directory)
-        if os.path.isdir(os.path.join(input_data_directory, name)) and not name.startswith(".")
-    ]
-
-
 def log(message: str, auth_type: str, level=logging.INFO, should_emit=True) -> None:
     if auth_type == "server":
         logging.log(level, "[%s] %s", auth_type, message)
@@ -221,45 +177,3 @@ def set_event_on_input(action: str, key: str, event: threading.Event) -> None:
 
     print(f"Received {key}: {action}")
     event.set()
-
-
-# MARK: Serializable
-class Serializable:
-    def serialize(self) -> dict:
-        """
-        Serialize the instance into a dictionary.
-
-        This method should be implemented by subclasses.
-        """
-
-    @classmethod
-    def deserialize(cls, serialized_data: dict | str) -> "Serializable":
-        """
-        Deserialize a dictionary into an instance of the class.
-
-        If the dictionary is not valid, raise a `ValueError`.
-
-        This method should be implemented by subclasses.
-        """
-
-    @staticmethod
-    def serialized_data_to_dict(serialized_data: dict | str) -> dict:
-        """
-        Parse the serialized data into a dictionary if it is a string.
-
-        This method should be called before each deserialization.
-        """
-        if isinstance(serialized_data, str):
-            return loads(serialized_data)
-        return serialized_data
-
-    @staticmethod
-    def verify_required_fields(serialized_data: dict, required_fields: list[str], class_name: str) -> None:
-        """
-        Verify that the serialized data contains all required fields.
-
-        If any field is missing, raise a `ValueError`.
-        """
-        for field in required_fields:
-            if field not in serialized_data:
-                raise ValueError(f"Serialized data of {class_name} must contain '{field}' key")

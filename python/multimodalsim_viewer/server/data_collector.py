@@ -40,17 +40,18 @@ from multimodalsim_viewer.common.utils import (
     SimulationStatus,
     build_simulation_id,
 )
-from multimodalsim_viewer.server.data_manager import SimulationVisualizationDataManager
-from multimodalsim_viewer.server.model import SimulationInformation, StatisticUpdate
-from multimodalsim_viewer.server.model import Update as OldUpdate
-from multimodalsim_viewer.server.model import UpdateType as OldUpdateType
-from multimodalsim_viewer.server.model import (
-    VisualizedEnvironment,
-    VisualizedPassenger,
-    VisualizedStop,
-    VisualizedVehicle,
+from multimodalsim_viewer.models.environment import VisualizedEnvironment
+from multimodalsim_viewer.models.passenger import VisualizedPassenger
+from multimodalsim_viewer.models.simulation_information import SimulationInformation
+from multimodalsim_viewer.models.stop import VisualizedStop
+from multimodalsim_viewer.models.update import (
+    PassengerUpdate,
+    StatisticsUpdate,
+    Update,
+    VehicleUpdate,
 )
-from multimodalsim_viewer.server.update import PassengerUpdate, Update, VehicleUpdate
+from multimodalsim_viewer.models.vehicle import VisualizedVehicle
+from multimodalsim_viewer.server.data_manager import SimulationVisualizationDataManager
 
 
 # MARK: Data Collector
@@ -258,17 +259,19 @@ class SimulationVisualizationDataCollector(DataCollector):  # pylint: disable=to
         ):
             self.last_statistics_update_time = current_event.time
             self.add_update(
-                OldUpdate(
-                    OldUpdateType.UPDATE_STATISTIC,
-                    StatisticUpdate(self.data_analyzer.get_statistics()),
+                StatisticsUpdate(
+                    self.update_counter,
+                    event_index if event_index is not None else -1,
+                    current_event.name,
                     current_event.time,
+                    self.data_analyzer.get_statistics(),
                 ),
                 env,
             )
 
     # MARK: +- Add Update
     def add_update(  # pylint: disable=too-many-branches, too-many-statements
-        self, update: OldUpdate | Update, environment: Environment
+        self, update: Update, environment: Environment
     ) -> None:
         update.update_index = self.update_counter
         self.visualized_environment.update_index = self.update_counter
@@ -323,11 +326,7 @@ class SimulationVisualizationDataCollector(DataCollector):  # pylint: disable=to
                 self.simulation_id, self.visualized_environment
             )
 
-        if update.update_type == OldUpdateType.UPDATE_STATISTIC:
-            statistic_update: StatisticUpdate = update.data
-            self.visualized_environment.statistic = statistic_update.statistic
-        else:
-            update.apply(self.visualized_environment)
+        update.apply(self.visualized_environment)
 
         if isinstance(update, VehicleUpdate):
             vehicle = self.visualized_environment.get_vehicle(update.vehicle_id)
