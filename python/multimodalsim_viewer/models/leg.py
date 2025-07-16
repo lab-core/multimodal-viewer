@@ -3,6 +3,7 @@ from enum import Enum
 from multimodalsim.simulator.environment import Environment
 from multimodalsim.simulator.request import Leg, Trip
 
+from multimodalsim_viewer.common.utils import generate_tags
 from multimodalsim_viewer.models.serializable import Serializable
 
 
@@ -94,7 +95,7 @@ class VisualizedLeg(Serializable):  # pylint: disable=too-many-instance-attribut
             alighting_stop_index,
             leg.boarding_time,
             leg.alighting_time,
-            leg.tags,
+            generate_tags(),
             leg_type,
         )
 

@@ -177,3 +177,47 @@ def set_event_on_input(action: str, key: str, event: threading.Event) -> None:
 
     print(f"Received {key}: {action}")
     event.set()
+
+
+def generate_tags() -> list[str]:
+    """
+    Generate a random list of tags.
+
+    The possible tags are tag1 - tag10.
+
+    The tag array can be of length 0 to 3, with the following probabilities:
+    - 0 tags: 20%
+    - 1 tag: 40%
+    - 2 tags: 30%
+    - 3 tags: 10%
+    """
+
+    possible_tags = [
+        "tag1",
+        "tag2",
+        "tag3",
+        "tag4",
+        "tag5",
+        "tag6",
+        "tag7",
+        "tag8",
+        "tag9",
+        "tag10",
+    ]
+
+    from random import random, shuffle
+
+    shuffle(possible_tags)
+
+    tags_count = 0
+    random_value = random()
+    if random_value < 0.2:
+        tags_count = 0
+    elif random_value < 0.6:
+        tags_count = 1
+    elif random_value < 0.9:
+        tags_count = 2
+    else:
+        tags_count = 3
+
+    return possible_tags[:tags_count]

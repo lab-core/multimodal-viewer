@@ -3,6 +3,7 @@ from math import inf
 
 from multimodalsim.simulator.stop import Stop
 
+from multimodalsim_viewer.common.utils import generate_tags
 from multimodalsim_viewer.models.serializable import Serializable
 
 
@@ -45,7 +46,7 @@ class VisualizedStop(Serializable):  # pylint: disable=too-many-instance-attribu
             stop.location.lon,
             stop.capacity,
             stop.location.label,
-            stop.tags,
+            generate_tags(),
             stop_type,
         )
 

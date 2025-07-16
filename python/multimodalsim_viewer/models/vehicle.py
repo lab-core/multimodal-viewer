@@ -1,6 +1,7 @@
 from multimodalsim.simulator.vehicle import Route, Vehicle
 from multimodalsim.state_machine.status import VehicleStatus
 
+from multimodalsim_viewer.common.utils import generate_tags
 from multimodalsim_viewer.models.serializable import Serializable
 from multimodalsim_viewer.models.stop import StopType, VisualizedStop
 
@@ -89,7 +90,7 @@ class VisualizedVehicle(Serializable):  # pylint: disable=too-many-instance-attr
             next_stops,
             vehicle.capacity,
             vehicle.name,
-            vehicle.tags,
+            generate_tags(),
         )
 
     # Similar to VisualizedPassenger

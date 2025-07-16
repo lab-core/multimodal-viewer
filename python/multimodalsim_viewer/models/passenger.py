@@ -5,6 +5,7 @@ from multimodalsim.simulator.environment import Environment
 from multimodalsim.simulator.request import Trip
 from multimodalsim.state_machine.status import PassengerStatus
 
+from multimodalsim_viewer.common.utils import generate_tags
 from multimodalsim_viewer.models.leg import LegType, VisualizedLeg
 from multimodalsim_viewer.models.serializable import Serializable
 
@@ -79,7 +80,7 @@ class VisualizedPassenger(Serializable):  # pylint: disable=too-many-instance-at
         ]
 
         return cls(
-            trip.id, trip.name, trip.status, trip.nb_passengers, previous_legs, current_leg, next_legs, trip.tags
+            trip.id, trip.name, trip.status, trip.nb_passengers, previous_legs, current_leg, next_legs, generate_tags()
         )
 
     @property
