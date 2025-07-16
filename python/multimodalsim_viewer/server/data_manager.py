@@ -28,7 +28,7 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
     __POLYLINES_FILE_NAME = "polylines"
     __POLYLINES_VERSION_FILE_NAME = "version"
 
-    __STATES_ORDER_MINIMUM_LENGTH = 8
+    __STATES_UPDATE_INDEX_MINIMUM_LENGTH = 8
     __STATES_TIMESTAMP_MINIMUM_LENGTH = 8
 
     # Only send a maximum of __MAX_STATES_AT_ONCE states at once
@@ -194,17 +194,19 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
         return folder_path
 
     @staticmethod
-    def get_saved_simulation_state_file_path(simulation_id: str, order: int, timestamp: float) -> str:
+    def get_saved_simulation_state_file_path(simulation_id: str, update_index: int, timestamp: float) -> str:
         folder_path = SimulationVisualizationDataManager.get_saved_simulation_states_folder_path(simulation_id)
 
-        padded_order = str(order).zfill(SimulationVisualizationDataManager.__STATES_ORDER_MINIMUM_LENGTH)
+        padded_update_index = str(update_index).zfill(
+            SimulationVisualizationDataManager.__STATES_UPDATE_INDEX_MINIMUM_LENGTH
+        )
         padded_timestamp = str(int(timestamp)).zfill(
             SimulationVisualizationDataManager.__STATES_TIMESTAMP_MINIMUM_LENGTH
         )
 
         # States and updates are stored in a .jsonl file to speed up reads and writes
         # Each line is a state (the first line) or an update (the following lines)
-        file_path = f"{folder_path}/{padded_order}-{padded_timestamp}.jsonl"
+        file_path = f"{folder_path}/{padded_update_index}-{padded_timestamp}.jsonl"
 
         if not os.path.exists(file_path):
             with open(file_path, "w", encoding="utf-8") as file:
@@ -222,15 +224,15 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
 
         states = []
         for state_file in all_states_files:
-            order, timestamp = state_file.split("-")
-            states.append((int(order), float(timestamp.split(".")[0])))
+            update_index, timestamp = state_file.split("-")
+            states.append((int(update_index), float(timestamp.split(".")[0])))
 
         return sorted(states, key=lambda x: (x[1], x[0]))
 
     @staticmethod
     def save_state(simulation_id: str, environment: VisualizedEnvironment) -> str:
         file_path = SimulationVisualizationDataManager.get_saved_simulation_state_file_path(
-            simulation_id, environment.order, environment.timestamp
+            simulation_id, environment.update_index, environment.timestamp
         )
 
         lock = FileLock(f"{file_path}.lock")
@@ -252,7 +254,7 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
     def get_missing_states(  # pylint: disable=too-many-locals, too-many-branches, too-many-statements
         simulation_id: str,
         visualization_time: float,
-        loaded_state_orders: list[int],
+        loaded_state_update_indexes: list[int],
         is_simulation_complete: bool,
     ) -> tuple[list[str], dict[list[str]], list[int], bool, int, int, int]:
         sorted_states = SimulationVisualizationDataManager.get_sorted_states(simulation_id)
@@ -262,7 +264,7 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
 
         necessary_state_index = None
 
-        for index, (order, state_timestamp) in enumerate(sorted_states):
+        for index, (update_index, state_timestamp) in enumerate(sorted_states):
             if necessary_state_index is None and state_timestamp > visualization_time:
                 necessary_state_index = index
                 break
@@ -278,7 +280,7 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
         # Handle negative indexes
         necessary_state_index = max(0, necessary_state_index)
 
-        state_orders_to_keep = []
+        state_update_indexes_to_keep = []
         missing_states = []
         missing_updates = {}
 
@@ -322,12 +324,12 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
         )
 
         for index in indexes_to_load:
-            order, state_timestamp = sorted_states[index]
+            update_index, state_timestamp = sorted_states[index]
 
             # If the client already has the state, skip it
             # except the last state that might have changed
-            if order in loaded_state_orders and not order == max(loaded_state_orders):
-                state_orders_to_keep.append(order)
+            if update_index in loaded_state_update_indexes and not update_index == max(loaded_state_update_indexes):
+                state_update_indexes_to_keep.append(update_index)
 
                 all_state_indexes_in_client.append(index)
 
@@ -341,7 +343,7 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
                 continue
 
             state_file_path = SimulationVisualizationDataManager.get_saved_simulation_state_file_path(
-                simulation_id, order, state_timestamp
+                simulation_id, update_index, state_timestamp
             )
 
             lock = FileLock(f"{state_file_path}.lock")
@@ -356,14 +358,14 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
                     for update_data in updates_data:
                         current_state_updates.append(update_data)
 
-                    missing_updates[order] = current_state_updates
+                    missing_updates[update_index] = current_state_updates
 
                     all_state_indexes_in_client.append(index)
 
                     last_state_index_in_client = max(last_state_index_in_client, index)
 
         client_has_last_state = last_state_index_in_client == len(sorted_states) - 1
-        client_has_max_states = len(missing_states) + len(state_orders_to_keep) >= len(indexes_to_load)
+        client_has_max_states = len(missing_states) + len(state_update_indexes_to_keep) >= len(indexes_to_load)
 
         should_request_more_states = (is_simulation_complete and not client_has_max_states) or (
             not is_simulation_complete and (client_has_last_state or not client_has_max_states)
@@ -388,19 +390,19 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
             else:
                 break
 
-        first_continuous_state_order = sorted_states[first_continuous_state_index][0]
-        last_continuous_state_order = sorted_states[last_continuous_state_index][0]
+        first_continuous_state_update_index = sorted_states[first_continuous_state_index][0]
+        last_continuous_state_update_index = sorted_states[last_continuous_state_index][0]
 
-        necessary_state_order = sorted_states[necessary_state_index][0]
+        necessary_state_update_index = sorted_states[necessary_state_index][0]
 
         return (
             missing_states,
             missing_updates,
-            state_orders_to_keep,
+            state_update_indexes_to_keep,
             should_request_more_states,
-            first_continuous_state_order,
-            last_continuous_state_order,
-            necessary_state_order,
+            first_continuous_state_update_index,
+            last_continuous_state_update_index,
+            necessary_state_update_index,
         )
 
     # MARK: +- Polylines
@@ -525,3 +527,31 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
                     polylines.append(line)
 
         return polylines, version
+
+    @staticmethod
+    def get_all_simulation_states(simulation_id: str) -> tuple[list[str], dict[list[str]]]:
+        states = []
+        updates = {}
+
+        sorted_states = SimulationVisualizationDataManager.get_sorted_states(simulation_id)
+
+        for update_index, timestamp in sorted_states:
+            file_path = SimulationVisualizationDataManager.get_saved_simulation_state_file_path(
+                simulation_id, update_index, timestamp
+            )
+
+            lock = FileLock(f"{file_path}.lock")
+
+            with lock:
+                with open(file_path, "r", encoding="utf-8") as file:
+                    state_data = file.readline()
+                    states.append(state_data)
+
+                    updates_data = file.readlines()
+                    current_state_updates = []
+                    for update_data in updates_data:
+                        current_state_updates.append(update_data)
+
+                    updates[update_index] = current_state_updates
+
+        return states, updates

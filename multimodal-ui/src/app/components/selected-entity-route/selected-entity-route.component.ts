@@ -1,6 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Stop } from '../../interfaces/simulation.model';
+import { Stop } from '../../interfaces/stop.model';
 import { AnimationService } from '../../services/animation.service';
 
 @Component({

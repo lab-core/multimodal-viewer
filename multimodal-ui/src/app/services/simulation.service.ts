@@ -5,9 +5,9 @@ import {
   Signal,
   WritableSignal,
 } from '@angular/core';
-import randomName from 'node-random-name';
 import { decode } from 'polyline';
-import { extractLeg, Leg } from '../interfaces/leg.model';
+import { Leg } from '../interfaces/leg.model';
+import { extractPassenger, Passenger } from '../interfaces/passenger.model';
 import {
   AllPolylines,
   AnimatedSimulationState,
@@ -16,17 +16,10 @@ import {
   AnyPassengerAnimationData,
   AnySimulationUpdate,
   AnyVehicleAnimationData,
-  DEFAULT_STOP_CAPACITY,
   DisplayedPolylines,
   DynamicPassengerAnimationData,
   DynamicVehicleAnimationData,
-  getAllStops,
-  getStopId,
-  Passenger,
-  PASSENGER_STATUSES,
   PassengerAnimationData,
-  PassengerLegsUpdate,
-  PassengerStatusUpdate,
   Polyline,
   RawSimulationEnvironment,
   RawSimulationState,
@@ -34,17 +27,16 @@ import {
   SIMULATION_UPDATE_TYPES,
   SimulationEnvironment,
   SimulationState,
-  SimulationUpdate,
   StaticPassengerAnimationData,
   StaticVehicleAnimationData,
-  StatisticUpdate,
-  Stop,
-  Vehicle,
-  VEHICLE_STATUSES,
   VehicleAnimationData,
-  VehicleStatusUpdate,
-  VehicleStopsUpdate,
 } from '../interfaces/simulation.model';
+import { Stop } from '../interfaces/stop.model';
+import {
+  extractVehicle,
+  getAllStops,
+  Vehicle,
+} from '../interfaces/vehicle.model';
 import { CommunicationService } from './communication.service';
 import { DataService } from './data.service';
 
@@ -91,11 +83,11 @@ export class SimulationService {
       (
         rawMissingStates,
         rawMissingUpdates,
-        stateOrdersToKeep,
+        stateUpdateIndexesToKeep,
         shouldRequestMoreStates,
-        firstContinuousStateOrder,
-        lastContinuousStateOrder,
-        currentStateOrder,
+        firstContinuousStateUpdateIndex,
+        lastContinuousStateUpdateIndex,
+        currentStateUpdateIndex,
       ) => {
         this._simulationStatesSignal.update((states) => {
           const parsedMissingStates = (rawMissingStates as string[]).map(
@@ -104,8 +96,8 @@ export class SimulationService {
           const parsedMissingUpdates = Object.entries(
             rawMissingUpdates as Record<string, string[]>,
           ).reduce(
-            (acc, [order, rawUpdates]) => {
-              acc[parseInt(order)] = rawUpdates.map(
+            (acc, [updateIndex, rawUpdates]) => {
+              acc[parseInt(updateIndex)] = rawUpdates.map(
                 (rawUpdate) => JSON.parse(rawUpdate) as AnySimulationUpdate,
               );
               return acc;
@@ -121,11 +113,11 @@ export class SimulationService {
           return this.mergeStates(
             states,
             missingStates,
-            stateOrdersToKeep as number[],
+            stateUpdateIndexesToKeep as number[],
             !!shouldRequestMoreStates,
-            firstContinuousStateOrder as number,
-            lastContinuousStateOrder as number,
-            currentStateOrder as number,
+            firstContinuousStateUpdateIndex as number,
+            lastContinuousStateUpdateIndex as number,
+            currentStateUpdateIndex as number,
           );
         });
 
@@ -220,7 +212,7 @@ export class SimulationService {
   getMissingSimulationStates(
     simulationId: string,
     visualizationTime: number,
-    allStateOrders: number[],
+    allStateUpdateIndexes: number[],
   ) {
     this._isFetchingStatesSignal.set(true);
 
@@ -228,7 +220,7 @@ export class SimulationService {
       'get-missing-simulation-states',
       simulationId,
       visualizationTime,
-      allStateOrders,
+      allStateUpdateIndexes,
     );
   }
 
@@ -259,9 +251,9 @@ export class SimulationService {
       return null;
     }
 
-    const order = simulationUpdate.order;
-    if (order === undefined) {
-      console.error('Simulation update order not found: ', order);
+    const updateIndex = simulationUpdate.updateIndex;
+    if (updateIndex === undefined) {
+      console.error('Simulation update update index not found: ', updateIndex);
       return null;
     }
 
@@ -273,437 +265,18 @@ export class SimulationService {
 
     const data = simulationUpdate.data;
     switch (type) {
-      case 'createPassenger':
-        {
-          const passenger = this.extractPassenger(data as Passenger);
-          if (passenger) {
-            return { type, order, timestamp, data: passenger };
-          }
-        }
-        return null;
-
-      case 'updatePassengerStatus':
-        {
-          const passengerStatusUpdate = this.extractPassengerStatusUpdate(
-            data as PassengerStatusUpdate,
-          );
-          if (passengerStatusUpdate) {
-            return { type, order, timestamp, data: passengerStatusUpdate };
-          }
-        }
-        return null;
-      case 'updatePassengerLegs':
-        {
-          const passengerLegsUpdate = this.extractPassengerLegsUpdate(
-            data as PassengerLegsUpdate,
-          );
-          if (passengerLegsUpdate) {
-            return { type, order, timestamp, data: passengerLegsUpdate };
-          }
-        }
-        return null;
-
-      case 'createVehicle':
-        {
-          const vehicle = this.extractVehicle(data as Vehicle);
-          if (vehicle) {
-            return { type, order, timestamp, data: vehicle };
-          }
-        }
-        return null;
-
-      case 'updateVehicleStatus':
-        {
-          const vehicleStatusUpdate = this.extractVehicleStatusUpdate(
-            data as VehicleStatusUpdate,
-          );
-          if (vehicleStatusUpdate) {
-            return { type, order, timestamp, data: vehicleStatusUpdate };
-          }
-        }
-        return null;
-
-      case 'updateVehicleStops':
-        {
-          const vehicleStopsUpdate = this.extractVehicleStopsUpdate(
-            data as VehicleStopsUpdate,
-          );
-          if (vehicleStopsUpdate) {
-            return { type, order, timestamp, data: vehicleStopsUpdate };
-          }
-        }
-        return null;
-
       case 'updateStatistic': {
         return {
           type,
-          order,
+          updateIndex: updateIndex,
           timestamp,
-          data: data as StatisticUpdate,
+          data,
         };
       }
 
       default:
         return null;
     }
-  }
-
-  private extractPassenger(data: Passenger): Passenger | null {
-    // TODO Uncomment for debugging
-    // console.debug('Extracting passenger: ', data);
-
-    const id = data.id;
-    if (!id) {
-      console.error('Passenger ID not found: ', id);
-      return null;
-    }
-
-    let name = data.name;
-
-    if (name === id || name === null || name === undefined) {
-      name = (randomName as (args?: { seed: string }) => string)({ seed: id });
-    }
-
-    const status = data.status;
-    if (!status) {
-      console.error('Passenger status not found: ', status);
-      return null;
-    }
-    if (!PASSENGER_STATUSES.includes(status)) {
-      console.error('Passenger status not recognized: ', status);
-      return null;
-    }
-
-    const numberOfPassengers = data.numberOfPassengers;
-    if (numberOfPassengers === undefined) {
-      console.error(
-        'Passenger number of passengers not found: ',
-        numberOfPassengers,
-      );
-      return null;
-    }
-
-    if (!Array.isArray(data.previousLegs)) {
-      console.error('Passenger previous legs not found: ', data.previousLegs);
-      return null;
-    }
-
-    const previousLegs = data.previousLegs.map((leg) => extractLeg(leg));
-    if (!previousLegs.every((leg) => leg !== null)) {
-      console.error('Passenger previous legs invalid: ', previousLegs);
-      return null;
-    }
-
-    if (!Array.isArray(data.nextLegs)) {
-      console.error('Passenger next legs not found: ', data.nextLegs);
-      return null;
-    }
-
-    const currentLeg =
-      data.currentLeg !== undefined ? extractLeg(data.currentLeg!) : null;
-    if (data.currentLeg !== undefined && currentLeg === null) {
-      console.error('Passenger current leg invalid: ', data.currentLeg);
-      return null;
-    }
-
-    const nextLegs = data.nextLegs.map((leg) => extractLeg(leg));
-    if (!nextLegs.every((leg) => leg !== null)) {
-      console.error('Passenger next legs invalid: ', nextLegs);
-      return null;
-    }
-
-    const tags = data.tags ?? [];
-
-    return {
-      entityType: 'passenger',
-      id,
-      name,
-      status,
-      previousLegs,
-      currentLeg,
-      nextLegs,
-      numberOfPassengers,
-      tags,
-    };
-  }
-
-  private extractPassengerStatusUpdate(
-    data: PassengerStatusUpdate,
-  ): PassengerStatusUpdate | null {
-    // TODO Uncomment for debugging
-    // console.debug('Extracting passenger status update: ', data);
-
-    const id = data.id;
-    if (!id) {
-      console.error('Passenger ID not found: ', id);
-      return null;
-    }
-
-    const status = data.status;
-    if (!status) {
-      console.error('Passenger status not found: ', status);
-      return null;
-    }
-    if (!PASSENGER_STATUSES.includes(status)) {
-      console.error('Passenger status not recognized: ', status);
-      return null;
-    }
-
-    return { id, status };
-  }
-
-  private extractPassengerLegsUpdate(
-    data: PassengerLegsUpdate,
-  ): PassengerLegsUpdate | null {
-    // TODO Uncomment for debugging
-    // console.debug('Extracting passenger legs update: ', data);
-
-    const id = data.id;
-    if (!id) {
-      console.error('Passenger ID not found: ', id);
-      return null;
-    }
-
-    if (!Array.isArray(data.previousLegs)) {
-      console.error('Passenger previous legs not found: ', data.previousLegs);
-      return null;
-    }
-
-    const previousLegs = data.previousLegs.map((leg) => extractLeg(leg));
-    if (!previousLegs.every((leg) => leg !== null)) {
-      console.error('Passenger previous legs invalid: ', previousLegs);
-      return null;
-    }
-
-    const currentLeg =
-      data.currentLeg !== undefined ? extractLeg(data.currentLeg!) : null;
-    if (data.currentLeg !== undefined && currentLeg === null) {
-      console.error('Passenger current leg invalid: ', data.currentLeg);
-      return null;
-    }
-
-    if (!Array.isArray(data.nextLegs)) {
-      console.error('Passenger next legs not found: ', data.nextLegs);
-      return null;
-    }
-
-    const nextLegs = data.nextLegs.map((leg) => extractLeg(leg));
-    if (!nextLegs.every((leg) => leg !== null)) {
-      console.error('Passenger next legs invalid: ', nextLegs);
-      return null;
-    }
-
-    return { id, previousLegs, currentLeg, nextLegs };
-  }
-
-  private extractVehicle(data: Vehicle): Vehicle | null {
-    // TODO Uncomment for debugging
-    // console.debug('Extracting vehicle: ', data);
-
-    const id = data.id;
-    if (!id) {
-      console.error('Vehicle ID not found: ', id);
-      return null;
-    }
-
-    const mode = data.mode ?? null;
-
-    const status = data.status;
-    if (!status) {
-      console.error('Vehicle status not found: ', status);
-      return null;
-    }
-
-    if (!VEHICLE_STATUSES.includes(status)) {
-      console.error('Vehicle status not recognized: ', status);
-      return null;
-    }
-
-    if (!Array.isArray(data.previousStops)) {
-      console.error('Vehicle previous stops not found: ', data.previousStops);
-      return null;
-    }
-
-    const previousStops = data.previousStops.map((stop) =>
-      this.extractStop(stop),
-    );
-    if (!previousStops.every((stop) => stop !== null)) {
-      console.error('Vehicle previous stops invalid: ', previousStops);
-      return null;
-    }
-
-    const currentStop =
-      data.currentStop !== undefined
-        ? this.extractStop(data.currentStop!)
-        : null;
-    if (data.currentStop !== undefined && currentStop === null) {
-      console.error('Vehicle current stop invalid: ', data.currentStop);
-      return null;
-    }
-
-    if (!Array.isArray(data.nextStops)) {
-      console.error('Vehicle next stops not found: ', data.nextStops);
-      return null;
-    }
-
-    const nextStops = data.nextStops.map((stop) => this.extractStop(stop));
-    if (!nextStops.every((stop) => stop !== null)) {
-      console.error('Vehicle next stops invalid: ', nextStops);
-      return null;
-    }
-
-    const capacity = data.capacity;
-    if (capacity === undefined) {
-      console.error('Vehicle capacity not found: ', capacity);
-      return null;
-    }
-
-    const name = data.name;
-    if (name === undefined) {
-      console.error('Vehicle name not found: ', name);
-      return null;
-    }
-
-    const tags = data.tags ?? [];
-
-    return {
-      entityType: 'vehicle',
-      id,
-      mode,
-      status,
-      previousStops,
-      currentStop,
-      nextStops,
-      capacity,
-      name,
-      tags,
-    };
-  }
-
-  private extractVehicleStatusUpdate(
-    data: VehicleStatusUpdate,
-  ): VehicleStatusUpdate | null {
-    // TODO Uncomment for debugging
-    // console.debug('Extracting vehicle status update: ', data);
-
-    const id = data.id;
-    if (!id) {
-      console.error('Vehicle ID not found: ', id);
-      return null;
-    }
-
-    const status = data.status;
-    if (!status) {
-      console.error('Vehicle status not found: ', status);
-      return null;
-    }
-    if (!VEHICLE_STATUSES.includes(status)) {
-      console.error('Vehicle status not recognized: ', status);
-      return null;
-    }
-
-    return { id, status };
-  }
-
-  private extractVehicleStopsUpdate(
-    data: VehicleStopsUpdate,
-  ): VehicleStopsUpdate | null {
-    // TODO Uncomment for debugging
-    // console.debug('Extracting vehicle stops update: ', data);
-
-    const id = data.id;
-    if (!id) {
-      console.error('Vehicle ID not found: ', id);
-      return null;
-    }
-
-    if (!Array.isArray(data.previousStops)) {
-      console.error('Vehicle previous stops not found: ', data.previousStops);
-      return null;
-    }
-
-    const previousStops = data.previousStops.map((stop) =>
-      this.extractStop(stop),
-    );
-    if (!previousStops.every((stop) => stop !== null)) {
-      console.error('Vehicle previous stops invalid: ', previousStops);
-      return null;
-    }
-
-    const currentStop =
-      data.currentStop !== undefined
-        ? this.extractStop(data.currentStop!)
-        : null;
-    if (data.currentStop !== undefined && currentStop === null) {
-      console.error('Vehicle current stop invalid: ', data.currentStop);
-      return null;
-    }
-
-    if (!Array.isArray(data.nextStops)) {
-      console.error('Vehicle next stops not found: ', data.nextStops);
-      return null;
-    }
-
-    const nextStops = data.nextStops.map((stop) => this.extractStop(stop));
-    if (!nextStops.every((stop) => stop !== null)) {
-      console.error('Vehicle next stops invalid: ', nextStops);
-      return null;
-    }
-
-    return { id, previousStops, currentStop, nextStops };
-  }
-
-  private extractStop(data: Stop): Stop | null {
-    // TODO Uncomment for debugging
-    // console.debug('Extracting stop: ', data);
-
-    const arrivalTime = data.arrivalTime;
-    if (arrivalTime === undefined) {
-      console.error('Stop arrival time not found: ', arrivalTime);
-      return null;
-    }
-
-    const departureTime = data.departureTime ?? null;
-
-    const position = data.position;
-
-    if (
-      position === undefined ||
-      position.latitude === undefined ||
-      position.longitude === undefined
-    ) {
-      console.error('Stop position invalid: ', position);
-      return null;
-    }
-
-    const id = getStopId(position);
-
-    const capacity = data.capacity ?? DEFAULT_STOP_CAPACITY;
-
-    const label = data.label;
-
-    if (label === undefined) {
-      console.error('Stop label not found: ', label);
-      return null;
-    }
-    if (typeof label !== 'string') {
-      console.error('Invalid stop label: ', label);
-      return null;
-    }
-
-    const tags = data.tags ?? [];
-
-    return {
-      id,
-      name: label, // Stops are displayed by their label
-      entityType: 'stop',
-      arrivalTime,
-      departureTime,
-      position,
-      capacity,
-      label,
-      tags,
-    };
   }
 
   private extractSimulationEnvironment(
@@ -714,7 +287,7 @@ export class SimulationService {
 
     const passengers: SimulationEnvironment['passengers'] = {};
     for (const passenger of data.passengers) {
-      const extractedPassenger = this.extractPassenger(passenger);
+      const extractedPassenger = extractPassenger(passenger);
       if (!extractedPassenger) {
         console.error('Invalid passenger: ', passenger);
         return null;
@@ -724,7 +297,7 @@ export class SimulationService {
 
     const vehicles: SimulationEnvironment['vehicles'] = {};
     for (const vehicle of data.vehicles) {
-      const extractedVehicle = this.extractVehicle(vehicle);
+      const extractedVehicle = extractVehicle(vehicle);
       if (!extractedVehicle) {
         console.error('Invalid vehicle: ', vehicle);
         return null;
@@ -744,13 +317,22 @@ export class SimulationService {
       return null;
     }
 
-    const order = data.order;
-    if (order === undefined) {
-      console.error('Simulation environment order not found: ', order);
+    const updateIndex = data.updateIndex;
+    if (updateIndex === undefined) {
+      console.error(
+        'Simulation environment updateIndex not found: ',
+        updateIndex,
+      );
       return null;
     }
 
-    return { passengers, vehicles, timestamp, statistic, order };
+    return {
+      passengers,
+      vehicles,
+      timestamp,
+      statistic,
+      updateIndex: updateIndex,
+    };
   }
 
   private extractSimulationState(
@@ -766,7 +348,7 @@ export class SimulationService {
       return null;
     }
 
-    const rawUpdates = allUpdates[environment.order];
+    const rawUpdates = allUpdates[environment.updateIndex];
     if (!Array.isArray(rawUpdates)) {
       console.error('Simulation state updates not found: ', rawUpdates);
       return null;
@@ -956,7 +538,7 @@ export class SimulationService {
     }
 
     if (lastUpdate) {
-      state.order = lastUpdate.order;
+      state.updateIndex = lastUpdate.updateIndex;
       state.timestamp = lastUpdate.timestamp;
     }
 
@@ -967,95 +549,13 @@ export class SimulationService {
     update: AnySimulationUpdate,
     simulationEnvironment: SimulationEnvironment,
   ) {
-    simulationEnvironment.order = update.order;
+    simulationEnvironment.updateIndex = update.updateIndex;
     simulationEnvironment.timestamp = update.timestamp;
 
     switch (update.type) {
-      case 'createPassenger':
-        {
-          const passenger = update.data as Passenger;
-          simulationEnvironment.passengers[passenger.id] = passenger;
-        }
-        break;
-      case 'updatePassengerStatus':
-        {
-          const passengerStatusUpdate = update.data as PassengerStatusUpdate;
-          const passenger =
-            simulationEnvironment.passengers[passengerStatusUpdate.id];
-          if (!passenger) {
-            console.error('Passenger not found: ', passengerStatusUpdate.id);
-            break;
-          }
-          simulationEnvironment.passengers[passengerStatusUpdate.id] = {
-            ...passenger,
-            status: passengerStatusUpdate.status,
-          };
-        }
-        break;
-      case 'updatePassengerLegs':
-        {
-          const passengerLegsUpdate = update.data as PassengerLegsUpdate;
-          const passenger =
-            simulationEnvironment.passengers[passengerLegsUpdate.id];
-          if (!passenger) {
-            console.error('Passenger not found: ', passengerLegsUpdate.id);
-            break;
-          }
-
-          simulationEnvironment.passengers[passengerLegsUpdate.id] = {
-            ...passenger,
-            previousLegs: passengerLegsUpdate.previousLegs,
-            currentLeg: passengerLegsUpdate.currentLeg,
-            nextLegs: passengerLegsUpdate.nextLegs,
-          };
-        }
-        break;
-      case 'createVehicle':
-        {
-          const vehicle = update.data as Vehicle;
-          simulationEnvironment.vehicles[vehicle.id] = vehicle;
-        }
-        break;
-
-      case 'updateVehicleStatus':
-        {
-          const vehicleStatusUpdate = update.data as VehicleStatusUpdate;
-          const vehicle =
-            simulationEnvironment.vehicles[vehicleStatusUpdate.id];
-          if (!vehicle) {
-            console.error('Vehicle not found: ', vehicleStatusUpdate.id);
-            break;
-          }
-
-          simulationEnvironment.vehicles[vehicleStatusUpdate.id] = {
-            ...vehicle,
-            status: vehicleStatusUpdate.status,
-          };
-        }
-        break;
-
-      case 'updateVehicleStops':
-        {
-          const vehicleStopsUpdate = update.data as VehicleStopsUpdate;
-          const vehicle = simulationEnvironment.vehicles[vehicleStopsUpdate.id];
-          if (!vehicle) {
-            console.error('Vehicle not found: ', vehicleStopsUpdate.id);
-            break;
-          }
-
-          simulationEnvironment.vehicles[vehicleStopsUpdate.id] = {
-            ...vehicle,
-            previousStops: vehicleStopsUpdate.previousStops,
-            currentStop: vehicleStopsUpdate.currentStop,
-            nextStops: vehicleStopsUpdate.nextStops,
-          };
-        }
-        break;
       case 'updateStatistic':
         {
-          simulationEnvironment.statistic = (
-            update.data as StatisticUpdate
-          ).statistic;
+          simulationEnvironment.statistic = update.data.statistic;
         }
         break;
     }
@@ -1064,11 +564,11 @@ export class SimulationService {
   private mergeStates(
     states: AnimatedSimulationStates,
     missingStates: SimulationState[],
-    stateOrdersToKeep: number[],
+    stateUpdateIndexesToKeep: number[],
     shouldRequestMoreStates: boolean,
-    firstContinuousStateOrder: number,
-    lastContinuousStateOrder: number,
-    currentStateOrder: number,
+    firstContinuousStateUpdateIndex: number,
+    lastContinuousStateUpdateIndex: number,
+    currentStateUpdateIndex: number,
   ): AnimatedSimulationStates {
     const animatedMissingStates: AnimatedSimulationState[] = missingStates.map(
       (state) => {
@@ -1095,24 +595,24 @@ export class SimulationService {
     );
 
     for (const state of states.states) {
-      if (stateOrdersToKeep.includes(state.order)) {
+      if (stateUpdateIndexesToKeep.includes(state.updateIndex)) {
         animatedMissingStates.push(state);
       }
     }
 
     const sortedStates = animatedMissingStates.sort(
-      (a, b) => a.order - b.order,
+      (a, b) => a.updateIndex - b.updateIndex,
     );
 
     const firstStateIndex = sortedStates.findIndex(
-      (state) => state.order === firstContinuousStateOrder,
+      (state) => state.updateIndex === firstContinuousStateUpdateIndex,
     );
     const lastStateIndex = sortedStates.findIndex(
-      (state) => state.order === lastContinuousStateOrder,
+      (state) => state.updateIndex === lastContinuousStateUpdateIndex,
     );
 
     const currentStateIndex = sortedStates.findIndex(
-      (state) => state.order === currentStateOrder,
+      (state) => state.updateIndex === currentStateUpdateIndex,
     );
 
     const defaultReturnValue = {
@@ -1127,19 +627,19 @@ export class SimulationService {
     if (firstStateIndex === -1) {
       console.error(
         'First continuous state not found: ',
-        firstContinuousStateOrder,
+        firstContinuousStateUpdateIndex,
       );
       return defaultReturnValue;
     }
     if (lastStateIndex === -1) {
       console.error(
         'Last continuous state not found: ',
-        lastContinuousStateOrder,
+        lastContinuousStateUpdateIndex,
       );
       return defaultReturnValue;
     }
     if (currentStateIndex === -1) {
-      console.error('Current state not found: ', currentStateOrder);
+      console.error('Current state not found: ', currentStateUpdateIndex);
       return defaultReturnValue;
     }
     if (
@@ -1160,7 +660,7 @@ export class SimulationService {
 
     const firstContinuousState = {
       timestamp: firstState.timestamp,
-      order: firstState.order,
+      updateIndex: firstState.updateIndex,
       index: firstStateIndex,
     };
 
@@ -1169,7 +669,7 @@ export class SimulationService {
 
     const lastContinuousState = {
       timestamp: lastContinuousUpdate?.timestamp ?? lastState.timestamp,
-      order: lastContinuousUpdate?.order ?? lastState.order,
+      updateIndex: lastContinuousUpdate?.updateIndex ?? lastState.updateIndex,
       index: lastStateIndex,
     };
 
@@ -1217,67 +717,10 @@ export class SimulationService {
 
     for (const update of state.updates) {
       this.applyUpdate(update, animatedSimulationState);
-      animatedSimulationState.animationData.endOrder = update.order;
+      animatedSimulationState.animationData.endUpdateIndex = update.updateIndex;
       animatedSimulationState.animationData.endTimestamp = update.timestamp;
 
       switch (update.type) {
-        case 'createPassenger':
-          {
-            const castedUpdate = update as SimulationUpdate<'createPassenger'>;
-            this.handleCreatePassenger(animatedSimulationState, castedUpdate);
-          }
-          break;
-        case 'updatePassengerStatus':
-          {
-            const castedUpdate =
-              update as SimulationUpdate<'updatePassengerStatus'>;
-            this.handleUpdatePassengerStatus(
-              animatedSimulationState,
-              castedUpdate,
-            );
-          }
-          break;
-        case 'updatePassengerLegs':
-          {
-            const castedUpdate =
-              update as SimulationUpdate<'updatePassengerLegs'>;
-            this.handleUpdatePassengerLegs(
-              animatedSimulationState,
-              castedUpdate,
-            );
-          }
-          break;
-        case 'createVehicle':
-          {
-            const castedUpdate = update as SimulationUpdate<'createVehicle'>;
-            this.handleCreateVehicle(
-              animatedSimulationState,
-              castedUpdate,
-              polylines,
-            );
-          }
-          break;
-        case 'updateVehicleStatus':
-          {
-            const castedUpdate =
-              update as SimulationUpdate<'updateVehicleStatus'>;
-            this.handleUpdateVehicleStatus(
-              animatedSimulationState,
-              castedUpdate,
-            );
-          }
-          break;
-        case 'updateVehicleStops':
-          {
-            const castedUpdate =
-              update as SimulationUpdate<'updateVehicleStops'>;
-            this.handleUpdateVehicleStops(
-              animatedSimulationState,
-              castedUpdate,
-              polylines,
-            );
-          }
-          break;
         case 'updateStatistic':
           // Do nothing
           break;
@@ -1299,9 +742,9 @@ export class SimulationService {
         passengers: {},
         vehicles: {},
         startTimestamp: state.timestamp,
-        startOrder: state.order,
+        startUpdateIndex: state.updateIndex,
         endTimestamp: state.timestamp,
-        endOrder: state.order,
+        endUpdateIndex: state.updateIndex,
       },
     };
 
@@ -1311,7 +754,7 @@ export class SimulationService {
           vehicle,
           polylines,
           state.timestamp,
-          state.order,
+          state.updateIndex,
         ),
       ];
     }
@@ -1321,7 +764,7 @@ export class SimulationService {
         this.getPassengerAnimationDataFromPassenger(
           passenger,
           state.timestamp,
-          state.order,
+          state.updateIndex,
           state.timestamp,
         ),
       ];
@@ -1333,15 +776,15 @@ export class SimulationService {
   private getPassengerAnimationDataFromPassenger(
     passenger: Passenger,
     startTimestamp: number,
-    startOrder: number,
+    startUpdateIndex: number,
     currentTimestamp: number,
   ): AnyPassengerAnimationData {
     const basicAnimationData: PassengerAnimationData = {
       status: passenger.status,
       startTimestamp,
-      startOrder,
+      startUpdateIndex,
       endTimestamp: null,
-      endOrder: null,
+      endUpdateIndex: null,
       vehicleId: null,
       notDisplayedReason: null,
     };
@@ -1404,14 +847,14 @@ export class SimulationService {
     vehicle: Vehicle,
     polylines: Record<string, Polyline> | null,
     startTimestamp: number,
-    startOrder: number,
+    startUpdateIndex: number,
   ): AnyVehicleAnimationData {
     const basicAnimationData: VehicleAnimationData = {
       status: vehicle.status,
       startTimestamp,
-      startOrder,
+      startUpdateIndex,
       endTimestamp: null,
-      endOrder: null,
+      endUpdateIndex: null,
       displayedPolylines: this.getDisplayedPolylines(vehicle, polylines),
       notDisplayedReason: null,
     };
@@ -1461,196 +904,6 @@ export class SimulationService {
     }
 
     return basicAnimationData;
-  }
-
-  private handleCreatePassenger(
-    animatedSimulationState: AnimatedSimulationState,
-    update: SimulationUpdate<'createPassenger'>,
-  ): void {
-    const passenger = update.data;
-
-    animatedSimulationState.animationData.passengers[passenger.id] = [
-      this.getPassengerAnimationDataFromPassenger(
-        passenger,
-        animatedSimulationState.timestamp,
-        animatedSimulationState.order,
-        animatedSimulationState.timestamp,
-      ),
-    ];
-  }
-
-  private handleUpdatePassengerStatus(
-    animatedSimulationState: AnimatedSimulationState,
-    update: SimulationUpdate<'updatePassengerStatus'>,
-  ): void {
-    const passengerId = update.data.id;
-    const status = update.data.status;
-
-    const passengerAnimationData =
-      animatedSimulationState.animationData.passengers[passengerId];
-
-    if (passengerAnimationData === undefined) {
-      console.error(
-        'Passenger animation data not found',
-        animatedSimulationState,
-        update,
-      );
-      return;
-    }
-
-    const lastAnimationData =
-      passengerAnimationData[passengerAnimationData.length - 1];
-
-    if (lastAnimationData.startTimestamp === update.timestamp) {
-      lastAnimationData.status = status;
-    } else {
-      lastAnimationData.endTimestamp = update.timestamp;
-      lastAnimationData.endOrder = update.order;
-      passengerAnimationData.push({
-        ...lastAnimationData,
-        startTimestamp: update.timestamp,
-        startOrder: update.order,
-        endTimestamp: null,
-        endOrder: null,
-        status,
-      });
-    }
-  }
-
-  private handleUpdatePassengerLegs(
-    animatedSimulationState: AnimatedSimulationState,
-    update: SimulationUpdate<'updatePassengerLegs'>,
-  ): void {
-    const passengerId = update.data.id;
-
-    const passengerAnimationData =
-      animatedSimulationState.animationData.passengers[passengerId];
-
-    if (passengerAnimationData === undefined) {
-      console.error(
-        'Passenger animation data not found',
-        animatedSimulationState,
-        update,
-      );
-      return;
-    }
-
-    const passenger = animatedSimulationState.passengers[passengerId];
-
-    const lastAnimationData =
-      passengerAnimationData[passengerAnimationData.length - 1];
-
-    const newAnimationData = this.getPassengerAnimationDataFromPassenger(
-      passenger,
-      update.timestamp,
-      update.order,
-      animatedSimulationState.timestamp,
-    );
-
-    if (lastAnimationData.startTimestamp === update.timestamp) {
-      passengerAnimationData.pop();
-    } else {
-      lastAnimationData.endTimestamp = update.timestamp;
-      lastAnimationData.endOrder = update.order;
-    }
-
-    passengerAnimationData.push(newAnimationData);
-  }
-
-  private handleCreateVehicle(
-    animatedSimulationState: AnimatedSimulationState,
-    update: SimulationUpdate<'createVehicle'>,
-    polylines: Record<string, Polyline> | null,
-  ): void {
-    const vehicle = update.data;
-
-    animatedSimulationState.animationData.vehicles[vehicle.id] = [
-      this.getVehicleAnimationDataFromVehicle(
-        vehicle,
-        polylines,
-        animatedSimulationState.timestamp,
-        animatedSimulationState.order,
-      ),
-    ];
-  }
-
-  private handleUpdateVehicleStatus(
-    animatedSimulationState: AnimatedSimulationState,
-    update: SimulationUpdate<'updateVehicleStatus'>,
-  ): void {
-    const vehicleId = update.data.id;
-    const status = update.data.status;
-
-    const vehicleAnimationData =
-      animatedSimulationState.animationData.vehicles[vehicleId];
-
-    if (vehicleAnimationData === undefined) {
-      console.error(
-        'Vehicle animation data not found',
-        animatedSimulationState,
-        update,
-      );
-      return;
-    }
-
-    const lastAnimationData =
-      vehicleAnimationData[vehicleAnimationData.length - 1];
-
-    if (lastAnimationData.startTimestamp === update.timestamp) {
-      lastAnimationData.status = status;
-    } else {
-      lastAnimationData.endTimestamp = update.timestamp;
-      lastAnimationData.endOrder = update.order;
-      vehicleAnimationData.push({
-        ...lastAnimationData,
-        startTimestamp: update.timestamp,
-        startOrder: update.order,
-        endTimestamp: null,
-        endOrder: null,
-        status,
-      });
-    }
-  }
-
-  private handleUpdateVehicleStops(
-    animatedSimulationState: AnimatedSimulationState,
-    update: SimulationUpdate<'updateVehicleStops'>,
-    polylines: Record<string, Polyline> | null,
-  ): void {
-    const vehicleId = update.data.id;
-
-    const vehicleAnimationData =
-      animatedSimulationState.animationData.vehicles[vehicleId];
-
-    if (vehicleAnimationData === undefined) {
-      console.error(
-        'Vehicle animation data not found',
-        animatedSimulationState,
-        update,
-      );
-      return;
-    }
-
-    const vehicle = animatedSimulationState.vehicles[vehicleId];
-
-    const lastAnimationData =
-      vehicleAnimationData[vehicleAnimationData.length - 1];
-
-    const newAnimationData = this.getVehicleAnimationDataFromVehicle(
-      vehicle,
-      polylines,
-      update.timestamp,
-      update.order,
-    );
-
-    if (lastAnimationData.startTimestamp === update.timestamp) {
-      vehicleAnimationData.pop();
-    } else {
-      lastAnimationData.endTimestamp = update.timestamp;
-      lastAnimationData.endOrder = update.order;
-    }
-
-    vehicleAnimationData.push(newAnimationData);
   }
 
   private updateEndTimestamps(
@@ -1751,145 +1004,6 @@ export class SimulationService {
     secondAnimationData: AnimationData,
     mergeTimestamp: number,
   ): AnimationData {
-    // This version really merge the two animation data but is pretty slow.
-    // const mergedPassengerAnimationData: Record<
-    //   string,
-    //   PassengerAnimationData[]
-    // > = {};
-
-    // const allPassengerIds = new Set([
-    //   ...Object.keys(firstAnimationData.passengers),
-    //   ...Object.keys(secondAnimationData.passengers),
-    // ]);
-
-    // for (const passengerId of allPassengerIds) {
-    //   const firstPassengerAnimationData =
-    //     firstAnimationData.passengers[passengerId];
-    //   const secondPassengerAnimationData =
-    //     secondAnimationData.passengers[passengerId];
-
-    //   const firstHasAnimationData =
-    //     firstPassengerAnimationData !== undefined &&
-    //     firstPassengerAnimationData.length > 0;
-    //   const secondHasAnimationData =
-    //     secondPassengerAnimationData !== undefined &&
-    //     secondPassengerAnimationData.length > 0;
-
-    //   if (!firstHasAnimationData && !secondHasAnimationData) {
-    //     continue;
-    //   }
-
-    //   if (!firstHasAnimationData) {
-    //     mergedPassengerAnimationData[passengerId] =
-    //       secondPassengerAnimationData;
-    //     continue;
-    //   }
-
-    //   if (!secondHasAnimationData) {
-    //     mergedPassengerAnimationData[passengerId] = firstPassengerAnimationData;
-    //     continue;
-    //   }
-
-    //   const lastFirstAnimationData =
-    //     firstPassengerAnimationData[firstPassengerAnimationData.length - 1];
-    //   const firstSecondAnimationData = secondPassengerAnimationData[0];
-
-    //   const {
-    //     startOrder: _1,
-    //     startTimestamp: _2,
-    //     endOrder: _3,
-    //     endTimestamp: _4,
-    //     ...firstComparableData
-    //   } = lastFirstAnimationData;
-    //   const {
-    //     startOrder: _5,
-    //     startTimestamp: _6,
-    //     endOrder: _7,
-    //     endTimestamp: _8,
-    //     ...secondComparableData
-    //   } = firstSecondAnimationData;
-
-    //   if (!this.deepCompare(firstComparableData, secondComparableData)) {
-    //     mergedPassengerAnimationData[passengerId] =
-    //       firstPassengerAnimationData.concat(secondPassengerAnimationData);
-    //     continue;
-    //   } else {
-    //     mergedPassengerAnimationData[passengerId] = firstPassengerAnimationData
-    //       .slice(0, -1)
-    //       .concat(secondPassengerAnimationData);
-    //     firstSecondAnimationData.startOrder = lastFirstAnimationData.startOrder;
-    //     firstSecondAnimationData.startTimestamp =
-    //       lastFirstAnimationData.startTimestamp;
-    //   }
-    // }
-
-    // const mergedVehicleAnimationData: Record<string, VehicleAnimationData[]> =
-    //   {};
-
-    // const allVehicleIds = new Set([
-    //   ...Object.keys(firstAnimationData.vehicles),
-    //   ...Object.keys(secondAnimationData.vehicles),
-    // ]);
-
-    // for (const vehicleId of allVehicleIds) {
-    //   const firstVehicleAnimationData = firstAnimationData.vehicles[vehicleId];
-    //   const secondVehicleAnimationData =
-    //     secondAnimationData.vehicles[vehicleId];
-
-    //   const firstHasAnimationData =
-    //     firstVehicleAnimationData !== undefined &&
-    //     firstVehicleAnimationData.length > 0;
-    //   const secondHasAnimationData =
-    //     secondVehicleAnimationData !== undefined &&
-    //     secondVehicleAnimationData.length > 0;
-
-    //   if (!firstHasAnimationData && !secondHasAnimationData) {
-    //     continue;
-    //   }
-
-    //   if (!firstHasAnimationData) {
-    //     mergedVehicleAnimationData[vehicleId] = secondVehicleAnimationData;
-    //     continue;
-    //   }
-
-    //   if (!secondHasAnimationData) {
-    //     mergedVehicleAnimationData[vehicleId] = firstVehicleAnimationData;
-    //     continue;
-    //   }
-
-    //   const lastFirstAnimationData =
-    //     firstVehicleAnimationData[firstVehicleAnimationData.length - 1];
-    //   const firstSecondAnimationData = secondVehicleAnimationData[0];
-
-    //   const {
-    //     startOrder: _1,
-    //     startTimestamp: _2,
-    //     endOrder: _3,
-    //     endTimestamp: _4,
-    //     ...firstComparableData
-    //   } = lastFirstAnimationData;
-    //   const {
-    //     startOrder: _5,
-    //     startTimestamp: _6,
-    //     endOrder: _7,
-    //     endTimestamp: _8,
-    //     ...secondComparableData
-    //   } = firstSecondAnimationData;
-
-    //   if (!this.deepCompare(firstComparableData, secondComparableData)) {
-    //     mergedVehicleAnimationData[vehicleId] =
-    //       firstVehicleAnimationData.concat(secondVehicleAnimationData);
-    //     continue;
-    //   } else {
-    //     mergedVehicleAnimationData[vehicleId] = firstVehicleAnimationData
-    //       .slice(0, -1)
-    //       .concat(secondVehicleAnimationData);
-    //     firstSecondAnimationData.startOrder = lastFirstAnimationData.startOrder;
-    //     firstSecondAnimationData.startTimestamp =
-    //       lastFirstAnimationData.startTimestamp;
-    //   }
-    // }
-
     // This version only concatenate the two animation data and is much faster.
     const mergedPassengerAnimationData: Record<
       string,
@@ -1949,26 +1063,9 @@ export class SimulationService {
       passengers: mergedPassengerAnimationData,
       vehicles: mergedVehicleAnimationData,
       startTimestamp: firstAnimationData.startTimestamp,
-      startOrder: firstAnimationData.startOrder,
+      startUpdateIndex: firstAnimationData.startUpdateIndex,
       endTimestamp: secondAnimationData.endTimestamp,
-      endOrder: secondAnimationData.endOrder,
+      endUpdateIndex: secondAnimationData.endUpdateIndex,
     };
   }
-
-  // private deepCompare(
-  //   a: Record<string, unknown>,
-  //   b: Record<string, unknown>,
-  // ): boolean {
-  //   if (Object.keys(a).length !== Object.keys(b).length) {
-  //     return false;
-  //   }
-
-  //   for (const key in a) {
-  //     if (a[key] !== b[key]) {
-  //       return false;
-  //     }
-  //   }
-
-  //   return true;
-  // }
 }

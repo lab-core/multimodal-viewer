@@ -97,12 +97,12 @@ class VisualizedLeg(Serializable):  # pylint: disable=too-many-instance-attribut
         tags: list[str],
         leg_type: LegType,
     ) -> None:
-        self.assigned_vehicle_id = assigned_vehicle_id
-        self.boarding_stop_index = boarding_stop_index
-        self.alighting_stop_index = alighting_stop_index
-        self.boarding_time = boarding_time
-        self.alighting_time = alighting_time
-        self.tags = tags
+        self.assigned_vehicle_id: str | None = assigned_vehicle_id
+        self.boarding_stop_index: int | None = boarding_stop_index
+        self.alighting_stop_index: int | None = alighting_stop_index
+        self.boarding_time: float | None = boarding_time
+        self.alighting_time: float | None = alighting_time
+        self.tags: list[str] = tags
         self.leg_type: LegType = leg_type
 
     @classmethod
@@ -203,11 +203,25 @@ class VisualizedLeg(Serializable):  # pylint: disable=too-many-instance-attribut
         cls.verify_required_fields(serialized_data, required_keys, "VisualizedLeg")
 
         assigned_vehicle_id = serialized_data.get("assignedVehicleId", None)
+
         boarding_stop_index = serialized_data.get("boardingStopIndex", None)
+        if boarding_stop_index is not None:
+            boarding_stop_index = int(boarding_stop_index)
+
         alighting_stop_index = serialized_data.get("alightingStopIndex", None)
+        if alighting_stop_index is not None:
+            alighting_stop_index = int(alighting_stop_index)
+
         boarding_time = serialized_data.get("boardingTime", None)
+        if boarding_time is not None:
+            boarding_time = float(boarding_time)
+
         alighting_time = serialized_data.get("alightingTime", None)
+        if alighting_time is not None:
+            alighting_time = float(alighting_time)
+
         tags = serialized_data.get("tags", [])
+
         leg_type = serialized_data.get("legType")
 
         return cls(
@@ -223,16 +237,6 @@ class VisualizedLeg(Serializable):  # pylint: disable=too-many-instance-attribut
 
 # MARK: Passenger
 class VisualizedPassenger(Serializable):  # pylint: disable=too-many-instance-attributes
-    passenger_id: str
-    name: str | None
-    status: PassengerStatus
-    number_of_passengers: int
-
-    previous_legs: list[VisualizedLeg]
-    current_leg: VisualizedLeg | None
-    next_legs: list[VisualizedLeg]
-
-    tags: list[str]
 
     def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self,
@@ -245,16 +249,16 @@ class VisualizedPassenger(Serializable):  # pylint: disable=too-many-instance-at
         next_legs: list[VisualizedLeg],
         tags: list[str],
     ) -> None:
-        self.passenger_id = passenger_id
-        self.name = name
-        self.status = status
-        self.number_of_passengers = number_of_passengers
+        self.passenger_id: str = passenger_id
+        self.name: str | None = name
+        self.status: PassengerStatus = status
+        self.number_of_passengers: int = number_of_passengers
 
-        self.previous_legs = previous_legs
-        self.current_leg = current_leg
-        self.next_legs = next_legs
+        self.previous_legs: list[VisualizedLeg] = previous_legs
+        self.current_leg: VisualizedLeg | None = current_leg
+        self.next_legs: list[VisualizedLeg] = next_legs
 
-        self.tags = tags
+        self.tags: list[str] = tags
 
     @classmethod
     def from_trip_and_environment(cls, trip: Trip, environment: Environment) -> "VisualizedPassenger":
@@ -308,14 +312,15 @@ class VisualizedPassenger(Serializable):  # pylint: disable=too-many-instance-at
     def deserialize(cls, serialized_data: dict | str) -> "VisualizedPassenger":
         serialized_data = cls.serialized_data_to_dict(serialized_data)
 
-        if (
-            "id" not in serialized_data
-            or "status" not in serialized_data
-            or "previousLegs" not in serialized_data
-            or "nextLegs" not in serialized_data
-            or "numberOfPassengers" not in serialized_data
-        ):
-            raise ValueError("Invalid data for VisualizedPassenger")
+        required_keys = [
+            "id",
+            "status",
+            "previousLegs",
+            "nextLegs",
+            "numberOfPassengers",
+        ]
+
+        cls.verify_required_fields(serialized_data, required_keys, "VisualizedPassenger")
 
         passenger_id = str(serialized_data["id"])
         name = serialized_data.get("name", None)
@@ -336,36 +341,38 @@ class VisualizedPassenger(Serializable):  # pylint: disable=too-many-instance-at
         )
 
 
+# MARK: StopType
+class StopType(Enum):
+    PREVIOUS = "previous"
+    CURRENT = "current"
+    NEXT = "next"
+
+
 # MARK: Stop
-class VisualizedStop(Serializable):
-    arrival_time: float
-    departure_time: float | None
-    latitude: float | None
-    longitude: float | None
-    capacity: int | None
-    label: str
-    tags: list[str]
+class VisualizedStop(Serializable):  # pylint: disable=too-many-instance-attributes
 
     def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self,
         arrival_time: float,
-        departure_time: float,
+        departure_time: float | None,
         latitude: float | None,
         longitude: float | None,
         capacity: int | None,
         label: str,
-        tags: str,
+        tags: list[str],
+        stop_type: StopType,
     ) -> None:
-        self.arrival_time = arrival_time
-        self.departure_time = departure_time
-        self.latitude = latitude
-        self.longitude = longitude
-        self.capacity = capacity
-        self.label = label
-        self.tags = tags
+        self.arrival_time: float = arrival_time
+        self.departure_time: float | None = departure_time
+        self.latitude: float | None = latitude
+        self.longitude: float | None = longitude
+        self.capacity: int | None = capacity
+        self.label: str = label
+        self.tags: list[str] = tags
+        self.stop_type: StopType = stop_type
 
     @classmethod
-    def from_stop(cls, stop: Stop) -> "VisualizedStop":
+    def from_stop(cls, stop: Stop, stop_type: StopType) -> "VisualizedStop":
         return cls(
             stop.arrival_time,
             stop.departure_time if stop.departure_time != math.inf else None,
@@ -374,10 +381,11 @@ class VisualizedStop(Serializable):
             stop.capacity,
             stop.location.label,
             stop.tags,
+            stop_type,
         )
 
     def serialize(self) -> dict:
-        serialized = {"arrivalTime": self.arrival_time}
+        serialized = {"arrivalTime": self.arrival_time, "stopType": self.stop_type.value}
 
         if self.departure_time is not None:
             serialized["departureTime"] = self.departure_time
@@ -402,11 +410,14 @@ class VisualizedStop(Serializable):
     def deserialize(cls, serialized_data: dict | str) -> "VisualizedStop":
         serialized_data = cls.serialized_data_to_dict(serialized_data)
 
-        if "arrivalTime" not in serialized_data or "label" not in serialized_data:
-            raise ValueError("Invalid data for VisualizedStop")
+        required_keys = ["arrivalTime", "label", "stopType"]
+
+        cls.verify_required_fields(serialized_data, required_keys, "VisualizedStop")
 
         arrival_time = float(serialized_data["arrivalTime"])
         departure_time = serialized_data.get("departureTime", None)
+        if departure_time is not None:
+            departure_time = float(departure_time)
 
         latitude = None
         longitude = None
@@ -415,7 +426,12 @@ class VisualizedStop(Serializable):
 
         if position is not None:
             latitude = position.get("latitude", None)
+            if latitude is not None:
+                latitude = float(latitude)
+
             longitude = position.get("longitude", None)
+            if longitude is not None:
+                longitude = float(longitude)
 
         capacity = serialized_data.get("capacity", None)
 
@@ -426,21 +442,15 @@ class VisualizedStop(Serializable):
 
         tags = serialized_data.get("tags", [])
 
-        return VisualizedStop(arrival_time, departure_time, latitude, longitude, capacity, label, tags)
+        stop_type = serialized_data.get("stopType")
+
+        return VisualizedStop(
+            arrival_time, departure_time, latitude, longitude, capacity, label, tags, StopType(stop_type)
+        )
 
 
 # MARK: Vehicle
 class VisualizedVehicle(Serializable):  # pylint: disable=too-many-instance-attributes
-    vehicle_id: str
-    mode: str | None
-    status: VehicleStatus
-    polylines: dict[str, tuple[str, list[float]]] | None
-    previous_stops: list[VisualizedStop]
-    current_stop: VisualizedStop | None
-    next_stops: list[VisualizedStop]
-    capacity: int
-    name: str | None
-    tags: list[str]
 
     def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self,
@@ -455,19 +465,19 @@ class VisualizedVehicle(Serializable):  # pylint: disable=too-many-instance-attr
         name: str | None,
         tags: list[str],
     ) -> None:
-        self.vehicle_id = str(vehicle_id)
-        self.mode = mode
-        self.status = status
-        self.polylines = polylines
+        self.vehicle_id: str = str(vehicle_id)
+        self.mode: str | None = mode
+        self.status: VehicleStatus = status
+        self.polylines: dict[str, tuple[str, list[float]]] | None = polylines
 
-        self.previous_stops = previous_stops
-        self.current_stop = current_stop
-        self.next_stops = next_stops
+        self.previous_stops: list[VisualizedStop] = previous_stops
+        self.current_stop: VisualizedStop | None = current_stop
+        self.next_stops: list[VisualizedStop] = next_stops
 
-        self.capacity = capacity
-        self.name = name
+        self.capacity: int = capacity
+        self.name: str | None = name
 
-        self.tags = tags
+        self.tags: list[str] = tags
 
     @property
     def all_stops(self) -> list[VisualizedStop]:
@@ -475,9 +485,11 @@ class VisualizedVehicle(Serializable):  # pylint: disable=too-many-instance-attr
 
     @classmethod
     def from_vehicle_and_route(cls, vehicle: Vehicle, route: Route) -> "VisualizedVehicle":
-        previous_stops = [VisualizedStop.from_stop(stop) for stop in route.previous_stops]
-        current_stop = VisualizedStop.from_stop(route.current_stop) if route.current_stop is not None else None
-        next_stops = [VisualizedStop.from_stop(stop) for stop in route.next_stops]
+        previous_stops = [VisualizedStop.from_stop(stop, StopType.PREVIOUS) for stop in route.previous_stops]
+        current_stop = (
+            VisualizedStop.from_stop(route.current_stop, StopType.CURRENT) if route.current_stop is not None else None
+        )
+        next_stops = [VisualizedStop.from_stop(stop, StopType.NEXT) for stop in route.next_stops]
         return cls(
             vehicle.id,
             vehicle.mode,
@@ -524,8 +536,8 @@ class VisualizedVehicle(Serializable):  # pylint: disable=too-many-instance-attr
             "capacity",
             "name",
         ]
-        if any(key not in serialized_data for key in required_keys):
-            raise ValueError("Invalid data for VisualizedVehicle")
+
+        cls.verify_required_fields(serialized_data, required_keys, "VisualizedVehicle")
 
         vehicle_id = str(serialized_data["id"])
         mode = serialized_data.get("mode", None)
@@ -548,20 +560,14 @@ class VisualizedVehicle(Serializable):  # pylint: disable=too-many-instance-attr
 
 # MARK: Environment
 class VisualizedEnvironment(Serializable):
-    passengers: dict[str, VisualizedPassenger]
-    vehicles: dict[str, VisualizedVehicle]
-    statistic: dict[str, dict[str, dict[str, int]]]
-    timestamp: float
-    estimated_end_time: float
-    order: int
 
     def __init__(self) -> None:
-        self.passengers = {}
-        self.vehicles = {}
-        self.timestamp = 0
-        self.estimated_end_time = 0
-        self.order = 0
-        self.statistic = None
+        self.passengers: dict[str, VisualizedPassenger] = {}
+        self.vehicles: dict[str, VisualizedVehicle] = {}
+        self.timestamp: float = 0.0
+        self.estimated_end_time: float = 0.0
+        self.update_index: int = 0
+        self.statistic: dict | None = None
 
     def add_passenger(self, passenger: VisualizedPassenger) -> None:
         self.passengers[passenger.passenger_id] = passenger
@@ -574,10 +580,10 @@ class VisualizedEnvironment(Serializable):
     def add_vehicle(self, vehicle: VisualizedVehicle) -> None:
         self.vehicles[vehicle.vehicle_id] = vehicle
 
-    def get_vehicle(self, vehicle_id: str) -> VisualizedVehicle:
+    def get_vehicle(self, vehicle_id: str) -> VisualizedVehicle | None:
         if vehicle_id in self.vehicles:
             return self.vehicles[vehicle_id]
-        raise ValueError(f"Vehicle {vehicle_id} not found")
+        return None
 
     def serialize(self) -> dict:
         return {
@@ -586,7 +592,7 @@ class VisualizedEnvironment(Serializable):
             "timestamp": self.timestamp,
             "estimatedEndTime": self.estimated_end_time,
             "statistic": self.statistic if self.statistic is not None else {},
-            "order": self.order,
+            "updateIndex": self.update_index,
         }
 
     @classmethod
@@ -599,10 +605,10 @@ class VisualizedEnvironment(Serializable):
             "timestamp",
             "estimatedEndTime",
             "statistic",
-            "order",
+            "updateIndex",
         ]
-        if any(key not in serialized_data for key in required_keys):
-            raise ValueError("Invalid data for VisualizedEnvironment")
+
+        cls.verify_required_fields(serialized_data, required_keys, "VisualizedEnvironment")
 
         environment = VisualizedEnvironment()
         for passenger_data in serialized_data["passengers"]:
@@ -616,16 +622,13 @@ class VisualizedEnvironment(Serializable):
         environment.timestamp = serialized_data["timestamp"]
         environment.estimated_end_time = serialized_data["estimatedEndTime"]
         environment.statistic = serialized_data["statistic"]
-        environment.order = serialized_data["order"]
+        environment.update_index = serialized_data["updateIndex"]
 
         return environment
 
 
 # MARK: Updates
 class UpdateType(Enum):
-    CREATE_VEHICLE = "createVehicle"
-    UPDATE_VEHICLE_STATUS = "updateVehicleStatus"
-    UPDATE_VEHICLE_STOPS = "updateVehicleStops"
     UPDATE_STATISTIC = "updateStatistic"
 
 
@@ -648,96 +651,11 @@ class StatisticUpdate(Serializable):
         return StatisticUpdate(serialized_data.statistic)
 
 
-class VehicleStatusUpdate(Serializable):
-    vehicle_id: str
-    status: VehicleStatus
-
-    def __init__(self, vehicle_id: str, status: VehicleStatus) -> None:
-        self.vehicle_id = vehicle_id
-        self.status = status
-
-    @classmethod
-    def from_vehicle(cls, vehicle: Vehicle) -> "VehicleStatusUpdate":
-        return cls(vehicle.id, vehicle.status)
-
-    def serialize(self) -> dict:
-        return {
-            "id": self.vehicle_id,
-            "status": convert_vehicle_status_to_string(self.status),
-        }
-
-    @classmethod
-    def deserialize(cls, serialized_data: dict | str) -> "VehicleStatusUpdate":
-        serialized_data = cls.serialized_data_to_dict(serialized_data)
-
-        if "id" not in serialized_data or "status" not in serialized_data:
-            raise ValueError("Invalid data for VehicleStatusUpdate")
-
-        vehicle_id = str(serialized_data["id"])
-        status = convert_string_to_vehicle_status(serialized_data["status"])
-        return VehicleStatusUpdate(vehicle_id, status)
-
-
-class VehicleStopsUpdate(Serializable):
-    vehicle_id: str
-    previous_stops: list[VisualizedStop]
-    current_stop: VisualizedStop | None
-    next_stops: list[VisualizedStop]
-
-    def __init__(
-        self,
-        vehicle_id: str,
-        previous_stops: list[VisualizedStop],
-        current_stop: VisualizedStop | None,
-        next_stops: list[VisualizedStop],
-    ) -> None:
-        self.vehicle_id = vehicle_id
-        self.previous_stops = previous_stops
-        self.current_stop = current_stop
-        self.next_stops = next_stops
-
-    @classmethod
-    def from_vehicle_and_route(cls, vehicle: Vehicle, route: Route) -> "VehicleStopsUpdate":
-        previous_stops = [VisualizedStop.from_stop(stop) for stop in route.previous_stops]
-        current_stop = VisualizedStop.from_stop(route.current_stop) if route.current_stop is not None else None
-        next_stops = [VisualizedStop.from_stop(stop) for stop in route.next_stops]
-        return cls(vehicle.id, previous_stops, current_stop, next_stops)
-
-    def serialize(self) -> dict:
-        serialized = {
-            "id": self.vehicle_id,
-            "previousStops": [stop.serialize() for stop in self.previous_stops],
-            "nextStops": [stop.serialize() for stop in self.next_stops],
-        }
-
-        if self.current_stop is not None:
-            serialized["currentStop"] = self.current_stop.serialize()
-
-        return serialized
-
-    @classmethod
-    def deserialize(cls, serialized_data: dict | str) -> "VehicleStopsUpdate":
-        serialized_data = cls.serialized_data_to_dict(serialized_data)
-
-        if "id" not in serialized_data or "previousStops" not in serialized_data or "nextStops" not in serialized_data:
-            raise ValueError("Invalid data for VehicleStopsUpdate")
-
-        vehicle_id = str(serialized_data["id"])
-        previous_stops = [VisualizedStop.deserialize(stop_data) for stop_data in serialized_data["previousStops"]]
-        next_stops = [VisualizedStop.deserialize(stop_data) for stop_data in serialized_data["nextStops"]]
-
-        current_stop = serialized_data.get("currentStop", None)
-        if current_stop is not None:
-            current_stop = VisualizedStop.deserialize(current_stop)
-
-        return VehicleStopsUpdate(vehicle_id, previous_stops, current_stop, next_stops)
-
-
 class Update(Serializable):
     update_type: UpdateType
     data: Serializable
     timestamp: float
-    order: int
+    update_index: int
 
     def __init__(
         self,
@@ -748,14 +666,14 @@ class Update(Serializable):
         self.update_type = update_type
         self.data = data
         self.timestamp = timestamp
-        self.order = 0
+        self.update_index = 0
 
     def serialize(self) -> dict:
         return {
             "type": self.update_type.value,
             "data": self.data.serialize(),
             "timestamp": self.timestamp,
-            "order": self.order,
+            "updateIndex": self.update_index,
         }
 
     @classmethod
@@ -766,7 +684,7 @@ class Update(Serializable):
             "type" not in serialized_data
             or "data" not in serialized_data
             or "timestamp" not in serialized_data
-            or "order" not in serialized_data
+            or "updateIndex" not in serialized_data
         ):
             raise ValueError("Invalid data for Update")
 
@@ -774,27 +692,18 @@ class Update(Serializable):
         update_data = serialized_data["data"]
         timestamp = float(serialized_data["timestamp"])
 
-        if update_type == UpdateType.CREATE_VEHICLE:
-            update_data = VisualizedVehicle.deserialize(update_data)
-        elif update_type == UpdateType.UPDATE_VEHICLE_STATUS:
-            update_data = VehicleStatusUpdate.deserialize(update_data)
-        elif update_type == UpdateType.UPDATE_VEHICLE_STOPS:
-            update_data = VehicleStopsUpdate.deserialize(update_data)
-        elif update_type == UpdateType.UPDATE_STATISTIC:
-            update_data = StatisticUpdate.deserialize(update_data)
+        update_data = StatisticUpdate.deserialize(update_data)
 
         update = Update(update_type, update_data, timestamp)
-        update.order = serialized_data["order"]
+        update.update_index = serialized_data["updateIndex"]
         return update
 
 
 # MARK: State
 class VisualizedState(VisualizedEnvironment):
-    updates: list[Update]
-
     def __init__(self) -> None:
         super().__init__()
-        self.updates = []
+        self.updates: list[Update] = []
 
     @classmethod
     def from_environment(cls, environment: VisualizedEnvironment) -> "VisualizedState":
@@ -803,7 +712,7 @@ class VisualizedState(VisualizedEnvironment):
         state.vehicles = environment.vehicles
         state.timestamp = environment.timestamp
         state.estimated_end_time = environment.estimated_end_time
-        state.order = environment.order
+        state.update_index = environment.update_index
         return state
 
     def serialize(self) -> dict:
@@ -825,7 +734,7 @@ class VisualizedState(VisualizedEnvironment):
         state.vehicles = environment.vehicles
         state.timestamp = environment.timestamp
         state.estimated_end_time = environment.estimated_end_time
-        state.order = environment.order
+        state.update_index = environment.update_index
 
         for update_data in serialized_data["updates"]:
             update = Update.deserialize(update_data)
@@ -836,37 +745,29 @@ class VisualizedState(VisualizedEnvironment):
 
 # MARK: Simulation Information
 class SimulationInformation(Serializable):  # pylint: disable=too-many-instance-attributes
-    version: int
-    simulation_id: str
-    name: str
-    start_time: str
-    data: str
-    simulation_start_time: float | None
-    simulation_end_time: float | None
-    last_update_order: int | None
 
     def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self,
         simulation_id: str,
         data: str,
-        simulation_start_time: str | None,
-        simulation_end_time: str | None,
-        last_update_order: int | None,
+        simulation_start_time: float | None,
+        simulation_end_time: float | None,
+        last_update_index: int | None,
         version: int | None,
     ) -> None:
-        self.version = version
+        self.version: int = version
         if self.version is None:
             self.version = SAVE_VERSION
 
-        self.simulation_id = simulation_id
+        self.simulation_id: str = simulation_id
 
-        self.name = simulation_id.split(SIMULATION_SAVE_FILE_SEPARATOR)[1]
-        self.start_time = simulation_id.split(SIMULATION_SAVE_FILE_SEPARATOR)[0]
-        self.data = data
+        self.name: str = simulation_id.split(SIMULATION_SAVE_FILE_SEPARATOR)[1]
+        self.start_time: str = simulation_id.split(SIMULATION_SAVE_FILE_SEPARATOR)[0]
+        self.data: str = data
 
-        self.simulation_start_time = simulation_start_time
-        self.simulation_end_time = simulation_end_time
-        self.last_update_order = last_update_order
+        self.simulation_start_time: float | None = simulation_start_time
+        self.simulation_end_time: float | None = simulation_end_time
+        self.last_update_index: int | None = last_update_index
 
     def serialize(self) -> dict:
         serialized = {
@@ -876,34 +777,46 @@ class SimulationInformation(Serializable):  # pylint: disable=too-many-instance-
             "startTime": self.start_time,
             "data": self.data,
         }
+
         if self.simulation_start_time is not None:
             serialized["simulationStartTime"] = self.simulation_start_time
+
         if self.simulation_end_time is not None:
             serialized["simulationEndTime"] = self.simulation_end_time
-        if self.last_update_order is not None:
-            serialized["lastUpdateOrder"] = self.last_update_order
+
+        if self.last_update_index is not None:
+            serialized["lastUpdateIndex"] = self.last_update_index
+
         return serialized
 
     @classmethod
     def deserialize(cls, serialized_data: dict | str) -> "SimulationInformation":
         serialized_data = cls.serialized_data_to_dict(serialized_data)
 
-        if "version" not in serialized_data or "simulationId" not in serialized_data:
-            raise ValueError("Invalid data for SimulationInformation")
+        required_keys = ["version", "simulationId", "data"]
+        cls.verify_required_fields(serialized_data, required_keys, "SimulationInformation")
 
         version = int(serialized_data["version"])
         simulation_id = str(serialized_data["simulationId"])
         simulation_data = str(serialized_data["data"])
 
         simulation_start_time = serialized_data.get("simulationStartTime", None)
+        if simulation_start_time is not None:
+            simulation_start_time = float(simulation_start_time)
+
         simulation_end_time = serialized_data.get("simulationEndTime", None)
-        last_update_order = serialized_data.get("lastUpdateOrder", None)
+        if simulation_end_time is not None:
+            simulation_end_time = float(simulation_end_time)
+
+        last_update_index = serialized_data.get("lastUpdateIndex", None)
+        if last_update_index is not None:
+            last_update_index = int(last_update_index)
 
         return SimulationInformation(
             simulation_id,
             simulation_data,
             simulation_start_time,
             simulation_end_time,
-            last_update_order,
+            last_update_index,
             version,
         )

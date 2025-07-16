@@ -5,13 +5,13 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { EntityMetadata } from '../../interfaces/entity.model';
+import { getAllLegs } from '../../interfaces/passenger.model';
 import {
   AnimatedPassenger,
   AnimatedSimulationEnvironment,
   AnimatedStop,
   AnimatedVehicle,
-  EntityMetadata,
-  getAllLegs,
 } from '../../interfaces/simulation.model';
 import { AnimationService } from '../../services/animation.service';
 import { FavoriteEntitiesService } from '../../services/favorite-entities.service';

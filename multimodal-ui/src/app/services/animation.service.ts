@@ -16,6 +16,7 @@ import * as PIXI from 'pixi.js';
 import {
   Entity,
   EntityFilterMode,
+  EntityMetadata,
   EntityType,
 } from '../interfaces/entity.model';
 import {
@@ -26,13 +27,11 @@ import {
   DisplayedPolylines,
   DynamicPassengerAnimationData,
   DynamicVehicleAnimationData,
-  EntityMetadata,
-  getAllStops,
   Polyline,
   StaticPassengerAnimationData,
   StaticVehicleAnimationData,
-  Vehicle,
 } from '../interfaces/simulation.model';
+import { getAllStops } from '../interfaces/vehicle.model';
 import { FavoriteEntitiesService } from './favorite-entities.service';
 import { SpritesService } from './sprites.service';
 
@@ -1014,7 +1013,7 @@ export class AnimationService {
   }
 
   private applyInterpolation(
-    vehicleEntity: Entity<Vehicle>,
+    vehicleEntity: Entity<AnimatedVehicle>,
     polyline: Polyline,
     lineNo: number,
     lineProgress: number,

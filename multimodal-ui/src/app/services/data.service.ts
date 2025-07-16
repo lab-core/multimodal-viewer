@@ -9,8 +9,8 @@ import { SIMULATION_SAVE_FILE_SEPARATOR } from '../../environments/environment';
 import {
   Simulation,
   SIMULATION_STATUSES,
+  SIMULATION_STATUSES_ORDER,
   SimulationStatus,
-  STATUSES_ORDER,
 } from '../interfaces/simulation.model';
 import { CommunicationService } from './communication.service';
 
@@ -126,7 +126,7 @@ export class DataService {
             simulationEndTime: null,
             simulationTime: null,
             simulationEstimatedEndTime: null,
-            lastUpdateOrder: null,
+            lastUpdateIndex: null,
             completion: 1,
             configuration: {
               maxDuration: null,
@@ -168,7 +168,7 @@ export class DataService {
         const simulationEstimatedEndTime =
           rawSimulation.simulationEstimatedEndTime ?? null;
 
-        const lastUpdateOrder = rawSimulation.lastUpdateOrder ?? null;
+        const lastUpdateIndex = rawSimulation.lastUpdateIndex ?? null;
 
         let completion = 1;
         if (
@@ -197,7 +197,7 @@ export class DataService {
           simulationEndTime,
           simulationTime,
           simulationEstimatedEndTime,
-          lastUpdateOrder,
+          lastUpdateIndex,
           completion,
           configuration: {
             maxDuration,
@@ -211,8 +211,8 @@ export class DataService {
 
   private sortSimulations(a: Simulation, b: Simulation): number {
     // First compare the orders
-    const aOrder = STATUSES_ORDER[a.status];
-    const bOrder = STATUSES_ORDER[b.status];
+    const aOrder = SIMULATION_STATUSES_ORDER[a.status];
+    const bOrder = SIMULATION_STATUSES_ORDER[b.status];
 
     if (aOrder < bOrder) {
       return -1;

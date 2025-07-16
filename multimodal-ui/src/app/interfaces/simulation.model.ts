@@ -1,6 +1,8 @@
-import { EntityType } from './entity.model';
 import { Leg } from './leg.model';
-import { Tagged } from './tags.model';
+import { Passenger, PassengerStatus } from './passenger.model';
+import { Position } from './position.model';
+import { Stop } from './stop.model';
+import { Vehicle, VehicleStatus } from './vehicle.model';
 
 export type SimulationStatus =
   | 'starting'
@@ -33,7 +35,7 @@ export const RUNNING_SIMULATION_STATUSES: SimulationStatus[] = [
   'lost',
 ];
 
-export const STATUSES_ORDER: Record<SimulationStatus, number> = {
+export const SIMULATION_STATUSES_ORDER: Record<SimulationStatus, number> = {
   starting: 0,
   running: 1,
   paused: 1,
@@ -92,9 +94,9 @@ export interface Simulation {
   simulationEstimatedEndTime: number | null;
 
   /**
-   * The order of the last update
+   * The index of the last update
    */
-  lastUpdateOrder: number | null;
+  lastUpdateIndex: number | null;
 
   /**
    * The current completion of the simulation
@@ -124,73 +126,13 @@ export interface SimulationConfiguration {
   maxDuration: number | null;
 }
 
-export type PassengerStatus =
-  | 'release'
-  | 'assigned'
-  | 'ready'
-  | 'onboard'
-  | 'complete';
-
-export const PASSENGER_STATUSES: PassengerStatus[] = [
-  'release',
-  'assigned',
-  'ready',
-  'onboard',
-  'complete',
-];
-
-export function isPassengerStatus(value: unknown): value is PassengerStatus {
-  return PASSENGER_STATUSES.includes(value as PassengerStatus);
-}
-
 export interface AnimatedLeg extends Leg {
   previousStops: Stop[];
   currentStop: Stop | null;
   nextStops: Stop[];
 }
-export interface Passenger extends EntityMetadata, Tagged {
-  status: PassengerStatus;
-  previousLegs: Leg[];
-  currentLeg: Leg | null;
-  nextLegs: Leg[];
-  numberOfPassengers: number;
-}
-
-export interface PassengerStatusUpdate {
-  id: string;
-  status: PassengerStatus;
-}
-
-export interface PassengerLegsUpdate {
-  id: string;
-  previousLegs: Leg[];
-  currentLeg: Leg | null;
-  nextLegs: Leg[];
-}
-
-export type VehicleStatus =
-  | 'release'
-  | 'idle'
-  | 'boarding'
-  | 'enroute'
-  | 'alighting'
-  | 'complete';
-
-export const VEHICLE_STATUSES: VehicleStatus[] = [
-  'release',
-  'idle',
-  'boarding',
-  'enroute',
-  'alighting',
-  'complete',
-];
 
 export type RawPolylines = Record<string, [string, number[]]>;
-
-export interface Position {
-  latitude: number;
-  longitude: number;
-}
 
 export interface Polyline {
   polyline: Position[];
@@ -230,14 +172,6 @@ export interface DisplayedPolylines {
   currentPolylineEndTime: number | null;
 }
 
-export interface Stop extends EntityMetadata, Tagged {
-  arrivalTime: number;
-  departureTime: number | null; // null means infinite
-  position: Position;
-  capacity: number;
-  label: string;
-}
-
 export interface AnimatedStop extends Stop {
   /**
    * Passengers that are waiting at the stop.
@@ -266,35 +200,6 @@ export interface AnimatedStop extends Stop {
   displayedPassengerIds: string[];
 }
 
-export const DEFAULT_STOP_CAPACITY = 10;
-
-export interface EntityMetadata extends Tagged {
-  id: string;
-  entityType: EntityType;
-  name: string;
-}
-
-export interface Vehicle extends EntityMetadata {
-  mode: string | null;
-  status: VehicleStatus;
-  previousStops: Stop[];
-  currentStop: Stop | null;
-  nextStops: Stop[];
-  capacity: number;
-}
-
-export interface VehicleStatusUpdate {
-  id: string;
-  status: VehicleStatus;
-}
-
-export interface VehicleStopsUpdate {
-  id: string;
-  previousStops: Stop[];
-  currentStop: Stop | null;
-  nextStops: Stop[];
-}
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Statistic = Record<string, any>;
 
@@ -302,39 +207,20 @@ export interface StatisticUpdate {
   statistic: Statistic;
 }
 
-export type SimulationUpdateType =
-  | 'createPassenger'
-  | 'updatePassengerStatus'
-  | 'updatePassengerLegs'
-  | 'createVehicle'
-  | 'updateVehicleStatus'
-  | 'updateVehicleStops'
-  | 'updateStatistic';
+export type SimulationUpdateType = 'updateStatistic';
 
 export const SIMULATION_UPDATE_TYPES: SimulationUpdateType[] = [
-  'createPassenger',
-  'updatePassengerStatus',
-  'updatePassengerLegs',
-  'createVehicle',
-  'updateVehicleStatus',
-  'updateVehicleStops',
   'updateStatistic',
 ];
 
 export interface SimulationUpdateTypeMap {
-  createPassenger: Passenger;
-  updatePassengerStatus: PassengerStatusUpdate;
-  updatePassengerLegs: PassengerLegsUpdate;
-  createVehicle: Vehicle;
-  updateVehicleStatus: VehicleStatusUpdate;
-  updateVehicleStops: VehicleStopsUpdate;
   updateStatistic: StatisticUpdate;
 }
 
 export interface SimulationUpdate<T extends keyof SimulationUpdateTypeMap> {
   type: SimulationUpdateType;
   timestamp: number;
-  order: number;
+  updateIndex: number;
   data: SimulationUpdateTypeMap[T];
 }
 
@@ -354,9 +240,9 @@ export type displayed<T> = T & {
 
 export interface EntityAnimationData {
   startTimestamp: number;
-  startOrder: number;
+  startUpdateIndex: number;
   endTimestamp: number | null;
-  endOrder: number | null; // null when the data is the last one and the animated environment is not fully built
+  endUpdateIndex: number | null; // null when the data is the last one and the animated environment is not fully built
   notDisplayedReason: string | null; // null when the data is the last one and the animated environment is not fully built
 }
 
@@ -443,13 +329,13 @@ export interface SimulationEnvironment {
   timestamp: number;
 
   /**
-   * The order of the last update before the snapshot
+   * The index of the last update before the snapshot
    */
-  order: number;
+  updateIndex: number;
 }
 
 export interface RawSimulationEnvironment
-  extends Pick<SimulationEnvironment, 'timestamp' | 'order'> {
+  extends Pick<SimulationEnvironment, 'timestamp' | 'updateIndex'> {
   passengers: Passenger[];
   vehicles: Vehicle[];
   statistic: Statistic;
@@ -468,8 +354,8 @@ export interface AnimationData {
   vehicles: Record<string, AnyVehicleAnimationData[]>;
   startTimestamp: number;
   endTimestamp: number;
-  startOrder: number;
-  endOrder: number;
+  startUpdateIndex: number;
+  endUpdateIndex: number;
 }
 
 export interface AnimatedSimulationState extends SimulationState {
@@ -509,7 +395,7 @@ export interface AnimatedSimulationStates {
    */
   firstContinuousState: {
     timestamp: number;
-    order: number;
+    updateIndex: number;
     index: number;
   } | null;
 
@@ -519,12 +405,12 @@ export interface AnimatedSimulationStates {
    *
    * This contains the informations of the last valid state in the continuous states.
    *
-   * Be aware that the timestamp and order here may not be the ones of the last state in
+   * Be aware that the timestamp and update index here may not be the ones of the last state in
    * the continuous states but the ones of the last update of this state.
    */
   lastContinuousState: {
     timestamp: number;
-    order: number;
+    updateIndex: number;
     index: number;
   } | null;
 
@@ -544,41 +430,4 @@ export interface AnimatedSimulationStates {
   } | null;
 
   continuousAnimationData: AnimationData | null;
-}
-
-function addTypeToStop(
-  stop: Stop,
-  type: 'previous' | 'current' | 'next',
-): Stop & { type: 'previous' | 'current' | 'next' } {
-  const castedStop = stop as Stop & {
-    type: 'previous' | 'current' | 'next';
-  };
-  castedStop.type = type;
-  return castedStop;
-}
-
-export function getAllStops(
-  vehicle: Vehicle,
-): (Stop & { type: 'previous' | 'current' | 'next' })[] {
-  return vehicle.previousStops
-    .map((stop) => addTypeToStop(stop, 'previous'))
-    .concat(
-      vehicle.currentStop === null
-        ? []
-        : [addTypeToStop(vehicle.currentStop, 'current')],
-      vehicle.nextStops.map((stop) => addTypeToStop(stop, 'next')),
-    );
-}
-
-export function getAllLegs<P extends Passenger>(
-  passenger: P,
-): P['previousLegs'] {
-  return passenger.previousLegs.concat(
-    passenger.currentLeg === null ? [] : [passenger.currentLeg],
-    passenger.nextLegs,
-  );
-}
-
-export function getStopId(position: Position): string {
-  return '' + position.latitude + ',' + position.longitude;
 }

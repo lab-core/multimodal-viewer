@@ -1,11 +1,10 @@
-import { extractLeg, isLegType, Leg } from './leg.model';
-import {
-  getAllLegs,
-  isPassengerStatus,
-  Passenger,
-  SimulationEnvironment,
-} from './simulation.model';
+import { extractLeg, isLeg, isLegType, Leg } from './leg.model';
+import { getAllLegs, isPassengerStatus, Passenger } from './passenger.model';
+import { Position } from './position.model';
+import { SimulationEnvironment } from './simulation.model';
+import { extractStop, isStop, isStopType, Stop } from './stop.model';
 import { isTagged } from './tags.model';
+import { isVehicleStatus, Vehicle } from './vehicle.model';
 export type UpdateType = 'passenger' | 'vehicle' | 'statistics';
 export const UPDATE_TYPES: UpdateType[] = [
   'passenger',
@@ -37,53 +36,57 @@ export class Update {
     // This method should be implemented by subclasses.
   }
 
-  /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  static deserialize(serialized: any): Update | null {
+  static deserialize(serialized: unknown): Update | null {
     if (typeof serialized !== 'object' || !serialized) {
       console.error('Invalid serialized update:', serialized);
       return null;
     }
 
-    const updateType: unknown = serialized['updateType'];
-    if (!isUpdateType(updateType)) {
-      console.error('Unknown update type:', updateType);
+    if (!('updateType' in serialized) || !isUpdateType(serialized.updateType)) {
+      console.error('Unknown update type:', serialized);
       return null;
     }
 
-    const updateIndex: unknown = serialized['updateIndex'];
-    if (typeof updateIndex !== 'number') {
-      console.error('Invalid update index:', updateIndex);
+    if (
+      !('updateIndex' in serialized) ||
+      typeof serialized.updateIndex !== 'number'
+    ) {
+      console.error('Invalid update index:', serialized);
       return null;
     }
 
-    const eventIndex: unknown = serialized['eventIndex'];
-    if (typeof eventIndex !== 'number') {
-      console.error('Invalid event index:', eventIndex);
+    if (
+      !('eventIndex' in serialized) ||
+      typeof serialized.eventIndex !== 'number'
+    ) {
+      console.error('Invalid event index:', serialized);
       return null;
     }
 
-    const eventName: unknown = serialized['eventName'];
-    if (typeof eventName !== 'string') {
-      console.error('Invalid event name:', eventName);
+    if (
+      !('eventName' in serialized) ||
+      typeof serialized.eventName !== 'string'
+    ) {
+      console.error('Invalid event name:', serialized);
       return null;
     }
 
-    const timestamp: unknown = serialized['timestamp'];
-    if (typeof timestamp !== 'number') {
-      console.error('Invalid timestamp:', timestamp);
+    if (
+      !('timestamp' in serialized) ||
+      typeof serialized.timestamp !== 'number'
+    ) {
+      console.error('Invalid timestamp:', serialized);
       return null;
     }
 
     return new Update(
-      updateType,
-      updateIndex,
-      eventIndex,
-      eventName,
-      timestamp,
+      serialized.updateType,
+      serialized.updateIndex,
+      serialized.eventIndex,
+      serialized.eventName,
+      serialized.timestamp,
     );
   }
-  /* eslint-enable @typescript-eslint/no-unsafe-member-access */
 }
 
 export type PassengerDifferences = Partial<
@@ -94,19 +97,37 @@ export type WithIndex<T> = T & {
   index: number;
 };
 
-export type LegDifferences = { index: number } & Partial<Leg>;
-
+export type LegDifferences = WithIndex<
+  Partial<
+    Pick<
+      Leg,
+      | 'tags'
+      | 'legType'
+      | 'assignedVehicleId'
+      | 'boardingStopIndex'
+      | 'alightingStopIndex'
+      | 'boardingTime'
+      | 'alightingTime'
+    >
+  >
+>;
 export class PassengerUpdate extends Update {
+  private static readonly DEFAULT_DIFFERENCES: PassengerDifferences = {};
+  private static readonly DEFAULT_LEGS_TO_ADD: Leg[] = [];
+  private static readonly DEFAULT_LEGS_DIFFERENCES: WithIndex<LegDifferences>[] =
+    [];
+  private static readonly DEFAULT_NUMBER_OF_LEGS_TO_REMOVE = 0;
+
   constructor(
     updateIndex: number,
     eventIndex: number,
     eventName: string,
     timestamp: number,
     private readonly passengerId: string,
-    private readonly differences: PassengerDifferences = {},
-    private readonly numberOfLegsToRemove = 0,
-    private readonly legsToAdd: Leg[] = [],
-    private readonly legsDifferences: WithIndex<LegDifferences>[] = [],
+    private readonly differences: PassengerDifferences,
+    private readonly numberOfLegsToRemove: number,
+    private readonly legsToAdd: Leg[],
+    private readonly legsDifferences: WithIndex<LegDifferences>[],
   ) {
     super('passenger', updateIndex, eventIndex, eventName, timestamp);
   }
@@ -207,43 +228,72 @@ export class PassengerUpdate extends Update {
     environment.passengers[this.passengerId] = passenger;
   }
 
-  /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  static override deserialize(serialized: any): PassengerUpdate | null {
+  static override deserialize(serialized: unknown): PassengerUpdate | null {
+    if (typeof serialized !== 'object' || serialized === null) {
+      console.error('Invalid serialized passenger update:', serialized);
+      return null;
+    }
+
     const baseUpdate = Update.deserialize(serialized);
     if (baseUpdate === null) {
       return null;
     }
 
-    const passengerId: unknown = serialized['passengerId'];
-    if (typeof passengerId !== 'string') {
-      console.error('Invalid passenger ID:', passengerId);
+    if (
+      !('passengerId' in serialized) ||
+      typeof serialized.passengerId !== 'string'
+    ) {
+      console.error('Invalid passenger ID:', serialized);
       return null;
     }
+    const passengerId = serialized.passengerId;
 
-    const differences: unknown = serialized['differences'] ?? {};
-    if (!this.isPassengerDifferences(differences)) {
-      console.error('Invalid differences:', differences);
-      return null;
+    let differences: PassengerUpdate['differences'] = this.DEFAULT_DIFFERENCES;
+    if ('differences' in serialized) {
+      if (!this.isPassengerDifferences(serialized.differences)) {
+        console.error('Invalid differences:', serialized);
+        return null;
+      }
+
+      differences = serialized.differences;
     }
 
-    const numberOfLegsToRemove: unknown =
-      serialized['numberOfLegsToRemove'] ?? 0;
-    if (typeof numberOfLegsToRemove !== 'number') {
-      console.error('Invalid number of legs to remove:', numberOfLegsToRemove);
-      return null;
+    let numberOfLegsToRemove: PassengerUpdate['numberOfLegsToRemove'] =
+      this.DEFAULT_NUMBER_OF_LEGS_TO_REMOVE;
+    if ('numberOfLegsToRemove' in serialized) {
+      if (typeof serialized.numberOfLegsToRemove !== 'number') {
+        console.error('Invalid number of legs to remove:', serialized);
+        return null;
+      }
+
+      numberOfLegsToRemove = serialized.numberOfLegsToRemove;
     }
 
-    const legsToAdd: unknown = serialized['legsToAdd'] ?? [];
-    if (!this.isLegArray(legsToAdd)) {
-      console.error('Invalid legs to add:', legsToAdd);
-      return null;
+    let legsToAdd: PassengerUpdate['legsToAdd'] = this.DEFAULT_LEGS_TO_ADD;
+    if ('legsToAdd' in serialized) {
+      if (!Array.isArray(serialized.legsToAdd)) {
+        console.error('Invalid legs to add:', serialized);
+        return null;
+      }
+
+      const extractedLegsToAdd = serialized.legsToAdd.map(extractLeg);
+      if (!extractedLegsToAdd.every(isLeg)) {
+        console.error('Invalid legs to add:', serialized, extractedLegsToAdd);
+        return null;
+      }
+
+      legsToAdd = extractedLegsToAdd;
     }
 
-    const legsDifferences: unknown = serialized['legsDifferences'] ?? [];
-    if (!this.isLegDifferencesArray(legsDifferences)) {
-      console.error('Invalid legs differences:', legsDifferences);
-      return null;
+    let legsDifferences: PassengerUpdate['legsDifferences'] =
+      this.DEFAULT_LEGS_DIFFERENCES;
+    if ('legsDifferences' in serialized) {
+      if (!this.isLegDifferencesArray(serialized.legsDifferences)) {
+        console.error('Invalid legs differences:', serialized);
+        return null;
+      }
+
+      legsDifferences = serialized.legsDifferences;
     }
 
     return new PassengerUpdate(
@@ -258,11 +308,10 @@ export class PassengerUpdate extends Update {
       legsDifferences,
     );
   }
-  /* eslint-enable @typescript-eslint/no-unsafe-member-access */
 
   private static isPassengerDifferences(
     value: unknown,
-  ): value is PassengerDifferences {
+  ): value is PassengerUpdate['differences'] {
     if (typeof value !== 'object' || value === null) {
       return false;
     }
@@ -270,34 +319,20 @@ export class PassengerUpdate extends Update {
     if ('name' in value && typeof value.name !== 'string') {
       return false;
     }
+
     if ('status' in value && !isPassengerStatus(value.status)) {
       return false;
     }
+
     if (
       'numberOfPassengers' in value &&
       typeof value.numberOfPassengers !== 'number'
     ) {
       return false;
     }
+
     if ('tags' in value && !isTagged(value)) {
       return false;
-    }
-    return true;
-  }
-
-  private static isLegArray(value: unknown): value is Leg[] {
-    if (!Array.isArray(value)) {
-      return false;
-    }
-
-    // Extract each element in place
-    for (let index = 0; index < value.length; index++) {
-      const leg = extractLeg(value[index]);
-      if (leg === null) {
-        console.error(`Invalid leg at index ${index}:`, value[index]);
-        return false;
-      }
-      value[index] = leg; // Replace the element with the extracted leg
     }
 
     return true;
@@ -305,15 +340,19 @@ export class PassengerUpdate extends Update {
 
   private static isLegDifferencesArray(
     value: unknown,
-  ): value is WithIndex<LegDifferences>[] {
+  ): value is PassengerUpdate['legsDifferences'] {
     return Array.isArray(value) && value.every(this.isLegDifferences);
   }
 
   private static isLegDifferences(
     this: void,
     value: unknown,
-  ): value is WithIndex<LegDifferences> {
+  ): value is PassengerUpdate['legsDifferences'][number] {
     if (typeof value !== 'object' || value === null) {
+      return false;
+    }
+
+    if ('index' in value && typeof value.index !== 'number') {
       return false;
     }
 
@@ -362,6 +401,217 @@ export class PassengerUpdate extends Update {
       value.alightingTime !== null &&
       typeof value.alightingTime !== 'number'
     ) {
+      return false;
+    }
+
+    return true;
+  }
+}
+
+export type VehicleDifferences = Partial<
+  Pick<Vehicle, 'mode' | 'status' | 'capacity' | 'name' | 'tags'>
+>;
+
+export type StopDifferences = WithIndex<
+  Partial<
+    Pick<
+      Stop,
+      | 'tags'
+      | 'stopType'
+      | 'arrivalTime'
+      | 'departureTime'
+      | 'capacity'
+      | 'label'
+    > &
+      Position // latitude and longitude are in the stop object
+  >
+>;
+
+export class VehicleUpdate extends Update {
+  private static readonly DEFAULT_DIFFERENCES: VehicleDifferences = {};
+  private static readonly DEFAULT_STOPS_TO_ADD: Stop[] = [];
+  private static readonly DEFAULT_STOPS_DIFFERENCES: WithIndex<StopDifferences>[] =
+    [];
+  private static readonly DEFAULT_NUMBER_OF_STOPS_TO_REMOVE = 0;
+
+  constructor(
+    updateIndex: number,
+    eventIndex: number,
+    eventName: string,
+    timestamp: number,
+    private readonly vehicleId: string,
+    private readonly differences: VehicleDifferences,
+    private readonly numberOfStopsToRemove: number,
+    private readonly stopsToAdd: Stop[],
+    private readonly stopsDifferences: WithIndex<StopDifferences>[],
+  ) {
+    super('vehicle', updateIndex, eventIndex, eventName, timestamp);
+  }
+
+  override apply(environment: SimulationEnvironment): void {}
+
+  static override deserialize(serialized: unknown): VehicleUpdate | null {
+    if (typeof serialized !== 'object' || serialized === null) {
+      console.error('Invalid serialized vehicle update:', serialized);
+      return null;
+    }
+
+    const baseUpdate = Update.deserialize(serialized);
+    if (baseUpdate === null) {
+      return null;
+    }
+
+    if (
+      !('vehicleId' in serialized) ||
+      typeof serialized.vehicleId !== 'string'
+    ) {
+      console.error('Invalid vehicle ID:', serialized);
+      return null;
+    }
+    const vehicleId = serialized.vehicleId;
+
+    let differences: VehicleUpdate['differences'] = this.DEFAULT_DIFFERENCES;
+    if ('differences' in serialized) {
+      if (!this.isVehicleDifferences(serialized.differences)) {
+        console.error('Invalid differences:', serialized);
+        return null;
+      }
+
+      differences = serialized.differences;
+    }
+
+    let numberOfStopsToRemove: VehicleUpdate['numberOfStopsToRemove'] =
+      this.DEFAULT_NUMBER_OF_STOPS_TO_REMOVE;
+    if ('numberOfStopsToRemove' in serialized) {
+      if (typeof serialized.numberOfStopsToRemove !== 'number') {
+        console.error('Invalid number of stops to remove:', serialized);
+        return null;
+      }
+
+      numberOfStopsToRemove = serialized.numberOfStopsToRemove;
+    }
+
+    let stopsToAdd: VehicleUpdate['stopsToAdd'] = this.DEFAULT_STOPS_TO_ADD;
+    if ('stopsToAdd' in serialized) {
+      if (!Array.isArray(serialized.stopsToAdd)) {
+        console.error('Invalid stops to add:', serialized);
+        return null;
+      }
+
+      const extractedStopsToAdd = serialized.stopsToAdd.map(extractStop);
+      if (!extractedStopsToAdd.every(isStop)) {
+        console.error('Invalid stops to add:', serialized, extractedStopsToAdd);
+        return null;
+      }
+
+      stopsToAdd = extractedStopsToAdd;
+    }
+
+    let stopsDifferences: VehicleUpdate['stopsDifferences'] =
+      this.DEFAULT_STOPS_DIFFERENCES;
+    if ('stopsDifferences' in serialized) {
+      if (!this.isStopDifferencesArray(serialized.stopsDifferences)) {
+        console.error('Invalid stops differences:', serialized);
+        return null;
+      }
+
+      stopsDifferences = serialized.stopsDifferences;
+    }
+
+    return new VehicleUpdate(
+      baseUpdate.updateIndex,
+      baseUpdate.eventIndex,
+      baseUpdate.eventName,
+      baseUpdate.timestamp,
+      vehicleId,
+      differences,
+      numberOfStopsToRemove,
+      stopsToAdd,
+      stopsDifferences,
+    );
+  }
+
+  private static isVehicleDifferences(
+    value: unknown,
+  ): value is VehicleUpdate['differences'] {
+    if (typeof value !== 'object' || value === null) {
+      return false;
+    }
+
+    if ('name' in value && typeof value.name !== 'string') {
+      return false;
+    }
+
+    if ('mode' in value && typeof value.mode !== 'string') {
+      return false;
+    }
+
+    if ('status' in value && !isVehicleStatus(value.status)) {
+      return false;
+    }
+
+    if ('capacity' in value && typeof value.capacity !== 'number') {
+      return false;
+    }
+
+    if ('tags' in value && !isTagged(value)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private static isStopDifferencesArray(
+    value: unknown,
+  ): value is VehicleUpdate['stopsDifferences'] {
+    return Array.isArray(value) && value.every(this.isStopDifferences);
+  }
+
+  private static isStopDifferences(
+    this: void,
+    value: unknown,
+  ): value is VehicleUpdate['stopsDifferences'][number] {
+    if (typeof value !== 'object' || value === null) {
+      return false;
+    }
+
+    if ('index' in value && typeof value.index !== 'number') {
+      return false;
+    }
+
+    if ('tags' in value && !isTagged(value)) {
+      return false;
+    }
+
+    if ('stopType' in value && !isStopType(value.stopType)) {
+      return false;
+    }
+
+    if ('arrivalTime' in value && typeof value.arrivalTime !== 'number') {
+      return false;
+    }
+
+    if (
+      'departureTime' in value &&
+      value.departureTime !== null &&
+      typeof value.departureTime !== 'number'
+    ) {
+      return false;
+    }
+
+    if ('latitude' in value && typeof value.latitude !== 'number') {
+      return false;
+    }
+
+    if ('longitude' in value && typeof value.longitude !== 'number') {
+      return false;
+    }
+
+    if ('capacity' in value && typeof value.capacity !== 'number') {
+      return false;
+    }
+
+    if ('label' in value && typeof value.label !== 'string') {
       return false;
     }
 

@@ -3,11 +3,16 @@ from enum import Enum
 from multimodalsim_viewer.common.utils import Serializable
 from multimodalsim_viewer.server.model import (
     LegType,
+    StopType,
     VisualizedEnvironment,
     VisualizedLeg,
     VisualizedPassenger,
+    VisualizedStop,
+    VisualizedVehicle,
     convert_passenger_status_to_string,
     convert_string_to_passenger_status,
+    convert_string_to_vehicle_status,
+    convert_vehicle_status_to_string,
 )
 
 
@@ -24,17 +29,18 @@ class Update(Serializable):
     Base class for updates in the simulation viewer.
 
     Represents differences in the simulation environment caused by an event.
+
     Updates can be applied sequentially to the environment to recreate the evolution of the simulation.
     """
 
     def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self, update_type: UpdateType, update_index: int, event_index: int, event_name: str, timestamp: float
     ):
-        self.__update_type = update_type
-        self.__update_index = update_index
-        self.__event_index = event_index
-        self.__event_name = event_name
-        self.__timestamp = timestamp
+        self.__update_type: UpdateType = update_type
+        self.__update_index: int = update_index
+        self.__event_index: int = event_index
+        self.__event_name: str = event_name
+        self.__timestamp: float = timestamp
 
     @property
     def update_type(self) -> UpdateType:
@@ -43,6 +49,10 @@ class Update(Serializable):
     @property
     def update_index(self) -> int:
         return self.__update_index
+
+    @update_index.setter
+    def update_index(self, value: int) -> None:
+        self.__update_index = value
 
     @property
     def event_index(self) -> int:
@@ -96,6 +106,9 @@ class Update(Serializable):
 
 # MARK: PassengerUpdate
 class PassengerUpdate(Update):
+    """
+    Differences in a passenger before and after an event.
+    """
 
     def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self,
@@ -124,7 +137,7 @@ class PassengerUpdate(Update):
             self.__compute_difference(old_passenger, new_passenger)
 
     def __compute_difference(
-        self, old_passenger: VisualizedPassenger | None, new_passenger: VisualizedPassenger
+        self, old_passenger: VisualizedPassenger | None, new_passenger: VisualizedPassenger | None
     ) -> dict:
         """
         Compute the difference between the old and new passenger.
@@ -309,3 +322,251 @@ class PassengerUpdate(Update):
         # pylint: enable=unused-private-member
 
         return passenger_update
+
+
+# MARK: VehicleUpdate
+class VehicleUpdate(Update):
+    """
+    Differences in a vehicle before and after an event.
+    """
+
+    def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
+        self,
+        update_index: int,
+        event_index: int,
+        event_name: str,
+        timestamp: float,
+        old_vehicle: VisualizedVehicle | None = None,
+        new_vehicle: VisualizedVehicle | None = None,
+        should_compute_difference: bool = True,
+    ):
+        super().__init__(UpdateType.VEHICLE, update_index, event_index, event_name, timestamp)
+
+        self.__vehicle_id: str | None = None
+
+        # Dictionary containing the new values of the fields that have changed
+        self.__differences: dict = {}
+
+        # Stops are more complex and will be handled separately
+        self.__number_of_stops_to_remove: int = 0
+        self.__stops_to_add: list[VisualizedStop] = []
+
+        self.__stops_differences: list[dict] = []
+
+        # Polylines are only used on the server side to update the polylines file when the simulation is running.
+        # We only need to store the new polylines here, and use it when applying the update.
+        # In the future, if we want to apply this update in the server by reading the save file,
+        # we will need to change this.
+        self.__new_polylines: dict[str, tuple[str, list[float]]] | None = (
+            new_vehicle.polylines if new_vehicle is not None else None
+        )
+
+        if should_compute_difference:
+            self.__compute_difference(old_vehicle, new_vehicle)
+
+    @property
+    def vehicle_id(self) -> str | None:
+        return self.__vehicle_id
+
+    def __compute_difference(
+        self, old_vehicle: VisualizedVehicle | None, new_vehicle: VisualizedVehicle | None
+    ) -> dict:
+        """
+        Compute the difference between the old and new vehicle.
+        """
+
+        if new_vehicle is None:
+            raise ValueError("New vehicle cannot be None")
+
+        if old_vehicle is not None and old_vehicle.vehicle_id != new_vehicle.vehicle_id:
+            raise ValueError("Old and new vehicle must have the same ID")
+
+        self.__vehicle_id = new_vehicle.vehicle_id
+
+        if old_vehicle is None or old_vehicle.mode != new_vehicle.mode:
+            self.__differences["mode"] = new_vehicle.mode
+
+        if old_vehicle is None or old_vehicle.status != new_vehicle.status:
+            self.__differences["status"] = convert_vehicle_status_to_string(new_vehicle.status)
+
+        if old_vehicle is None or old_vehicle.capacity != new_vehicle.capacity:
+            self.__differences["capacity"] = new_vehicle.capacity
+
+        if old_vehicle is None or old_vehicle.name != new_vehicle.name:
+            self.__differences["name"] = new_vehicle.name
+
+        if old_vehicle is None or old_vehicle.tags != new_vehicle.tags:
+            self.__differences["tags"] = new_vehicle.tags
+
+        all_old_stops = old_vehicle.all_stops if old_vehicle is not None else []
+        all_new_stops = new_vehicle.all_stops
+
+        self.__number_of_stops_to_remove = max(0, len(all_old_stops) - len(all_new_stops))
+        self.__stops_to_add = all_new_stops[len(all_old_stops) :]
+
+        for index in range(min(len(all_old_stops), len(all_new_stops))):
+            old_stop = all_old_stops[index]
+            new_stop = all_new_stops[index]
+
+            stop_difference = self.__compute_stop_difference(old_stop, new_stop, index)
+            if stop_difference is not None:
+                self.__stops_differences.append(stop_difference)
+
+    def __compute_stop_difference(self, old_stop: VisualizedStop, new_stop: VisualizedStop, index: int) -> dict | None:
+        """
+        Compute the difference between the old and new stop.
+        """
+        stop_difference = {}
+
+        if old_stop.arrival_time != new_stop.arrival_time:
+            stop_difference["arrivalTime"] = new_stop.arrival_time
+
+        if old_stop.departure_time != new_stop.departure_time:
+            stop_difference["departureTime"] = new_stop.departure_time
+
+        if old_stop.latitude != new_stop.latitude:
+            stop_difference["latitude"] = new_stop.latitude
+
+        if old_stop.longitude != new_stop.longitude:
+            stop_difference["longitude"] = new_stop.longitude
+
+        if old_stop.capacity != new_stop.capacity:
+            stop_difference["capacity"] = new_stop.capacity
+
+        if old_stop.label != new_stop.label:
+            stop_difference["label"] = new_stop.label
+
+        if old_stop.tags != new_stop.tags:
+            stop_difference["tags"] = new_stop.tags
+
+        if old_stop.stop_type != new_stop.stop_type:
+            stop_difference["stopType"] = new_stop.stop_type.value
+
+        if not stop_difference:
+            return None
+
+        stop_difference["index"] = index
+
+        return stop_difference
+
+    def apply(self, environment: VisualizedEnvironment) -> None:
+        vehicle = environment.get_vehicle(self.__vehicle_id)
+
+        if vehicle is None:
+            vehicle = VisualizedVehicle(
+                self.__vehicle_id,
+                self.__differences.get("mode"),
+                convert_string_to_vehicle_status(self.__differences.get("status")),
+                self.__new_polylines,
+                [],
+                None,
+                [],
+                self.__differences.get("capacity"),
+                self.__differences.get("name"),
+                self.__differences.get("tags"),
+            )
+
+            environment.add_vehicle(vehicle)
+
+        else:
+            vehicle.polylines = self.__new_polylines
+
+            if "mode" in self.__differences:
+                vehicle.mode = self.__differences.get("mode")
+            if "status" in self.__differences:
+                vehicle.status = convert_string_to_vehicle_status(self.__differences.get("status"))
+            if "capacity" in self.__differences:
+                vehicle.capacity = self.__differences.get("capacity")
+            if "name" in self.__differences:
+                vehicle.name = self.__differences.get("name")
+            if "tags" in self.__differences:
+                vehicle.tags = self.__differences.get("tags")
+
+        self.__update_stops(vehicle)
+
+    def __update_stops(self, vehicle: VisualizedVehicle) -> None:  # pylint: disable=too-many-branches
+        all_stops = vehicle.all_stops
+
+        if self.__number_of_stops_to_remove > 0:
+            all_stops = all_stops[: -self.__number_of_stops_to_remove]
+
+        all_stops.extend(self.__stops_to_add)
+
+        for stop_difference in self.__stops_differences:
+            stop = all_stops[stop_difference.get("index")]
+
+            if "arrivalTime" in stop_difference:
+                stop.arrival_time = stop_difference.get("arrivalTime")
+            if "departureTime" in stop_difference:
+                stop.departure_time = stop_difference.get("departureTime")
+            if "latitude" in stop_difference:
+                stop.latitude = stop_difference.get("latitude")
+            if "longitude" in stop_difference:
+                stop.longitude = stop_difference.get("longitude")
+            if "capacity" in stop_difference:
+                stop.capacity = stop_difference.get("capacity")
+            if "label" in stop_difference:
+                stop.label = stop_difference.get("label")
+            if "tags" in stop_difference:
+                stop.tags = stop_difference.get("tags")
+            if "stopType" in stop_difference:
+                stop.stop_type = StopType(stop_difference.get("stopType"))
+
+        vehicle.previous_stops = []
+        vehicle.current_stop = None
+        vehicle.next_stops = []
+
+        for stop in all_stops:
+            if stop.stop_type == StopType.PREVIOUS:
+                vehicle.previous_stops.append(stop)
+            elif stop.stop_type == StopType.CURRENT:
+                vehicle.current_stop = stop
+            elif stop.stop_type == StopType.NEXT:
+                vehicle.next_stops.append(stop)
+
+    def serialize(self) -> dict:
+        serialized_data = super().serialize()
+
+        serialized_data["vehicleId"] = self.__vehicle_id
+
+        if self.__differences:
+            serialized_data["differences"] = self.__differences
+        if self.__number_of_stops_to_remove > 0:
+            serialized_data["numberOfStopsToRemove"] = self.__number_of_stops_to_remove
+        if self.__stops_to_add:
+            serialized_data["stopsToAdd"] = [stop.serialize() for stop in self.__stops_to_add]
+        if self.__stops_differences:
+            serialized_data["stopsDifferences"] = self.__stops_differences
+
+        return serialized_data
+
+    @classmethod
+    def deserialize(cls, serialized_data: dict | str) -> "VehicleUpdate":
+        serialized_data = cls.serialized_data_to_dict(serialized_data)
+
+        update = Update.deserialize(serialized_data)
+
+        vehicle_update = cls(
+            update.update_index,
+            update.event_index,
+            update.event_name,
+            update.timestamp,
+            should_compute_difference=False,
+        )
+
+        required_fields = [
+            "vehicleId",
+        ]
+        cls.verify_required_fields(serialized_data, required_fields, "VehicleUpdate")
+
+        # pylint: disable=unused-private-member
+        vehicle_update.__vehicle_id = serialized_data.get("vehicleId")
+        vehicle_update.__differences = serialized_data.get("differences", {})
+        vehicle_update.__number_of_stops_to_remove = serialized_data.get("numberOfStopsToRemove", 0)
+        vehicle_update.__stops_to_add = [
+            VisualizedStop.deserialize(stop_data) for stop_data in serialized_data.get("stopsToAdd", [])
+        ]
+        vehicle_update.__stops_differences = serialized_data.get("stopsDifferences", [])
+        # pylint: enable=unused-private-member
+
+        return vehicle_update

@@ -1,11 +1,9 @@
 import { Component, computed, Signal } from '@angular/core';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import {
-  EntityMetadata,
-  Passenger,
-  Vehicle,
-} from '../../interfaces/simulation.model';
+import { EntityMetadata } from '../../interfaces/entity.model';
+import { Passenger } from '../../interfaces/passenger.model';
+import { Vehicle } from '../../interfaces/vehicle.model';
 import { AnimationService } from '../../services/animation.service';
 import { VisualizationService } from '../../services/visualization.service';
 import { EntityNameComponent } from '../entity-name/entity-name.component';
