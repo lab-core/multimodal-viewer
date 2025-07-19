@@ -29,10 +29,7 @@ import {
   Polyline,
 } from '../interfaces/polylines.model';
 import { Simulation } from '../interfaces/simulation.model';
-import {
-  extractSimulationStates,
-  SimulationState,
-} from '../interfaces/state.model';
+import { SimulationState } from '../interfaces/state.model';
 import { Stop } from '../interfaces/stop.model';
 import {
   PassengerUpdate,
@@ -42,6 +39,7 @@ import {
 import { getAllStops, Vehicle } from '../interfaces/vehicle.model';
 import { CommunicationService } from './communication.service';
 import { DataService } from './data.service';
+import { TaskService } from './task.service';
 
 @Injectable({
   providedIn: 'root',
@@ -73,6 +71,7 @@ export class SimulationService {
   constructor(
     private readonly dataService: DataService,
     private readonly communicationService: CommunicationService,
+    private readonly taskService: TaskService,
   ) {}
 
   // MARK: Active simulation
@@ -92,22 +91,23 @@ export class SimulationService {
         lastContinuousStateUpdateIndex,
         currentStateUpdateIndex,
       ) => {
-        const missingStates = extractSimulationStates(
+        this.taskService.extractStateTask(
           serializedMissingStatesEnvironments,
           serializedMissingStatesUpdates,
-        );
-
-        if (missingStates === null) {
+          (extractedStates) => {
+            if (extractedStates === null) {
           console.error(
             'Failed to extract missing simulation states from the server response.',
           );
+
+              this._isFetchingStatesSignal.set(false);
           return;
         }
 
         this._simulationStatesSignal.update((states) => {
           return this.mergeStates(
             states,
-            missingStates,
+                extractedStates,
             stateUpdateIndexesToKeep as number[],
             !!shouldRequestMoreStates,
             firstContinuousStateUpdateIndex as number,
@@ -117,6 +117,8 @@ export class SimulationService {
         });
 
         this._isFetchingStatesSignal.set(false);
+          },
+        );
       },
     );
 

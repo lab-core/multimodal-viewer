@@ -10,9 +10,10 @@ import {
 import { color as d3Color } from 'd3-color';
 import { interpolateRgbBasis as d3InterpolateRgb } from 'd3-interpolate';
 import * as L from 'leaflet';
-import { pixiOverlay } from 'leaflet';
+import { LeafletEvent, pixiOverlay } from 'leaflet';
 import { OutlineFilter } from 'pixi-filters';
 import * as PIXI from 'pixi.js';
+import { Ticker } from 'pixi.js';
 import {
   AnimatedPassenger,
   AnimatedSimulationEnvironment,
@@ -34,6 +35,7 @@ import { Polyline } from '../interfaces/polylines.model';
 import { getAllStops } from '../interfaces/vehicle.model';
 import { FavoriteEntitiesService } from './favorite-entities.service';
 import { SpritesService } from './sprites.service';
+import { TaskService } from './task.service';
 
 @Injectable({
   providedIn: 'root',
@@ -180,6 +182,7 @@ export class AnimationService {
   constructor(
     private readonly favoriteEntitiesService: FavoriteEntitiesService,
     private readonly spritesService: SpritesService,
+    private readonly taskService: TaskService,
   ) {
     void PIXI.Assets.load(this.BITMAP_TEXT_URL);
 
@@ -1864,7 +1867,9 @@ export class AnimationService {
           this.utils = utils;
           if (event.type === 'add') this.onAdd(utils);
           if (event.type === 'moveend') this.onMoveEnd(event);
-          if (event.type === 'redraw') this.onRedraw(event);
+          if (event.type === 'redraw') {
+            this.onRedraw(event);
+          }
           this.utils.getRenderer().render(this.mainContainer);
         },
         this.mainContainer,
@@ -1876,14 +1881,23 @@ export class AnimationService {
 
     pixiLayer.addTo(map);
 
-    PIXI.Ticker.shared.add((delta) => {
-      pixiLayer.redraw({ type: 'redraw', delta: delta } as L.LeafletEvent);
+    const ticker = new Ticker();
 
-      if (this.frame_pointToFollow && this._shouldFollowEntitySignal())
-        this.utils.getMap().setView(this.frame_pointToFollow);
-      this.frame_pointToFollow = null;
+    let lastRedrawTime = Number.POSITIVE_INFINITY;
+
+    const SAFETY_RATIO = 0.95; // Safety ratio to ensure we don't exceed the frame time
+    const MIN_FRAME_RATE = 40; // This can be increased at the cost of a longer load time.
+    const MIN_TIME_PER_FRAME = (1000 / MIN_FRAME_RATE) * SAFETY_RATIO;
+
+    ticker.add((delta) => {
+      pixiLayer.redraw({ type: 'redraw', delta: delta } as LeafletEvent);
+
+      this.taskService.processTasks(lastRedrawTime + MIN_TIME_PER_FRAME);
+
+      lastRedrawTime = performance.now();
     });
-    PIXI.Ticker.shared.start();
+
+    ticker.start();
   }
 
   setSpeed(speed: number) {
