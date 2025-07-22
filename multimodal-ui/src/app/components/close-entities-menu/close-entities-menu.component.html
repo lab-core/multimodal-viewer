@@ -1,6 +1,6 @@
 <!-- The tabindex makes the div focusable -->
 <div #container tabindex="0" (blur)="onBlur()">
-  @let nearEntities = nearEntitiesSignal();
+  @let closeEntities = closeEntitiesSignal();
   <mat-card
     class="fade"
     [style.top]="top()"
@@ -9,14 +9,14 @@
     [class.fade-show]="show()"
     [class.disable-pointer-events]="!show()"
   >
-    <span class="info">{{ nearEntities.length }} entities close</span>
+    <span class="info">{{ closeEntities.length }} entities close</span>
     <mat-card-content
       #cardContent
       class="card-content"
       [style.max-height]="maxHeight()"
     >
       <div class="content">
-        @for (entity of nearEntities; track entity.id) {
+        @for (entity of closeEntities; track entity.id) {
           <mat-chip
             (click)="selectEntity(entity)"
             (mouseenter)="preselectEntity(entity)"

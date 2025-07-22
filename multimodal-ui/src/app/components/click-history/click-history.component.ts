@@ -1,10 +1,4 @@
-import {
-  Component,
-  effect,
-  signal,
-  untracked,
-  WritableSignal,
-} from '@angular/core';
+import { Component, effect, signal, WritableSignal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
@@ -39,15 +33,7 @@ export class ClickHistoryComponent {
     private readonly animationService: AnimationService,
   ) {
     effect(() => {
-      this.effectOnVehicleSelected();
-    });
-
-    effect(() => {
-      this.effectOnPassengerSelected();
-    });
-
-    effect(() => {
-      this.effectOnStopSelected();
+      this.effectOnEntitySelected();
     });
   }
 
@@ -65,95 +51,32 @@ export class ClickHistoryComponent {
 
   selectEntity(entity: EntityMetadata) {
     this._ignoreNextSelect = true;
-    this.animationService.selectEntity(entity.id, entity.entityType);
+    this.animationService.selectEntity(entity);
   }
 
-  private getVehicle(id: string) {
-    const visualizationEnvironment =
-      this.visualizationService.visualizationEnvironmentSignal();
-    if (!visualizationEnvironment) return undefined;
-
-    return visualizationEnvironment.vehicles[id];
-  }
-
-  private getPassenger(id: string) {
-    const visualizationEnvironment =
-      this.visualizationService.visualizationEnvironmentSignal();
-    if (!visualizationEnvironment) return undefined;
-
-    return visualizationEnvironment.passengers[id];
-  }
-
-  private getStop(id: string) {
-    const visualizationEnvironment =
-      this.visualizationService.visualizationEnvironmentSignal();
-    if (!visualizationEnvironment) return undefined;
-
-    return visualizationEnvironment.stops[id];
-  }
-
-  private effectOnVehicleSelected() {
-    const vehicleId = this.animationService.selectedVehicleIdSignal();
-    if (vehicleId === null) return;
+  private effectOnEntitySelected() {
+    const entity = this.animationService.selectedEntitySignal();
+    if (entity === null) return;
 
     if (this._ignoreNextSelect) {
       this._ignoreNextSelect = false;
       return;
     }
 
-    const vehicle = untracked(() => this.getVehicle(vehicleId));
-    if (vehicle == null) return;
-
-    this.addHistory(vehicle);
-  }
-
-  private effectOnPassengerSelected() {
-    const passengerId = this.animationService.selectedPassengerIdSignal();
-    if (passengerId === null) return;
-
-    if (this._ignoreNextSelect) {
-      this._ignoreNextSelect = false;
-      return;
-    }
-
-    const passenger = untracked(() => this.getPassenger(passengerId));
-    if (passenger == null) return;
-
-    this.addHistory(passenger);
-  }
-
-  private effectOnStopSelected() {
-    const stopId = this.animationService.selectedStopIdSignal();
-    if (stopId === null) return;
-
-    if (this._ignoreNextSelect) {
-      this._ignoreNextSelect = false;
-      return;
-    }
-
-    const stop = untracked(() => this.getStop(stopId));
-    if (stop == null) return;
-
-    this.addHistory(stop);
+    this.addHistory(entity);
   }
 
   private addHistory(entity: EntityMetadata) {
     this.history.update((history) => {
       const index = history.findIndex(
-        (historyItem) => historyItem.id === entity.id,
+        (historyItem) =>
+          historyItem.id === entity.id &&
+          historyItem.entityType === entity.entityType,
       );
 
       if (index !== -1) history.splice(index, 1);
 
-      return [
-        {
-          id: entity.id,
-          name: entity.name,
-          entityType: entity.entityType,
-          tags: entity.tags,
-        },
-        ...history,
-      ];
+      return [entity, ...history];
     });
   }
 }

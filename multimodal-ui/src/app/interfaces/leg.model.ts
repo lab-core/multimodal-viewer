@@ -9,8 +9,15 @@ export function isLegType(value: unknown): value is LegType {
 }
 
 export interface Leg extends Tagged {
+  /**
+   * The type of the leg, which can be 'previous', 'current', or 'next'.
+   *
+   * Due to optimisations, this field should be used carefully. See `ContinuousPassenger.legs` for more details.
+   */
   legType: LegType;
   assignedVehicleId: string | null;
+  boardingStopId: string | null;
+  alightingStopId: string | null;
   boardingStopIndex: number | null;
   alightingStopIndex: number | null;
   boardingTime: number | null;
@@ -30,7 +37,7 @@ export function extractLeg(data: unknown): Leg | null {
       return null;
     }
 
-    tags = data.tags;
+    tags = data.tags.sort((a, b) => a.localeCompare(b));
   }
 
   if (!('legType' in data) || !isLegType(data.legType)) {
@@ -53,7 +60,44 @@ export function extractLeg(data: unknown): Leg | null {
       );
       return null;
     }
+
     assignedVehicleId = data.assignedVehicleId;
+  }
+
+  let boardingStopId: Leg['boardingStopId'] = null;
+  if ('boardingStopId' in data) {
+    if (
+      data.boardingStopId !== null &&
+      typeof data.boardingStopId !== 'string'
+    ) {
+      console.error(
+        'Invalid boarding stop index',
+        data.boardingStopId,
+        'for leg',
+        data,
+      );
+      return null;
+    }
+
+    boardingStopId = data.boardingStopId;
+  }
+
+  let alightingStopId: Leg['alightingStopId'] = null;
+  if ('alightingStopId' in data) {
+    if (
+      data.alightingStopId !== null &&
+      typeof data.alightingStopId !== 'string'
+    ) {
+      console.error(
+        'Invalid alighting stop index',
+        data.alightingStopId,
+        'for leg',
+        data,
+      );
+      return null;
+    }
+
+    alightingStopId = data.alightingStopId;
   }
 
   let boardingStopIndex: Leg['boardingStopIndex'] = null;
@@ -70,6 +114,7 @@ export function extractLeg(data: unknown): Leg | null {
       );
       return null;
     }
+
     boardingStopIndex = data.boardingStopIndex;
   }
 
@@ -87,6 +132,7 @@ export function extractLeg(data: unknown): Leg | null {
       );
       return null;
     }
+
     alightingStopIndex = data.alightingStopIndex;
   }
 
@@ -101,6 +147,7 @@ export function extractLeg(data: unknown): Leg | null {
       );
       return null;
     }
+
     boardingTime = data.boardingTime;
   }
 
@@ -115,6 +162,7 @@ export function extractLeg(data: unknown): Leg | null {
       );
       return null;
     }
+
     alightingTime = data.alightingTime;
   }
 
@@ -122,6 +170,8 @@ export function extractLeg(data: unknown): Leg | null {
     tags,
     legType,
     assignedVehicleId,
+    boardingStopId,
+    alightingStopId,
     boardingStopIndex,
     alightingStopIndex,
     boardingTime,

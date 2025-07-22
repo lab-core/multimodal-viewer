@@ -44,6 +44,17 @@ export class Update {
     environment.timestamp = this.timestamp;
   }
 
+  /**
+   * Accepts a visitor to perform operations on the update.
+   *
+   * This method should be implemented by subclasses.
+   *
+   * @param visitor The visitor that will process the update.
+   */
+  accept(visitor: UpdateVisitor): void {
+    // This method should be overridden by subclasses.
+  }
+
   static deserialize(serialized: unknown): Update | null {
     if (typeof serialized !== 'object' || !serialized) {
       console.error('Invalid data type for update', serialized);
@@ -115,6 +126,8 @@ export type LegDifferences = WithIndex<
       | 'tags'
       | 'legType'
       | 'assignedVehicleId'
+      | 'boardingStopId'
+      | 'alightingStopId'
       | 'boardingStopIndex'
       | 'alightingStopIndex'
       | 'boardingTime'
@@ -183,6 +196,7 @@ export class PassengerUpdate extends Update {
         previousLegs: [],
         currentLeg: null,
         nextLegs: [],
+        error: null, // Initially no error
       };
     } else {
       passenger = {
@@ -208,6 +222,8 @@ export class PassengerUpdate extends Update {
       if (index < 0 || index >= allLegs.length) {
         console.error(
           `Invalid leg index ${index} for passenger ${this.passengerId}.`,
+          this,
+          environment,
         );
         continue;
       }
@@ -233,6 +249,10 @@ export class PassengerUpdate extends Update {
     }
 
     environment.passengers[this.passengerId] = passenger;
+  }
+
+  override accept(visitor: UpdateVisitor): void {
+    visitor.visitPassengerUpdate(this);
   }
 
   static override deserialize(serialized: unknown): PassengerUpdate | null {
@@ -364,8 +384,12 @@ export class PassengerUpdate extends Update {
       return false;
     }
 
-    if ('tags' in value && !isTagged(value)) {
-      return false;
+    if ('tags' in value) {
+      if (!isTagged(value)) {
+        return false;
+      }
+
+      value.tags = value.tags.sort((a, b) => a.localeCompare(b));
     }
 
     return true;
@@ -389,8 +413,12 @@ export class PassengerUpdate extends Update {
       return false;
     }
 
-    if ('tags' in value && !isTagged(value)) {
-      return false;
+    if ('tags' in value) {
+      if (!isTagged(value)) {
+        return false;
+      }
+
+      value.tags = value.tags.sort((a, b) => a.localeCompare(b));
     }
 
     if ('legType' in value && !isLegType(value.legType)) {
@@ -401,6 +429,22 @@ export class PassengerUpdate extends Update {
       'assignedVehicleId' in value &&
       value.assignedVehicleId !== null &&
       typeof value.assignedVehicleId !== 'string'
+    ) {
+      return false;
+    }
+
+    if (
+      'boardingStopId' in value &&
+      value.boardingStopId !== null &&
+      typeof value.boardingStopId !== 'string'
+    ) {
+      return false;
+    }
+
+    if (
+      'alightingStopId' in value &&
+      value.alightingStopId !== null &&
+      typeof value.alightingStopId !== 'string'
     ) {
       return false;
     }
@@ -536,6 +580,7 @@ export class VehicleUpdate extends Update {
         previousStops: [],
         currentStop: null,
         nextStops: [],
+        error: null, // Initially no error
       };
     } else {
       vehicle = {
@@ -561,6 +606,8 @@ export class VehicleUpdate extends Update {
       if (index < 0 || index >= allStops.length) {
         console.error(
           `Invalid stop index ${index} for vehicle ${this.vehicleId}.`,
+          this,
+          environment,
         );
         continue;
       }
@@ -586,6 +633,10 @@ export class VehicleUpdate extends Update {
     }
 
     environment.vehicles[this.vehicleId] = vehicle;
+  }
+
+  override accept(visitor: UpdateVisitor): void {
+    visitor.visitVehicleUpdate(this);
   }
 
   static override deserialize(serialized: unknown): VehicleUpdate | null {
@@ -651,7 +702,9 @@ export class VehicleUpdate extends Update {
         return null;
       }
 
-      const extractedStopsToAdd = serialized.stopsToAdd.map(extractStop);
+      const extractedStopsToAdd = serialized.stopsToAdd.map((stop) =>
+        extractStop(stop, vehicleId),
+      );
       if (!extractedStopsToAdd.every((stop) => stop !== null)) {
         const firstInvalidStop = extractedStopsToAdd.find(
           (stop) => stop === null,
@@ -724,8 +777,12 @@ export class VehicleUpdate extends Update {
       return false;
     }
 
-    if ('tags' in value && !isTagged(value)) {
-      return false;
+    if ('tags' in value) {
+      if (!isTagged(value)) {
+        return false;
+      }
+
+      value.tags = value.tags.sort((a, b) => a.localeCompare(b));
     }
 
     return true;
@@ -749,8 +806,12 @@ export class VehicleUpdate extends Update {
       return false;
     }
 
-    if ('tags' in value && !isTagged(value)) {
-      return false;
+    if ('tags' in value) {
+      if (!isTagged(value)) {
+        return false;
+      }
+
+      value.tags = value.tags.sort((a, b) => a.localeCompare(b));
     }
 
     if ('stopType' in value && !isStopType(value.stopType)) {
@@ -810,6 +871,10 @@ export class StatisticsUpdate extends Update {
     environment.statistics = this.statistics;
   }
 
+  override accept(visitor: UpdateVisitor): void {
+    visitor.visitStatisticsUpdate(this);
+  }
+
   static override deserialize(serialized: unknown): StatisticsUpdate | null {
     if (typeof serialized !== 'object' || serialized === null) {
       console.error('Invalid data type for statistics update', serialized);
@@ -857,4 +922,14 @@ export function extractUpdate(data: unknown): Update | null {
     case 'statistics':
       return StatisticsUpdate.deserialize(data);
   }
+}
+
+// MARK: UpdateVisitor
+
+export interface UpdateVisitor {
+  visitPassengerUpdate(update: PassengerUpdate): void;
+
+  visitVehicleUpdate(update: VehicleUpdate): void;
+
+  visitStatisticsUpdate(update: StatisticsUpdate): void;
 }

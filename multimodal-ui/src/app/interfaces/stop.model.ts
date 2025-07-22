@@ -13,12 +13,18 @@ export function isStopType(value: unknown): value is StopType {
 export const DEFAULT_STOP_CAPACITY = 10;
 
 export interface Stop extends EntityMetadata {
+  /**
+   * The type of the stop, which can be 'previous', 'current', or 'next'.
+   *
+   * Due to optimisations, this field should be used carefully. See `ContinuousVehicle.stops` for more details.
+   */
   stopType: StopType;
   arrivalTime: number;
   departureTime: number | null; // null means infinite
   position: Position;
   capacity: number;
   label: string;
+  vehicleId: string; // The id of the vehicle the stop belongs to
 }
 
 export function getStopId(stopOrPosition: Stop | Position): string {
@@ -28,7 +34,7 @@ export function getStopId(stopOrPosition: Stop | Position): string {
   return '' + position.latitude + ',' + position.longitude;
 }
 
-export function extractStop(data: unknown): Stop | null {
+export function extractStop(data: unknown, vehicleId: string): Stop | null {
   if (typeof data !== 'object' || data === null) {
     console.error('Invalid data type for stop', data);
     return null;
@@ -41,7 +47,7 @@ export function extractStop(data: unknown): Stop | null {
       return null;
     }
 
-    tags = data.tags;
+    tags = data.tags.sort((a, b) => a.localeCompare(b));
   }
 
   if (!('stopType' in data) || !isStopType(data.stopType)) {
@@ -106,5 +112,7 @@ export function extractStop(data: unknown): Stop | null {
     position,
     capacity,
     label,
+    vehicleId,
+    error: null, // Initially no error
   };
 }

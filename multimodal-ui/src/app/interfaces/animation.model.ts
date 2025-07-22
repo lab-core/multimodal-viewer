@@ -1,201 +1,92 @@
-import { SimulationEnvironment } from './environment.model';
-import { Leg } from './leg.model';
-import { Passenger, PassengerStatus } from './passenger.model';
+import { BitmapText, Container, Graphics, Sprite } from 'pixi.js';
+import { Passenger } from './passenger.model';
 import { Polyline } from './polylines.model';
-import { Position } from './position.model';
 import { SimulationState } from './state.model';
-import { Statistics } from './statistics.model';
 import { Stop } from './stop.model';
-import { Vehicle, VehicleStatus } from './vehicle.model';
+import { Vehicle } from './vehicle.model';
 
-export interface AnimatedLeg extends Leg {
-  previousStops: Stop[];
-  currentStop: Stop | null;
-  nextStops: Stop[];
+export interface Animated<Entity, AdditionalInformation> {
+  entity: Entity;
+  additionalInformation: AdditionalInformation;
+  sprites: Sprite[];
+  texts: BitmapText[];
+  graphics: Graphics[];
+  container: Container;
+  backgroundContainer: Container;
+  isPresent: boolean; // If true, the entity is present in the current state
+  isFiltered: boolean; // If true, the entity is filtered out and not displayed
+  isPreselected: boolean; // If true, the entity is preselected
+  isSelected: boolean; // If true, the entity is selected
+  isVisible: boolean; // If true, the entity is visible in the current view
 }
 
-export interface DisplayedPolylines {
+export interface PassengerAdditionalInformation {
+  stop: AnimatedStop | null;
+  vehicle: AnimatedVehicle | null;
+}
+
+export type AnimatedPassenger = Animated<
+  Passenger,
+  PassengerAdditionalInformation
+>;
+
+export interface VehicleAdditionalInformation {
   /**
-   * To show the entire path of the vehicle
+   * The ids of the visible passengers at the stop.
    */
+  passengerIds: string[];
+  numberOfPassengers: number;
+  numberOfNotVisiblePassengers: number;
+  stop: AnimatedStop | null;
   polylines: Polyline[];
-
   /**
-   * Before this index, everything has been traveled.
-   *
-   * After this index, everything is to be traveled.
-   *
-   * At this index, the vehicle is currently traveling.
-   *
-   * If -1, all polylines are gray.
+   * The index of the polyline in the polylines array.
+   * This is equivalent to the length of the previous stops of the vehicle minus one.
    */
-  currentPolylineIndex: number;
+  polylineIndex: number | null;
 
-  /**
-   * If null, the polyline will not be green.
-   */
-  currentPolylineStartTime: number | null;
-
-  /**
-   * If null, the polyline will not be green.
-   */
-  currentPolylineEndTime: number | null;
+  polylineSegmentIndex: number | null;
+  polylineSegmentProgress: number | null;
 }
 
-export interface AnimatedStop extends Stop {
+export type AnimatedVehicle = Animated<Vehicle, VehicleAdditionalInformation>;
+
+export interface StopAdditionalInformation {
   /**
-   * Passengers that are waiting at the stop.
+   * The ids of the visible passengers at the stop.
    */
   passengerIds: string[];
-
-  /**
-   * Vehicles that are waiting at the stop.
-   */
-  vehicleIds: string[];
-
-  /**
-   * The ids of the passengers that will be used for the animation.
-   * We need a different variable because the animation service will modify it.
-   */
-  animatedPassengerIds: string[];
-
-  /**
-   * Tags of passengers that are waiting at the stop (not the complete passengers).
-   */
-  passengerTags: string[];
-
-  /**
-   * The ids of the passengers that are actually displayed (different to avoid filters affecting the side panel)
-   */
-  displayedPassengerIds: string[];
+  numberOfPassengers: number;
+  numberOfCompletePassengers: number;
+  numberOfNotVisiblePassengers: number;
+  numberOfNotVisibleCompletePassengers: number;
 }
 
-export type displayed<T> = T & {
-  /**
-   * If the object is not displayed, this field contains the reason why
-   * it is not displayed.
-   *
-   * If the object is displayed, this field is null.
-   */
-  notDisplayedReason: string | null;
-};
+export type AnimatedStop = Animated<Stop, StopAdditionalInformation>;
 
-export interface BaseAnimationData {
-  startTimestamp: number;
-  startUpdateIndex: number;
-  endTimestamp: number | null; // null when the data is the last one and the animated environment is not fully built
-  endUpdateIndex: number | null; // null when the data is the last one and the animated environment is not fully built
+export type AnimatedEntity = AnimatedPassenger | AnimatedVehicle | AnimatedStop;
+
+export function isAnimatedPassenger(
+  entity: AnimatedEntity,
+): entity is AnimatedPassenger {
+  return entity.entity.entityType === 'passenger';
 }
 
-export interface EntityAnimationData extends BaseAnimationData {
-  notDisplayedReason: string | null;
+export function isAnimatedVehicle(
+  entity: AnimatedEntity,
+): entity is AnimatedVehicle {
+  return entity.entity.entityType === 'vehicle';
 }
 
-export interface StatisticsAnimationData extends BaseAnimationData {
-  statistics: Statistics;
-}
-
-export interface PassengerAnimationData extends EntityAnimationData {
-  vehicleId: string | null;
-  status: PassengerStatus;
-}
-
-export interface StaticPassengerAnimationData extends PassengerAnimationData {
-  stopIndex: number;
-}
-
-export interface DynamicPassengerAnimationData extends PassengerAnimationData {
-  isOnBoard: boolean; // always true
-}
-
-export type AnyPassengerAnimationData =
-  | StaticPassengerAnimationData
-  | DynamicPassengerAnimationData
-  | PassengerAnimationData; // For not displayed passengers
-
-export interface VehicleAnimationData extends EntityAnimationData {
-  status: VehicleStatus;
-
-  displayedPolylines: DisplayedPolylines;
-}
-
-export interface StaticVehicleAnimationData extends VehicleAnimationData {
-  position: Position;
-  stopId: string;
-}
-
-export interface DynamicVehicleAnimationData extends VehicleAnimationData {
-  polyline: Polyline;
-}
-
-export type AnyVehicleAnimationData =
-  | StaticVehicleAnimationData
-  | DynamicVehicleAnimationData
-  | VehicleAnimationData; // For not displayed vehicles
-
-export interface AnimatedPassenger extends displayed<Passenger> {
-  animationData: AnyPassengerAnimationData[];
-  previousLegs: AnimatedLeg[];
-  currentLeg: AnimatedLeg | null;
-  nextLegs: AnimatedLeg[];
-}
-
-export interface AnimatedVehicle extends displayed<Vehicle> {
-  animationData: AnyVehicleAnimationData[];
-
-  passengerIds: string[];
-
-  currentLineIndex: number | null;
-
-  /**
-   * The ids of the passengers that will be used for the animation.
-   * We need a different variable because the animation service will modify it.
-   */
-  animatedPassengerIds: string[];
-
-  /**
-   * The tags of the passengers that are on board.
-   */
-  passengerTags: string[];
-
-  /**
-   * The ids of the passengers that are actually displayed (different to avoid filters affecting the side panel)
-   */
-  displayedPassengerIds: string[];
-}
-
-export interface AnimationData {
-  passengers: Record<string, AnyPassengerAnimationData[]>;
-  vehicles: Record<string, AnyVehicleAnimationData[]>;
-  statistics: StatisticsAnimationData[];
-  startTimestamp: number;
-  endTimestamp: number;
-  startUpdateIndex: number;
-  endUpdateIndex: number;
-}
-
-export interface AnimatedSimulationState extends SimulationState {
-  /**
-   * A data structure to speed up the animation
-   */
-  animationData: AnimationData;
-}
-
-export interface AnimatedSimulationEnvironment extends SimulationEnvironment {
-  /**
-   * A data structure to speed up the animation
-   */
-  animationData: AnimationData;
-  passengers: Record<string, AnimatedPassenger>;
-  vehicles: Record<string, AnimatedVehicle>;
-  stops: Record<string, AnimatedStop>;
+export function isAnimatedStop(entity: AnimatedEntity): entity is AnimatedStop {
+  return entity.entity.entityType === 'stop';
 }
 
 export interface AnimatedSimulationStates {
   /**
    * All loaded states
    */
-  states: AnimatedSimulationState[];
+  states: SimulationState[];
 
   /**
    * If true, the client will continue to request more states
@@ -244,6 +135,4 @@ export interface AnimatedSimulationStates {
      */
     endTimestamp: number;
   } | null;
-
-  continuousAnimationData: AnimationData | null;
 }

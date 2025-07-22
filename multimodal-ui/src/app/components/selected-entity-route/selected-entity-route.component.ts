@@ -20,7 +20,15 @@ export class SelectedEntityRouteComponent {
     this.nextStops = [];
   }
 
+  unpreselectStop() {
+    this.animationService.unpreselectEntity();
+  }
+
+  preselectStop(stop: Stop) {
+    this.animationService.preselectEntity(stop, false);
+  }
+
   selectStop(stop: Stop) {
-    this.animationService.selectEntity(stop.id, 'stop');
+    this.animationService.selectEntity(stop);
   }
 }

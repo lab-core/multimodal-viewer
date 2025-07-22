@@ -2,8 +2,14 @@ from enum import Enum
 
 from multimodalsim.simulator.environment import Environment
 from multimodalsim.simulator.request import Leg, Trip
+from multimodalsim.simulator.stop import Stop
 
 from multimodalsim_viewer.models.serializable import Serializable
+
+
+# MARK: get_stop_id
+def get_stop_id(stop: Stop) -> str:
+    return f"{stop.location.lat},{stop.location.lon}"
 
 
 # MARK: LegType
@@ -19,6 +25,8 @@ class VisualizedLeg(Serializable):  # pylint: disable=too-many-instance-attribut
     def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self,
         assigned_vehicle_id: str | None,
+        boarding_stop_id: str | None,
+        alighting_stop_id: str | None,
         boarding_stop_index: int | None,
         alighting_stop_index: int | None,
         boarding_time: float | None,
@@ -27,10 +35,14 @@ class VisualizedLeg(Serializable):  # pylint: disable=too-many-instance-attribut
         leg_type: LegType,
     ) -> None:
         self.assigned_vehicle_id: str | None = assigned_vehicle_id
+
+        self.boarding_stop_id: str | None = boarding_stop_id
+        self.alighting_stop_id: str | None = alighting_stop_id
         self.boarding_stop_index: int | None = boarding_stop_index
         self.alighting_stop_index: int | None = alighting_stop_index
         self.boarding_time: float | None = boarding_time
         self.alighting_time: float | None = alighting_time
+
         self.tags: list[str] = tags
         self.leg_type: LegType = leg_type
 
@@ -42,6 +54,8 @@ class VisualizedLeg(Serializable):  # pylint: disable=too-many-instance-attribut
         trip: Trip,
         leg_type: LegType,
     ) -> "VisualizedLeg":
+        boarding_stop_id = None
+        alighting_stop_id = None
         boarding_stop_index = None
         alighting_stop_index = None
 
@@ -52,7 +66,7 @@ class VisualizedLeg(Serializable):  # pylint: disable=too-many-instance-attribut
         all_legs = trip.previous_legs + ([trip.current_leg] if trip.current_leg else []) + trip.next_legs
 
         same_vehicle_leg_index = 0
-        for i, other_leg in enumerate(all_legs):
+        for other_leg in all_legs:
             if other_leg.assigned_vehicle == leg.assigned_vehicle:
                 if other_leg == leg:
                     break
@@ -71,6 +85,7 @@ class VisualizedLeg(Serializable):  # pylint: disable=too-many-instance-attribut
                     stop.passengers_to_board + stop.boarding_passengers + stop.boarded_passengers
                 ):
                     if trip_found_count == same_vehicle_leg_index:
+                        boarding_stop_id = get_stop_id(stop)
                         boarding_stop_index = i
                         break
                     trip_found_count += 1
@@ -82,6 +97,7 @@ class VisualizedLeg(Serializable):  # pylint: disable=too-many-instance-attribut
                     stop.passengers_to_alight + stop.alighting_passengers + stop.alighted_passengers
                 ):
                     if trip_found_count == same_vehicle_leg_index:
+                        alighting_stop_id = get_stop_id(stop)
                         alighting_stop_index = i
                         break
                     trip_found_count += 1
@@ -90,6 +106,8 @@ class VisualizedLeg(Serializable):  # pylint: disable=too-many-instance-attribut
 
         return cls(
             assigned_vehicle_id,
+            boarding_stop_id,
+            alighting_stop_id,
             boarding_stop_index,
             alighting_stop_index,
             leg.boarding_time,
@@ -105,6 +123,12 @@ class VisualizedLeg(Serializable):  # pylint: disable=too-many-instance-attribut
 
         if self.assigned_vehicle_id is not None:
             serialized["assignedVehicleId"] = self.assigned_vehicle_id
+
+        if self.boarding_stop_id is not None:
+            serialized["boardingStopId"] = self.boarding_stop_id
+
+        if self.alighting_stop_id is not None:
+            serialized["alightingStopId"] = self.alighting_stop_id
 
         if self.boarding_stop_index is not None:
             serialized["boardingStopIndex"] = self.boarding_stop_index
@@ -133,6 +157,10 @@ class VisualizedLeg(Serializable):  # pylint: disable=too-many-instance-attribut
 
         assigned_vehicle_id = serialized_data.get("assignedVehicleId", None)
 
+        boarding_stop_id = serialized_data.get("boardingStopId", None)
+
+        alighting_stop_id = serialized_data.get("alightingStopId", None)
+
         boarding_stop_index = serialized_data.get("boardingStopIndex", None)
         if boarding_stop_index is not None:
             boarding_stop_index = int(boarding_stop_index)
@@ -155,6 +183,8 @@ class VisualizedLeg(Serializable):  # pylint: disable=too-many-instance-attribut
 
         return cls(
             assigned_vehicle_id,
+            boarding_stop_id,
+            alighting_stop_id,
             boarding_stop_index,
             alighting_stop_index,
             boarding_time,

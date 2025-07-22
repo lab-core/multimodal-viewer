@@ -6,35 +6,25 @@ import {
   runInInjectionContext,
   Signal,
   signal,
+  untracked,
   WritableSignal,
 } from '@angular/core';
 import {
-  AnimatedLeg,
-  AnimatedPassenger,
-  AnimatedSimulationEnvironment,
-  AnimatedSimulationStates,
-  AnimatedStop,
-  AnimatedVehicle,
-  AnimationData,
-  DynamicPassengerAnimationData,
-  StaticPassengerAnimationData,
-  StaticVehicleAnimationData,
-} from '../interfaces/animation.model';
-import { SimulationEnvironment } from '../interfaces/environment.model';
-import { Leg } from '../interfaces/leg.model';
+  ContinuousEnvironment,
+  EnvironmentSlice,
+  findClosestContinuousEnvironment,
+  sliceEnvironment,
+} from '../interfaces/continuous.model';
 import {
   RUNNING_SIMULATION_STATUSES,
   Simulation,
 } from '../interfaces/simulation.model';
-import { getAllStops } from '../interfaces/vehicle.model';
-import { CommunicationService } from './communication.service';
+import { AnimationService } from './animation.service';
 import { SimulationService } from './simulation.service';
 
 @Injectable()
 export class VisualizationService {
   // MARK: Properties
-  private timeout: number | null = null;
-
   private readonly MIN_STATES_DEBOUNCE_TIME = 800;
   private fetchStatesTimeout: number | null = null;
   private lastFetchStatesTime = 0;
@@ -47,6 +37,13 @@ export class VisualizationService {
 
   private tick = -1;
   private readonly tickSignal: WritableSignal<number> = signal<number>(0);
+  private updateTickTimeout: number | null = null;
+
+  private environmentTick = -1;
+  private readonly ENVIRONMENT_TICK_INTERVAL = 1000;
+  private readonly environmentTickSignal: WritableSignal<number> =
+    signal<number>(0);
+  private updateEnvironmentTickTimeout: number | null = null;
 
   private readonly _simulationStartTimeSignal: WritableSignal<number | null> =
     signal<number | null>(null);
@@ -67,23 +64,42 @@ export class VisualizationService {
   private readonly _wantedVisualizationTimeSignal: Signal<number | null> =
     computed(() => this.computeWantedVisualizationTime());
 
-  private animatedSimulationEnvironment: AnimatedSimulationEnvironment | null =
-    null;
+  private environmentSlice: EnvironmentSlice | null = null;
+  readonly environmentSignal: Signal<EnvironmentSlice | null> = computed(() =>
+    this.sliceEnvironment(),
+  );
 
-  readonly visualizationEnvironmentSignal: Signal<AnimatedSimulationEnvironment | null> =
-    computed(() => this.computeAnimatedSimulationEnvironment());
+  private hasEnvironmentChanged = false;
+  private controlledWantedVisualizationTimeSignal: Signal<number | null> =
+    computed(() => {
+      this.hasEnvironmentChanged = true;
+
+      return this._wantedVisualizationTimeSignal();
+    });
+  private controlledContinuousEnvironmentsSignal: Signal<
+    ContinuousEnvironment[]
+  > = computed(() => {
+    this.hasEnvironmentChanged = true;
+
+    return this.simulationService.continuousEnvironmentsSignal();
+  });
 
   private readonly _isLoadingSignal: WritableSignal<boolean> = signal(true);
 
   // MARK: Constructor
   constructor(
     private readonly injector: Injector,
-    private readonly communicationService: CommunicationService,
     private readonly simulationService: SimulationService,
+    private readonly animationService: AnimationService,
   ) {
     effect(() => {
       const wantedVisualizationTime = this._wantedVisualizationTimeSignal();
       this.wantedVisualizationTime = wantedVisualizationTime;
+    });
+
+    effect(() => {
+      const environmentSlice = this.environmentSignal();
+      this.environmentSlice = environmentSlice;
     });
 
     effect(() => {
@@ -176,6 +192,37 @@ export class VisualizationService {
 
     this.initializeAutoSave();
     this.initializeAutoLoad();
+
+    // MARK: Animation
+    effect(() => {
+      const continuousEnvironments =
+        this.simulationService.continuousEnvironmentsSignal();
+
+      this.animationService.updateEnvironment(continuousEnvironments);
+    });
+
+    effect(() => {
+      const wantedVisualizationTime = this._wantedVisualizationTimeSignal();
+
+      this.animationService.updateWantedVisualizationTime(
+        wantedVisualizationTime,
+      );
+    });
+
+    effect(() => {
+      const polylines = this.simulationService.simulationPolylinesSignal();
+      const simulation = this.simulationService.activeSimulationSignal();
+
+      if (
+        polylines === null ||
+        simulation === null ||
+        polylines.version !== simulation.polylinesVersion
+      ) {
+        this.animationService.updatePolylines(null);
+      }
+
+      this.animationService.updatePolylines(polylines);
+    });
   }
 
   // MARK: Local Storage
@@ -255,8 +302,12 @@ export class VisualizationService {
       return;
     }
 
-    if (this.timeout === null) {
+    if (this.updateTickTimeout === null) {
       this.updateTick();
+    }
+
+    if (this.updateEnvironmentTickTimeout === null) {
+      this.updateEnvironmentTick();
     }
   }
 
@@ -270,9 +321,14 @@ export class VisualizationService {
     this._visualizationMaxTimeSignal.set(null);
     this.clearLocalStorage();
 
-    if (this.timeout !== null) {
-      clearTimeout(this.timeout);
-      this.timeout = null;
+    if (this.updateTickTimeout !== null) {
+      clearTimeout(this.updateTickTimeout);
+      this.updateTickTimeout = null;
+    }
+
+    if (this.updateEnvironmentTickTimeout !== null) {
+      clearTimeout(this.updateEnvironmentTickTimeout);
+      this.updateEnvironmentTickTimeout = null;
     }
   }
 
@@ -333,12 +389,22 @@ export class VisualizationService {
       this.tickSignal.update((tick) => tick + 1);
     });
 
-    this.timeout = setTimeout(
+    this.updateTickTimeout = setTimeout(
       () => {
         this.updateTick();
       },
       1000 / Math.abs(this.speed),
     ) as unknown as number;
+  }
+
+  private updateEnvironmentTick() {
+    runInInjectionContext(this.injector, () => {
+      this.environmentTickSignal.update((tick) => tick + 1);
+    });
+
+    this.updateEnvironmentTickTimeout = setTimeout(() => {
+      this.updateEnvironmentTick();
+    }, this.ENVIRONMENT_TICK_INTERVAL) as unknown as number;
   }
 
   private getMissingSimulationStates(
@@ -449,309 +515,42 @@ export class VisualizationService {
     );
   }
 
-  private computeAnimatedSimulationEnvironment(): AnimatedSimulationEnvironment | null {
-    const simulationStates = this.simulationService.simulationStatesSignal();
+  private sliceEnvironment(): EnvironmentSlice | null {
+    this.environmentTickSignal();
 
-    if (
-      simulationStates.firstContinuousState === null ||
-      simulationStates.lastContinuousState === null ||
-      simulationStates.continuousAnimationData === null
-    ) {
-      return null;
-    }
-
-    const continuousStates = simulationStates.states.slice(
-      simulationStates.firstContinuousState.index,
-      simulationStates.lastContinuousState.index + 1,
+    const wantedVisualizationTime = untracked(
+      this.controlledWantedVisualizationTimeSignal,
     );
-
-    const continuousAnimatedStates: AnimatedSimulationStates = {
-      ...simulationStates,
-      states: continuousStates,
-    };
-
-    if (continuousStates.length === 0) {
-      return null;
-    }
-
-    const environment = this.buildEnvironment(continuousAnimatedStates);
-
-    if (environment === null) {
-      return this.animatedSimulationEnvironment;
-    }
-
-    const animatedEnvironment = this.completeEnvironment(
-      environment,
-      simulationStates.continuousAnimationData,
-    );
-
-    this.animatedSimulationEnvironment = animatedEnvironment;
-
-    return animatedEnvironment;
-  }
-
-  private buildEnvironment(
-    simulationStates: AnimatedSimulationStates,
-  ): SimulationEnvironment | null {
-    const wantedVisualizationTime = this._wantedVisualizationTimeSignal();
-
     if (wantedVisualizationTime === null) {
       return null;
     }
 
-    if (
-      simulationStates.firstContinuousState === null ||
-      simulationStates.lastContinuousState === null ||
-      simulationStates.currentState === null
-    ) {
-      return null;
-    }
+    const continuousEnvironments = untracked(
+      this.controlledContinuousEnvironmentsSignal,
+    );
 
-    if (
-      wantedVisualizationTime <
-        simulationStates.firstContinuousState.timestamp ||
-      wantedVisualizationTime > simulationStates.lastContinuousState.timestamp
-    ) {
-      return null;
-    }
-
-    // Get last state with a timestamp less than or equal to the wanted visualization time
-    let state = simulationStates.states[0];
-    // eslint-disable-next-line @typescript-eslint/prefer-for-of
-    for (let i = 0; i < simulationStates.states.length; i++) {
-      if (simulationStates.states[i].timestamp <= wantedVisualizationTime) {
-        state = simulationStates.states[i];
-      } else {
-        break;
-      }
-    }
-
-    const environment = this.simulationService.buildEnvironment(
-      {
-        ...state,
-        passengers: { ...state.passengers },
-        vehicles: { ...state.vehicles },
-      },
+    const closestContinuousEnvironment = findClosestContinuousEnvironment(
+      continuousEnvironments,
       wantedVisualizationTime,
     );
 
-    environment.timestamp = wantedVisualizationTime;
-
-    return {
-      ...environment,
-    };
-  }
-
-  private completeEnvironment(
-    environment: SimulationEnvironment,
-    animationData: AnimationData,
-  ): AnimatedSimulationEnvironment {
-    const stops: Record<string, AnimatedStop> = {};
-    for (const vehicle of Object.values(environment.vehicles)) {
-      const vehicleStops = getAllStops(vehicle);
-      for (const stop of vehicleStops) {
-        if (stops[stop.id] === undefined) {
-          stops[stop.id] = {
-            ...stop,
-            passengerIds: [],
-            vehicleIds: [],
-            passengerTags: [],
-            animatedPassengerIds: [],
-            displayedPassengerIds: [],
-          };
-        }
-      }
+    if (closestContinuousEnvironment === null) {
+      return null;
     }
 
-    const vehicles: Record<string, AnimatedVehicle> = {};
-    for (const vehicleId of Object.keys(environment.vehicles)) {
-      const vehicle = environment.vehicles[vehicleId];
-      const vehicleAnimationData = animationData.vehicles[vehicleId];
-
-      if (vehicleAnimationData === undefined) {
-        console.error(
-          'Vehicle animation data not found',
-          vehicle,
-          environment,
-          animationData,
-        );
-        continue;
-      }
-
-      const currentAnimationData = vehicleAnimationData.find(
-        (data) =>
-          data.startTimestamp <= environment.timestamp &&
-          data.endTimestamp! >= environment.timestamp,
-      );
-
-      vehicles[vehicleId] = {
-        ...vehicle,
-        animationData: vehicleAnimationData,
-        notDisplayedReason: currentAnimationData?.notDisplayedReason ?? null,
-        passengerIds: [],
-        currentLineIndex: null,
-        passengerTags: [],
-        animatedPassengerIds: [],
-        displayedPassengerIds: [],
-      };
-
-      if (currentAnimationData === undefined) {
-        continue;
-      }
-
-      if (
-        (currentAnimationData as StaticVehicleAnimationData).position !==
-        undefined
-      ) {
-        const staticAnimationData =
-          currentAnimationData as StaticVehicleAnimationData;
-        const stopId = staticAnimationData.stopId;
-
-        const stop = stops[stopId];
-
-        if (stop === undefined) {
-          console.error('Stop not found for vehicle');
-          continue;
-        }
-
-        stop.vehicleIds.push(vehicleId);
-      }
+    if (!this.hasEnvironmentChanged) {
+      return this.environmentSlice;
     }
 
-    const passengers: Record<string, AnimatedPassenger> = {};
-    for (const passengerId of Object.keys(environment.passengers)) {
-      const passenger = environment.passengers[passengerId];
-      const passengerAnimationData = animationData.passengers[passengerId];
-
-      if (passengerAnimationData === undefined) {
-        console.error('Passenger animation data not found');
-        continue;
-      }
-
-      const currentAnimationData = passengerAnimationData.find(
-        (data) =>
-          data.startTimestamp <= environment.timestamp &&
-          data.endTimestamp! >= environment.timestamp,
-      );
-
-      passengers[passengerId] = {
-        ...passenger,
-        previousLegs: passenger.previousLegs.map((leg) =>
-          this.buildAnimatedLeg(leg, vehicles),
-        ),
-        currentLeg:
-          passenger.currentLeg === null
-            ? null
-            : this.buildAnimatedLeg(passenger.currentLeg, vehicles),
-        nextLegs: passenger.nextLegs.map((leg) =>
-          this.buildAnimatedLeg(leg, vehicles),
-        ),
-        animationData: passengerAnimationData,
-        notDisplayedReason: currentAnimationData?.notDisplayedReason ?? null,
-      };
-
-      if (
-        currentAnimationData === undefined ||
-        currentAnimationData.vehicleId === null
-      ) {
-        continue;
-      }
-
-      const vehicle = vehicles[currentAnimationData.vehicleId];
-
-      if (vehicle === undefined) {
-        console.error('Vehicle not found for passenger');
-        continue;
-      }
-
-      if ((currentAnimationData as DynamicPassengerAnimationData).isOnBoard) {
-        vehicle.passengerIds.push(passengerId);
-        passenger.tags.forEach((tag) => {
-          if (!vehicle.passengerTags.includes(tag)) {
-            vehicle.passengerTags.push(tag);
-          }
-        });
-      } else if (
-        (currentAnimationData as StaticPassengerAnimationData).stopIndex !==
-        undefined
-      ) {
-        const allStops = getAllStops(vehicle);
-        const staticAnimationData =
-          currentAnimationData as StaticPassengerAnimationData;
-
-        const stop = allStops[staticAnimationData.stopIndex];
-
-        if (stop === undefined) {
-          console.error('Stop not found for passenger');
-          continue;
-        }
-
-        const animatedStop = stops[stop.id];
-
-        if (animatedStop === undefined) {
-          console.error('Animated stop not found for passenger');
-          continue;
-        }
-
-        animatedStop.passengerIds.push(passengerId);
-
-        if (passenger.status !== 'complete') {
-          passenger.tags.forEach((tag) => {
-            if (!animatedStop.passengerTags.includes(tag)) {
-              animatedStop.passengerTags.push(tag);
-            }
-          });
-        }
-      }
-    }
-
-    return {
-      ...environment,
-      passengers,
-      vehicles,
-      stops,
-      animationData,
-    };
-  }
-
-  private buildAnimatedLeg(
-    leg: Leg,
-    vehicles: Record<string, AnimatedVehicle>,
-  ): AnimatedLeg {
-    const animatedLeg: AnimatedLeg = {
-      ...leg,
-      previousStops: [],
-      currentStop: null,
-      nextStops: [],
-    };
-
-    if (
-      leg.assignedVehicleId === null ||
-      leg.boardingStopIndex === null ||
-      leg.alightingStopIndex === null
-    ) {
-      return animatedLeg;
-    }
-
-    const vehicle = vehicles[leg.assignedVehicleId];
-
-    if (vehicle === undefined) {
-      return animatedLeg;
-    }
-
-    const allStops = getAllStops(vehicle);
-
-    const legStops = allStops.slice(
-      leg.boardingStopIndex,
-      leg.alightingStopIndex + 1,
+    const environment = sliceEnvironment(
+      closestContinuousEnvironment,
+      wantedVisualizationTime,
     );
 
-    animatedLeg.previousStops = legStops.filter(
-      (stop) => stop.stopType === 'previous',
-    );
-    animatedLeg.currentStop =
-      legStops.find((stop) => stop.stopType === 'current') ?? null;
-    animatedLeg.nextStops = legStops.filter((stop) => stop.stopType === 'next');
-    return animatedLeg;
+    console.log(environment, continuousEnvironments, wantedVisualizationTime);
+
+    this.hasEnvironmentChanged = false;
+
+    return environment;
   }
 }

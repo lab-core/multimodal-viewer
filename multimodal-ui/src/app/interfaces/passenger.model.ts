@@ -42,15 +42,16 @@ export function extractPassenger(data: unknown): Passenger | null {
   }
   const id = data.id;
 
-  let name = getName({ seed: id });
-  if ('name' in data) {
-    if (typeof data.name !== 'string') {
-      console.error('Invalid name', data.name, 'in passenger', data);
-      return null;
-    }
+  const name = getName({ seed: id });
+  // For now, always generate a name, but we could also check if the name is already set.
+  // if ('name' in data) {
+  //   if (typeof data.name !== 'string') {
+  //     console.error('Invalid name', data.name, 'in passenger', data);
+  //     return null;
+  //   }
 
-    name = data.name;
-  }
+  //   name = data.name;
+  // }
 
   if (!('status' in data) || !isPassengerStatus(data.status)) {
     console.error('Invalid status for passenger', data);
@@ -116,7 +117,7 @@ export function extractPassenger(data: unknown): Passenger | null {
       return null;
     }
 
-    tags = data.tags;
+    tags = data.tags.sort((a, b) => a.localeCompare(b));
   }
 
   return {
@@ -129,6 +130,7 @@ export function extractPassenger(data: unknown): Passenger | null {
     nextLegs,
     numberOfPassengers,
     tags,
+    error: null, // Initially no error
   };
 }
 
@@ -136,8 +138,123 @@ export function extractPassenger(data: unknown): Passenger | null {
 export function getAllLegs<P extends Passenger>(
   passenger: P,
 ): P['previousLegs'] {
+  passenger.previousLegs.forEach((leg) => (leg.legType = 'previous'));
+  if (passenger.currentLeg !== null) {
+    passenger.currentLeg.legType = 'current';
+  }
+  passenger.nextLegs.forEach((leg) => (leg.legType = 'next'));
+
   return passenger.previousLegs.concat(
     passenger.currentLeg === null ? [] : [passenger.currentLeg],
     passenger.nextLegs,
   );
+}
+
+export function getPassengerCurrentStopIdWithVehicleId(
+  passenger: Passenger,
+  timestamp: number,
+): {
+  stopId: string;
+  vehicleId: string;
+} | null {
+  const leg = passenger.currentLeg ?? passenger.nextLegs[0] ?? null;
+
+  if (leg === null) {
+    return null;
+  }
+
+  if (leg.assignedVehicleId === null) {
+    return null;
+  }
+
+  // Is at boarding stop
+  if (leg.boardingTime === null || leg.boardingTime > timestamp) {
+    return leg.boardingStopId === null
+      ? null
+      : { stopId: leg.boardingStopId, vehicleId: leg.assignedVehicleId };
+  }
+
+  // Is between boarding and alighting stop
+  if (leg.alightingTime === null || leg.alightingTime > timestamp) {
+    return null;
+  }
+
+  // Is at alighting stop
+  return leg.alightingStopId === null
+    ? null
+    : { stopId: leg.alightingStopId, vehicleId: leg.assignedVehicleId };
+}
+
+export function getPassengerCurrentVehicleId(
+  passenger: Passenger,
+  timestamp: number,
+): string | null {
+  const leg = passenger.currentLeg ?? passenger.nextLegs[0] ?? null;
+
+  if (leg === null) {
+    return null;
+  }
+
+  // Is at boarding stop
+  if (leg.boardingTime === null || leg.boardingTime > timestamp) {
+    return null;
+  }
+
+  // Is between boarding and alighting stop
+  if (leg.alightingTime === null || leg.alightingTime > timestamp) {
+    return leg.assignedVehicleId;
+  }
+
+  // Is at alighting stop
+  return null;
+}
+
+export function isPassengerAtStop(
+  passenger: Passenger,
+  stopId: string,
+  timestamp: number,
+): boolean {
+  const leg = passenger.currentLeg ?? passenger.nextLegs[0] ?? null;
+
+  if (leg === null) {
+    return false;
+  }
+
+  // Is at boarding stop
+  if (leg.boardingTime === null || leg.boardingTime > timestamp) {
+    return stopId === leg.boardingStopId;
+  }
+
+  // Is between boarding and alighting stop
+  if (leg.alightingTime === null || leg.alightingTime > timestamp) {
+    return false;
+  }
+
+  // Is at alighting stop
+  return stopId === leg.alightingStopId;
+}
+
+export function isPassengerOnVehicle(
+  passenger: Passenger,
+  vehicleId: string,
+  timestamp: number,
+): boolean {
+  const leg = passenger.currentLeg ?? passenger.nextLegs[0] ?? null;
+
+  if (leg === null) {
+    return false;
+  }
+
+  // Is at boarding stop
+  if (leg.boardingTime === null || leg.boardingTime > timestamp) {
+    return false;
+  }
+
+  // Is between boarding and alighting stop
+  if (leg.alightingTime === null || leg.alightingTime > timestamp) {
+    return leg.assignedVehicleId === vehicleId;
+  }
+
+  // Is at alighting stop
+  return false;
 }

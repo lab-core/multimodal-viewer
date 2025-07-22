@@ -186,6 +186,12 @@ class PassengerUpdate(Update):
         if old_leg.assigned_vehicle_id != new_leg.assigned_vehicle_id:
             leg_difference["assignedVehicleId"] = new_leg.assigned_vehicle_id
 
+        if old_leg.boarding_stop_id != new_leg.boarding_stop_id:
+            leg_difference["boardingStopId"] = new_leg.boarding_stop_id
+
+        if old_leg.alighting_stop_id != new_leg.alighting_stop_id:
+            leg_difference["alightingStopId"] = new_leg.alighting_stop_id
+
         if old_leg.boarding_stop_index != new_leg.boarding_stop_index:
             leg_difference["boardingStopIndex"] = new_leg.boarding_stop_index
 
@@ -240,7 +246,7 @@ class PassengerUpdate(Update):
 
         self.__update_legs(passenger)
 
-    def __update_legs(self, passenger: VisualizedPassenger) -> None:
+    def __update_legs(self, passenger: VisualizedPassenger) -> None:  # pylint: disable=too-many-branches
         all_legs = passenger.all_legs
 
         if self.__number_of_legs_to_remove > 0:
@@ -255,6 +261,10 @@ class PassengerUpdate(Update):
                 leg.leg_type = LegType(leg_difference.get("legType"))
             if "assignedVehicleId" in leg_difference:
                 leg.assigned_vehicle_id = leg_difference.get("assignedVehicleId")
+            if "boardingStopId" in leg_difference:
+                leg.boarding_stop_id = leg_difference.get("boardingStopId")
+            if "alightingStopId" in leg_difference:
+                leg.alighting_stop_id = leg_difference.get("alightingStopId")
             if "boardingStopIndex" in leg_difference:
                 leg.boarding_stop_index = leg_difference.get("boardingStopIndex")
             if "alightingStopIndex" in leg_difference:
