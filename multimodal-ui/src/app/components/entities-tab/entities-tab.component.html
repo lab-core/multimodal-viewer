@@ -29,10 +29,10 @@
                   class="clickable indent"
                   [matTooltip]="'Select passenger'"
                   [matTooltipPosition]="'after'"
-                  (click)="selectPassenger(passenger.id)"
+                  (click)="selectEntity(passenger)"
                   (mouseenter)="preselectEntity(passenger)"
                   (mouseleave)="unpreselectEntity()"
-                  (keydown.enter)="selectPassenger(passenger.id)"
+                  (keydown.enter)="selectEntity(passenger)"
                 >
                   <app-entity-name
                     [name]="passenger.name"
@@ -77,10 +77,10 @@
                   class="clickable indent"
                   [matTooltip]="'Select vehicle'"
                   [matTooltipPosition]="'after'"
-                  (click)="selectVehicle(vehicle.id)"
+                  (click)="selectEntity(vehicle)"
                   (mouseenter)="preselectEntity(vehicle)"
                   (mouseleave)="unpreselectEntity()"
-                  (keydown.enter)="selectVehicle(vehicle.id)"
+                  (keydown.enter)="selectEntity(vehicle)"
                 >
                   <app-entity-name
                     [name]="vehicle.name"

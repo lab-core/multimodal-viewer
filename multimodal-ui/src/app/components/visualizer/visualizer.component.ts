@@ -6,7 +6,6 @@ import {
   OnDestroy,
   signal,
   Signal,
-  untracked,
   ViewChild,
   WritableSignal,
 } from '@angular/core';
@@ -26,20 +25,25 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import {
-  AnimatedPassenger,
-  AnimatedStop,
-  AnimatedVehicle,
-} from '../../interfaces/animation.model';
+  getPassengerCurrentStopIdWithVehicleId,
+  getPassengerCurrentVehicleId,
+  isPassengerAtStop,
+  isPassengerOnVehicle,
+  Passenger,
+} from '../../interfaces/passenger.model';
 import {
   RUNNING_SIMULATION_STATUSES,
   Simulation,
   SimulationStatus,
 } from '../../interfaces/simulation.model';
+import { Stop } from '../../interfaces/stop.model';
+import { getAllStops, Vehicle } from '../../interfaces/vehicle.model';
 import { AnimationService } from '../../services/animation.service';
 import { CommunicationService } from '../../services/communication.service';
 import { DialogService } from '../../services/dialog.service';
 import { LoadingService } from '../../services/loading.service';
 import { SimulationService } from '../../services/simulation.service';
+import { TaskService } from '../../services/task.service';
 import { UserInterfaceService } from '../../services/user-interface.service';
 import { VisualizationFilterService } from '../../services/visualization-filter.service';
 import { VisualizationService } from '../../services/visualization.service';
@@ -60,7 +64,7 @@ export interface EntitySearch {
   id: string;
   displayedValue: string;
   type: 'passenger' | 'vehicle' | 'mode';
-  entity: AnimatedPassenger | AnimatedVehicle | { mode: string };
+  entity: Passenger | Vehicle | { mode: string };
 }
 
 @Component({
@@ -115,81 +119,99 @@ export class VisualizerComponent implements OnDestroy {
     },
   );
 
-  readonly selectedPassengerSignal: Signal<AnimatedPassenger | null> = computed(
-    () => {
-      const environment =
-        this.visualizationService.visualizationEnvironmentSignal();
-      const preselectedEntity = this.animationService.preselectedEntitySignal();
+  readonly selectedPassengerSignal: Signal<Passenger | null> = computed(() => {
+    const environment = this.visualizationService.environmentSignal();
 
-      // Return null if a preselected entity is set and it is not a passenger
+    if (environment === null) {
+      return null;
+    }
+
+    const preselectedEntity = this.animationService.preselectedEntitySignal();
+
+    // Return null if a preselected entity is set and it is not a passenger
+    if (
+      preselectedEntity !== null &&
+      preselectedEntity.shouldShowSelectedEntityTab &&
+      preselectedEntity.entityType !== 'passenger'
+    ) {
+      return null;
+    }
+
+    let selectedPassengerId = null;
+
+    if (
+      preselectedEntity !== null &&
+      preselectedEntity.shouldShowSelectedEntityTab
+    ) {
+      // If a preselected entity is set, use its ID
+      selectedPassengerId = preselectedEntity.id;
+    } else {
+      const selectedEntity = this.animationService.selectedEntitySignal();
+
+      // If a selected entity is set, use its ID if it is a passenger
       if (
-        preselectedEntity !== null &&
-        preselectedEntity.shouldShowSelectedEntityTab &&
-        preselectedEntity.entityType !== 'passenger'
+        selectedEntity !== null &&
+        selectedEntity.entityType === 'passenger'
       ) {
-        return null;
+        selectedPassengerId = selectedEntity.id;
       }
+    }
 
-      let selectedPassengerId = null;
+    if (selectedPassengerId == null) {
+      return null;
+    }
 
-      if (
-        preselectedEntity !== null &&
-        preselectedEntity.shouldShowSelectedEntityTab
-      ) {
-        // If a preselected entity is set, use its ID
-        selectedPassengerId = preselectedEntity.id;
-      } else {
-        // Otherwise, use the selected passenger ID from the animation service
-        selectedPassengerId = this.animationService.selectedPassengerIdSignal();
+    return environment.passengers[selectedPassengerId] ?? null;
+  });
+
+  readonly selectedVehicleSignal: Signal<Vehicle | null> = computed(() => {
+    const environment = this.visualizationService.environmentSignal();
+
+    if (environment === null) {
+      return null;
+    }
+
+    const preselectedEntity = this.animationService.preselectedEntitySignal();
+
+    // Return null if a preselected entity is set and it is not a vehicle
+    if (
+      preselectedEntity !== null &&
+      preselectedEntity.shouldShowSelectedEntityTab &&
+      preselectedEntity.entityType !== 'vehicle'
+    ) {
+      return null;
+    }
+
+    let selectedVehicleId = null;
+
+    if (
+      preselectedEntity !== null &&
+      preselectedEntity.shouldShowSelectedEntityTab
+    ) {
+      // If a preselected entity is set, use its ID
+      selectedVehicleId = preselectedEntity.id;
+    } else {
+      const selectedEntity = this.animationService.selectedEntitySignal();
+
+      // If a selected entity is set, use its ID if it is a vehicle
+      if (selectedEntity !== null && selectedEntity.entityType === 'vehicle') {
+        selectedVehicleId = selectedEntity.id;
       }
+    }
 
-      if (environment === null || selectedPassengerId == null) {
-        return null;
-      }
-      return environment.passengers[selectedPassengerId] ?? null;
-    },
-  );
+    if (selectedVehicleId == null) {
+      return null;
+    }
 
-  readonly selectedVehicleSignal: Signal<AnimatedVehicle | null> = computed(
-    () => {
-      const environment =
-        this.visualizationService.visualizationEnvironmentSignal();
+    return environment.vehicles[selectedVehicleId] ?? null;
+  });
 
-      const preselectedEntity = this.animationService.preselectedEntitySignal();
+  readonly selectedStopSignal: Signal<Stop | null> = computed(() => {
+    const environment = this.visualizationService.environmentSignal();
 
-      // Return null if a preselected entity is set and it is not a vehicle
-      if (
-        preselectedEntity !== null &&
-        preselectedEntity.shouldShowSelectedEntityTab &&
-        preselectedEntity.entityType !== 'vehicle'
-      ) {
-        return null;
-      }
-
-      let selectedVehicleId = null;
-
-      if (
-        preselectedEntity !== null &&
-        preselectedEntity.shouldShowSelectedEntityTab
-      ) {
-        // If a preselected entity is set, use its ID
-        selectedVehicleId = preselectedEntity.id;
-      } else {
-        // Otherwise, use the selected vehicle ID from the animation service
-        selectedVehicleId = this.animationService.selectedVehicleIdSignal();
-      }
-
-      if (environment === null || selectedVehicleId == null) {
-        return null;
-      }
-
-      return environment.vehicles[selectedVehicleId] ?? null;
-    },
-  );
-
-  readonly selectedStopSignal: Signal<AnimatedStop | null> = computed(() => {
-    const environment =
-      this.visualizationService.visualizationEnvironmentSignal();
+    if (environment === null) {
+      return null;
+    }
 
     const preselectedEntity = this.animationService.preselectedEntitySignal();
 
@@ -211,147 +233,193 @@ export class VisualizerComponent implements OnDestroy {
       // If a preselected entity is set, use its ID
       selectedStopId = preselectedEntity.id;
     } else {
-      // Otherwise, use the selected stop ID from the animation service
-      selectedStopId = this.animationService.selectedStopIdSignal();
+      const selectedEntity = this.animationService.selectedEntitySignal();
+
+      // If a selected entity is set, use its ID if it is a stop
+      if (selectedEntity !== null && selectedEntity.entityType === 'stop') {
+        selectedStopId = selectedEntity.id;
+      }
     }
 
-    if (environment === null || selectedStopId == null) {
+    if (selectedStopId == null) {
       return null;
     }
 
     return environment.stops[selectedStopId] ?? null;
   });
 
-  readonly selectedPassengerVehicleSignal: Signal<AnimatedVehicle | null> =
-    computed(() => {
-      const selectedPassenger = this.selectedPassengerSignal();
-      const environment =
-        this.visualizationService.visualizationEnvironmentSignal();
-
-      if (
-        selectedPassenger === null ||
-        selectedPassenger.currentLeg === null ||
-        selectedPassenger.currentLeg.assignedVehicleId === null ||
-        environment === null
-      ) {
-        return null;
-      }
-
-      const selectedVehicle =
-        environment.vehicles[selectedPassenger.currentLeg.assignedVehicleId];
-
-      return selectedVehicle ?? null;
-    });
-
-  readonly selectedPassengerStopSignal: Signal<AnimatedStop | null> = computed(
+  readonly selectedPassengerVehicleSignal: Signal<Vehicle | null> = computed(
     () => {
-      const selectedPassenger = this.selectedPassengerSignal();
-      const environment =
-        this.visualizationService.visualizationEnvironmentSignal();
+      const environment = this.visualizationService.environmentSignal();
 
-      if (selectedPassenger === null || environment === null) {
+      if (environment === null) {
         return null;
       }
 
-      return (
-        Object.values(environment.stops).find((stop) =>
-          stop.passengerIds.includes(selectedPassenger.id),
-        ) ?? null
+      const passenger = this.selectedPassengerSignal();
+
+      if (passenger === null) {
+        return null;
+      }
+
+      const currentVehicleId = getPassengerCurrentVehicleId(
+        passenger,
+        environment.timestamp,
       );
+
+      if (currentVehicleId === null) {
+        return null;
+      }
+
+      return environment.vehicles[currentVehicleId] ?? null;
     },
   );
 
-  readonly selectedVehiclePassengersSignal: Signal<AnimatedPassenger[]> =
-    computed(() => {
-      const selectedVehicle = this.selectedVehicleSignal();
-      const environment =
-        this.visualizationService.visualizationEnvironmentSignal();
+  readonly selectedPassengerStopSignal: Signal<Stop | null> = computed(() => {
+    const environment = this.visualizationService.environmentSignal();
 
-      if (selectedVehicle === null || environment === null) {
+    if (environment === null) {
+      return null;
+    }
+
+    const passenger = this.selectedPassengerSignal();
+
+    if (passenger === null) {
+      return null;
+    }
+
+    const stopAndVehicleId = getPassengerCurrentStopIdWithVehicleId(
+      passenger,
+      environment.timestamp,
+    );
+
+    if (stopAndVehicleId === null) {
+      return null;
+    }
+
+    const { stopId, vehicleId } = stopAndVehicleId;
+
+    const vehicle = environment.vehicles[vehicleId];
+
+    if (vehicle === undefined) {
+      return null;
+    }
+
+    const allStops = getAllStops(vehicle);
+
+    const stop = allStops.find((s) => s.id === stopId);
+
+    if (stop === undefined) {
+      return null;
+    }
+
+    return stop;
+  });
+
+  readonly selectedVehiclePassengersSignal: Signal<Passenger[]> = computed(
+    () => {
+      const environment = this.visualizationService.environmentSignal();
+
+      if (environment === null) {
         return [];
       }
 
-      const passengers = selectedVehicle.passengerIds.map(
-        (passengerId) => environment.passengers[passengerId],
+      const vehicle = this.selectedVehicleSignal();
+
+      if (vehicle === null) {
+        return [];
+      }
+
+      const passengers = Object.values(environment.passengers).filter(
+        (passenger) =>
+          isPassengerOnVehicle(passenger, vehicle.id, environment.timestamp),
       );
 
       return passengers;
-    });
-
-  readonly selectedVehicleStopSignal: Signal<AnimatedStop | null> = computed(
-    () => {
-      const selectedVehicle = this.selectedVehicleSignal();
-      const environment =
-        this.visualizationService.visualizationEnvironmentSignal();
-
-      if (selectedVehicle === null || environment === null) {
-        return null;
-      }
-
-      return (
-        Object.values(environment.stops).find((stop) =>
-          stop.vehicleIds.includes(selectedVehicle.id),
-        ) ?? null
-      );
     },
   );
 
-  private readonly selectedStopPassengersSignal: Signal<AnimatedPassenger[]> =
-    computed(() => {
-      const selectedStop = this.selectedStopSignal();
-      const environment =
-        this.visualizationService.visualizationEnvironmentSignal();
+  readonly selectedVehicleStopSignal: Signal<Stop | null> = computed(() => {
+    const environment = this.visualizationService.environmentSignal();
 
-      if (selectedStop === null || environment === null) {
+    if (environment === null) {
+      return null;
+    }
+
+    const vehicle = this.selectedVehicleSignal();
+
+    if (vehicle === null) {
+      return null;
+    }
+
+    if (vehicle.currentStop === null) {
+      return null;
+    }
+
+    return vehicle.currentStop;
+  });
+
+  private readonly selectedStopPassengersSignal: Signal<Passenger[]> = computed(
+    () => {
+      const environment = this.visualizationService.environmentSignal();
+
+      if (environment === null) {
         return [];
       }
 
-      const passengers = selectedStop.passengerIds.map(
-        (passengerId) => environment.passengers[passengerId],
+      const stop = this.selectedStopSignal();
+
+      if (stop === null) {
+        return [];
+      }
+
+      const passengers = Object.values(environment.passengers).filter(
+        (passenger) =>
+          isPassengerAtStop(passenger, stop.id, environment.timestamp),
       );
 
       return passengers;
-    });
-
-  readonly selectedStopWaitingPassengersSignal: Signal<AnimatedPassenger[]> =
-    computed(() => {
-      const selectedStopPassengers = this.selectedStopPassengersSignal();
-
-      return selectedStopPassengers.filter(
-        (passenger) => passenger.status !== 'complete',
-      );
-    });
-
-  readonly selectedStopCompletedPassengersSignal: Signal<AnimatedPassenger[]> =
-    computed(() => {
-      const selectedStopPassengers = this.selectedStopPassengersSignal();
-
-      return selectedStopPassengers.filter(
-        (passenger) => passenger.status === 'complete',
-      );
-    });
-
-  readonly selectedStopVehiclesSignal: Signal<AnimatedVehicle[]> = computed(
-    () => {
-      const selectedStop = this.selectedStopSignal();
-      const environment =
-        this.visualizationService.visualizationEnvironmentSignal();
-
-      if (selectedStop === null || environment === null) {
-        return [];
-      }
-
-      const vehicles = selectedStop.vehicleIds.map(
-        (vehicleId) => environment.vehicles[vehicleId],
-      );
-
-      return vehicles;
     },
   );
+
+  readonly selectedStopWaitingPassengersSignal: Signal<Passenger[]> = computed(
+    () => {
+      const passenger = this.selectedStopPassengersSignal();
+
+      return passenger.filter((passenger) => passenger.status !== 'complete');
+    },
+  );
+
+  readonly selectedStopCompletedPassengersSignal: Signal<Passenger[]> =
+    computed(() => {
+      const passengers = this.selectedStopPassengersSignal();
+
+      return passengers.filter((passenger) => passenger.status === 'complete');
+    });
+
+  readonly selectedStopVehiclesSignal: Signal<Vehicle[]> = computed(() => {
+    const environment = this.visualizationService.environmentSignal();
+
+    if (environment === null) {
+      return [];
+    }
+
+    const stop = this.selectedStopSignal();
+
+    if (stop === null) {
+      return [];
+    }
+
+    const vehicles = Object.values(environment.vehicles).filter(
+      (vehicle) =>
+        vehicle.currentStop !== null && vehicle.currentStop.id === stop.id,
+    );
+
+    return vehicles;
+  });
 
   readonly entitySearchDataSignal: Signal<EntitySearch[]> = computed(() => {
-    const environment =
-      this.visualizationService.visualizationEnvironmentSignal();
+    const environment = this.visualizationService.environmentSignal();
     if (environment === null) {
       return [];
     }
@@ -408,7 +476,7 @@ export class VisualizerComponent implements OnDestroy {
           ? entitySearchData.filter(
               (entity) =>
                 entity.type === 'vehicle' &&
-                (entity.entity as AnimatedVehicle).mode === selectedMode,
+                (entity.entity as Vehicle).mode === selectedMode,
             )
           : entitySearchData;
 
@@ -435,7 +503,7 @@ export class VisualizerComponent implements OnDestroy {
         const searchLower = searchValue.toLowerCase();
         return filteredData.filter((entity) => {
           if (entity.type === 'passenger') {
-            const passenger = entity.entity as AnimatedPassenger;
+            const passenger = entity.entity as Passenger;
             return (
               entity.displayedValue.toLowerCase().includes(searchLower) ||
               passenger.name.toLowerCase().includes(searchLower)
@@ -472,6 +540,7 @@ export class VisualizerComponent implements OnDestroy {
     private readonly visualizationService: VisualizationService,
     private readonly formBuilder: FormBuilder,
     private readonly visualizationFilterService: VisualizationFilterService,
+    private readonly taskService: TaskService,
   ) {
     this.tabControl = new FormControl('');
     this.tabControl.valueChanges.subscribe((value) => {
@@ -527,36 +596,33 @@ export class VisualizerComponent implements OnDestroy {
 
     // MARK: Effects
     effect(() => {
-      this.animationService.selectedPassengerIdSignal();
-      this.animationService.selectedVehicleIdSignal();
-      this.animationService.selectedStopIdSignal();
-
       const preselectedEntity = this.animationService.preselectedEntitySignal();
 
-      untracked(() => {
-        const selectedPassenger = this.selectedPassengerSignal();
-        const selectedVehicle = this.selectedVehicleSignal();
-        const selectedStop = this.selectedStopSignal();
-        if (
-          this.showSelectedEntityTab &&
-          selectedPassenger === null &&
-          selectedVehicle === null &&
-          selectedStop === null
-        ) {
-          this.informationTabControl.setValue(['']);
-        } else if (
-          !this.showSelectedEntityTab &&
-          (((selectedPassenger !== null ||
-            selectedVehicle !== null ||
-            selectedStop !== null) &&
-            (preselectedEntity === null ||
-              preselectedEntity.shouldShowSelectedEntityTab)) ||
-            (preselectedEntity !== null &&
-              preselectedEntity.shouldShowSelectedEntityTab))
-        ) {
-          this.informationTabControl.setValue(['selectedEntity']);
-        }
-      });
+      const selectedPassenger = this.selectedPassengerSignal();
+      const selectedVehicle = this.selectedVehicleSignal();
+      const selectedStop = this.selectedStopSignal();
+
+      if (
+        // If no preselected entity is set, close the selected entity tab
+        this.showSelectedEntityTab &&
+        selectedPassenger === null &&
+        selectedVehicle === null &&
+        selectedStop === null
+      ) {
+        this.informationTabControl.setValue(['']);
+      } else if (
+        // If the selected entity tab is not shown and an entity is selected,
+        // show the selected entity tab
+        !this.showSelectedEntityTab &&
+        (selectedPassenger !== null ||
+          selectedVehicle !== null ||
+          selectedStop !== null) &&
+        // Only if the entity is not preselected or if it should show the selected entity tab
+        (preselectedEntity === null ||
+          preselectedEntity.shouldShowSelectedEntityTab)
+      ) {
+        this.informationTabControl.setValue(['selectedEntity']);
+      }
     });
 
     effect(() => {
@@ -575,10 +641,10 @@ export class VisualizerComponent implements OnDestroy {
       }
 
       if (searchValue.type === 'passenger') {
-        this.animationService.selectEntity(searchValue.id, 'passenger');
+        this.animationService.selectEntity(searchValue.entity as Passenger);
         this.selectedModeSignal.set(null);
       } else if (searchValue.type === 'vehicle') {
-        this.animationService.selectEntity(searchValue.id, 'vehicle');
+        this.animationService.selectEntity(searchValue.entity as Vehicle);
         this.selectedModeSignal.set(null);
       } else if (searchValue.type === 'mode') {
         this.selectedModeSignal.set(
@@ -589,19 +655,6 @@ export class VisualizerComponent implements OnDestroy {
           this.searchInput.nativeElement.click();
         });
       }
-    });
-
-    effect(() => {
-      const animatedSimulationEnvironment =
-        this.visualizationService.visualizationEnvironmentSignal();
-      if (animatedSimulationEnvironment == null) return;
-
-      // Synchronize the environment without tracking signals (to avoid unnecessary re-processes)
-      untracked(() =>
-        this.animationService.synchronizeEnvironment(
-          animatedSimulationEnvironment,
-        ),
-      );
     });
 
     effect(() => {
@@ -791,8 +844,7 @@ export class VisualizerComponent implements OnDestroy {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   get statisticsSignal(): Signal<Record<string, any>> {
     return computed(() => {
-      const environment =
-        this.visualizationService.visualizationEnvironmentSignal();
+      const environment = this.visualizationService.environmentSignal();
       if (!environment) {
         return {};
       }
@@ -806,14 +858,6 @@ export class VisualizerComponent implements OnDestroy {
 
   get isInitializedSignal(): Signal<boolean> {
     return this.visualizationService.isInitializedSignal;
-  }
-
-  get selectedVehicleIdSignal(): Signal<string | null> {
-    return this.animationService.selectedVehicleIdSignal;
-  }
-
-  get selectedPassengerIdSignal(): Signal<string | null> {
-    return this.animationService.selectedPassengerIdSignal;
   }
 
   get simulationSignal(): Signal<Simulation | null> {

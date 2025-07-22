@@ -8,6 +8,7 @@ import { extractVehicle, Vehicle } from './vehicle.model';
 export interface SimulationEnvironment {
   passengers: Record<string, Passenger>;
   vehicles: Record<string, Vehicle>;
+
   statistics: Statistics;
 
   /**

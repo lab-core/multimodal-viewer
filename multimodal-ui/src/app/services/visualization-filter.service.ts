@@ -43,15 +43,14 @@ export class VisualizationFilterService {
   }
 
   private effectUpdateVehicleModeFilters() {
-    const visualizationEnvironment =
-      this.visualizationService.visualizationEnvironmentSignal();
+    const environment = this.visualizationService.environmentSignal();
 
     const vehicleModes = untracked(this._vehicleModes);
 
-    if (visualizationEnvironment === null) return;
+    if (environment === null) return;
 
     // Get unique vehicle modes
-    const currentModes = Object.values(visualizationEnvironment.vehicles).map(
+    const currentModes = Object.values(environment.vehicles).map(
       (vehicle) => vehicle.mode ?? 'unknown',
     );
 

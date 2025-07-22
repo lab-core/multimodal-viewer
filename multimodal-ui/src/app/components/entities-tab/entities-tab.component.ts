@@ -17,8 +17,7 @@ import { EntityNameComponent } from '../entity-name/entity-name.component';
 export class EntitiesTabComponent {
   // MARK: Properties
   readonly getPassengers: Signal<Passenger[]> = computed(() => {
-    const environment =
-      this.visualizationService.visualizationEnvironmentSignal();
+    const environment = this.visualizationService.environmentSignal();
     if (environment === null) {
       return [];
     }
@@ -32,8 +31,7 @@ export class EntitiesTabComponent {
       passengers: Passenger[];
     }[]
   > = computed(() => {
-    const environment =
-      this.visualizationService.visualizationEnvironmentSignal();
+    const environment = this.visualizationService.environmentSignal();
     if (environment === null) {
       return [];
     }
@@ -64,8 +62,7 @@ export class EntitiesTabComponent {
   });
 
   readonly getVehicles: Signal<Vehicle[]> = computed(() => {
-    const environment =
-      this.visualizationService.visualizationEnvironmentSignal();
+    const environment = this.visualizationService.environmentSignal();
     if (environment === null) {
       return [];
     }
@@ -79,8 +76,7 @@ export class EntitiesTabComponent {
       vehicles: Vehicle[];
     }[]
   > = computed(() => {
-    const environment =
-      this.visualizationService.visualizationEnvironmentSignal();
+    const environment = this.visualizationService.environmentSignal();
 
     if (environment === null) {
       return [];
@@ -115,11 +111,7 @@ export class EntitiesTabComponent {
     this.animationService.unpreselectEntity();
   }
 
-  selectPassenger(id: string) {
-    this.animationService.selectEntity(id, 'passenger');
-  }
-
-  selectVehicle(id: string) {
-    this.animationService.selectEntity(id, 'vehicle');
+  selectEntity(entity: EntityMetadata) {
+    this.animationService.selectEntity(entity);
   }
 }

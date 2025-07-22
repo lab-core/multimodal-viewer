@@ -96,7 +96,7 @@ SCRIPT_ROOM = "script"
 STATE_SAVE_STEP = 1000
 
 # If the version is identical, the save file can be loaded
-SAVE_VERSION = 10
+SAVE_VERSION = 11
 
 
 class SimulationStatus(Enum):

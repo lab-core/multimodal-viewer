@@ -1,5 +1,8 @@
 <!--MARK: Selected Passenger
       -->
+
+@let environment = environmentSignal();
+
 @if (selectedPassenger !== null) {
   @let isFavoritePassenger = isFavoriteEntity(selectedPassenger);
   <mat-card-title style="display: flex; align-items: center; gap: 8px"
@@ -65,22 +68,14 @@
           }}
         </mat-card-content>
       </mat-card>
-      @if (selectedPassenger.notDisplayedReason !== null) {
-        <mat-card>
-          <mat-card-content>
-            <b>Not displayed:</b>
-            {{ selectedPassenger.notDisplayedReason }}
-          </mat-card-content>
-        </mat-card>
-      }
       @if (selectedPassengerStop !== null) {
         <mat-card>
           <mat-card-content
             class="clickable-no-padding"
             [matTooltip]="'Select stop'"
             [matTooltipPosition]="'after'"
-            (click)="selectStop(selectedPassengerStop)"
-            (keydown.enter)="selectStop(selectedPassengerStop)"
+            (click)="selectEntity(selectedPassengerStop)"
+            (keydown.enter)="selectEntity(selectedPassengerStop)"
             (mouseenter)="preselectEntity(selectedPassengerStop)"
             (mouseleave)="unpreselectEntity()"
           >
@@ -98,8 +93,8 @@
             class="clickable-no-padding"
             [matTooltip]="'Select vehicle'"
             [matTooltipPosition]="'after'"
-            (click)="selectVehicle(selectedPassengerVehicle.id)"
-            (keydown.enter)="selectVehicle(selectedPassengerVehicle.id)"
+            (click)="selectEntity(selectedPassengerVehicle)"
+            (keydown.enter)="selectEntity(selectedPassengerVehicle)"
             (mouseenter)="preselectEntity(selectedPassengerVehicle)"
             (mouseleave)="unpreselectEntity()"
           >
@@ -108,6 +103,13 @@
               [name]="selectedPassengerVehicle.name"
               [tags]="selectedPassengerVehicle.tags"
             />
+          </mat-card-content>
+        </mat-card>
+      }
+      @if (selectedPassenger.error !== null) {
+        <mat-card>
+          <mat-card-content matTooltip="The passenger is not displayed">
+            <b>Error:</b> {{ selectedPassenger.error }}
           </mat-card-content>
         </mat-card>
       }
@@ -133,8 +135,8 @@
                     class="clickable-no-padding"
                     [matTooltip]="'Select vehicle'"
                     [matTooltipPosition]="'after'"
-                    (click)="selectVehicle(vehicle.id)"
-                    (keydown.enter)="selectVehicle(vehicle.id)"
+                    (click)="selectEntity(vehicle)"
+                    (keydown.enter)="selectEntity(vehicle)"
                   >
                     Vehicle: {{ vehicle.name }}
                   </div>
@@ -144,9 +146,9 @@
               </div>
               <app-selected-entity-route
                 class="indent"
-                [previousStops]="leg.previousStops"
-                [currentStop]="leg.currentStop"
-                [nextStops]="leg.nextStops"
+                [previousStops]="selectedPassengerLegPreviousStops"
+                [currentStop]="selectedPassengerLegCurrentStop"
+                [nextStops]="selectedPassengerLegNextStops"
               ></app-selected-entity-route>
             </div>
           }
@@ -239,8 +241,8 @@
         <mat-card-content>
           <b>Passenger Tags:</b>
           {{
-            selectedVehicle.passengerTags.length > 0
-              ? selectedVehicle.passengerTags.join(", ")
+            selectedVehiclePassengerTags.length > 0
+              ? selectedVehiclePassengerTags.join(", ")
               : "None"
           }}
         </mat-card-content>
@@ -251,8 +253,8 @@
             class="clickable-no-padding"
             [matTooltip]="'Select stop'"
             [matTooltipPosition]="'after'"
-            (click)="selectStop(selectedVehicleStop)"
-            (keydown.enter)="selectStop(selectedVehicleStop)"
+            (click)="selectEntity(selectedVehicleStop)"
+            (keydown.enter)="selectEntity(selectedVehicleStop)"
           >
             <b>Stop:</b>
             <app-entity-name
@@ -262,10 +264,10 @@
           </mat-card-content>
         </mat-card>
       }
-      @if (selectedVehicle.notDisplayedReason !== null) {
+      @if (selectedVehicle.error !== null) {
         <mat-card>
-          <mat-card-content>
-            <b>Not displayed:</b> {{ selectedVehicle.notDisplayedReason }}
+          <mat-card-content matTooltip="The vehicle is not displayed">
+            <b>Error:</b> {{ selectedVehicle.error }}
           </mat-card-content>
         </mat-card>
       }
@@ -288,8 +290,8 @@
                 class="clickable indent"
                 [matTooltip]="'Select passenger'"
                 [matTooltipPosition]="'after'"
-                (click)="selectPassenger(passenger.id)"
-                (keydown.enter)="selectPassenger(passenger.id)"
+                (click)="selectEntity(passenger)"
+                (keydown.enter)="selectEntity(passenger)"
                 (mouseenter)="preselectEntity(passenger)"
                 (mouseleave)="unpreselectEntity()"
               >
@@ -366,8 +368,8 @@
         <mat-card-content>
           <b>Passenger Tags:</b>
           {{
-            selectedStop.passengerTags.length > 0
-              ? selectedStop.passengerTags.join(", ")
+            selectedStopPassengerTags.length > 0
+              ? selectedStopPassengerTags.join(", ")
               : "None"
           }}
         </mat-card-content>
@@ -378,6 +380,13 @@
           {{ selectedStop.position.longitude }}
         </mat-card-content>
       </mat-card>
+      @if (selectedStop.error !== null) {
+        <mat-card>
+          <mat-card-content matTooltip="The stop is not displayed.">
+            <b>Error:</b> {{ selectedStop.error }}
+          </mat-card-content>
+        </mat-card>
+      }
     </div>
 
     @if (selectedStopWaitingPassengers.length > 0) {
@@ -400,8 +409,8 @@
                 class="clickable indent"
                 [matTooltip]="'Select passenger'"
                 [matTooltipPosition]="'after'"
-                (click)="selectPassenger(passenger.id)"
-                (keydown.enter)="selectPassenger(passenger.id)"
+                (click)="selectEntity(passenger)"
+                (keydown.enter)="selectEntity(passenger)"
                 (mouseenter)="preselectEntity(passenger)"
                 (mouseleave)="unpreselectEntity()"
               >
@@ -436,8 +445,8 @@
                 class="clickable indent"
                 [matTooltip]="'Select passenger'"
                 [matTooltipPosition]="'after'"
-                (click)="selectPassenger(passenger.id)"
-                (keydown.enter)="selectPassenger(passenger.id)"
+                (click)="selectEntity(passenger)"
+                (keydown.enter)="selectEntity(passenger)"
                 (mouseenter)="preselectEntity(passenger)"
                 (mouseleave)="unpreselectEntity()"
               >
@@ -469,8 +478,8 @@
                 class="clickable indent"
                 [matTooltip]="'Select vehicle'"
                 [matTooltipPosition]="'after'"
-                (click)="selectVehicle(vehicle.id)"
-                (keydown.enter)="selectVehicle(vehicle.id)"
+                (click)="selectEntity(vehicle)"
+                (keydown.enter)="selectEntity(vehicle)"
                 (mouseenter)="preselectEntity(vehicle)"
                 (mouseleave)="unpreselectEntity()"
               >

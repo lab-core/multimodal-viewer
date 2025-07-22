@@ -41,7 +41,7 @@ export class FavoriteEntitiesComponent {
   }
 
   selectEntity(entity: EntityMetadata): void {
-    this.animationService.selectEntity(entity.id, entity.entityType);
+    this.animationService.selectEntity(entity);
   }
 
   toggleFavoriteEntity(entity: EntityMetadata): void {
@@ -49,17 +49,16 @@ export class FavoriteEntitiesComponent {
   }
 
   isEntityInEnvironment(entity: EntityMetadata): boolean {
-    const visualizationEnvironment =
-      this.visualizationService.visualizationEnvironmentSignal();
-    if (!visualizationEnvironment) return false;
+    const environment = this.visualizationService.environmentSignal();
+    if (!environment) return false;
 
     switch (entity.entityType) {
       case 'vehicle':
-        return visualizationEnvironment.vehicles[entity.id] !== undefined;
+        return environment.vehicles[entity.id] !== undefined;
       case 'passenger':
-        return visualizationEnvironment.passengers[entity.id] !== undefined;
+        return environment.passengers[entity.id] !== undefined;
       case 'stop':
-        return visualizationEnvironment.stops[entity.id] !== undefined;
+        return environment.stops[entity.id] !== undefined;
       default:
         return false;
     }
