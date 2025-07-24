@@ -11,6 +11,7 @@ import {
   ContinuousEnvironment,
   ContinuousEnvironmentReferences,
   createContinuousEnvironmentReferences,
+  updateContinuousEnvironmentsEndTimestamps,
 } from '../interfaces/continuous.model';
 import { SimulationEnvironment } from '../interfaces/environment.model';
 import {
@@ -52,6 +53,8 @@ export class SimulationService {
   private readonly _continuousEnvironmentsSignal: WritableSignal<
     ContinuousEnvironment[]
   > = signal([]);
+
+  private alreadyUpdatedEnvironmentUpdateIndexes: number[] = [];
 
   private references: ContinuousEnvironmentReferences =
     createContinuousEnvironmentReferences();
@@ -152,6 +155,10 @@ export class SimulationService {
         `polylines-${activeSimulationId}`,
       );
     }
+
+    this._continuousEnvironmentsSignal.set([]);
+
+    this.alreadyUpdatedEnvironmentUpdateIndexes = [];
 
     this.references = createContinuousEnvironmentReferences();
   }
@@ -402,7 +409,13 @@ export class SimulationService {
           environments[existingEnvironmentIndex] = environment;
         }
       }
+
       environments.sort((a, b) => a.startUpdateIndex - b.startUpdateIndex);
+
+      updateContinuousEnvironmentsEndTimestamps(
+        environments,
+        this.alreadyUpdatedEnvironmentUpdateIndexes,
+      );
 
       return [...environments];
     });

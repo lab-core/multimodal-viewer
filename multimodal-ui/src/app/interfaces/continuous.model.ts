@@ -663,22 +663,20 @@ function findInsertionIndexBS<T>(
 }
 
 // MARK: Display Utils
-export function findClosestContinuousEnvironment(
+export function updateContinuousEnvironmentsEndTimestamps(
   continuousEnvironments: ContinuousEnvironment[],
-  timestamp: number,
-): ContinuousEnvironment | null {
-  if (timestamp === null) {
-    return null;
-  }
-
-  if (continuousEnvironments.length === 0) {
-    return null;
-  }
-
-  // TODO We need to use tasks or do this less frequently by storing the ones already done
-  // We need to adjust the timestamps of environments in sequence
+  alreadyUpdatedEnvironmentUpdateIndexes: number[],
+): void {
   for (let i = 0; i < continuousEnvironments.length - 1; i++) {
     const currentEnvironment = continuousEnvironments[i];
+    if (
+      alreadyUpdatedEnvironmentUpdateIndexes.includes(
+        currentEnvironment.endUpdateIndex,
+      )
+    ) {
+      continue; // Already updated this environment
+    }
+
     const nextEnvironment = continuousEnvironments[i + 1];
 
     if (
@@ -708,7 +706,24 @@ export function findClosestContinuousEnvironment(
       if (lastStatistics) {
         lastStatistics.endTimestamp = nextEnvironment.startTimestamp;
       }
+
+      alreadyUpdatedEnvironmentUpdateIndexes.push(
+        currentEnvironment.endUpdateIndex,
+      );
     }
+  }
+}
+
+export function findClosestContinuousEnvironment(
+  continuousEnvironments: ContinuousEnvironment[],
+  timestamp: number,
+): ContinuousEnvironment | null {
+  if (timestamp === null) {
+    return null;
+  }
+
+  if (continuousEnvironments.length === 0) {
+    return null;
   }
 
   /**
