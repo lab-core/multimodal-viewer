@@ -1237,6 +1237,10 @@ export class AnimationService {
 
         vehicle.container.x = interpolatedPoint.x;
         vehicle.container.y = interpolatedPoint.y;
+
+        const direction = endPoint.subtract(startPoint);
+        const angle = -Math.atan2(direction.x, direction.y) + Math.PI / 2;
+        vehicle.sprites[0].rotation = angle;
       }
     }
   }
