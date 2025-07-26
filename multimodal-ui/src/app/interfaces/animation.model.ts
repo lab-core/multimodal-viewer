@@ -1,7 +1,6 @@
 import { BitmapText, Container, Graphics, Sprite } from 'pixi.js';
 import { Passenger } from './passenger.model';
 import { Polyline } from './polylines.model';
-import { SimulationState } from './state.model';
 import { Stop } from './stop.model';
 import { Vehicle } from './vehicle.model';
 
@@ -80,59 +79,4 @@ export function isAnimatedVehicle(
 
 export function isAnimatedStop(entity: AnimatedEntity): entity is AnimatedStop {
   return entity.entity.entityType === 'stop';
-}
-
-export interface AnimatedSimulationStates {
-  /**
-   * All loaded states
-   */
-  states: SimulationState[];
-
-  /**
-   * If true, the client will continue to request more states
-   * even if the necessary state for the visualization is loaded.
-   */
-  shouldRequestMoreStates: boolean;
-
-  /**
-   * Since the loaded states are not guaranteed to be continuous,
-   * we need to keep track of where the continuous states start and end.
-   *
-   * This contains the informations of the first valid state in the continuous states.
-   */
-  firstContinuousState: {
-    timestamp: number;
-    updateIndex: number;
-    index: number;
-  } | null;
-
-  /**
-   * Since the loaded states are not guaranteed to be continuous,
-   * we need to keep track of where the continuous states start and end.
-   *
-   * This contains the informations of the last valid state in the continuous states.
-   *
-   * Be aware that the timestamp and update index here may not be the ones of the last state in
-   * the continuous states but the ones of the last update of this state.
-   */
-  lastContinuousState: {
-    timestamp: number;
-    updateIndex: number;
-    index: number;
-  } | null;
-
-  /**
-   * Information about the bounds of the current state to know if it changes.
-   *
-   * When the visualization time is greater than `endTimestamp` or
-   * lower than `startTimestamp`, we need to request new states.
-   */
-  currentState: {
-    startTimestamp: number;
-
-    /**
-     * This is actually the start of the next state if it exists, otherwise it is the end of the current state.
-     */
-    endTimestamp: number;
-  } | null;
 }

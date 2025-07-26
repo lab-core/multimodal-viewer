@@ -7,10 +7,17 @@ import { extractUpdate, Update } from './update.model';
 
 export interface SimulationState extends SimulationEnvironment {
   updates: Update[];
+
+  /**
+   * Indicates whether the state is complete, i.e., whether
+   * any updates are missing between this state and the next one.
+   */
+  isComplete: boolean;
 }
 
 export class ExtractStateTask extends CompositeTask {
-  private environments: SimulationEnvironment[] = [];
+  private environments: (SimulationEnvironment &
+    Pick<SimulationState, 'isComplete'>)[] = [];
   private updatesByFirstUpdateIndex: Record<number, Update[]> = {};
 
   constructor(
@@ -73,7 +80,8 @@ class ExtractEnvironmentsTask extends CompositeTask {
   constructor(
     queue: Task[],
     private readonly serializedEnvironments: unknown,
-    private readonly environments: SimulationEnvironment[],
+    private readonly environments: (SimulationEnvironment &
+      Pick<SimulationState, 'isComplete'>)[],
   ) {
     super(EXTRACT_STATE_TASK_PRIORITY, queue, []);
   }
@@ -107,13 +115,17 @@ class ExtractEnvironmentTask extends Task {
   constructor(
     queue: Task[],
     private readonly serializedEnvironment: unknown,
-    private readonly environments: SimulationEnvironment[],
+    private readonly environments: (SimulationEnvironment &
+      Pick<SimulationState, 'isComplete'>)[],
   ) {
     super(EXTRACT_STATE_TASK_PRIORITY, queue);
   }
 
   public override process(): void {
-    if (typeof this.serializedEnvironment !== 'string') {
+    if (
+      typeof this.serializedEnvironment !== 'object' ||
+      this.serializedEnvironment === null
+    ) {
       console.error(
         'Invalid data type for serialized environment',
         this.serializedEnvironment,
@@ -123,7 +135,47 @@ class ExtractEnvironmentTask extends Task {
       return;
     }
 
-    const parsedEnvironment: unknown = JSON.parse(this.serializedEnvironment);
+    if (!('environmentString' in this.serializedEnvironment)) {
+      console.error(
+        'Serialized environment should contain an "environmentString" property',
+        this.serializedEnvironment,
+      );
+      // TODO Failed
+      return;
+    }
+
+    if (typeof this.serializedEnvironment.environmentString !== 'string') {
+      console.error(
+        'Serialized environment should contain a string "environmentString" property',
+        this.serializedEnvironment,
+      );
+      // TODO Failed
+      return;
+    }
+
+    const environmentString = this.serializedEnvironment.environmentString;
+
+    if (!('isComplete' in this.serializedEnvironment)) {
+      console.error(
+        'Serialized environment should contain an "isComplete" property',
+        this.serializedEnvironment,
+      );
+      // TODO Failed
+      return;
+    }
+
+    if (typeof this.serializedEnvironment.isComplete !== 'boolean') {
+      console.error(
+        'Serialized environment should contain a boolean "isComplete" property',
+        this.serializedEnvironment,
+      );
+      // TODO Failed
+      return;
+    }
+
+    const isComplete = this.serializedEnvironment.isComplete;
+
+    const parsedEnvironment: unknown = JSON.parse(environmentString);
 
     const environment = extractSimulationEnvironment(parsedEnvironment);
 
@@ -137,7 +189,10 @@ class ExtractEnvironmentTask extends Task {
       return;
     }
 
-    this.environments.push(environment);
+    this.environments.push({
+      ...environment,
+      isComplete,
+    });
   }
 }
 

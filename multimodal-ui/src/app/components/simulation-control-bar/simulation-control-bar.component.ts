@@ -31,7 +31,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatSliderModule } from '@angular/material/slider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import hotkeys from 'hotkeys-js';
-import { AnimatedSimulationStates } from '../../interfaces/animation.model';
+import { getCoveredTimeIntervals } from '../../interfaces/continuous.model';
 import { Simulation } from '../../interfaces/simulation.model';
 import { SimulationTimePipe } from '../../pipes/simulation-time.pipe';
 import { AnimationService } from '../../services/animation.service';
@@ -137,6 +137,15 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
     },
   );
 
+  readonly coveredTimeIntervalsSignal: Signal<
+    { start: number; end: number }[]
+  > = computed(() => {
+    const continuousEnvironments =
+      this.simulationService.continuousEnvironmentsSignal();
+
+    return getCoveredTimeIntervals(continuousEnvironments);
+  });
+
   // MARK: Constructor
   constructor(
     private readonly visualizationService: VisualizationService,
@@ -219,10 +228,6 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
 
   get isVisualizationPausedSignal(): Signal<boolean> {
     return this.visualizationService.isVisualizationPausedSignal;
-  }
-
-  get simulationStatesSignal(): Signal<AnimatedSimulationStates> {
-    return this.simulationService.simulationStatesSignal;
   }
 
   get shouldFollowEntitySignal(): Signal<boolean> {
