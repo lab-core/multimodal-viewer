@@ -992,3 +992,23 @@ export function getCoveredTimeIntervals(
 
   return intervals;
 }
+
+export function isIntervalCovered(
+  continuousEnvironments: ContinuousEnvironment[],
+  start: number,
+  end: number,
+): boolean {
+  if (continuousEnvironments.length === 0) {
+    return false;
+  }
+
+  const intervals = getCoveredTimeIntervals(continuousEnvironments);
+
+  for (const interval of intervals) {
+    if (interval.start <= start && interval.end >= end) {
+      return true;
+    }
+  }
+
+  return false;
+}

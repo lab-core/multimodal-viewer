@@ -34,6 +34,7 @@ import {
   ContinuousEnvironment,
   EnvironmentSlice,
   findClosestContinuousEnvironment,
+  isIntervalCovered,
   sliceEnvironment,
 } from '../interfaces/continuous.model';
 import { EntityFilterMode, EntityMetadata } from '../interfaces/entity.model';
@@ -443,8 +444,19 @@ export class AnimationService {
       return; // Unknown wanted visualization time
     }
 
-    // TODO If no continuous path from current time to wanted time in environments
-    // we should teleport to the wanted time
+    // Verify that there is a continuous path from the current time to the wanted time
+    const minimum = Math.min(
+      this.wantedVisualizationTime,
+      this.animationVisualizationTime,
+    );
+    const maximum = Math.max(
+      this.wantedVisualizationTime,
+      this.animationVisualizationTime,
+    );
+    if (!isIntervalCovered(this.continuousEnvironments, minimum, maximum)) {
+      this.animationVisualizationTime = this.wantedVisualizationTime;
+      return; // No continuous path from current time to wanted time
+    }
 
     const deltaSeconds = Ticker.shared.deltaMS / 1000;
 
