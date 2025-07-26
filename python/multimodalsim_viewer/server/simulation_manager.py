@@ -389,7 +389,7 @@ class SimulationManager:
         self,
         simulation_id: str,
         visualization_time: float,
-        loaded_state_update_indexes: list[int],
+        complete_state_update_indexes: list[int],
     ) -> None:
         if simulation_id not in self.simulations:
             log(
@@ -402,32 +402,16 @@ class SimulationManager:
         simulation = self.simulations[simulation_id]
 
         try:
-            (
-                missing_states,
-                missing_updates,
-                state_update_indexes_to_keep,
-                should_request_more,
-                first_continuous_state_update_index,
-                last_continuous_state_update_index,
-                necessary_state_update_index,
-            ) = SimulationVisualizationDataManager.get_missing_states(
+            (missing_states, missing_updates, has_all_states) = SimulationVisualizationDataManager.get_missing_states(
                 simulation_id,
                 visualization_time,
-                loaded_state_update_indexes,
+                complete_state_update_indexes,
                 simulation.status not in RUNNING_SIMULATION_STATUSES,
             )
 
             emit(
                 "missing-simulation-states",
-                (
-                    missing_states,
-                    missing_updates,
-                    state_update_indexes_to_keep,
-                    should_request_more,
-                    first_continuous_state_update_index,
-                    last_continuous_state_update_index,
-                    necessary_state_update_index,
-                ),
+                (missing_states, missing_updates, has_all_states),
                 to=get_session_id(),
             )
 

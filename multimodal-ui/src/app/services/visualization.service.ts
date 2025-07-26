@@ -103,6 +103,13 @@ export class VisualizationService {
     });
 
     effect(() => {
+      const hasAllStates = this.simulationService.hasAllStatesSignal();
+
+      if (hasAllStates) {
+        this._isLoadingSignal.set(false);
+        return;
+      }
+
       const simulation = this.simulationService.activeSimulationSignal();
 
       if (simulation === null) {
@@ -117,59 +124,27 @@ export class VisualizationService {
         return;
       }
 
-      const simulationStates = this.simulationService.simulationStatesSignal();
       const isFetching = this.simulationService.isFetchingStatesSignal();
 
-      const isCurrentStateAvailable =
-        simulationStates.firstContinuousState !== null &&
-        simulationStates.lastContinuousState !== null &&
-        simulationStates.firstContinuousState.timestamp !== null &&
-        simulationStates.lastContinuousState.timestamp !== null &&
-        wantedVisualizationTime >=
-          simulationStates.firstContinuousState.timestamp &&
-        wantedVisualizationTime <=
-          simulationStates.lastContinuousState.timestamp;
-
-      // const hasCurrentStateShifted =
-      //   simulationStates.currentState === null ||
-      //   wantedVisualizationTime <
-      //     simulationStates.currentState.startTimestamp ||
-      //   wantedVisualizationTime > simulationStates.currentState.endTimestamp;
-
-      if (
-        isCurrentStateAvailable &&
-        !simulationStates.shouldRequestMoreStates
-        // &&
-        // !hasCurrentStateShifted
-      ) {
-        this._isLoadingSignal.set(false);
-        return;
-      }
-
-      const allStateUpdateIndexes: number[] = simulationStates.states.map(
-        (state) => state.updateIndex,
-      );
-      // Remove last state if shouldRequestMoreStates is true because it could be incomplete
-      if (simulationStates.shouldRequestMoreStates) {
-        allStateUpdateIndexes.pop();
-      }
-
       if (!isFetching) {
+        const continuousEnvironments =
+          this.simulationService.continuousEnvironmentsSignal();
+        const completeStateUpdateIndexes = continuousEnvironments
+          .filter((continuousEnvironment) => continuousEnvironment.isComplete)
+          .map(
+            (continuousEnvironment) => continuousEnvironment.startUpdateIndex,
+          );
+
         this.getMissingSimulationStates(
           simulation.id,
           wantedVisualizationTime,
-          simulationStates.states.map((state) => state.updateIndex),
+          completeStateUpdateIndexes,
         );
       }
 
-      this._isLoadingSignal.set(
-        simulationStates.firstContinuousState === null ||
-          simulationStates.lastContinuousState === null ||
-          wantedVisualizationTime <
-            simulationStates.firstContinuousState.timestamp ||
-          wantedVisualizationTime >
-            simulationStates.lastContinuousState.timestamp,
-      );
+      const environmentSlice = this.environmentSignal();
+
+      this._isLoadingSignal.set(environmentSlice === null);
     });
 
     effect(() => {
@@ -410,7 +385,7 @@ export class VisualizationService {
   private getMissingSimulationStates(
     simulationId: string,
     wantedVisualizationTime: number,
-    allStateUpdateIndexes: number[],
+    completeStateUpdateIndexes: number[],
   ) {
     if (this.fetchStatesTimeout !== null) {
       clearTimeout(this.fetchStatesTimeout);
@@ -427,7 +402,7 @@ export class VisualizationService {
         this.simulationService.getMissingSimulationStates(
           simulationId,
           wantedVisualizationTime,
-          allStateUpdateIndexes,
+          completeStateUpdateIndexes,
         );
       }, this.MIN_STATES_DEBOUNCE_TIME - timeSinceLastDebounce) as unknown as number;
       return;
@@ -437,7 +412,7 @@ export class VisualizationService {
     this.simulationService.getMissingSimulationStates(
       simulationId,
       wantedVisualizationTime,
-      allStateUpdateIndexes,
+      completeStateUpdateIndexes,
     );
   }
 
@@ -546,8 +521,6 @@ export class VisualizationService {
       closestContinuousEnvironment,
       wantedVisualizationTime,
     );
-
-    console.log(environment, continuousEnvironments, wantedVisualizationTime);
 
     this.hasEnvironmentChanged = false;
 

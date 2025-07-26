@@ -1,5 +1,6 @@
 import json
 import os
+from typing import TypedDict
 
 from filelock import FileLock
 
@@ -30,15 +31,8 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
     __STATES_TIMESTAMP_MINIMUM_LENGTH = 8
 
     # Only send a maximum of __MAX_STATES_AT_ONCE states at once
-    # This should be at least 2
-    __MAX_STATES_AT_ONCE = 2
-
-    # The client keeps a maximum of __MAX_STATES_IN_CLIENT_BEFORE_NECESSARY + __MAX_STATES_IN_CLIENT_AFTER_NECESSARY + 1
-    # states in memory
-    # The current one, the previous __MAX_STATES_IN_CLIENT_BEFORE_NECESSARY and
-    # the next __MAX_STATES_IN_CLIENT_AFTER_NECESSARY
-    # __MAX_STATES_IN_CLIENT_BEFORE_NECESSARY = 24
-    # __MAX_STATES_IN_CLIENT_AFTER_NECESSARY = 50
+    # This should be at least 1
+    __MAX_STATES_AT_ONCE = 1
 
     # MARK: +- Format
     @staticmethod
@@ -249,17 +243,25 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
             with open(file_path, "a", encoding="utf-8") as file:
                 SimulationVisualizationDataManager.__format_json_one_line(update.serialize(), file)
 
+    class SerializedState(TypedDict):
+        environmentString: str
+        isComplete: bool
+
     @staticmethod
     def get_missing_states(  # pylint: disable=too-many-locals, too-many-branches, too-many-statements
         simulation_id: str,
         visualization_time: float,
-        loaded_state_update_indexes: list[int],
+        complete_state_update_indexes: list[int],
         is_simulation_complete: bool,
-    ) -> tuple[list[str], dict[list[str]], list[int], bool, int, int, int]:
+    ) -> tuple[list[SerializedState], dict[list[str]], bool]:
         sorted_states = SimulationVisualizationDataManager.get_sorted_states(simulation_id)
 
         if len(sorted_states) == 0:
-            return ([], {}, [], False, 0, 0, 0)
+            return [], {}, False
+
+        if len(complete_state_update_indexes) == len(sorted_states):
+            # If the client has all states, no need to request more
+            return [], {}, True
 
         necessary_state_index = None
 
@@ -279,43 +281,14 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
         # Handle negative indexes
         necessary_state_index = max(0, necessary_state_index)
 
-        state_update_indexes_to_keep = []
         missing_states = []
         missing_updates = {}
-
-        last_state_index_in_client = -1
-        all_state_indexes_in_client = []
+        has_incomplete_states = False
 
         # We want to load the necessary state first, followed by
-        # the __MAX_STATES_IN_CLIENT_AFTER_NECESSARY next states and
-        # then the __MAX_STATES_IN_CLIENT_BEFORE_NECESSARY previous states
+        # the next states and then the previous states in reverse order.
         indexes_to_load = (
             [necessary_state_index]
-            # + [
-            #     next_state_index
-            #     for next_state_index in range(
-            #         necessary_state_index + 1,
-            #         min(
-            #             necessary_state_index
-            #             + SimulationVisualizationDataManager.__MAX_STATES_IN_CLIENT_AFTER_NECESSARY
-            #             + 1,
-            #             len(sorted_states),
-            #         ),
-            #     )
-            # ]
-            # + [
-            #     previous_state_index
-            #     for previous_state_index in range(
-            #         necessary_state_index - 1,
-            #         max(
-            #             necessary_state_index
-            #             - SimulationVisualizationDataManager.__MAX_STATES_IN_CLIENT_BEFORE_NECESSARY
-            #             - 1,
-            #             -1,
-            #         ),
-            #         -1,
-            #     )
-            # ]
             # All next states
             + list(range(necessary_state_index + 1, len(sorted_states)))
             # All previous states
@@ -325,15 +298,8 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
         for index in indexes_to_load:
             update_index, state_timestamp = sorted_states[index]
 
-            # If the client already has the state, skip it
-            # except the last state that might have changed
-            if update_index in loaded_state_update_indexes and not update_index == max(loaded_state_update_indexes):
-                state_update_indexes_to_keep.append(update_index)
-
-                all_state_indexes_in_client.append(index)
-
-                last_state_index_in_client = max(last_state_index_in_client, index)
-
+            # If the client already has the state, skip it.
+            if update_index in complete_state_update_indexes:
                 continue
 
             # Don't add states if the max number of states is reached
@@ -349,8 +315,12 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
 
             with lock:
                 with open(state_file_path, "r", encoding="utf-8") as file:
-                    environment_data = file.readline()
-                    missing_states.append(environment_data)
+                    environment_string = file.readline()
+                    serialized_state: SimulationVisualizationDataManager.SerializedState = {
+                        "environmentString": environment_string,
+                        "isComplete": is_simulation_complete or (index < len(sorted_states) - 1),
+                    }
+                    missing_states.append(serialized_state)
 
                     updates_data = file.readlines()
                     current_state_updates = []
@@ -359,50 +329,11 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
 
                     missing_updates[update_index] = current_state_updates
 
-                    all_state_indexes_in_client.append(index)
-
-                    last_state_index_in_client = max(last_state_index_in_client, index)
-
-        client_has_last_state = last_state_index_in_client == len(sorted_states) - 1
-        client_has_max_states = len(missing_states) + len(state_update_indexes_to_keep) >= len(indexes_to_load)
-
-        should_request_more_states = (is_simulation_complete and not client_has_max_states) or (
-            not is_simulation_complete and (client_has_last_state or not client_has_max_states)
+        has_all_states = (
+            len(missing_states) + len(complete_state_update_indexes) == len(sorted_states) and not has_incomplete_states
         )
 
-        first_continuous_state_index = necessary_state_index
-        last_continuous_state_index = necessary_state_index
-
-        all_state_indexes_in_client.sort()
-
-        necessary_state_index_index = all_state_indexes_in_client.index(necessary_state_index)
-
-        for index in range(necessary_state_index_index - 1, -1, -1):
-            if all_state_indexes_in_client[index] == first_continuous_state_index - 1:
-                first_continuous_state_index -= 1
-            else:
-                break
-
-        for index in range(necessary_state_index_index + 1, len(all_state_indexes_in_client)):
-            if all_state_indexes_in_client[index] == last_continuous_state_index + 1:
-                last_continuous_state_index += 1
-            else:
-                break
-
-        first_continuous_state_update_index = sorted_states[first_continuous_state_index][0]
-        last_continuous_state_update_index = sorted_states[last_continuous_state_index][0]
-
-        necessary_state_update_index = sorted_states[necessary_state_index][0]
-
-        return (
-            missing_states,
-            missing_updates,
-            state_update_indexes_to_keep,
-            should_request_more_states,
-            first_continuous_state_update_index,
-            last_continuous_state_update_index,
-            necessary_state_update_index,
-        )
+        return (missing_states, missing_updates, has_all_states)
 
     # MARK: +- Polylines
 

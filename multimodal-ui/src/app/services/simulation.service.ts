@@ -5,7 +5,6 @@ import {
   Signal,
   WritableSignal,
 } from '@angular/core';
-import { AnimatedSimulationStates } from '../interfaces/animation.model';
 import {
   buildContinuousEnvironment,
   ContinuousEnvironment,
@@ -13,7 +12,6 @@ import {
   createContinuousEnvironmentReferences,
   updateContinuousEnvironmentsEndTimestamps,
 } from '../interfaces/continuous.model';
-import { SimulationEnvironment } from '../interfaces/environment.model';
 import {
   AllPolylines,
   extractAllPolylines,
@@ -31,15 +29,6 @@ export class SimulationService {
   // MARK: Properties
   private readonly _activeSimulationIdSignal: WritableSignal<string | null> =
     signal(null);
-
-  private readonly _simulationStatesSignal: WritableSignal<AnimatedSimulationStates> =
-    signal({
-      states: [],
-      shouldRequestMoreStates: true,
-      firstContinuousState: null,
-      lastContinuousState: null,
-      currentState: null,
-    });
 
   private readonly _simulationPolylinesSignal: WritableSignal<AllPolylines | null> =
     signal(null);
@@ -59,6 +48,8 @@ export class SimulationService {
   private references: ContinuousEnvironmentReferences =
     createContinuousEnvironmentReferences();
 
+  private readonly _hasAllStatesSignal: WritableSignal<boolean> = signal(false);
+
   // MARK: Constructor
   constructor(
     private readonly dataService: DataService,
@@ -77,41 +68,12 @@ export class SimulationService {
       (
         serializedMissingStatesEnvironments,
         serializedMissingStatesUpdates,
-        stateUpdateIndexesToKeep,
-        shouldRequestMoreStates,
-        firstContinuousStateUpdateIndex,
-        lastContinuousStateUpdateIndex,
-        currentStateUpdateIndex,
+        hasAllStates,
       ) => {
-        this.taskService.extractStateTask(
+        this.onMissingSimulationStates(
           serializedMissingStatesEnvironments,
           serializedMissingStatesUpdates,
-          (extractedStates) => {
-            if (extractedStates === null) {
-              console.error(
-                'Failed to extract missing simulation states from the server response.',
-              );
-
-              this._isFetchingStatesSignal.set(false);
-              return;
-            }
-
-            this._simulationStatesSignal.update((states) => {
-              return this.mergeStates(
-                states,
-                extractedStates,
-                stateUpdateIndexesToKeep as number[],
-                !!shouldRequestMoreStates,
-                firstContinuousStateUpdateIndex as number,
-                lastContinuousStateUpdateIndex as number,
-                currentStateUpdateIndex as number,
-              );
-            });
-
-            this.updateContinuousEnvironments(extractedStates);
-
-            this._isFetchingStatesSignal.set(false);
-          },
+          hasAllStates,
         );
       },
     );
@@ -133,16 +95,6 @@ export class SimulationService {
 
     this._activeSimulationIdSignal.set(null);
 
-    this._simulationStatesSignal.set({
-      states: [],
-      shouldRequestMoreStates: true,
-      firstContinuousState: null,
-      lastContinuousState: null,
-      currentState: null,
-      // continuousAnimationData: null,
-      // continuousEnvironment: null,
-    });
-
     this._simulationPolylinesSignal.set(null);
 
     this._isFetchingStatesSignal.set(false);
@@ -161,6 +113,8 @@ export class SimulationService {
     this.alreadyUpdatedEnvironmentUpdateIndexes = [];
 
     this.references = createContinuousEnvironmentReferences();
+
+    this._hasAllStatesSignal.set(false);
   }
 
   get activeSimulationSignal(): Signal<Simulation | null> {
@@ -207,7 +161,7 @@ export class SimulationService {
   getMissingSimulationStates(
     simulationId: string,
     visualizationTime: number,
-    allStateUpdateIndexes: number[],
+    completeStateUpdateIndexes: number[],
   ) {
     this._isFetchingStatesSignal.set(true);
 
@@ -215,7 +169,7 @@ export class SimulationService {
       'get-missing-simulation-states',
       simulationId,
       visualizationTime,
-      allStateUpdateIndexes,
+      completeStateUpdateIndexes,
     );
   }
 
@@ -223,10 +177,6 @@ export class SimulationService {
     this._isFetchingPolylinesSignal.set(true);
 
     this.communicationService.emit('get-polylines', simulationId);
-  }
-
-  get simulationStatesSignal(): Signal<AnimatedSimulationStates> {
-    return this._simulationStatesSignal;
   }
 
   get simulationPolylinesSignal(): Signal<AllPolylines | null> {
@@ -245,141 +195,48 @@ export class SimulationService {
     return this._continuousEnvironmentsSignal;
   }
 
-  // MARK: Build environment
-  /**
-   * Apply an update to the simulation environment in place.
-   */
-  buildEnvironment(
-    state: SimulationState,
-    visualizationTime: number,
-  ): SimulationEnvironment {
-    for (const update of state.updates) {
-      if (update.timestamp > visualizationTime) {
-        break;
-      }
-
-      update.apply(state);
-    }
-
-    return state;
+  get hasAllStatesSignal(): Signal<boolean> {
+    return this._hasAllStatesSignal;
   }
 
-  private mergeStates(
-    states: AnimatedSimulationStates,
-    missingStates: SimulationState[],
-    stateUpdateIndexesToKeep: number[],
-    shouldRequestMoreStates: boolean,
-    firstContinuousStateUpdateIndex: number,
-    lastContinuousStateUpdateIndex: number,
-    currentStateUpdateIndex: number,
-  ): AnimatedSimulationStates {
-    const animatedMissingStates: SimulationState[] = missingStates.map(
-      (state) => {
-        return {
-          ...state,
-        };
-      },
+  // MARK: Event handlers
+  private onMissingSimulationStates(
+    serializedMissingStatesEnvironments: unknown,
+    serializedMissingStatesUpdates: unknown,
+    hasAllStates: unknown,
+  ): void {
+    this.taskService.extractStateTask(
+      serializedMissingStatesEnvironments,
+      serializedMissingStatesUpdates,
+      (extractedStates) =>
+        this.afterExtractStateTask(extractedStates, hasAllStates),
     );
+  }
 
-    for (const state of states.states) {
-      if (stateUpdateIndexesToKeep.includes(state.updateIndex)) {
-        animatedMissingStates.push(state);
-      }
-    }
-
-    const sortedStates = animatedMissingStates.sort(
-      (a, b) => a.updateIndex - b.updateIndex,
-    );
-
-    const firstStateIndex = sortedStates.findIndex(
-      (state) => state.updateIndex === firstContinuousStateUpdateIndex,
-    );
-    const lastStateIndex = sortedStates.findIndex(
-      (state) => state.updateIndex === lastContinuousStateUpdateIndex,
-    );
-
-    const currentStateIndex = sortedStates.findIndex(
-      (state) => state.updateIndex === currentStateUpdateIndex,
-    );
-
-    const defaultReturnValue = {
-      states: sortedStates,
-      shouldRequestMoreStates,
-      firstContinuousState: null,
-      lastContinuousState: null,
-      currentState: null,
-    };
-
-    if (firstStateIndex === -1) {
+  private afterExtractStateTask(
+    extractedStates: SimulationState[] | null,
+    hasAllStates: unknown,
+  ): void {
+    if (extractedStates === null) {
       console.error(
-        'First continuous state not found: ',
-        firstContinuousStateUpdateIndex,
+        'Failed to extract missing simulation states from the server response.',
       );
-      return defaultReturnValue;
-    }
-    if (lastStateIndex === -1) {
-      console.error(
-        'Last continuous state not found: ',
-        lastContinuousStateUpdateIndex,
-      );
-      return defaultReturnValue;
-    }
-    if (currentStateIndex === -1) {
-      console.error('Current state not found: ', currentStateUpdateIndex);
-      return defaultReturnValue;
-    }
-    if (
-      currentStateIndex > lastStateIndex ||
-      currentStateIndex < firstStateIndex
-    ) {
-      console.error(
-        'Current state out of bounds: ',
-        currentStateIndex,
-        firstStateIndex,
-        lastStateIndex,
-      );
-      return defaultReturnValue;
+
+      this._isFetchingStatesSignal.set(false);
+      return;
     }
 
-    const firstState = sortedStates[firstStateIndex];
-    const lastState = sortedStates[lastStateIndex];
+    this.updateContinuousEnvironments(extractedStates);
 
-    const firstContinuousState = {
-      timestamp: firstState.timestamp,
-      updateIndex: firstState.updateIndex,
-      index: firstStateIndex,
-    };
+    if (typeof hasAllStates !== 'boolean') {
+      console.error('Received invalid hasAllStates value from the server.');
 
-    const lastContinuousUpdate =
-      lastState.updates[lastState.updates.length - 1];
-
-    const lastContinuousState = {
-      timestamp: lastContinuousUpdate?.timestamp ?? lastState.timestamp,
-      updateIndex: lastContinuousUpdate?.updateIndex ?? lastState.updateIndex,
-      index: lastStateIndex,
-    };
-
-    const currentState = sortedStates[currentStateIndex];
-
-    const startTimestamp = currentState.timestamp;
-
-    let endTimestamp: number;
-    if (currentStateIndex + 1 <= lastStateIndex) {
-      endTimestamp = sortedStates[currentStateIndex + 1].timestamp;
+      hasAllStates = false;
     } else {
-      endTimestamp = lastContinuousUpdate?.timestamp ?? currentState.timestamp;
+      this._hasAllStatesSignal.set(hasAllStates);
     }
 
-    return {
-      states: sortedStates,
-      shouldRequestMoreStates,
-      firstContinuousState,
-      lastContinuousState,
-      currentState: {
-        startTimestamp,
-        endTimestamp,
-      },
-    };
+    this._isFetchingStatesSignal.set(false);
   }
 
   private updateContinuousEnvironments(states: SimulationState[]): void {
@@ -388,7 +245,6 @@ export class SimulationService {
     for (const state of states) {
       const continuousEnvironment = buildContinuousEnvironment(
         state,
-        state.updates,
         this.references,
       );
 

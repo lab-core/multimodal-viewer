@@ -1,6 +1,7 @@
 import { SimulationEnvironment } from './environment.model';
 import { Leg } from './leg.model';
 import { getAllLegs, Passenger } from './passenger.model';
+import { SimulationState } from './state.model';
 import { Statistics } from './statistics.model';
 import { Stop } from './stop.model';
 import { Tagged } from './tags.model';
@@ -35,6 +36,7 @@ export interface ContinuousEnvironment {
   startUpdateIndex: number;
   endTimestamp: number;
   endUpdateIndex: number;
+  isComplete: boolean;
 }
 
 export interface EnvironmentSlice extends SimulationEnvironment {
@@ -102,20 +104,25 @@ export function createContinuousEnvironmentReferences(): ContinuousEnvironmentRe
  *
  * This function will apply the updates to the initial environment, modifying it in place.
  *
- * @param environment the initial environment on which the updates will be applied
+ * @param state the initial environment on which the updates will be applied
  * @param updates the updates to apply to the environment
  */
 export function buildContinuousEnvironment(
-  environment: SimulationEnvironment,
-  updates: Update[],
+  state: SimulationState,
   references: ContinuousEnvironmentReferences,
 ) {
-  const startTimestamp = environment.timestamp;
-  const startUpdateIndex = environment.updateIndex;
+  const startTimestamp = state.timestamp;
+  const startUpdateIndex = state.updateIndex;
 
+  const updates = state.updates;
   const lastUpdate = updates[updates.length - 1];
   const endTimestamp = lastUpdate.timestamp;
-  const endUpdateIndex = lastUpdate.updateIndex + 1; // We want the index of the next update
+
+  // We want the index of the next update, that will
+  // match the end timestamp of the next environment if it exists.
+  const endUpdateIndex = lastUpdate.updateIndex + 1;
+
+  const isComplete = state.isComplete;
 
   const continuousEnvironment: ContinuousEnvironment = {
     passengers: {},
@@ -125,42 +132,43 @@ export function buildContinuousEnvironment(
     startUpdateIndex,
     endTimestamp,
     endUpdateIndex,
+    isComplete,
   };
 
   // Build initial environment
-  for (const passenger of Object.values(environment.passengers)) {
+  for (const passenger of Object.values(state.passengers)) {
     updateContinuousPassenger(
       continuousEnvironment.passengers,
       passenger,
       startTimestamp,
       endTimestamp,
-      environment.updateIndex,
+      state.updateIndex,
       references,
     );
   }
 
-  for (const vehicle of Object.values(environment.vehicles)) {
+  for (const vehicle of Object.values(state.vehicles)) {
     updateContinuousVehicle(
       continuousEnvironment.vehicles,
       vehicle,
       startTimestamp,
       endTimestamp,
-      environment.updateIndex,
+      state.updateIndex,
       references,
     );
   }
 
   updateContinuousStatistics(
     continuousEnvironment.statistics,
-    environment.statistics,
+    state.statistics,
     startTimestamp,
     endTimestamp,
-    environment.updateIndex,
+    state.updateIndex,
   );
 
   // Apply each update and update the continuous environment
   const visitor = new UpdateVisitor(
-    environment,
+    state,
     continuousEnvironment,
     endTimestamp,
     references,
@@ -944,4 +952,43 @@ export function sliceEnvironment(
     timestamp,
     updateIndex,
   };
+}
+
+export function getCoveredTimeIntervals(
+  continuousEnvironments: ContinuousEnvironment[],
+): { start: number; end: number }[] {
+  if (continuousEnvironments.length === 0) {
+    return [];
+  }
+
+  let currentInterval: { start: number; end: number } | null = null;
+
+  const intervals: { start: number; end: number }[] = [];
+
+  for (const environment of continuousEnvironments) {
+    if (currentInterval === null) {
+      currentInterval = {
+        start: environment.startTimestamp,
+        end: environment.endTimestamp,
+      };
+      continue;
+    }
+
+    if (environment.startTimestamp === currentInterval.end) {
+      currentInterval.end = environment.endTimestamp;
+    } else {
+      intervals.push(currentInterval);
+
+      currentInterval = {
+        start: environment.startTimestamp,
+        end: environment.endTimestamp,
+      };
+    }
+  }
+
+  if (currentInterval !== null) {
+    intervals.push(currentInterval);
+  }
+
+  return intervals;
 }
