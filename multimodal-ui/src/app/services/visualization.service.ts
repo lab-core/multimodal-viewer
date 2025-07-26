@@ -38,8 +38,8 @@ export class VisualizationService {
   private tick = -1;
   private readonly tickSignal: WritableSignal<number> = signal<number>(0);
   private updateTickTimeout: number | null = null;
+  private lastUpdateTickTime = performance.now();
 
-  private environmentTick = -1;
   private readonly ENVIRONMENT_TICK_INTERVAL = 1000;
   private readonly environmentTickSignal: WritableSignal<number> =
     signal<number>(0);
@@ -364,12 +364,9 @@ export class VisualizationService {
       this.tickSignal.update((tick) => tick + 1);
     });
 
-    this.updateTickTimeout = setTimeout(
-      () => {
-        this.updateTick();
-      },
-      1000 / Math.abs(this.speed),
-    ) as unknown as number;
+    this.updateTickTimeout = setTimeout(() => {
+      this.updateTick();
+    }, 250) as unknown as number;
   }
 
   private updateEnvironmentTick() {
@@ -452,6 +449,10 @@ export class VisualizationService {
     const visualizationTimeOverride = this.visualizationTimeOverrideSignal();
     const isVisualizationPaused = this.isVisualizationPausedSignal();
 
+    const now = performance.now();
+    const lastUpdateTickTime = this.lastUpdateTickTime;
+    this.lastUpdateTickTime = now;
+
     if (this.wantedVisualizationTime === null) {
       return simulationStartTime;
     }
@@ -481,10 +482,13 @@ export class VisualizationService {
       return this.wantedVisualizationTime;
     }
 
+    console.log();
+
     return Math.min(
       visualizationMaxTime,
       Math.max(
-        this.wantedVisualizationTime + 1 * Math.sign(this.speed),
+        this.wantedVisualizationTime +
+          ((now - lastUpdateTickTime) / 1000) * this.speed,
         simulationStartTime,
       ),
     );
