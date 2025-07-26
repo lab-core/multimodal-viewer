@@ -904,7 +904,7 @@ export function sliceEnvironment(
   }
 
   // Statistics are already sorted, so we can use binary search
-  const closestStatisticsIndex = findFirstMatchingIndexBS(
+  let closestStatisticsIndex = findFirstMatchingIndexBS(
     continuousEnvironment.statistics,
     (state) => {
       if (state.startTimestamp > timestamp) {
@@ -918,10 +918,27 @@ export function sliceEnvironment(
   );
 
   if (closestStatisticsIndex === null) {
-    console.error(continuousEnvironment);
-    throw new Error(
-      `No statistics found for timestamp ${timestamp} in the continuous environment`,
+    // Following the same logic as in findClosestContinuousEnvironment,
+    // we can try to find a state that ends at the wanted timestamp.
+    closestStatisticsIndex = findFirstMatchingIndexBS(
+      continuousEnvironment.statistics,
+      (state) => {
+        if (state.startTimestamp > timestamp) {
+          return 1; // state is after wanted timestamp
+        }
+        if (state.endTimestamp < timestamp) {
+          return -1; // state is before wanted timestamp
+        }
+        return 0; // state contains wanted timestamp
+      },
     );
+
+    if (closestStatisticsIndex === null) {
+      console.error(continuousEnvironment);
+      throw new Error(
+        `No statistics found for timestamp ${timestamp} in the continuous environment`,
+      );
+    }
   }
 
   const closestContinuousStatistics =
