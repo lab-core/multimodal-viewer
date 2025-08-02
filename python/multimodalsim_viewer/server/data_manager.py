@@ -1,11 +1,12 @@
-import json
 import os
-from typing import TypedDict
+from io import TextIOWrapper
+from json import dump, loads
 
 from filelock import FileLock
 
 from multimodalsim_viewer.common.utils import (
     INPUT_DATA_DIRECTORY_PATH,
+    NUMBER_OF_STATES_TO_SEND_AT_ONCE,
     SIMULATION_SAVE_FILE_SEPARATOR,
 )
 from multimodalsim_viewer.models.environment import VisualizedEnvironment
@@ -30,21 +31,17 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
     __STATES_UPDATE_INDEX_MINIMUM_LENGTH = 8
     __STATES_TIMESTAMP_MINIMUM_LENGTH = 8
 
-    # Only send a maximum of __MAX_STATES_AT_ONCE states at once
-    # This should be at least 1
-    __MAX_STATES_AT_ONCE = 1
-
     # MARK: +- Format
     @staticmethod
     def __format_json_readable(data: dict, file: str) -> str:
-        return json.dump(data, file, indent=2, separators=(",", ": "), sort_keys=True)
+        return dump(data, file, indent=2, separators=(",", ": "), sort_keys=True)
 
     @staticmethod
-    def __format_json_one_line(data: dict, file: str) -> str:
+    def __format_json_one_line(data: dict | str | int | float | bool, file: str) -> str:
         # Add new line before if not empty
         if file.tell() != 0:
             file.write("\n")
-        return json.dump(data, file, separators=(",", ":"))
+        return dump(data, file, separators=(",", ":"))
 
     # MARK: +- File paths
     @staticmethod
@@ -232,9 +229,54 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
 
         with lock:
             with open(file_path, "w", encoding="utf-8") as file:
-                SimulationVisualizationDataManager.__format_json_one_line(environment.serialize(), file)
+                # Store timestamp
+                SimulationVisualizationDataManager.__format_json_one_line(environment.timestamp, file)
+
+                # Store update index
+                SimulationVisualizationDataManager.__format_json_one_line(environment.update_index, file)
+
+                # Store statistics
+                SimulationVisualizationDataManager.__format_json_one_line(
+                    environment.statistics if environment.statistics else {}, file
+                )
+
+                # Store total number of passengers
+                SimulationVisualizationDataManager.__format_json_one_line(len(environment.passengers), file)
+
+                # Store each passenger
+                for passenger in environment.passengers.values():
+                    SimulationVisualizationDataManager.__format_json_one_line(passenger.serialize(), file)
+
+                # Store total number of vehicles
+                SimulationVisualizationDataManager.__format_json_one_line(len(environment.vehicles), file)
+
+                # Store each vehicle
+                for vehicle in environment.vehicles.values():
+                    SimulationVisualizationDataManager.__format_json_one_line(vehicle.serialize(), file)
 
         return file_path
+
+    @staticmethod
+    def get_state_to_send(file: TextIOWrapper) -> dict:
+        state = {}
+
+        state["timestamp"] = loads(file.readline().strip())
+        state["updateIndex"] = loads(file.readline().strip())
+        state["statistics"] = file.readline().strip()
+
+        state["passengers"] = []
+
+        num_passengers = loads(file.readline().strip())
+        for _ in range(num_passengers):
+            state["passengers"].append(file.readline().strip())
+
+        state["vehicles"] = []
+
+        num_vehicles = loads(file.readline().strip())
+        for _ in range(num_vehicles):
+            state["vehicles"].append(file.readline().strip())
+
+        return state
 
     @staticmethod
     def save_update(file_path: str, update: Update) -> None:
@@ -243,17 +285,13 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
             with open(file_path, "a", encoding="utf-8") as file:
                 SimulationVisualizationDataManager.__format_json_one_line(update.serialize(), file)
 
-    class SerializedState(TypedDict):
-        environmentString: str
-        isComplete: bool
-
     @staticmethod
     def get_missing_states(  # pylint: disable=too-many-locals, too-many-branches, too-many-statements
         simulation_id: str,
         visualization_time: float,
         complete_state_update_indexes: list[int],
         is_simulation_complete: bool,
-    ) -> tuple[list[SerializedState], dict[list[str]], bool]:
+    ) -> tuple[list[dict], dict[list[str]], bool]:
         sorted_states = SimulationVisualizationDataManager.get_sorted_states(simulation_id)
 
         if len(sorted_states) == 0:
@@ -304,7 +342,7 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
 
             # Don't add states if the max number of states is reached
             # but continue the loop to know which states need to be kept
-            if len(missing_states) >= SimulationVisualizationDataManager.__MAX_STATES_AT_ONCE:
+            if len(missing_states) >= NUMBER_OF_STATES_TO_SEND_AT_ONCE:
                 continue
 
             state_file_path = SimulationVisualizationDataManager.get_saved_simulation_state_file_path(
@@ -315,12 +353,9 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
 
             with lock:
                 with open(state_file_path, "r", encoding="utf-8") as file:
-                    environment_string = file.readline()
-                    serialized_state: SimulationVisualizationDataManager.SerializedState = {
-                        "environmentString": environment_string,
-                        "isComplete": is_simulation_complete or (index < len(sorted_states) - 1),
-                    }
-                    missing_states.append(serialized_state)
+                    state = SimulationVisualizationDataManager.get_state_to_send(file)
+                    state["isComplete"] = is_simulation_complete or (index < len(sorted_states) - 1)
+                    missing_states.append(state)
 
                     updates_data = file.readlines()
                     current_state_updates = []

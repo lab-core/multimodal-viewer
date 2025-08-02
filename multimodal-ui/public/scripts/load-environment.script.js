@@ -6,7 +6,7 @@ function loadEnvironment() {
   xhr.onreadystatechange = function () {
     if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
       window.environment = JSON.parse(xhr.responseText);
-      console.log(`Environment loaded successfully: ${xhr.responseText}`);
+      console.info(`Environment loaded successfully: ${xhr.responseText}`);
       return;
     }
 

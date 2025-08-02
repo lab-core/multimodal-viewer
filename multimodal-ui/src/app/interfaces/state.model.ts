@@ -1,10 +1,11 @@
-import {
-  extractSimulationEnvironment,
-  SimulationEnvironment,
-} from './environment.model';
+import { SimulationEnvironment } from './environment.model';
+import { extractPassenger, Passenger } from './passenger.model';
+import { isStatistics } from './statistics.model';
 import { CompositeTask, EXTRACT_STATE_TASK_PRIORITY, Task } from './task.model';
 import { extractUpdate, Update } from './update.model';
+import { extractVehicle, Vehicle } from './vehicle.model';
 
+// MARK: SimulationState
 export interface SimulationState extends SimulationEnvironment {
   updates: Update[];
 
@@ -15,6 +16,7 @@ export interface SimulationState extends SimulationEnvironment {
   isComplete: boolean;
 }
 
+// MARK: Extract State
 export class ExtractStateTask extends CompositeTask {
   private environments: (SimulationEnvironment &
     Pick<SimulationState, 'isComplete'>)[] = [];
@@ -76,6 +78,7 @@ export class ExtractStateTask extends CompositeTask {
   }
 }
 
+// MARK: Extract Environments
 class ExtractEnvironmentsTask extends CompositeTask {
   constructor(
     queue: Task[],
@@ -111,17 +114,29 @@ class ExtractEnvironmentsTask extends CompositeTask {
   }
 }
 
-class ExtractEnvironmentTask extends Task {
+// MARK: Extract Environment
+class ExtractEnvironmentTask extends CompositeTask {
+  private environment: SimulationEnvironment &
+    Pick<SimulationState, 'isComplete'> = {
+    timestamp: -1,
+    updateIndex: -1,
+    statistics: {},
+    passengers: {},
+    vehicles: {},
+    isComplete: false,
+  };
+
   constructor(
     queue: Task[],
     private readonly serializedEnvironment: unknown,
     private readonly environments: (SimulationEnvironment &
       Pick<SimulationState, 'isComplete'>)[],
   ) {
-    super(EXTRACT_STATE_TASK_PRIORITY, queue);
+    super(EXTRACT_STATE_TASK_PRIORITY, queue, []);
   }
 
-  public override process(): void {
+  // TODO This slows down the FPS
+  protected override beforeAll(): void {
     if (
       typeof this.serializedEnvironment !== 'object' ||
       this.serializedEnvironment === null
@@ -135,67 +150,196 @@ class ExtractEnvironmentTask extends Task {
       return;
     }
 
-    if (!('environmentString' in this.serializedEnvironment)) {
+    if (
+      !('timestamp' in this.serializedEnvironment) ||
+      typeof this.serializedEnvironment.timestamp !== 'number'
+    ) {
       console.error(
-        'Serialized environment should contain an "environmentString" property',
-        this.serializedEnvironment,
-      );
-      // TODO Failed
-      return;
-    }
-
-    if (typeof this.serializedEnvironment.environmentString !== 'string') {
-      console.error(
-        'Serialized environment should contain a string "environmentString" property',
-        this.serializedEnvironment,
-      );
-      // TODO Failed
-      return;
-    }
-
-    const environmentString = this.serializedEnvironment.environmentString;
-
-    if (!('isComplete' in this.serializedEnvironment)) {
-      console.error(
-        'Serialized environment should contain an "isComplete" property',
-        this.serializedEnvironment,
-      );
-      // TODO Failed
-      return;
-    }
-
-    if (typeof this.serializedEnvironment.isComplete !== 'boolean') {
-      console.error(
-        'Serialized environment should contain a boolean "isComplete" property',
-        this.serializedEnvironment,
-      );
-      // TODO Failed
-      return;
-    }
-
-    const isComplete = this.serializedEnvironment.isComplete;
-
-    const parsedEnvironment: unknown = JSON.parse(environmentString);
-
-    const environment = extractSimulationEnvironment(parsedEnvironment);
-
-    if (environment === null) {
-      console.error(
-        'Invalid simulation environment',
+        'Invalid timestamp in serialized environment',
         this.serializedEnvironment,
       );
 
       // TODO Failed
       return;
     }
+    this.environment.timestamp = this.serializedEnvironment.timestamp;
 
-    this.environments.push({
-      ...environment,
-      isComplete,
-    });
+    if (
+      !('updateIndex' in this.serializedEnvironment) ||
+      typeof this.serializedEnvironment.updateIndex !== 'number'
+    ) {
+      console.error(
+        'Invalid update index in serialized environment',
+        this.serializedEnvironment,
+      );
+
+      // TODO Failed
+      return;
+    }
+    this.environment.updateIndex = this.serializedEnvironment.updateIndex;
+
+    if (
+      !('isComplete' in this.serializedEnvironment) ||
+      typeof this.serializedEnvironment.isComplete !== 'boolean'
+    ) {
+      console.error(
+        'Invalid isComplete in serialized environment',
+        this.serializedEnvironment,
+      );
+
+      // TODO Failed
+      return;
+    }
+    this.environment.isComplete = this.serializedEnvironment.isComplete;
+
+    if (
+      !('statistics' in this.serializedEnvironment) ||
+      typeof this.serializedEnvironment.statistics !== 'string'
+    ) {
+      console.error(
+        'Invalid statistics in serialized environment',
+        this.serializedEnvironment,
+      );
+
+      // TODO Failed
+      return;
+    }
+    const statistics: unknown = JSON.parse(
+      this.serializedEnvironment.statistics,
+    );
+
+    if (!isStatistics(statistics)) {
+      console.error(
+        'Invalid statistics object in serialized environment',
+        this.serializedEnvironment,
+      );
+
+      // TODO Failed
+      return;
+    }
+    this.environment.statistics = statistics;
+
+    if (
+      !('passengers' in this.serializedEnvironment) ||
+      !Array.isArray(this.serializedEnvironment.passengers)
+    ) {
+      console.error(
+        'Invalid passengers in serialized environment',
+        this.serializedEnvironment,
+      );
+
+      // TODO Failed
+      return;
+    }
+
+    for (const serializedPassenger of this.serializedEnvironment.passengers) {
+      new ExtractPassengerTask(
+        this.subtasks,
+        serializedPassenger,
+        this.environment.passengers,
+      ).addToQueue();
+    }
+
+    if (
+      !('vehicles' in this.serializedEnvironment) ||
+      !Array.isArray(this.serializedEnvironment.vehicles)
+    ) {
+      console.error(
+        'Invalid vehicles in serialized environment',
+        this.serializedEnvironment,
+      );
+
+      // TODO Failed
+      return;
+    }
+
+    for (const serializedVehicle of this.serializedEnvironment.vehicles) {
+      new ExtractVehicleTask(
+        this.subtasks,
+        serializedVehicle,
+        this.environment.vehicles,
+      ).addToQueue();
+    }
+  }
+
+  protected override afterAll(): void {
+    this.environments.push(this.environment);
   }
 }
 
+// MARK: Extract Passenger
+class ExtractPassengerTask extends Task {
+  constructor(
+    queue: Task[],
+    private readonly serializedPassenger: unknown,
+    private readonly passengers: Record<string, Passenger>,
+  ) {
+    super(EXTRACT_STATE_TASK_PRIORITY, queue);
+  }
+
+  public override process(): void {
+    if (!(typeof this.serializedPassenger === 'string')) {
+      console.error(
+        'Invalid data type for serialized passenger',
+        this.serializedPassenger,
+      );
+
+      // TODO Failed
+      return;
+    }
+
+    const parsedPassenger: unknown = JSON.parse(this.serializedPassenger);
+
+    const passenger = extractPassenger(parsedPassenger);
+
+    if (passenger === null) {
+      console.error('Invalid passenger', this.serializedPassenger);
+
+      // TODO Failed
+      return;
+    }
+
+    this.passengers[passenger.id] = passenger;
+  }
+}
+
+// MARK: Extract Vehicle
+class ExtractVehicleTask extends Task {
+  constructor(
+    queue: Task[],
+    private readonly serializedVehicle: unknown,
+    private readonly vehicles: Record<string, Vehicle>,
+  ) {
+    super(EXTRACT_STATE_TASK_PRIORITY, queue);
+  }
+
+  public override process(): void {
+    if (!(typeof this.serializedVehicle === 'string')) {
+      console.error(
+        'Invalid data type for serialized vehicle',
+        this.serializedVehicle,
+      );
+
+      // TODO Failed
+      return;
+    }
+
+    const parsedVehicle: unknown = JSON.parse(this.serializedVehicle);
+
+    const vehicle = extractVehicle(parsedVehicle);
+
+    if (vehicle === null) {
+      console.error('Invalid vehicle', this.serializedVehicle);
+
+      // TODO Failed
+      return;
+    }
+
+    this.vehicles[vehicle.id] = vehicle;
+  }
+}
+
+// MARK: Extract All Updates
 class ExtractAllUpdatesTask extends CompositeTask {
   constructor(
     queue: Task[],
@@ -234,6 +378,7 @@ class ExtractAllUpdatesTask extends CompositeTask {
   }
 }
 
+// MARK: Extract Updates
 class ExtractUpdatesTask extends CompositeTask {
   private updates: Update[] = [];
 
@@ -246,6 +391,7 @@ class ExtractUpdatesTask extends CompositeTask {
     super(EXTRACT_STATE_TASK_PRIORITY, queue, []);
   }
 
+  // TODO This slows down the FPS
   beforeAll(): void {
     if (typeof this.serializedUpdatesKey !== 'string') {
       console.error(
@@ -301,6 +447,7 @@ class ExtractUpdatesTask extends CompositeTask {
   }
 }
 
+// MARK: Extract Update
 class ExtractUpdateTask extends Task {
   constructor(
     queue: Task[],

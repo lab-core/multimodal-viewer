@@ -35,8 +35,8 @@ from socketio import Client
 
 from multimodalsim_viewer.common.utils import (
     HOST,
+    NUMBER_OF_UPDATES_BETWEEN_STATES,
     SERVER_PORT,
-    STATE_SAVE_STEP,
     SimulationStatus,
     build_simulation_id,
 )
@@ -321,7 +321,7 @@ class SimulationVisualizationDataCollector(DataCollector):  # pylint: disable=to
             self.visualized_environment.estimated_end_time = estimated_end_time
 
         # Save the state of the simulation every SAVE_STATE_STEP events before applying the update
-        if self.update_counter % STATE_SAVE_STEP == 0:
+        if self.update_counter % NUMBER_OF_UPDATES_BETWEEN_STATES == 0:
             self.current_save_file_path = SimulationVisualizationDataManager.save_state(
                 self.simulation_id, self.visualized_environment
             )
@@ -384,11 +384,11 @@ class SimulationVisualizationDataCollector(DataCollector):  # pylint: disable=to
         if len(polylines_to_save) > 0:
             SimulationVisualizationDataManager.set_polylines(self.simulation_id, polylines_to_save)
 
-        if self.is_connected:
-            self.sio.emit(
-                "simulation-update-polylines-version",
-                self.simulation_id,
-            )
+            if self.is_connected:
+                self.sio.emit(
+                    "simulation-update-polylines-version",
+                    self.simulation_id,
+                )
 
     # MARK: +- Flush
     def flush(self, environment) -> None:
