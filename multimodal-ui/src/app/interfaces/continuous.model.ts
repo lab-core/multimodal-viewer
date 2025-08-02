@@ -6,6 +6,12 @@ import { Statistics } from './statistics.model';
 import { Stop } from './stop.model';
 import { Tagged } from './tags.model';
 import {
+  AtomicTask,
+  BUILD_CONTINUOUS_ENVIRONMENT_TASK_PRIORITY as BUILD_CONTINUOUS_ENVIRONMENTS_TASK_PRIORITY,
+  CompositeTask,
+  Task,
+} from './task.model';
+import {
   PassengerUpdate,
   StatisticsUpdate,
   Update,
@@ -98,110 +104,130 @@ export function createContinuousEnvironmentReferences(): ContinuousEnvironmentRe
   };
 }
 
-// MARK: Build Environment
-/**
- * Builds a continuous simulation environment from the initial environment and the updates.
- *
- * This function will apply the updates to the initial environment, modifying it in place.
- *
- * @param state the initial environment on which the updates will be applied
- * @param updates the updates to apply to the environment
- */
-export function buildContinuousEnvironment(
-  state: SimulationState,
-  references: ContinuousEnvironmentReferences,
-) {
-  const startTimestamp = state.timestamp;
-  const startUpdateIndex = state.updateIndex;
+// MARK: Tasks
+export class BuildContinuousEnvironmentsTask extends CompositeTask {
+  private readonly continuousEnvironments: ContinuousEnvironment[] = [];
 
-  const updates = state.updates;
-  const lastUpdate = updates[updates.length - 1];
-  const endTimestamp = lastUpdate.timestamp;
-
-  // We want the index of the next update, that will
-  // match the end timestamp of the next environment if it exists.
-  const endUpdateIndex = lastUpdate.updateIndex + 1;
-
-  const isComplete = state.isComplete;
-
-  const continuousEnvironment: ContinuousEnvironment = {
-    passengers: {},
-    vehicles: {},
-    statistics: [],
-    startTimestamp,
-    startUpdateIndex,
-    endTimestamp,
-    endUpdateIndex,
-    isComplete,
-  };
-
-  // Build initial environment
-  for (const passenger of Object.values(state.passengers)) {
-    updateContinuousPassenger(
-      continuousEnvironment.passengers,
-      passenger,
-      startTimestamp,
-      endTimestamp,
-      state.updateIndex,
-      references,
-    );
+  constructor(
+    queue: Task[],
+    private readonly states: SimulationState[],
+    private readonly references: ContinuousEnvironmentReferences,
+    private readonly callback: (environments: ContinuousEnvironment[]) => void,
+  ) {
+    super(BUILD_CONTINUOUS_ENVIRONMENTS_TASK_PRIORITY, queue, []);
   }
 
-  for (const vehicle of Object.values(state.vehicles)) {
-    updateContinuousVehicle(
-      continuousEnvironment.vehicles,
-      vehicle,
-      startTimestamp,
-      endTimestamp,
-      state.updateIndex,
-      references,
-    );
-  }
-
-  updateContinuousStatistics(
-    continuousEnvironment.statistics,
-    state.statistics,
-    startTimestamp,
-    endTimestamp,
-    state.updateIndex,
-  );
-
-  // Apply each update and update the continuous environment
-  const visitor = new UpdateVisitor(
-    state,
-    continuousEnvironment,
-    endTimestamp,
-    references,
-  );
-
-  for (const update of updates) {
-    visitor.visitUpdate(update);
-  }
-
-  // Adjust all end timestamps
-  for (const passenger of Object.values(continuousEnvironment.passengers)) {
-    const lastState = passenger[passenger.length - 1];
-    if (lastState) {
-      lastState.endTimestamp = endTimestamp;
+  protected override beforeAll(): void {
+    for (const state of this.states) {
+      new BuildContinuousEnvironmentTask(
+        this.subtasks,
+        state,
+        this.references,
+        this.continuousEnvironments,
+      ).addToQueue();
     }
   }
 
-  for (const vehicle of Object.values(continuousEnvironment.vehicles)) {
-    const lastState = vehicle[vehicle.length - 1];
-    if (lastState) {
-      lastState.endTimestamp = endTimestamp;
+  protected override afterAll(): void {
+    this.callback(this.continuousEnvironments);
+  }
+}
+
+class BuildContinuousEnvironmentTask extends CompositeTask {
+  private readonly continuousEnvironment: ContinuousEnvironment;
+
+  constructor(
+    queue: Task[],
+    private readonly state: SimulationState,
+    private readonly references: ContinuousEnvironmentReferences,
+    private readonly continuousEnvironments: ContinuousEnvironment[],
+  ) {
+    super(0, queue, []);
+
+    this.continuousEnvironment = this.buildEmptyContinuousEnvironment();
+  }
+
+  // TODO This slows down the FPS
+  protected override beforeAll(): void {
+    for (const passenger of Object.values(this.state.passengers)) {
+      new AtomicTask(0, this.subtasks, () =>
+        updateContinuousPassenger(
+          this.continuousEnvironment.passengers,
+          passenger,
+          this.continuousEnvironment.startTimestamp,
+          this.continuousEnvironment.endTimestamp,
+          this.state.updateIndex,
+          this.references,
+        ),
+      ).addToQueue();
+    }
+
+    for (const vehicle of Object.values(this.state.vehicles)) {
+      new AtomicTask(0, this.subtasks, () =>
+        updateContinuousVehicle(
+          this.continuousEnvironment.vehicles,
+          vehicle,
+          this.continuousEnvironment.startTimestamp,
+          this.continuousEnvironment.endTimestamp,
+          this.state.updateIndex,
+          this.references,
+        ),
+      ).addToQueue();
+    }
+
+    new AtomicTask(0, this.subtasks, () =>
+      updateContinuousStatistics(
+        this.continuousEnvironment.statistics,
+        this.state.statistics,
+        this.continuousEnvironment.startTimestamp,
+        this.continuousEnvironment.endTimestamp,
+        this.state.updateIndex,
+      ),
+    ).addToQueue();
+
+    const visitor = new UpdateVisitor(
+      this.state,
+      this.continuousEnvironment,
+      this.references,
+    );
+
+    let decreasingPriority = -1;
+    for (const update of this.state.updates) {
+      new AtomicTask(decreasingPriority--, this.subtasks, () => {
+        visitor.visitUpdate(update);
+      }).addToQueue();
     }
   }
 
-  const lastStatistics =
-    continuousEnvironment.statistics[
-      continuousEnvironment.statistics.length - 1
-    ];
-  if (lastStatistics) {
-    lastStatistics.endTimestamp = endTimestamp;
+  protected override afterAll(): void {
+    this.continuousEnvironments.push(this.continuousEnvironment);
   }
 
-  return continuousEnvironment;
+  private buildEmptyContinuousEnvironment(): ContinuousEnvironment {
+    const startTimestamp = this.state.timestamp;
+    const startUpdateIndex = this.state.updateIndex;
+
+    const updates = this.state.updates;
+    const lastUpdate = updates[updates.length - 1];
+    const endTimestamp = lastUpdate.timestamp;
+
+    // We want the index of the next update, that will
+    // match the end timestamp of the next environment if it exists.
+    const endUpdateIndex = lastUpdate.updateIndex + 1;
+
+    const isComplete = this.state.isComplete;
+
+    return {
+      passengers: {},
+      vehicles: {},
+      statistics: [],
+      startTimestamp,
+      startUpdateIndex,
+      endTimestamp,
+      endUpdateIndex,
+      isComplete,
+    };
+  }
 }
 
 // MARK: Visitor
@@ -209,7 +235,6 @@ class UpdateVisitor implements UpdateVisitor {
   constructor(
     private readonly environment: SimulationEnvironment,
     private readonly continuousEnvironment: ContinuousEnvironment,
-    private readonly endTimestamp: number,
     private readonly references: ContinuousEnvironmentReferences,
   ) {}
 
@@ -261,8 +286,8 @@ function updateContinuousPassenger(
   passengersStates: Record<string, PassengerState[]>,
   passenger: Passenger,
   startTimestamp: number,
-  endTimestamp: number,
   updateIndex: number,
+  endTimestamp: number,
   references: ContinuousEnvironmentReferences,
 ): void {
   // Get current continuous passenger

@@ -6,7 +6,6 @@ import {
   WritableSignal,
 } from '@angular/core';
 import {
-  buildContinuousEnvironment,
   ContinuousEnvironment,
   ContinuousEnvironmentReferences,
   createContinuousEnvironmentReferences,
@@ -226,31 +225,21 @@ export class SimulationService {
       return;
     }
 
-    this.updateContinuousEnvironments(extractedStates);
-
-    if (typeof hasAllStates !== 'boolean') {
-      console.error('Received invalid hasAllStates value from the server.');
-
-      hasAllStates = false;
-    } else {
-      this._hasAllStatesSignal.set(hasAllStates);
-    }
-
-    this._isFetchingStatesSignal.set(false);
+    this.taskService.buildContinuousEnvironmentsTask(
+      extractedStates,
+      this.references,
+      (continuousEnvironments) =>
+        this.afterBuildContinuousEnvironmentsTask(
+          continuousEnvironments,
+          hasAllStates,
+        ),
+    );
   }
 
-  private updateContinuousEnvironments(states: SimulationState[]): void {
-    const continuousEnvironments: ContinuousEnvironment[] = [];
-
-    for (const state of states) {
-      const continuousEnvironment = buildContinuousEnvironment(
-        state,
-        this.references,
-      );
-
-      continuousEnvironments.push(continuousEnvironment);
-    }
-
+  private afterBuildContinuousEnvironmentsTask(
+    continuousEnvironments: ContinuousEnvironment[],
+    hasAllStates: unknown,
+  ) {
     this._continuousEnvironmentsSignal.update((environments) => {
       for (const environment of continuousEnvironments) {
         const existingEnvironmentIndex = environments.findIndex(
@@ -275,5 +264,15 @@ export class SimulationService {
 
       return [...environments];
     });
+
+    if (typeof hasAllStates !== 'boolean') {
+      console.error('Received invalid hasAllStates value from the server.');
+
+      hasAllStates = false;
+    } else {
+      this._hasAllStatesSignal.set(hasAllStates);
+    }
+
+    this._isFetchingStatesSignal.set(false);
   }
 }

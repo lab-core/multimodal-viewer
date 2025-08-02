@@ -1,4 +1,9 @@
 import { Injectable } from '@angular/core';
+import {
+  BuildContinuousEnvironmentsTask,
+  ContinuousEnvironment,
+  ContinuousEnvironmentReferences,
+} from '../interfaces/continuous.model';
 import { ExtractStateTask, SimulationState } from '../interfaces/state.model';
 import { Task } from '../interfaces/task.model';
 
@@ -44,5 +49,23 @@ export class TaskService {
       serializedUpdates,
       callback,
     ).addToQueue();
+  }
+
+  buildContinuousEnvironmentsTask(
+    states: SimulationState[],
+    references: ContinuousEnvironmentReferences,
+    callback: (environments: ContinuousEnvironment[]) => void,
+  ) {
+    new BuildContinuousEnvironmentsTask(
+      this.queue,
+      states,
+      references,
+      callback,
+    ).addToQueue();
+  }
+
+  // For debugging purposes
+  get numberOfTasks(): number {
+    return this.queue.reduce((total, task) => total + task.numberOfTasks, 0);
   }
 }
