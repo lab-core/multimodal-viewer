@@ -25,9 +25,6 @@ import { SimulationService } from './simulation.service';
 @Injectable()
 export class VisualizationService {
   // MARK: Properties
-  private readonly MIN_STATES_DEBOUNCE_TIME = 800;
-  private fetchStatesTimeout: number | null = null;
-  private lastFetchStatesTime = 0;
 
   private readonly MIN_POLYLINES_DEBOUNCE_TIME = 800;
   private fetchPolylinesTimeout: number | null = null;
@@ -135,7 +132,7 @@ export class VisualizationService {
             (continuousEnvironment) => continuousEnvironment.startUpdateIndex,
           );
 
-        this.getMissingSimulationStates(
+        this.simulationService.getMissingSimulationStates(
           simulation.id,
           wantedVisualizationTime,
           completeStateUpdateIndexes,
@@ -379,40 +376,6 @@ export class VisualizationService {
     }, this.ENVIRONMENT_TICK_INTERVAL) as unknown as number;
   }
 
-  private getMissingSimulationStates(
-    simulationId: string,
-    wantedVisualizationTime: number,
-    completeStateUpdateIndexes: number[],
-  ) {
-    if (this.fetchStatesTimeout !== null) {
-      clearTimeout(this.fetchStatesTimeout);
-      this.fetchStatesTimeout = null;
-    }
-
-    const currentTime = Date.now();
-    const timeSinceLastDebounce = currentTime - this.lastFetchStatesTime;
-
-    if (timeSinceLastDebounce < this.MIN_STATES_DEBOUNCE_TIME) {
-      this.fetchStatesTimeout = setTimeout(() => {
-        this.fetchStatesTimeout = null;
-        this.lastFetchStatesTime = currentTime;
-        this.simulationService.getMissingSimulationStates(
-          simulationId,
-          wantedVisualizationTime,
-          completeStateUpdateIndexes,
-        );
-      }, this.MIN_STATES_DEBOUNCE_TIME - timeSinceLastDebounce) as unknown as number;
-      return;
-    }
-
-    this.lastFetchStatesTime = currentTime;
-    this.simulationService.getMissingSimulationStates(
-      simulationId,
-      wantedVisualizationTime,
-      completeStateUpdateIndexes,
-    );
-  }
-
   private getPolylines(simulationId: string) {
     if (this.fetchPolylinesTimeout !== null) {
       clearTimeout(this.fetchPolylinesTimeout);
@@ -481,8 +444,6 @@ export class VisualizationService {
     if (isVisualizationPaused) {
       return this.wantedVisualizationTime;
     }
-
-    console.log();
 
     return Math.min(
       visualizationMaxTime,

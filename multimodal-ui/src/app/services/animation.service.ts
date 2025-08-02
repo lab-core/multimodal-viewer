@@ -68,7 +68,7 @@ export class AnimationService {
   private readonly POLYLINE_REMAINING_COLOR = 0x028a0f;
 
   private readonly SAFETY_RATIO = 0.95; // Safety ratio to ensure we don't exceed the frame time
-  private readonly MIN_FRAME_RATE = 40; // This can be increased at the cost of a longer load time.
+  private readonly MIN_FRAME_RATE = 60; // This can be increased at the cost of a longer load time.
   private readonly MIN_TIME_PER_FRAME =
     (1000 / this.MIN_FRAME_RATE) * this.SAFETY_RATIO;
 
@@ -382,6 +382,7 @@ export class AnimationService {
     this.filterMode = this.nextFilterMode;
     this.shouldShowComplete = this.nextShouldShowComplete;
     this.shouldCenterMap = this.nextShouldCenterMap;
+    this.nextShouldCenterMap = false; // This is not a toggle, so reset it after use
     this.clickEvent = this.nextClickEvent;
     this.highlightedLegIndex = this.nextHighlightedLegIndex;
     this.shouldFindCloseEntities = this.nextShouldFindCloseEntities;
@@ -842,7 +843,6 @@ export class AnimationService {
 
           if (!this.hadSelectedEntity) {
             this.hadSelectedEntity = true;
-            console.log('Selected entity:', vehicle);
           }
           return vehicle;
         } else {
@@ -859,7 +859,6 @@ export class AnimationService {
 
           if (!this.hadSelectedEntity) {
             this.hadSelectedEntity = true;
-            console.log('Selected entity:', passenger);
           }
           return passenger;
         } else {
@@ -875,7 +874,6 @@ export class AnimationService {
 
           if (!this.hadSelectedEntity) {
             this.hadSelectedEntity = true;
-            console.log('Selected entity:', stop);
           }
           return stop;
         } else {

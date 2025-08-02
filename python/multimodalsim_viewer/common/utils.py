@@ -79,6 +79,14 @@ class _Environment:
     def input_data_directory_path(self) -> str:
         return environment.get("INPUT_DATA_DIRECTORY_PATH")
 
+    @property
+    def number_of_updates_between_states(self) -> int:
+        return int(environment.get("NUMBER_OF_UPDATES_BETWEEN_STATES"))
+
+    @property
+    def number_of_states_to_send_at_once(self) -> int:
+        return int(environment.get("NUMBER_OF_STATES_TO_SEND_AT_ONCE"))
+
 
 _environment = _Environment()
 SERVER_PORT = _environment.server_port
@@ -86,17 +94,16 @@ CLIENT_PORT = _environment.client_port
 HOST = _environment.host
 SIMULATION_SAVE_FILE_SEPARATOR = _environment.simulation_save_file_separator
 INPUT_DATA_DIRECTORY_PATH = _environment.input_data_directory_path
+NUMBER_OF_UPDATES_BETWEEN_STATES = _environment.number_of_updates_between_states
+NUMBER_OF_STATES_TO_SEND_AT_ONCE = _environment.number_of_states_to_send_at_once
 
 
 CLIENT_ROOM = "client"
 SIMULATION_ROOM = "simulation"
 SCRIPT_ROOM = "script"
 
-# Save the state of the simulation every STATE_SAVE_STEP events
-STATE_SAVE_STEP = 1000
-
 # If the version is identical, the save file can be loaded
-SAVE_VERSION = 11
+SAVE_VERSION = 12
 
 
 class SimulationStatus(Enum):
