@@ -136,7 +136,6 @@ class ExtractEnvironmentTask extends CompositeTask {
     super(EXTRACT_STATE_TASK_PRIORITY, queue);
   }
 
-  // TODO This slows down the FPS
   protected override beforeAll(): void {
     if (
       typeof this.serializedEnvironment !== 'object' ||
@@ -394,7 +393,6 @@ class ExtractUpdatesTask extends CompositeTask {
     super(EXTRACT_STATE_TASK_PRIORITY, queue);
   }
 
-  // TODO This slows down the FPS
   beforeAll(): void {
     if (typeof this.serializedUpdatesKey !== 'string') {
       console.error(
