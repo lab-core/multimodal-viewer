@@ -4,8 +4,9 @@ import {
   ContinuousEnvironment,
   ContinuousEnvironmentReferences,
 } from '../interfaces/continuous.model';
+import { SortedList } from '../interfaces/performances.model';
 import { ExtractStateTask, SimulationState } from '../interfaces/state.model';
-import { Task } from '../interfaces/task.model';
+import { emptyTaskQueue, Task } from '../interfaces/task.model';
 
 @Injectable({
   providedIn: 'root',
@@ -16,7 +17,7 @@ import { Task } from '../interfaces/task.model';
  * These tasks are run according to their priorities, and in parallel (single-threaded) if multiple tasks have the same priority.
  */
 export class TaskService {
-  private queue: Task[] = [];
+  private queue: SortedList<Task> = emptyTaskQueue();
 
   processTasks(processingEndTime: number): void {
     // Process at least one task
@@ -66,6 +67,9 @@ export class TaskService {
 
   // For debugging purposes
   get numberOfTasks(): number {
-    return this.queue.reduce((total, task) => total + task.numberOfTasks, 0);
+    return this.queue.items.reduce(
+      (total, task) => total + task.numberOfTasks,
+      0,
+    );
   }
 }
