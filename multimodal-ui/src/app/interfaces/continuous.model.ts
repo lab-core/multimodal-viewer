@@ -37,7 +37,9 @@ export interface StatisticsState extends EntityState {
 
 export interface ContinuousEnvironment {
   passengers: Record<string, PassengerState[]>;
+  allPassengers: PassengerState[][]; // For faster loops
   vehicles: Record<string, VehicleState[]>;
+  allVehicles: VehicleState[][]; // For faster loops
   statistics: StatisticsState[];
   startTimestamp: number;
   startUpdateIndex: number;
@@ -55,6 +57,10 @@ export interface EnvironmentSlice extends SimulationEnvironment {
    * since we want to group the passengers and vehicle at the same "physical" stop.
    */
   stops: Record<string, Stop>;
+
+  allVehicles: Vehicle[];
+  allPassengers: Passenger[];
+  allStops: Stop[];
 }
 
 /**
@@ -148,12 +154,12 @@ class BuildContinuousEnvironmentTask extends CompositeTask {
     this.continuousEnvironment = this.buildEmptyContinuousEnvironment();
   }
 
-  // TODO This slows down the FPS
   protected override beforeAll(): void {
     for (const passenger of Object.values(this.state.passengers)) {
       new AtomicTask(0, this.subtasks, () =>
         updateContinuousPassenger(
           this.continuousEnvironment.passengers,
+          this.continuousEnvironment.allPassengers,
           passenger,
           this.continuousEnvironment.startTimestamp,
           this.continuousEnvironment.endTimestamp,
@@ -167,6 +173,7 @@ class BuildContinuousEnvironmentTask extends CompositeTask {
       new AtomicTask(0, this.subtasks, () =>
         updateContinuousVehicle(
           this.continuousEnvironment.vehicles,
+          this.continuousEnvironment.allVehicles,
           vehicle,
           this.continuousEnvironment.startTimestamp,
           this.continuousEnvironment.endTimestamp,
@@ -219,7 +226,9 @@ class BuildContinuousEnvironmentTask extends CompositeTask {
 
     return {
       passengers: {},
+      allPassengers: [],
       vehicles: {},
+      allVehicles: [],
       statistics: [],
       startTimestamp,
       startUpdateIndex,
@@ -249,6 +258,7 @@ class UpdateVisitor implements UpdateVisitor {
 
     updateContinuousPassenger(
       this.continuousEnvironment.passengers,
+      this.continuousEnvironment.allPassengers,
       passenger,
       update.timestamp,
       this.continuousEnvironment.endTimestamp,
@@ -262,6 +272,7 @@ class UpdateVisitor implements UpdateVisitor {
 
     updateContinuousVehicle(
       this.continuousEnvironment.vehicles,
+      this.continuousEnvironment.allVehicles,
       vehicle,
       update.timestamp,
       this.continuousEnvironment.endTimestamp,
@@ -284,6 +295,7 @@ class UpdateVisitor implements UpdateVisitor {
 // MARK: Append State
 function updateContinuousPassenger(
   passengersStates: Record<string, PassengerState[]>,
+  allPassengers: PassengerState[][],
   passenger: Passenger,
   startTimestamp: number,
   updateIndex: number,
@@ -296,6 +308,7 @@ function updateContinuousPassenger(
   if (!passengerStates) {
     passengerStates = [];
     passengersStates[passenger.id] = passengerStates;
+    allPassengers.push(passengerStates);
   }
 
   // Update previous state
@@ -325,6 +338,7 @@ function updateContinuousPassenger(
 
 function updateContinuousVehicle(
   vehiclesStates: Record<string, VehicleState[]>,
+  allVehicles: VehicleState[][],
   vehicle: Vehicle,
   startTimestamp: number,
   endTimestamp: number,
@@ -337,6 +351,7 @@ function updateContinuousVehicle(
   if (!vehicleStates) {
     vehicleStates = [];
     vehiclesStates[vehicle.id] = vehicleStates;
+    allVehicles.push(vehicleStates);
   }
 
   // Update previous state
@@ -560,43 +575,6 @@ function areStopsEqual(stop1: Stop, stop2: Stop): boolean {
   );
 }
 
-// MARK: Merge
-export function mergeContinuousEnvironments(
-  firstEnvironment: ContinuousEnvironment,
-  secondEnvironment: ContinuousEnvironment,
-): ContinuousEnvironment {
-  firstEnvironment.endTimestamp = secondEnvironment.endTimestamp;
-  firstEnvironment.endUpdateIndex = secondEnvironment.endUpdateIndex;
-
-  for (const passengerId in secondEnvironment.passengers) {
-    const passengerStates = secondEnvironment.passengers[passengerId];
-
-    if (firstEnvironment.passengers[passengerId] === undefined) {
-      firstEnvironment.passengers[passengerId] = passengerStates;
-    } else {
-      const firstPassengerStates = firstEnvironment.passengers[passengerId];
-
-      firstPassengerStates.push(...passengerStates);
-    }
-  }
-
-  for (const vehicleId in secondEnvironment.vehicles) {
-    const vehicleStates = secondEnvironment.vehicles[vehicleId];
-
-    if (firstEnvironment.vehicles[vehicleId] === undefined) {
-      firstEnvironment.vehicles[vehicleId] = vehicleStates;
-    } else {
-      const firstVehicleStates = firstEnvironment.vehicles[vehicleId];
-
-      firstVehicleStates.push(...vehicleStates);
-    }
-  }
-
-  firstEnvironment.statistics.push(...secondEnvironment.statistics);
-
-  return firstEnvironment;
-}
-
 // MARK: Performances
 function findStopIndexBS(stops: Stop[], stop: Stop): number | null {
   const firstMatchingIndex = findFirstMatchingIndexBS(stops, (a) =>
@@ -717,16 +695,20 @@ export function updateContinuousEnvironmentsEndTimestamps(
     ) {
       currentEnvironment.endTimestamp = nextEnvironment.startTimestamp;
 
-      for (const passengerStates of Object.values(
-        currentEnvironment.passengers,
-      )) {
+      // Faster for loop
+      // eslint-disable-next-line @typescript-eslint/prefer-for-of
+      for (let j = 0; j < currentEnvironment.allPassengers.length; j++) {
+        const passengerStates = currentEnvironment.allPassengers[j];
         const lastState = passengerStates[passengerStates.length - 1];
         if (lastState) {
           lastState.endTimestamp = nextEnvironment.startTimestamp;
         }
       }
 
-      for (const vehicleStates of Object.values(currentEnvironment.vehicles)) {
+      // Faster for loop
+      // eslint-disable-next-line @typescript-eslint/prefer-for-of
+      for (let j = 0; j < currentEnvironment.allVehicles.length; j++) {
+        const vehicleStates = currentEnvironment.allVehicles[j];
         const lastState = vehicleStates[vehicleStates.length - 1];
         if (lastState) {
           lastState.endTimestamp = nextEnvironment.startTimestamp;
@@ -833,10 +815,13 @@ export function sliceEnvironment(
 
   // Passengers
   const passengers: Record<string, Passenger> = {};
+  const allPassengers: Passenger[] = [];
 
-  for (const [passengerId, passengerStates] of Object.entries(
-    continuousEnvironment.passengers,
-  )) {
+  // Faster for loop
+  // eslint-disable-next-line @typescript-eslint/prefer-for-of
+  for (let i = 0; i < continuousEnvironment.allPassengers.length; i++) {
+    const passengerStates = continuousEnvironment.allPassengers[i];
+
     // Passengers are already sorted, so we can use binary search
     let closestPassengerIndex = findFirstMatchingIndexBS(
       passengerStates,
@@ -878,15 +863,20 @@ export function sliceEnvironment(
       updateIndex = closestPassengerState.updateIndex;
     }
 
-    passengers[passengerId] = closestPassengerState;
+    passengers[closestPassengerState.id] = closestPassengerState;
+    allPassengers.push(closestPassengerState);
   }
 
-  // Vehicles
+  // Vehicles and stops
   const vehicles: Record<string, Vehicle> = {};
+  const allVehicles: Vehicle[] = [];
+  const stops: Record<string, Stop> = {};
 
-  for (const [vehicleId, vehicleStates] of Object.entries(
-    continuousEnvironment.vehicles,
-  )) {
+  // Faster for loop
+  // eslint-disable-next-line @typescript-eslint/prefer-for-of
+  for (let i = 0; i < continuousEnvironment.allVehicles.length; i++) {
+    const vehicleStates = continuousEnvironment.allVehicles[i];
+
     // Vehicles are already sorted, so we can use binary search
     let closestVehicleIndex = findFirstMatchingIndexBS(
       vehicleStates,
@@ -925,7 +915,18 @@ export function sliceEnvironment(
       updateIndex = closestVehicleState.updateIndex;
     }
 
-    vehicles[vehicleId] = closestVehicleState;
+    const vehicleStops = getAllStops(closestVehicleState);
+
+    // TODO Building the stops record and array is slow
+    // Faster for loop
+    // eslint-disable-next-line @typescript-eslint/prefer-for-of
+    for (let j = 0; j < vehicleStops.length; j++) {
+      const stop = vehicleStops[j];
+      stops[stop.id] = stop;
+    }
+
+    vehicles[closestVehicleState.id] = closestVehicleState;
+    allVehicles.push(closestVehicleState);
   }
 
   // Statistics are already sorted, so we can use binary search
@@ -975,17 +976,6 @@ export function sliceEnvironment(
 
   const statistics = closestContinuousStatistics.statistics;
 
-  // Stops
-  const stops: Record<string, Stop> = {};
-
-  for (const [_, vehicle] of Object.entries(vehicles)) {
-    const vehicleStops = getAllStops(vehicle);
-
-    for (const stop of vehicleStops) {
-      stops[stop.id] = stop;
-    }
-  }
-
   return {
     passengers,
     vehicles,
@@ -993,6 +983,9 @@ export function sliceEnvironment(
     statistics,
     timestamp,
     updateIndex,
+    allVehicles,
+    allPassengers,
+    allStops: Object.values(stops),
   };
 }
 

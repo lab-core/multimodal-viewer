@@ -69,6 +69,7 @@ export class AnimationService {
 
   private readonly SAFETY_RATIO = 0.95; // Safety ratio to ensure we don't exceed the frame time
   private readonly MIN_FRAME_RATE = 60; // This can be increased at the cost of a longer load time.
+  private readonly MIN_TASK_ALLOCATION = 5;
   private readonly MIN_TIME_PER_FRAME =
     (1000 / this.MIN_FRAME_RATE) * this.SAFETY_RATIO;
 
@@ -363,7 +364,14 @@ export class AnimationService {
     ticker.add((delta) => {
       pixiLayer.redraw({ type: 'redraw', delta: delta } as LeafletEvent);
 
-      this.taskService.processTasks(lastRedrawTime + this.MIN_TIME_PER_FRAME);
+      const now = performance.now();
+
+      this.taskService.processTasks(
+        Math.max(
+          lastRedrawTime + this.MIN_TIME_PER_FRAME,
+          now + this.MIN_TASK_ALLOCATION,
+        ),
+      );
 
       lastRedrawTime = performance.now();
     });
@@ -538,7 +546,7 @@ export class AnimationService {
     this.presentPassengerEntities = [];
     this.presentStopEntities = [];
 
-    for (const vehicle of Object.values(environment.vehicles)) {
+    for (const vehicle of environment.allVehicles) {
       const currentVehicle = this.vehicleEntitiesByVehicleId[vehicle.id];
       if (currentVehicle === undefined) {
         this.addVehicle(vehicle);
@@ -549,7 +557,7 @@ export class AnimationService {
       }
     }
 
-    for (const passenger of Object.values(environment.passengers)) {
+    for (const passenger of environment.allPassengers) {
       const currentPassenger =
         this.passengerEntitiesByPassengerId[passenger.id];
       if (currentPassenger === undefined) {
@@ -561,7 +569,7 @@ export class AnimationService {
       }
     }
 
-    for (const stop of Object.values(environment.stops)) {
+    for (const stop of environment.allStops) {
       const currentStop = this.stopEntitiesByPosition[stop.id];
       if (currentStop === undefined) {
         this.addStop(stop, utils);
@@ -1060,8 +1068,9 @@ export class AnimationService {
         const nextStop = allStops[index + 1];
 
         // Polylines are not null because of the check in onRedraw
+        const coordinatesString = stop.id + ',' + nextStop.id;
         const polyline: Polyline =
-          this.polylines!.polylinesByCoordinates[stop.id + ',' + nextStop.id];
+          this.polylines!.polylinesByCoordinates[coordinatesString];
 
         vehicle.additionalInformation.polylines.push(polyline);
       }
