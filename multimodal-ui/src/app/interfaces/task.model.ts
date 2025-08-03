@@ -1,5 +1,11 @@
+import { SortedList } from './performances.model';
+
 export const EXTRACT_STATE_TASK_PRIORITY = 1;
 export const BUILD_CONTINUOUS_ENVIRONMENT_TASK_PRIORITY = 2;
+
+export function emptyTaskQueue(): SortedList<Task> {
+  return new SortedList<Task>((a, b) => b.priority - a.priority);
+}
 
 /**
  * This class represents a task that can be added to a queue and processed based on its priority.
@@ -9,12 +15,11 @@ export const BUILD_CONTINUOUS_ENVIRONMENT_TASK_PRIORITY = 2;
 export abstract class Task {
   constructor(
     public readonly priority: number,
-    protected readonly queue: Task[],
+    protected readonly queue: SortedList<Task>,
   ) {}
 
   public addToQueue(): void {
-    this.queue.push(this);
-    this.queue.sort((a, b) => b.priority - a.priority);
+    this.queue.add(this);
   }
 
   /**
@@ -36,7 +41,7 @@ export abstract class Task {
 export class AtomicTask extends Task {
   constructor(
     priority: number,
-    queue: Task[],
+    queue: SortedList<Task>,
     private readonly taskFunction: () => void,
   ) {
     super(priority, queue);
@@ -56,15 +61,16 @@ export class AtomicTask extends Task {
 export abstract class CompositeTask extends Task {
   private hasCalledBeforeAll = false;
 
+  protected readonly subtasks: SortedList<Task> = emptyTaskQueue();
+
   constructor(
     priority: number,
-    queue: Task[],
+    queue: SortedList<Task>,
     /**
      * The subtasks to be processed in parallel.
      *
      * This array acts as a queue for subtasks. This array should be used when instantiating the subtasks.
      */
-    protected readonly subtasks: Task[],
   ) {
     super(priority, queue);
   }
@@ -102,6 +108,9 @@ export abstract class CompositeTask extends Task {
   protected abstract afterAll(): void;
 
   public override get numberOfTasks(): number {
-    return this.subtasks.reduce((total, task) => total + task.numberOfTasks, 1);
+    return this.subtasks.items.reduce(
+      (total, task) => total + task.numberOfTasks,
+      1,
+    );
   }
 }

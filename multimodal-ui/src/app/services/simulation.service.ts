@@ -241,28 +241,30 @@ export class SimulationService {
     hasAllStates: unknown,
   ) {
     this._continuousEnvironmentsSignal.update((environments) => {
+      const newEnvironments = [...environments];
+
       for (const environment of continuousEnvironments) {
-        const existingEnvironmentIndex = environments.findIndex(
+        const existingEnvironmentIndex = newEnvironments.findIndex(
           (existingEnvironment) =>
             existingEnvironment.startUpdateIndex ===
             environment.startUpdateIndex,
         );
 
         if (existingEnvironmentIndex === -1) {
-          environments.push(environment);
+          newEnvironments.push(environment);
         } else {
-          environments[existingEnvironmentIndex] = environment;
+          newEnvironments[existingEnvironmentIndex] = environment;
         }
       }
 
-      environments.sort((a, b) => a.startUpdateIndex - b.startUpdateIndex);
+      newEnvironments.sort((a, b) => a.startUpdateIndex - b.startUpdateIndex);
 
       updateContinuousEnvironmentsEndTimestamps(
-        environments,
+        newEnvironments,
         this.alreadyUpdatedEnvironmentUpdateIndexes,
       );
 
-      return [...environments];
+      return newEnvironments;
     });
 
     if (typeof hasAllStates !== 'boolean') {

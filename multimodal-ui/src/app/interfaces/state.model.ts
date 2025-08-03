@@ -1,5 +1,6 @@
 import { SimulationEnvironment } from './environment.model';
 import { extractPassenger, Passenger } from './passenger.model';
+import { SortedList } from './performances.model';
 import { isStatistics } from './statistics.model';
 import { CompositeTask, EXTRACT_STATE_TASK_PRIORITY, Task } from './task.model';
 import { extractUpdate, Update } from './update.model';
@@ -23,12 +24,12 @@ export class ExtractStateTask extends CompositeTask {
   private updatesByFirstUpdateIndex: Record<number, Update[]> = {};
 
   constructor(
-    queue: Task[],
+    queue: SortedList<Task>,
     private readonly serializedEnvironments: unknown,
     private readonly serializedUpdates: unknown,
     private readonly callback: (states: SimulationState[] | null) => void,
   ) {
-    super(EXTRACT_STATE_TASK_PRIORITY, queue, []);
+    super(EXTRACT_STATE_TASK_PRIORITY, queue);
   }
 
   public override beforeAll(): void {
@@ -81,12 +82,12 @@ export class ExtractStateTask extends CompositeTask {
 // MARK: Extract Environments
 class ExtractEnvironmentsTask extends CompositeTask {
   constructor(
-    queue: Task[],
+    queue: SortedList<Task>,
     private readonly serializedEnvironments: unknown,
     private readonly environments: (SimulationEnvironment &
       Pick<SimulationState, 'isComplete'>)[],
   ) {
-    super(EXTRACT_STATE_TASK_PRIORITY, queue, []);
+    super(EXTRACT_STATE_TASK_PRIORITY, queue);
   }
 
   protected override beforeAll(): void {
@@ -127,12 +128,12 @@ class ExtractEnvironmentTask extends CompositeTask {
   };
 
   constructor(
-    queue: Task[],
+    queue: SortedList<Task>,
     private readonly serializedEnvironment: unknown,
     private readonly environments: (SimulationEnvironment &
       Pick<SimulationState, 'isComplete'>)[],
   ) {
-    super(EXTRACT_STATE_TASK_PRIORITY, queue, []);
+    super(EXTRACT_STATE_TASK_PRIORITY, queue);
   }
 
   // TODO This slows down the FPS
@@ -270,7 +271,7 @@ class ExtractEnvironmentTask extends CompositeTask {
 // MARK: Extract Passenger
 class ExtractPassengerTask extends Task {
   constructor(
-    queue: Task[],
+    queue: SortedList<Task>,
     private readonly serializedPassenger: unknown,
     private readonly passengers: Record<string, Passenger>,
   ) {
@@ -306,7 +307,7 @@ class ExtractPassengerTask extends Task {
 // MARK: Extract Vehicle
 class ExtractVehicleTask extends Task {
   constructor(
-    queue: Task[],
+    queue: SortedList<Task>,
     private readonly serializedVehicle: unknown,
     private readonly vehicles: Record<string, Vehicle>,
   ) {
@@ -342,11 +343,11 @@ class ExtractVehicleTask extends Task {
 // MARK: Extract All Updates
 class ExtractAllUpdatesTask extends CompositeTask {
   constructor(
-    queue: Task[],
+    queue: SortedList<Task>,
     private readonly serializedUpdates: unknown,
     private readonly updatesByFirstUpdateIndex: Record<number, Update[]>,
   ) {
-    super(EXTRACT_STATE_TASK_PRIORITY, queue, []);
+    super(EXTRACT_STATE_TASK_PRIORITY, queue);
   }
 
   protected override beforeAll(): void {
@@ -380,15 +381,17 @@ class ExtractAllUpdatesTask extends CompositeTask {
 
 // MARK: Extract Updates
 class ExtractUpdatesTask extends CompositeTask {
-  private updates: Update[] = [];
+  private updates: SortedList<Update> = new SortedList<Update>(
+    (a, b) => a.updateIndex - b.updateIndex,
+  );
 
   constructor(
-    queue: Task[],
+    queue: SortedList<Task>,
     private readonly serializedUpdatesKey: unknown,
     private readonly serializedUpdates: unknown,
     private readonly updatesByFirstUpdateIndex: Record<number, Update[]>,
   ) {
-    super(EXTRACT_STATE_TASK_PRIORITY, queue, []);
+    super(EXTRACT_STATE_TASK_PRIORITY, queue);
   }
 
   // TODO This slows down the FPS
@@ -431,7 +434,7 @@ class ExtractUpdatesTask extends CompositeTask {
       return;
     }
 
-    this.updatesByFirstUpdateIndex[key] = this.updates;
+    this.updatesByFirstUpdateIndex[key] = this.updates.editableItems;
 
     for (const serializedUpdate of this.serializedUpdates) {
       new ExtractUpdateTask(
@@ -450,9 +453,9 @@ class ExtractUpdatesTask extends CompositeTask {
 // MARK: Extract Update
 class ExtractUpdateTask extends Task {
   constructor(
-    queue: Task[],
+    queue: SortedList<Task>,
     private readonly serializedUpdate: unknown,
-    private readonly updates: Update[],
+    private readonly updates: SortedList<Update>,
   ) {
     super(EXTRACT_STATE_TASK_PRIORITY, queue);
   }
@@ -477,6 +480,6 @@ class ExtractUpdateTask extends Task {
       return;
     }
 
-    this.updates.push(update);
+    this.updates.add(update);
   }
 }

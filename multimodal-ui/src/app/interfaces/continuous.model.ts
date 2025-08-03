@@ -1,6 +1,7 @@
 import { SimulationEnvironment } from './environment.model';
 import { Leg } from './leg.model';
 import { getAllLegs, Passenger } from './passenger.model';
+import { SortedList } from './performances.model';
 import { SimulationState } from './state.model';
 import { Statistics } from './statistics.model';
 import { Stop } from './stop.model';
@@ -109,12 +110,12 @@ export class BuildContinuousEnvironmentsTask extends CompositeTask {
   private readonly continuousEnvironments: ContinuousEnvironment[] = [];
 
   constructor(
-    queue: Task[],
+    queue: SortedList<Task>,
     private readonly states: SimulationState[],
     private readonly references: ContinuousEnvironmentReferences,
     private readonly callback: (environments: ContinuousEnvironment[]) => void,
   ) {
-    super(BUILD_CONTINUOUS_ENVIRONMENTS_TASK_PRIORITY, queue, []);
+    super(BUILD_CONTINUOUS_ENVIRONMENTS_TASK_PRIORITY, queue);
   }
 
   protected override beforeAll(): void {
@@ -137,12 +138,12 @@ class BuildContinuousEnvironmentTask extends CompositeTask {
   private readonly continuousEnvironment: ContinuousEnvironment;
 
   constructor(
-    queue: Task[],
+    queue: SortedList<Task>,
     private readonly state: SimulationState,
     private readonly references: ContinuousEnvironmentReferences,
     private readonly continuousEnvironments: ContinuousEnvironment[],
   ) {
-    super(0, queue, []);
+    super(0, queue);
 
     this.continuousEnvironment = this.buildEmptyContinuousEnvironment();
   }
@@ -191,9 +192,8 @@ class BuildContinuousEnvironmentTask extends CompositeTask {
       this.references,
     );
 
-    let decreasingPriority = -1;
     for (const update of this.state.updates) {
-      new AtomicTask(decreasingPriority--, this.subtasks, () => {
+      new AtomicTask(-update.updateIndex - 1, this.subtasks, () => {
         visitor.visitUpdate(update);
       }).addToQueue();
     }
