@@ -15,19 +15,23 @@ This project is an extension of the packaged [multimodal-simulation](https://git
     - [Building the Frontend](#building-the-frontend)
     - [Changing Environment Variables](#changing-environment-variables)
   - [Input Data](#input-data)
+  - [Environment variables](#environment-variables)
   - [Frontend](#frontend)
     - [Wanted visualization time](#wanted-visualization-time)
     - [Data reception](#data-reception)
     - [Display](#display)
+    - [Continuous environments](#continuous-environments)
+    - [Tasks](#tasks)
   - [Backend](#backend)
     - [Key insights](#key-insights)
     - [Components](#components)
+      - [Models](#models)
       - [`server.py`](#serverpy)
       - [`server_utils.py`](#server_utilspy)
       - [`http_routes.py`](#http_routespy)
       - [`simulation_manager.py`](#simulation_managerpy)
-      - [`simulation_visualization_data_collector.py`](#simulation_visualization_data_collectorpy)
-      - [`simulation_visualization_data_model.py`](#simulation_visualization_data_modelpy)
+      - [`data_collector.py`](#data_collectorpy)
+      - [`data_manager.py`](#data_managerpy)
       - [`simulation.py`](#simulationpy)
   - [Known issues and limitations](#known-issues-and-limitations)
 
@@ -240,6 +244,19 @@ git submodule update --init --recursive
 
 If you want to use another folder containing input data folders, you can either upload each input data folder through the web interface or you can set the path to the input data folder when running the application with the `INPUT_DATA_DIRECTORY_PATH` environment variable. This path will be used to load the input data folders when running the application and to save the uploaded input data folders.
 
+## Environment variables 
+
+The application uses several environment variables to configure its behavior. You can set these variables in a `.env` file in the root folder of the repository, or you can set them directly in your environment.
+
+The most useful environment variables are `CLIENT_PORT`, `SERVER_PORT`, and `INPUT_DATA_DIRECTORY_PATH`.
+
+- `CLIENT_PORT` (default `8085`): The port on which the client will run. 
+- `SERVER_PORT` (default `8089`): The port on which the server will run.
+- `SIMULATION_SAVE_FILE_SEPARATOR` (default `---`): The separator used in the simulation save files.
+- `INPUT_DATA_DIRECTORY_PATH` (default `data`): The path to the input data directory.
+- `NUMBER_OF_UPDATES_BETWEEN_STATES` (default `1000`): The number of updates between simulation states. The lower the number, the larger the save file will be. However, increasing this number may cause the animation to freeze when receiving new states from the server.
+- `NUMBER_OF_STATES_TO_SEND_AT_ONCE` (default `1`): The number of states to send at once. Increasing this number may cause the animation to freeze when receiving new states from the server.
+
 ## Frontend
 
 The frontend contains three main components: the map, the user interface, and the environment build. In this section, we will focus on the last one.
@@ -258,15 +275,44 @@ The wanted visualization time is the target that the system tries to reach. If t
 
 ### Data reception
 
-When the server responds to the client state request, the client will receive a list of new simulation states. Each state needs to be parsed and verified, and a continuous structure is created that will be used for the animation. We refer to this structure as the animation data.
-
-Once all new states are ready, we will merge the new states and animation data with the current ones in the client. Because the states already loaded in the client can be scattered all over the simulation, the server sends additional information to help the client extract the largest possible continuous list of states around the wanted visualization time. The client can then use this to merge the animation data of those continuous states and create a unified animation data.
+When the server responds to the client state request, the client will receive a list of new simulation states. Each state needs to be parsed and verified, and a continuous structure is created that will be used to quickly get the environment for any timestamp. This is done using tasks, a very useful mechanism explained in a separate section below.
 
 ### Display
 
-Once the animation states and data are ready, and the environment for the wanted visualization time is built, the user interface will be updated and the map animation will be synchronized. The environment is used to display information in the user interface such as the control bar, the left panel with the statistics and the entities, and the utility features on the right.
+Once the continuous environments  are ready, we can get the environment of the current timestamp, called a slice. The user interface will be updated and the map animation will be synchronized. The environment is used to display information in the user interface such as the control bar, the left panel with the statistics and the entities, and the utility features on the right.
 
-The map animation is done using the animation data. For each frame, the animation will find the current animation data for each entity and can quickly update the map.
+
+### Continuous environments
+
+To quickly have access to the environment for any timestamp, the client maintains a continuous structure that holds the environment slices for all timestamps. This structure is updated whenever new simulation states are received from the server.
+
+Each entity is represented as a list of what we call entity states. This is an object of the same type as the entity, but it contains additional information such as the time window this entity state is for. 
+
+To reduce the duplication caused by having multiple entity states for the same entity, we use a separate data structure we call continuous environment references. This object allow us to store references of objects and reuse them across different entity states. For instance, each vehicle has a list of stops, and thus each vehicle state has its own list. However, the majority of stops do not change from one state to another. To avoid duplication, when building the continuous environment, we check for each stop if we already have an identical version and use it, or we store the new version.
+
+This reference structure significantly reduce the memory usage of the web page and allow the application to run smoothly even on low-end devices.
+
+### Tasks
+
+This application uses a mechanism called tasks to manage the execution of long-running operations and increase the frame rate. The task system allows us to transform any function into multiple tasks that will be executed after the redraw phase and before the next frame is rendered.
+
+The `TaskService` stores and manages a task queue, ensuring that tasks are executed in the correct order of priority.
+
+A task object extends the `Task` class and implements a `process` method that contains the logic to be executed. The result of the task can easily be accessed by adding a callback or container attributes (objects, arrays or records) to the child class.
+
+Two other classes are available to simplify the use of tasks.
+
+The `AtomicTask` class takes a single function and wraps it in a task. 
+ 
+The `CompositeTask` class allows us to group multiple tasks into a single task. It has its own queue and the `process` method runs the subtask with the highest priority first. The first call to `process` call the `beforeAll` method and the `afterAll` method is called when the queue is empty. These two methods can be implemented in child classes. Eventually, at the end of each call to `process`, the task queue itself to the parent queue for the next iteration.
+
+This way, any sequence of expressions can be either executed as multiple tasks of decreasing priority, or as a task chain where each task schedule a new one. Moreover, any loop can be transformed into a composite task and the priority can be used if the order is important.
+
+If you want more information about the task system, you can skim through these files : 
+- [task.model.ts](multimodal-ui/src/app/interfaces/task.model.ts)
+- [task.service.ts](multimodal-ui/src/app/services/task.service.ts)
+- [state.model.ts](multimodal-ui/src/app/interfaces/state.model.ts)
+- [continuous.model.ts](multimodal-ui/src/app/interfaces/continuous.model.ts)
 
 ## Backend
 
@@ -277,6 +323,10 @@ The server has several goals in this project. It handle the instanciation of sim
 It's worth noting that two types of processes coexist in the server. The first one is the communication hub process, defined in `server.py`, that will handle the communication with the frontend and the other processes. The second one is the simulation process, defined in `simulation_visualization_data_collector`, that will handle the simulation and the data extraction process. The hub process will only read the data from the simulation processes and each simulation process will write in a specific file, allowing several optimizations in a multiple readers / single writer architecture.
 
 ### Components
+
+#### Models
+
+The model files define data structures and utility function to represent and manipulate each object in the simulation.
 
 #### `server.py`
 
@@ -294,7 +344,7 @@ This module contains the HTTP routes used to communicate with the frontend. Thos
 
 This module defines the `SimulationManager` class that will handle the state of each simulation available, running or saved, in the server. It will also handle the communication with the frontend and the simulation processes along with the process instanciation and termination.
 
-#### `simulation_visualization_data_collector.py`
+#### `data_collector.py`
 
 This module provide a `DataCollector` for the data extraction and the simulation-server communication. A `DataCollector` is a component of the multimodal-simulator that is called after each event processed. It is used to extract the data from the simulation save it and notify the server.
 
@@ -302,11 +352,9 @@ When initialized, the `DataCollector` will configure the communications and crea
 
 During the simulation, the `collect` method is called and handle every event processed. It will extract the data from the simulation and create multiple updates that will be saved along the environment to be able to reconstruct every moment of the simulation.
 
-#### `simulation_visualization_data_model.py`
+#### `data_manager.py`
 
-This module centralized every read and write operation on the simulation data. Each useful component of multimodal-simulator has a corresponding data model that will be used to serialize or deserialize the data and construct it from the original components.
-
-The `SimulationVisualizationDataModel` class is a static class where all read and write operations will pass through. It will guarantee the absence of concurrent access.
+The `SimulationVisualizationDataManager` class is a static class where all read and write operations will pass through. It will guarantee the absence of concurrent access.
 
 #### `simulation.py`
 
@@ -315,3 +363,4 @@ This module contains the function called by the communication hub when instantia
 ## Known issues and limitations
 
 A list of the current issues and limitations of this projects can be found in the issues section of the repository. Feel free to open an issue if you encounter any problems or if you have any suggestions for improvements.
+
