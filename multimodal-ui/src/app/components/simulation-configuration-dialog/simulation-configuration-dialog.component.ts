@@ -256,7 +256,6 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
         .importFolder(contentType, baseFolder, formData)
         .subscribe({
           next: (response) => {
-            console.log('Upload successful:', response);
             this.refreshAvailableData();
             const actualFolderName =
               'actual_folder_name' in response
@@ -303,7 +302,6 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     this.httpService.deleteFolder(folderContents, simulationId).subscribe({
       next: (response: { message?: string; error?: string }) => {
         if (response.message) {
-          console.log(response.message);
           // this.dataService.removeSimulation(simulationId);
         } else if (response.error) {
           console.error('Failed to delete the data folder:', response.error);

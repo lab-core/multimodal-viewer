@@ -1,5 +1,5 @@
 @let simulation = simulationSignal();
-@let statistic = statisticSignal();
+@let statistics = statisticsSignal();
 
 @let selectedPassenger = selectedPassengerSignal();
 @let selectedVehicle = selectedVehicleSignal();
@@ -137,7 +137,7 @@
           [matTooltip]="'Information panel'"
           ><mat-icon>info</mat-icon></mat-button-toggle
         >
-        <mat-button-toggle value="statistic" [matTooltip]="'Statistic panel'"
+        <mat-button-toggle value="statistics" [matTooltip]="'Statistics panel'"
           ><mat-icon>bar_chart</mat-icon></mat-button-toggle
         >
         <mat-button-toggle value="entities" [matTooltip]="'Entities panel'"
@@ -189,19 +189,19 @@
       </mat-card-content>
     </mat-card>
   }
-  <!--MARK: Statistic
+  <!--MARK: Statistics
         -->
-  @if (showStatistic) {
+  @if (showStatistics) {
     <mat-card
       class="information-panel-content fade"
-      [class.fade-show]="showStatistic"
-      [class.enable-pointer-events]="showStatistic"
+      [class.fade-show]="showStatistics"
+      [class.enable-pointer-events]="showStatistics"
     >
       <mat-card-content class="flex-1">
         <mat-card-title> Statistics </mat-card-title>
 
         <!--Recursive-->
-        <app-recursive-statistic [recursiveDict]="statistic" />
+        <app-recursive-statistics [recursiveDict]="statistics" />
       </mat-card-content>
     </mat-card>
   }

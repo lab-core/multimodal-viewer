@@ -11,7 +11,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { Point } from 'pixi.js';
-import { EntityMetadata } from '../../interfaces/simulation.model';
+import { EntityMetadata } from '../../interfaces/entity.model';
 import { AnimationService } from '../../services/animation.service';
 import { EntityNameComponent } from '../entity-name/entity-name.component';
 

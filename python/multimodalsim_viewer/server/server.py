@@ -5,12 +5,8 @@ from flask import Flask
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
 
-from multimodalsim_viewer.common.utils import (
-    CLIENT_ROOM,
-    get_available_data,
-    get_session_id,
-    log,
-)
+from multimodalsim_viewer.common.utils import CLIENT_ROOM, get_session_id, log
+from multimodalsim_viewer.server.data_manager import SimulationVisualizationDataManager
 from multimodalsim_viewer.server.http_routes import http_routes
 from multimodalsim_viewer.server.simulation_manager import SimulationManager
 
@@ -80,17 +76,19 @@ def configure_server() -> tuple[Flask, SocketIO]:  # pylint: disable=too-many-st
     @socketio.on("get-available-data")
     def on_client_get_data():
         log("getting available data", "client")
-        emit("available-data", get_available_data(), to=CLIENT_ROOM)
+        emit("available-data", SimulationVisualizationDataManager.get_available_data(), to=CLIENT_ROOM)
 
     @socketio.on("get-missing-simulation-states")
-    def on_client_get_missing_simulation_states(simulation_id, visualization_time, loaded_state_orders):
+    def on_client_get_missing_simulation_states(simulation_id, visualization_time, loaded_state_update_indexes):
         log(
             f"getting missing simulation states for {simulation_id} "
             f"with visualization time {visualization_time} "
-            f"and {len(loaded_state_orders)} loaded state orders",
+            f"and {len(loaded_state_update_indexes)} loaded state update indexes",
             "client",
         )
-        simulation_manager.emit_missing_simulation_states(simulation_id, visualization_time, loaded_state_orders)
+        simulation_manager.emit_missing_simulation_states(
+            simulation_id, visualization_time, loaded_state_update_indexes
+        )
 
     @socketio.on("get-polylines")
     def on_client_get_polylines(simulation_id):
@@ -192,5 +190,10 @@ def configure_server() -> tuple[Flask, SocketIO]:  # pylint: disable=too-many-st
             status,
             get_session_id(),
         )
+
+    @socketio.on("get-all-simulation-states")
+    def on_simulation_states(simulation_id):
+        print(f"getting all simulation states for {simulation_id}", "simulation")
+        simulation_manager.get_all_simulation_states(simulation_id)
 
     return app, socketio

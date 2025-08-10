@@ -10,9 +10,9 @@ import {
   AnimatedSimulationEnvironment,
   AnimatedStop,
   AnimatedVehicle,
-  EntityMetadata,
-  getAllLegs,
-} from '../../interfaces/simulation.model';
+} from '../../interfaces/animation.model';
+import { EntityMetadata } from '../../interfaces/entity.model';
+import { getAllLegs } from '../../interfaces/passenger.model';
 import { AnimationService } from '../../services/animation.service';
 import { FavoriteEntitiesService } from '../../services/favorite-entities.service';
 import { VisualizationService } from '../../services/visualization.service';

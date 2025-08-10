@@ -31,10 +31,8 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatSliderModule } from '@angular/material/slider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import hotkeys from 'hotkeys-js';
-import {
-  AnimatedSimulationStates,
-  Simulation,
-} from '../../interfaces/simulation.model';
+import { AnimatedSimulationStates } from '../../interfaces/animation.model';
+import { Simulation } from '../../interfaces/simulation.model';
 import { SimulationTimePipe } from '../../pipes/simulation-time.pipe';
 import { AnimationService } from '../../services/animation.service';
 import { SimulationService } from '../../services/simulation.service';

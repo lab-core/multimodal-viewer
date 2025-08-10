@@ -17,14 +17,16 @@ import {
   AnimatedVehicle,
   AnimationData,
   DynamicPassengerAnimationData,
-  getAllStops,
-  Leg,
-  RUNNING_SIMULATION_STATUSES,
-  Simulation,
-  SimulationEnvironment,
   StaticPassengerAnimationData,
   StaticVehicleAnimationData,
+} from '../interfaces/animation.model';
+import { SimulationEnvironment } from '../interfaces/environment.model';
+import { Leg } from '../interfaces/leg.model';
+import {
+  RUNNING_SIMULATION_STATUSES,
+  Simulation,
 } from '../interfaces/simulation.model';
+import { getAllStops } from '../interfaces/vehicle.model';
 import { CommunicationService } from './communication.service';
 import { SimulationService } from './simulation.service';
 
@@ -128,19 +130,19 @@ export class VisualizationService {
         return;
       }
 
-      const allStateOrders: number[] = simulationStates.states.map(
-        (state) => state.order,
+      const allStateUpdateIndexes: number[] = simulationStates.states.map(
+        (state) => state.updateIndex,
       );
       // Remove last state if shouldRequestMoreStates is true because it could be incomplete
       if (simulationStates.shouldRequestMoreStates) {
-        allStateOrders.pop();
+        allStateUpdateIndexes.pop();
       }
 
       if (!isFetching) {
         this.getMissingSimulationStates(
           simulation.id,
           wantedVisualizationTime,
-          simulationStates.states.map((state) => state.order),
+          simulationStates.states.map((state) => state.updateIndex),
         );
       }
 
@@ -342,7 +344,7 @@ export class VisualizationService {
   private getMissingSimulationStates(
     simulationId: string,
     wantedVisualizationTime: number,
-    allStateOrders: number[],
+    allStateUpdateIndexes: number[],
   ) {
     if (this.fetchStatesTimeout !== null) {
       clearTimeout(this.fetchStatesTimeout);
@@ -359,7 +361,7 @@ export class VisualizationService {
         this.simulationService.getMissingSimulationStates(
           simulationId,
           wantedVisualizationTime,
-          allStateOrders,
+          allStateUpdateIndexes,
         );
       }, this.MIN_STATES_DEBOUNCE_TIME - timeSinceLastDebounce) as unknown as number;
       return;
@@ -369,7 +371,7 @@ export class VisualizationService {
     this.simulationService.getMissingSimulationStates(
       simulationId,
       wantedVisualizationTime,
-      allStateOrders,
+      allStateUpdateIndexes,
     );
   }
 
@@ -745,11 +747,11 @@ export class VisualizationService {
     );
 
     animatedLeg.previousStops = legStops.filter(
-      (stop) => stop.type === 'previous',
+      (stop) => stop.stopType === 'previous',
     );
     animatedLeg.currentStop =
-      legStops.find((stop) => stop.type === 'current') ?? null;
-    animatedLeg.nextStops = legStops.filter((stop) => stop.type === 'next');
+      legStops.find((stop) => stop.stopType === 'current') ?? null;
+    animatedLeg.nextStops = legStops.filter((stop) => stop.stopType === 'next');
     return animatedLeg;
   }
 }

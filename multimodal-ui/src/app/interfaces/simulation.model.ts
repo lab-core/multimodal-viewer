@@ -1,4 +1,4 @@
-import { EntityType } from './entity.model';
+import { SIMULATION_SAVE_FILE_SEPARATOR } from '../../environments/environment';
 
 export type SimulationStatus =
   | 'starting'
@@ -23,6 +23,10 @@ export const SIMULATION_STATUSES: SimulationStatus[] = [
   'future',
 ];
 
+export function isSimulationStatus(value: unknown): value is SimulationStatus {
+  return SIMULATION_STATUSES.includes(value as SimulationStatus);
+}
+
 export const RUNNING_SIMULATION_STATUSES: SimulationStatus[] = [
   'starting',
   'running',
@@ -31,7 +35,7 @@ export const RUNNING_SIMULATION_STATUSES: SimulationStatus[] = [
   'lost',
 ];
 
-export const STATUSES_ORDER: Record<SimulationStatus, number> = {
+export const SIMULATION_STATUSES_ORDER: Record<SimulationStatus, number> = {
   starting: 0,
   running: 1,
   paused: 1,
@@ -90,9 +94,9 @@ export interface Simulation {
   simulationEstimatedEndTime: number | null;
 
   /**
-   * The order of the last update
+   * The index of the last update
    */
-  lastUpdateOrder: number | null;
+  lastUpdateIndex: number | null;
 
   /**
    * The current completion of the simulation
@@ -122,471 +126,305 @@ export interface SimulationConfiguration {
   maxDuration: number | null;
 }
 
-export interface Tagged {
-  tags: string[];
+function extractStartTime(startTime: unknown): Date | null {
+  if (typeof startTime !== 'string') {
+    console.error('Invalid data type for start time', startTime);
+    return null;
+  }
+
+  if (!/^\d{8}-\d{9}$/.test(startTime)) {
+    console.error('Invalid format for start time', startTime);
+    return null;
+  }
+
+  const year: number = parseInt(startTime.slice(0, 4));
+  const month: number = parseInt(startTime.slice(4, 6)) - 1;
+  const day: number = parseInt(startTime.slice(6, 8));
+  const hours: number = parseInt(startTime.slice(9, 11));
+  const minutes: number = parseInt(startTime.slice(11, 13));
+  const seconds: number = parseInt(startTime.slice(13, 15));
+  const milliseconds: number = parseInt(startTime.slice(16, 19));
+
+  return new Date(year, month, day, hours, minutes, seconds, milliseconds);
 }
 
-export type PassengerStatus =
-  | 'release'
-  | 'assigned'
-  | 'ready'
-  | 'onboard'
-  | 'complete';
-
-export const PASSENGER_STATUSES: PassengerStatus[] = [
-  'release',
-  'assigned',
-  'ready',
-  'onboard',
-  'complete',
-];
-
-export interface Leg extends Tagged {
-  assignedVehicleId: string | null;
-  boardingStopIndex: number | null;
-  alightingStopIndex: number | null;
-  boardingTime: number | null;
-  alightingTime: number | null;
-  assignedTime: number | null;
-}
-
-export interface AnimatedLeg extends Leg {
-  previousStops: Stop[];
-  currentStop: Stop | null;
-  nextStops: Stop[];
-}
-
-export interface Passenger extends EntityMetadata, Tagged {
-  status: PassengerStatus;
-  previousLegs: Leg[];
-  currentLeg: Leg | null;
-  nextLegs: Leg[];
-  numberOfPassengers: number;
-}
-
-export interface PassengerStatusUpdate {
-  id: string;
-  status: PassengerStatus;
-}
-
-export interface PassengerLegsUpdate {
-  id: string;
-  previousLegs: Leg[];
-  currentLeg: Leg | null;
-  nextLegs: Leg[];
-}
-
-export type VehicleStatus =
-  | 'release'
-  | 'idle'
-  | 'boarding'
-  | 'enroute'
-  | 'alighting'
-  | 'complete';
-
-export const VEHICLE_STATUSES: VehicleStatus[] = [
-  'release',
-  'idle',
-  'boarding',
-  'enroute',
-  'alighting',
-  'complete',
-];
-
-export type RawPolylines = Record<string, [string, number[]]>;
-
-export interface Position {
-  latitude: number;
-  longitude: number;
-}
-
-export interface Polyline {
-  polyline: Position[];
-  coefficients: number[];
-}
-
-export interface AllPolylines {
-  version: number;
-  polylinesByCoordinates: Record<string, Polyline>;
-}
-
-export interface DisplayedPolylines {
-  /**
-   * To show the entire path of the vehicle
-   */
-  polylines: Polyline[];
-
-  /**
-   * Before this index, everything has been traveled.
-   *
-   * After this index, everything is to be traveled.
-   *
-   * At this index, the vehicle is currently traveling.
-   *
-   * If -1, all polylines are gray.
-   */
-  currentPolylineIndex: number;
-
-  /**
-   * If null, the polyline will not be green.
-   */
-  currentPolylineStartTime: number | null;
-
-  /**
-   * If null, the polyline will not be green.
-   */
-  currentPolylineEndTime: number | null;
-}
-
-export interface Stop extends EntityMetadata, Tagged {
-  arrivalTime: number;
-  departureTime: number | null; // null means infinite
-  position: Position;
-  capacity: number;
-  label: string;
-}
-
-export interface AnimatedStop extends Stop {
-  /**
-   * Passengers that are waiting at the stop.
-   */
-  passengerIds: string[];
-
-  /**
-   * Vehicles that are waiting at the stop.
-   */
-  vehicleIds: string[];
-
-  /**
-   * The ids of the passengers that will be used for the animation.
-   * We need a different variable because the animation service will modify it.
-   */
-  animatedPassengerIds: string[];
-
-  /**
-   * Tags of passengers that are waiting at the stop (not the complete passengers).
-   */
-  passengerTags: string[];
-
-  /**
-   * The ids of the passengers that are actually displayed (different to avoid filters affecting the side panel)
-   */
-  displayedPassengerIds: string[];
-}
-
-export const DEFAULT_STOP_CAPACITY = 10;
-
-export interface EntityMetadata extends Tagged {
-  id: string;
-  entityType: EntityType;
-  name: string;
-}
-
-export interface Vehicle extends EntityMetadata {
-  mode: string | null;
-  status: VehicleStatus;
-  previousStops: Stop[];
-  currentStop: Stop | null;
-  nextStops: Stop[];
-  capacity: number;
-}
-
-export interface VehicleStatusUpdate {
-  id: string;
-  status: VehicleStatus;
-}
-
-export interface VehicleStopsUpdate {
-  id: string;
-  previousStops: Stop[];
-  currentStop: Stop | null;
-  nextStops: Stop[];
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type Statistic = Record<string, any>;
-
-export interface StatisticUpdate {
-  statistic: Statistic;
-}
-
-export type SimulationUpdateType =
-  | 'createPassenger'
-  | 'updatePassengerStatus'
-  | 'updatePassengerLegs'
-  | 'createVehicle'
-  | 'updateVehicleStatus'
-  | 'updateVehicleStops'
-  | 'updateStatistic';
-
-export const SIMULATION_UPDATE_TYPES: SimulationUpdateType[] = [
-  'createPassenger',
-  'updatePassengerStatus',
-  'updatePassengerLegs',
-  'createVehicle',
-  'updateVehicleStatus',
-  'updateVehicleStops',
-  'updateStatistic',
-];
-
-export interface SimulationUpdateTypeMap {
-  createPassenger: Passenger;
-  updatePassengerStatus: PassengerStatusUpdate;
-  updatePassengerLegs: PassengerLegsUpdate;
-  createVehicle: Vehicle;
-  updateVehicleStatus: VehicleStatusUpdate;
-  updateVehicleStops: VehicleStopsUpdate;
-  updateStatistic: StatisticUpdate;
-}
-
-export interface SimulationUpdate<T extends keyof SimulationUpdateTypeMap> {
-  type: SimulationUpdateType;
-  timestamp: number;
-  order: number;
-  data: SimulationUpdateTypeMap[T];
-}
-
-export type AnySimulationUpdate = SimulationUpdate<
-  keyof SimulationUpdateTypeMap
->;
-
-export type displayed<T> = T & {
-  /**
-   * If the object is not displayed, this field contains the reason why
-   * it is not displayed.
-   *
-   * If the object is displayed, this field is null.
-   */
-  notDisplayedReason: string | null;
-};
-
-export interface EntityAnimationData {
-  startTimestamp: number;
-  startOrder: number;
-  endTimestamp: number | null;
-  endOrder: number | null; // null when the data is the last one and the animated environment is not fully built
-  notDisplayedReason: string | null; // null when the data is the last one and the animated environment is not fully built
-}
-
-export interface PassengerAnimationData extends EntityAnimationData {
-  vehicleId: string | null;
-  status: PassengerStatus;
-}
-
-export interface StaticPassengerAnimationData extends PassengerAnimationData {
-  stopIndex: number;
-}
-
-export interface DynamicPassengerAnimationData extends PassengerAnimationData {
-  isOnBoard: boolean; // always true
-}
-
-export type AnyPassengerAnimationData =
-  | StaticPassengerAnimationData
-  | DynamicPassengerAnimationData
-  | PassengerAnimationData; // For not displayed passengers
-
-export interface VehicleAnimationData extends EntityAnimationData {
-  status: VehicleStatus;
-
-  displayedPolylines: DisplayedPolylines;
-}
-
-export interface StaticVehicleAnimationData extends VehicleAnimationData {
-  position: Position;
-  stopId: string;
-}
-
-export interface DynamicVehicleAnimationData extends VehicleAnimationData {
-  polyline: Polyline;
-}
-
-export type AnyVehicleAnimationData =
-  | StaticVehicleAnimationData
-  | DynamicVehicleAnimationData
-  | VehicleAnimationData; // For not displayed vehicles
-
-export interface AnimatedPassenger extends displayed<Passenger> {
-  animationData: AnyPassengerAnimationData[];
-  previousLegs: AnimatedLeg[];
-  currentLeg: AnimatedLeg | null;
-  nextLegs: AnimatedLeg[];
-}
-
-export interface AnimatedVehicle extends displayed<Vehicle> {
-  animationData: AnyVehicleAnimationData[];
-
-  passengerIds: string[];
-
-  currentLineIndex: number | null;
-
-  /**
-   * The ids of the passengers that will be used for the animation.
-   * We need a different variable because the animation service will modify it.
-   */
-  animatedPassengerIds: string[];
-
-  /**
-   * The tags of the passengers that are on board.
-   */
-  passengerTags: string[];
-
-  /**
-   * The ids of the passengers that are actually displayed (different to avoid filters affecting the side panel)
-   */
-  displayedPassengerIds: string[];
-}
-
-/**
- * Snapshot of the simulation environment at a given time
- */
-export interface SimulationEnvironment {
-  passengers: Record<string, Passenger>;
-  vehicles: Record<string, Vehicle>;
-  statistic: Statistic;
-
-  /**
-   * The timestamp of the last update before the snapshot
-   */
-  timestamp: number;
-
-  /**
-   * The order of the last update before the snapshot
-   */
-  order: number;
-}
-
-export interface RawSimulationEnvironment
-  extends Pick<SimulationEnvironment, 'timestamp' | 'order'> {
-  passengers: Passenger[];
-  vehicles: Vehicle[];
-  statistic: Statistic;
-}
-
-export interface RawSimulationState extends RawSimulationEnvironment {
-  updates: AnySimulationUpdate[];
-}
-
-export interface SimulationState extends SimulationEnvironment {
-  updates: AnySimulationUpdate[];
-}
-
-export interface AnimationData {
-  passengers: Record<string, AnyPassengerAnimationData[]>;
-  vehicles: Record<string, AnyVehicleAnimationData[]>;
-  startTimestamp: number;
-  endTimestamp: number;
-  startOrder: number;
-  endOrder: number;
-}
-
-export interface AnimatedSimulationState extends SimulationState {
-  /**
-   * A data structure to speed up the animation
-   */
-  animationData: AnimationData;
-}
-
-export interface AnimatedSimulationEnvironment extends SimulationEnvironment {
-  /**
-   * A data structure to speed up the animation
-   */
-  animationData: AnimationData;
-  passengers: Record<string, AnimatedPassenger>;
-  vehicles: Record<string, AnimatedVehicle>;
-  stops: Record<string, AnimatedStop>;
-}
-
-export interface AnimatedSimulationStates {
-  /**
-   * All loaded states
-   */
-  states: AnimatedSimulationState[];
-
-  /**
-   * If true, the client will continue to request more states
-   * even if the necessary state for the visualization is loaded.
-   */
-  shouldRequestMoreStates: boolean;
-
-  /**
-   * Since the loaded states are not guaranteed to be continuous,
-   * we need to keep track of where the continuous states start and end.
-   *
-   * This contains the informations of the first valid state in the continuous states.
-   */
-  firstContinuousState: {
-    timestamp: number;
-    order: number;
-    index: number;
-  } | null;
-
-  /**
-   * Since the loaded states are not guaranteed to be continuous,
-   * we need to keep track of where the continuous states start and end.
-   *
-   * This contains the informations of the last valid state in the continuous states.
-   *
-   * Be aware that the timestamp and order here may not be the ones of the last state in
-   * the continuous states but the ones of the last update of this state.
-   */
-  lastContinuousState: {
-    timestamp: number;
-    order: number;
-    index: number;
-  } | null;
-
-  /**
-   * Information about the bounds of the current state to know if it changes.
-   *
-   * When the visualization time is greater than `endTimestamp` or
-   * lower than `startTimestamp`, we need to request new states.
-   */
-  currentState: {
-    startTimestamp: number;
-
-    /**
-     * This is actually the start of the next state if it exists, otherwise it is the end of the current state.
-     */
-    endTimestamp: number;
-  } | null;
-
-  continuousAnimationData: AnimationData | null;
-}
-
-function addTypeToStop(
-  stop: Stop,
-  type: 'previous' | 'current' | 'next',
-): Stop & { type: 'previous' | 'current' | 'next' } {
-  const castedStop = stop as Stop & {
-    type: 'previous' | 'current' | 'next';
-  };
-  castedStop.type = type;
-  return castedStop;
-}
-
-export function getAllStops(
-  vehicle: Vehicle,
-): (Stop & { type: 'previous' | 'current' | 'next' })[] {
-  return vehicle.previousStops
-    .map((stop) => addTypeToStop(stop, 'previous'))
-    .concat(
-      vehicle.currentStop === null
-        ? []
-        : [addTypeToStop(vehicle.currentStop, 'current')],
-      vehicle.nextStops.map((stop) => addTypeToStop(stop, 'next')),
+function extractSimulation(data: unknown): Simulation | null {
+  if (typeof data !== 'object' || data === null) {
+    console.error('Invalid data type for simulation', data);
+    return null;
+  }
+
+  if (!('id' in data) || typeof data.id !== 'string') {
+    console.error('Invalid simulation ID in simulation', data);
+    return null;
+  }
+  const id = data.id;
+
+  if (!('status' in data) || !isSimulationStatus(data.status)) {
+    console.error('Invalid simulation status in simulation', data);
+    return null;
+  }
+  const status = data.status;
+
+  if (data.status === 'corrupted') {
+    const name = data.id.split(SIMULATION_SAVE_FILE_SEPARATOR)[1] ?? 'unknown';
+    const startTime =
+      extractStartTime(data.id.split(SIMULATION_SAVE_FILE_SEPARATOR)[0]) ??
+      new Date(0);
+
+    return {
+      id,
+      name,
+      data: 'unknown',
+      status,
+      startTime,
+      simulationStartTime: null,
+      simulationEndTime: null,
+      simulationTime: null,
+      simulationEstimatedEndTime: null,
+      lastUpdateIndex: null,
+      completion: -1,
+      configuration: {
+        maxDuration: null,
+      },
+      polylinesVersion: -1,
+      size: null,
+    };
+  }
+
+  if (!('name' in data) || typeof data.name !== 'string') {
+    console.error('Invalid simulation name in simulation', data);
+    return null;
+  }
+  const name = data.name;
+
+  if (!('data' in data) || typeof data.data !== 'string') {
+    console.error('Invalid simulation data in simulation', data);
+    return null;
+  }
+  const inputData = data.data;
+
+  if (!('startTime' in data)) {
+    console.error('Invalid simulation start time in simulation', data);
+    return null;
+  }
+  const startTime = extractStartTime(data.startTime);
+  if (startTime === null) {
+    console.error(
+      'Invalid simulation start time',
+      data.startTime,
+      'in simulation',
+      data,
     );
+    return null;
+  }
+
+  let simulationStartTime: Simulation['simulationStartTime'] = null;
+  if ('simulationStartTime' in data) {
+    if (typeof data.simulationStartTime !== 'number') {
+      console.error(
+        'Invalid simulation start time',
+        data.simulationStartTime,
+        'in simulation',
+        data,
+      );
+      return null;
+    }
+
+    simulationStartTime = data.simulationStartTime;
+  }
+
+  let simulationEndTime: Simulation['simulationEndTime'] = null;
+  if ('simulationEndTime' in data) {
+    if (typeof data.simulationEndTime !== 'number') {
+      console.error(
+        'Invalid simulation end time',
+        data.simulationEndTime,
+        'in simulation',
+        data,
+      );
+      return null;
+    }
+
+    simulationEndTime = data.simulationEndTime;
+  }
+
+  let simulationTime: Simulation['simulationTime'] = null;
+  if ('simulationTime' in data) {
+    if (typeof data.simulationTime !== 'number') {
+      console.error(
+        'Invalid simulation time',
+        data.simulationTime,
+        'in simulation',
+        data,
+      );
+      return null;
+    }
+
+    simulationTime = data.simulationTime;
+  }
+
+  let simulationEstimatedEndTime: Simulation['simulationEstimatedEndTime'] =
+    null;
+  if ('simulationEstimatedEndTime' in data) {
+    if (typeof data.simulationEstimatedEndTime !== 'number') {
+      console.error(
+        'Invalid simulation estimated end time',
+        data.simulationEstimatedEndTime,
+        'in simulation',
+        data,
+      );
+      return null;
+    }
+
+    simulationEstimatedEndTime = data.simulationEstimatedEndTime;
+  }
+
+  let lastUpdateIndex: Simulation['lastUpdateIndex'] = null;
+  if ('lastUpdateIndex' in data) {
+    if (typeof data.lastUpdateIndex !== 'number') {
+      console.error(
+        'Invalid last update index',
+        data.lastUpdateIndex,
+        'in simulation',
+        data,
+      );
+      return null;
+    }
+
+    lastUpdateIndex = data.lastUpdateIndex;
+  }
+
+  let completion = 1;
+  if (RUNNING_SIMULATION_STATUSES.includes(status)) {
+    if (
+      simulationStartTime !== null &&
+      simulationTime !== null &&
+      simulationEstimatedEndTime !== null
+    ) {
+      completion =
+        (simulationTime - simulationStartTime) /
+        (simulationEstimatedEndTime - simulationStartTime);
+    } else {
+      console.warn(
+        'Incomplete simulation data for completion calculation',
+        data,
+      );
+      completion = 0;
+    }
+  }
+
+  let maxDuration: Simulation['configuration']['maxDuration'] = null;
+  if ('configuration' in data) {
+    if (typeof data.configuration !== 'object' || data.configuration === null) {
+      console.error(
+        'Invalid configuration',
+        data.configuration,
+        'in simulation',
+        data,
+      );
+      return null;
+    }
+
+    if ('maxDuration' in data.configuration) {
+      if (
+        data.configuration.maxDuration !== null &&
+        typeof data.configuration.maxDuration !== 'number'
+      ) {
+        console.error(
+          'Invalid max duration',
+          data.configuration.maxDuration,
+          'in simulation',
+          data,
+        );
+        return null;
+      }
+
+      maxDuration = data.configuration.maxDuration;
+    }
+  }
+
+  let polylinesVersion: Simulation['polylinesVersion'] = -1;
+  if ('polylinesVersion' in data) {
+    if (typeof data.polylinesVersion !== 'number') {
+      console.error(
+        'Invalid polylines version',
+        data.polylinesVersion,
+        'in simulation',
+        data,
+      );
+      return null;
+    }
+
+    polylinesVersion = data.polylinesVersion;
+  }
+
+  let size: Simulation['size'] = null;
+  if ('size' in data) {
+    if (data.size !== null && typeof data.size !== 'number') {
+      console.error('Invalid size', data.size, 'in simulation', data);
+      return null;
+    }
+
+    size = data.size;
+  }
+
+  return {
+    id,
+    name,
+    data: inputData,
+    status,
+    startTime,
+    simulationStartTime,
+    simulationEndTime,
+    simulationTime,
+    simulationEstimatedEndTime,
+    lastUpdateIndex,
+    completion,
+    configuration: {
+      maxDuration,
+    },
+    polylinesVersion,
+    size,
+  };
 }
 
-export function getAllLegs<P extends Passenger>(
-  passenger: P,
-): P['previousLegs'] {
-  return passenger.previousLegs.concat(
-    passenger.currentLeg === null ? [] : [passenger.currentLeg],
-    passenger.nextLegs,
-  );
+export function extractSimulations(data: unknown): Simulation[] | null {
+  if (!Array.isArray(data)) {
+    console.error('Invalid data type for simulations', data);
+    return [];
+  }
+
+  const simulations: Simulation[] = [];
+  for (const simulationData of data) {
+    const simulation = extractSimulation(simulationData);
+
+    if (simulation !== null) {
+      simulations.push(simulation);
+    } else {
+      console.error('Invalid simulation data', simulationData);
+      return null;
+    }
+  }
+
+  return simulations;
 }
 
-export function getStopId(position: Position): string {
-  return '' + position.latitude + ',' + position.longitude;
+export function sortSimulations(a: Simulation, b: Simulation): number {
+  // First compare the orders
+  const aOrder = SIMULATION_STATUSES_ORDER[a.status];
+  const bOrder = SIMULATION_STATUSES_ORDER[b.status];
+
+  if (aOrder < bOrder) {
+    return -1;
+  }
+  if (aOrder > bOrder) {
+    return 1;
+  }
+
+  // If the orders are the same, compare the start times
+  if (a.startTime < b.startTime) {
+    return 1;
+  }
+  return -1;
 }

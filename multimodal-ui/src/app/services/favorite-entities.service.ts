@@ -6,7 +6,7 @@ import {
   signal,
   WritableSignal,
 } from '@angular/core';
-import { EntityMetadata } from '../interfaces/simulation.model';
+import { EntityMetadata } from '../interfaces/entity.model';
 import { SimulationService } from './simulation.service';
 
 interface FavoritesSaveData {

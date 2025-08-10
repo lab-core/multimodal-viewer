@@ -12,14 +12,13 @@ from multimodalsim.statistics.data_analyzer import FixedLineDataAnalyzer
 
 from multimodalsim_viewer.common.utils import (
     build_simulation_id,
-    get_available_data,
-    get_input_data_directory_path,
     set_event_on_input,
     verify_simulation_name,
 )
-from multimodalsim_viewer.server.simulation_visualization_data_collector import (
+from multimodalsim_viewer.server.data_collector import (
     SimulationVisualizationDataCollector,
 )
+from multimodalsim_viewer.server.data_manager import SimulationVisualizationDataManager
 
 
 def run_simulation(
@@ -44,7 +43,7 @@ def run_simulation(
         [StandardDataCollector(data_container), data_collector],
     )
 
-    simulation_data_directory = get_input_data_directory_path(data) + "/"
+    simulation_data_directory = SimulationVisualizationDataManager.get_input_data_directory_path(data) + "/"
 
     if not os.path.exists(simulation_data_directory):
         print(f"Simulation data directory {simulation_data_directory} does not exist")
@@ -110,7 +109,7 @@ def start_simulation_cli(parsed_arguments: Namespace) -> None:
 
     name = name.replace(" ", "_")
 
-    available_data = get_available_data()
+    available_data = SimulationVisualizationDataManager.get_available_data()
 
     if len(available_data) == 0:
         print("No input data is available, please provide some in the data folder")

@@ -14,10 +14,8 @@ from multimodalsim_viewer.common.utils import (
     get_session_id,
     log,
 )
+from multimodalsim_viewer.server.data_manager import SimulationVisualizationDataManager
 from multimodalsim_viewer.server.simulation import run_simulation
-from multimodalsim_viewer.server.simulation_visualization_data_model import (
-    SimulationVisualizationDataManager,
-)
 
 
 class SimulationHandler:  # pylint: disable=too-many-instance-attributes, too-few-public-methods
@@ -391,7 +389,7 @@ class SimulationManager:
         self,
         simulation_id: str,
         visualization_time: float,
-        loaded_state_orders: list[int],
+        loaded_state_update_indexes: list[int],
     ) -> None:
         if simulation_id not in self.simulations:
             log(
@@ -407,15 +405,15 @@ class SimulationManager:
             (
                 missing_states,
                 missing_updates,
-                state_orders_to_keep,
+                state_update_indexes_to_keep,
                 should_request_more,
-                first_continuous_state_order,
-                last_continuous_state_order,
-                necessary_state_order,
+                first_continuous_state_update_index,
+                last_continuous_state_update_index,
+                necessary_state_update_index,
             ) = SimulationVisualizationDataManager.get_missing_states(
                 simulation_id,
                 visualization_time,
-                loaded_state_orders,
+                loaded_state_update_indexes,
                 simulation.status not in RUNNING_SIMULATION_STATUSES,
             )
 
@@ -424,11 +422,11 @@ class SimulationManager:
                 (
                     missing_states,
                     missing_updates,
-                    state_orders_to_keep,
+                    state_update_indexes_to_keep,
                     should_request_more,
-                    first_continuous_state_order,
-                    last_continuous_state_order,
-                    necessary_state_order,
+                    first_continuous_state_update_index,
+                    last_continuous_state_update_index,
+                    necessary_state_update_index,
                 ),
                 to=get_session_id(),
             )
@@ -568,3 +566,20 @@ class SimulationManager:
             self.simulations[simulation_id] = simulation
 
             SimulationVisualizationDataManager.mark_simulation_as_corrupted(simulation_id)
+
+    def get_all_simulation_states(self, simulation_id: str) -> None:
+        if simulation_id not in self.simulations:
+            log(
+                f"{__file__} {inspect.currentframe().f_lineno}: Simulation {simulation_id} not found",
+                "server",
+                logging.ERROR,
+            )
+            return
+
+        states, updates = SimulationVisualizationDataManager.get_all_simulation_states(simulation_id)
+
+        emit(
+            "all-simulation-states",
+            (states, updates),
+            to=CLIENT_ROOM,
+        )

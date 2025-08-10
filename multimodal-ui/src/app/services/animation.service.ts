@@ -14,11 +14,6 @@ import { pixiOverlay } from 'leaflet';
 import { OutlineFilter } from 'pixi-filters';
 import * as PIXI from 'pixi.js';
 import {
-  Entity,
-  EntityFilterMode,
-  EntityType,
-} from '../interfaces/entity.model';
-import {
   AnimatedPassenger,
   AnimatedSimulationEnvironment,
   AnimatedStop,
@@ -26,13 +21,17 @@ import {
   DisplayedPolylines,
   DynamicPassengerAnimationData,
   DynamicVehicleAnimationData,
-  EntityMetadata,
-  getAllStops,
-  Polyline,
   StaticPassengerAnimationData,
   StaticVehicleAnimationData,
-  Vehicle,
-} from '../interfaces/simulation.model';
+} from '../interfaces/animation.model';
+import {
+  Entity,
+  EntityFilterMode,
+  EntityMetadata,
+  EntityType,
+} from '../interfaces/entity.model';
+import { Polyline } from '../interfaces/polylines.model';
+import { getAllStops } from '../interfaces/vehicle.model';
 import { FavoriteEntitiesService } from './favorite-entities.service';
 import { SpritesService } from './sprites.service';
 
@@ -1014,7 +1013,7 @@ export class AnimationService {
   }
 
   private applyInterpolation(
-    vehicleEntity: Entity<Vehicle>,
+    vehicleEntity: Entity<AnimatedVehicle>,
     polyline: Polyline,
     lineNo: number,
     lineProgress: number,
