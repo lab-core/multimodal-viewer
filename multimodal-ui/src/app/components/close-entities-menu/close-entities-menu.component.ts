@@ -22,6 +22,7 @@ import { EntityNameComponent } from '../entity-name/entity-name.component';
 export class CloseEntitiesMenuComponent {
   private readonly offset = 30;
   private readonly maxHeightPadding = 150;
+  private readonly width = 250;
 
   container = viewChild.required<ElementRef<HTMLDivElement>>('container');
   cardContent = viewChild.required<ElementRef<HTMLDivElement>>('cardContent');
@@ -64,6 +65,10 @@ export class CloseEntitiesMenuComponent {
     }
 
     const x = clickPosition.x;
+
+    if (x + 2 * this.offset + this.width > window.innerWidth) {
+      return x - this.offset - this.width + 'px';
+    }
 
     return x + this.offset + 'px';
   });
