@@ -135,6 +135,8 @@ export class AnimationService {
 
   private clickEvent: LeafletMouseEvent | null = null;
 
+  private fontsLoaded = false;
+
   // MARK: Signals
   private readonly _selectedEntitySignal: WritableSignal<EntityMetadata | null> =
     signal(null);
@@ -158,7 +160,9 @@ export class AnimationService {
     private readonly spritesService: SpritesService,
     private readonly taskService: TaskService,
   ) {
-    void Assets.load(this.BITMAP_TEXT_URL);
+    void Assets.load(this.BITMAP_TEXT_URL).then(() => {
+      this.fontsLoaded = true;
+    });
 
     // Initialize containers (entities over polylines over background)
     this.mainContainer.addChild(this.backgroundContainer);
@@ -381,6 +385,8 @@ export class AnimationService {
 
   // MARK: Animation
   private onRedraw(utils: PixiOverlayUtils) {
+    if (!this.fontsLoaded) return;
+
     this.continuousEnvironments = this.nextContinuousEnvironments;
     this.wantedVisualizationTime = this.nextWantedVisualizationTime;
     this.polylines = this.nextPolylines;
@@ -1894,8 +1900,8 @@ export class AnimationService {
       }
 
       const point = utils.latLngToLayerPoint([
-        polyline.polyline[polyline.polyline.length - 1].latitude,
-        polyline.polyline[polyline.polyline.length - 1].longitude,
+        polyline.polyline[0].latitude,
+        polyline.polyline[0].longitude,
       ]);
 
       graphics.beginFill(this.WHITE, 1);
