@@ -207,3 +207,12 @@ mat-card-title:not(:first-child) {
 .mat-card-group > *:not(:first-child):not(:last-child) {
   border-radius: 0px;
 }
+
+app-performance-metrics {
+  position: absolute;
+  bottom: 2rem;
+  left: 1rem;
+
+  /* Map is at 400 */
+  z-index: 500;
+}

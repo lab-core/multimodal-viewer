@@ -1,0 +1,28 @@
+@use "../../../styles/flex.styles.css";
+
+button {
+  // Use some mat-card styles
+  border-style: solid;
+  border-width: 0;
+  background-color: var(
+    --mdc-elevated-card-container-color,
+    var(--mat-sys-surface-container-low)
+  );
+  border-color: var(
+    --mdc-elevated-card-container-color,
+    var(--mat-sys-surface-container-low)
+  );
+  border-radius: 50%;
+  box-shadow: var(
+    --mdc-elevated-card-container-elevation,
+    var(--mat-sys-level1)
+  );
+
+  // To match the height of the metric panels
+  margin-block: 4px;
+  margin-inline-end: 8px;
+}
+
+.metric-panel {
+  cursor: pointer;
+}

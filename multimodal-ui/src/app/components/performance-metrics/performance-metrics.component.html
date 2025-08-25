@@ -1,0 +1,48 @@
+@let isActive = isActiveSignal();
+@let metrics = metricsSignal();
+
+<section class="main-container flex-row">
+  <div class="button-container flex-column">
+    @if (isActive) {
+      <button
+        mat-icon-button
+        matTooltip="Add performance metric"
+        [disabled]="metrics.length >= MAX_METRICS"
+        (click)="addMetric()"
+      >
+        <mat-icon>add</mat-icon>
+      </button>
+
+      <button
+        mat-icon-button
+        matTooltip="Remove performance metric"
+        [disabled]="metrics.length <= MIN_METRICS"
+        (click)="removeMetric()"
+      >
+        <mat-icon>remove</mat-icon>
+      </button>
+    }
+
+    <button
+      mat-icon-button
+      [matTooltip]="(isActive ? 'Hide' : 'Show') + ' performance metrics'"
+      (click)="toggleIsActive()"
+    >
+      <mat-icon>speed</mat-icon>
+    </button>
+  </div>
+
+  <div
+    class="metrics-container flex-column align-main-end"
+    [style.display]="isActive ? 'flex' : 'none'"
+  >
+    @for (metric of metrics; track $index) {
+      <div class="metric">
+        <div
+          class="metric-panel"
+          matTooltip="Click to change metric (FPS, MS, MB)"
+        ></div>
+      </div>
+    }
+  </div>
+</section>
