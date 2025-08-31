@@ -26,10 +26,6 @@ import { SimulationService } from './simulation.service';
 export class VisualizationService {
   // MARK: Properties
 
-  private readonly MIN_POLYLINES_DEBOUNCE_TIME = 800;
-  private fetchPolylinesTimeout: number | null = null;
-  private lastFetchPolylinesTime = 0;
-
   private speed = 1;
 
   private tick = -1;
@@ -158,7 +154,7 @@ export class VisualizationService {
         polylines === null || polylines.version !== simulation.polylinesVersion;
 
       if (needPolylineUpdate && !isFetching) {
-        this.getPolylines(simulation.id);
+        this.simulationService.getPolylines(simulation.id);
       }
     });
 
@@ -374,28 +370,6 @@ export class VisualizationService {
     this.updateEnvironmentTickTimeout = setTimeout(() => {
       this.updateEnvironmentTick();
     }, this.ENVIRONMENT_TICK_INTERVAL) as unknown as number;
-  }
-
-  private getPolylines(simulationId: string) {
-    if (this.fetchPolylinesTimeout !== null) {
-      clearTimeout(this.fetchPolylinesTimeout);
-      this.fetchPolylinesTimeout = null;
-    }
-
-    const currentTime = Date.now();
-    const timeSinceLastDebounce = currentTime - this.lastFetchPolylinesTime;
-
-    if (timeSinceLastDebounce < this.MIN_POLYLINES_DEBOUNCE_TIME) {
-      this.fetchPolylinesTimeout = setTimeout(() => {
-        this.fetchPolylinesTimeout = null;
-        this.lastFetchPolylinesTime = currentTime;
-        this.simulationService.getPolylines(simulationId);
-      }, this.MIN_POLYLINES_DEBOUNCE_TIME - timeSinceLastDebounce) as unknown as number;
-      return;
-    }
-
-    this.lastFetchPolylinesTime = currentTime;
-    this.simulationService.getPolylines(simulationId);
   }
 
   // MARK: Computed signals

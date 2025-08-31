@@ -21,6 +21,12 @@ import { CommunicationService } from './communication.service';
 import { DataService } from './data.service';
 import { TaskService } from './task.service';
 
+interface DebounceSettings {
+  readonly debounceTime: number;
+  lastExecutionTime: number | null;
+  timeoutId: ReturnType<typeof setTimeout> | null;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -48,6 +54,19 @@ export class SimulationService {
     createContinuousEnvironmentReferences();
 
   private readonly _hasAllStatesSignal: WritableSignal<boolean> = signal(false);
+
+  private readonly getPolylinesDebounceSettings: DebounceSettings = {
+    debounceTime: 500,
+    lastExecutionTime: null,
+    timeoutId: null,
+  };
+
+  private readonly getMissingSimulationStatesDebounceSettings: DebounceSettings =
+    {
+      debounceTime: 500,
+      lastExecutionTime: null,
+      timeoutId: null,
+    };
 
   // MARK: Constructor
   constructor(
@@ -162,6 +181,20 @@ export class SimulationService {
     visualizationTime: number,
     completeStateUpdateIndexes: number[],
   ) {
+    return this.runWithDebounce(() => {
+      this.getMissingSimulationStatesWithDebounce(
+        simulationId,
+        visualizationTime,
+        completeStateUpdateIndexes,
+      );
+    }, this.getMissingSimulationStatesDebounceSettings);
+  }
+
+  private getMissingSimulationStatesWithDebounce(
+    simulationId: string,
+    visualizationTime: number,
+    completeStateUpdateIndexes: number[],
+  ) {
     this._isFetchingStatesSignal.set(true);
 
     this.communicationService.emit(
@@ -173,6 +206,12 @@ export class SimulationService {
   }
 
   getPolylines(simulationId: string) {
+    this.runWithDebounce(() => {
+      this.getPolylinesWithoutDebounce(simulationId);
+    }, this.getPolylinesDebounceSettings);
+  }
+
+  private getPolylinesWithoutDebounce(simulationId: string) {
     this._isFetchingPolylinesSignal.set(true);
 
     this.communicationService.emit('get-polylines', simulationId);
@@ -276,5 +315,31 @@ export class SimulationService {
     }
 
     this._isFetchingStatesSignal.set(false);
+  }
+
+  private runWithDebounce(
+    callback: () => void,
+    debounceSettings: DebounceSettings,
+  ): void {
+    if (debounceSettings.timeoutId !== null) {
+      clearTimeout(debounceSettings.timeoutId);
+      debounceSettings.timeoutId = null;
+    }
+
+    const currentTime = Date.now();
+    const timeSinceLastExecution =
+      currentTime - (debounceSettings.lastExecutionTime ?? 0);
+
+    if (timeSinceLastExecution < debounceSettings.debounceTime) {
+      debounceSettings.timeoutId = setTimeout(() => {
+        debounceSettings.timeoutId = null;
+        debounceSettings.lastExecutionTime = Date.now();
+        callback();
+      }, debounceSettings.debounceTime - timeSinceLastExecution);
+      return;
+    }
+
+    debounceSettings.lastExecutionTime = currentTime;
+    callback();
   }
 }

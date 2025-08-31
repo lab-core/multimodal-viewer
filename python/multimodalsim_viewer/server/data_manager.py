@@ -354,7 +354,12 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
             with lock:
                 with open(state_file_path, "r", encoding="utf-8") as file:
                     state = SimulationVisualizationDataManager.get_state_to_send(file)
-                    state["isComplete"] = is_simulation_complete or (index < len(sorted_states) - 1)
+
+                    isComplete = is_simulation_complete or (index < len(sorted_states) - 1)
+                    if not isComplete:
+                        has_incomplete_states = True
+                    state["isComplete"] = isComplete
+
                     missing_states.append(state)
 
                     updates_data = file.readlines()
