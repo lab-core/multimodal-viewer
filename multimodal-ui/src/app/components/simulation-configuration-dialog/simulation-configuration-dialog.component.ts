@@ -307,37 +307,4 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
 
     input.click();
   }
-
-  exportInputData(simulationId: string) {
-    const folderContents = 'input_data';
-    this.httpService
-      .exportFolder(folderContents, simulationId)
-      .subscribe((response: Blob) => {
-        const blob = new Blob([response], { type: 'application/zip' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = simulationId + '.zip';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-      });
-  }
-
-  deleteInputData(simulationId: string): void {
-    const folderContents = 'input_data';
-    this.httpService.deleteFolder(folderContents, simulationId).subscribe({
-      next: (response: { message?: string; error?: string }) => {
-        if (response.message) {
-          // this.dataService.removeSimulation(simulationId);
-        } else if (response.error) {
-          console.error('Failed to delete the data folder:', response.error);
-        }
-      },
-      error: (err) => {
-        console.error('HTTP error during deletion:', err);
-      },
-    });
-  }
 }
