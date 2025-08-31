@@ -1,6 +1,8 @@
 /* You can add global styles to this file, and also import other style files */
 @use "@angular/material" as mat;
 
+@import "styles/color.styles.css";
+
 html,
 body {
   height: 100%;
@@ -23,4 +25,46 @@ body {
 
 .compact-input {
   @include mat.form-field-density(-5);
+}
+
+mat-snack-bar-container {
+  &.success {
+    @include mat.snack-bar-overrides(
+      (
+        button-color: var(--green-text-color),
+        container-color: var(--green-background-color),
+        supporting-text-color: var(--green-text-color),
+      )
+    );
+  }
+
+  &.error {
+    @include mat.snack-bar-overrides(
+      (
+        button-color: var(--red-text-color),
+        container-color: var(--red-background-color),
+        supporting-text-color: var(--red-text-color),
+      )
+    );
+  }
+
+  &.info {
+    @include mat.snack-bar-overrides(
+      (
+        button-color: var(--gray-text-color),
+        container-color: var(--gray-background-color),
+        supporting-text-color: var(--gray-text-color),
+      )
+    );
+  }
+
+  &.warning {
+    @include mat.snack-bar-overrides(
+      (
+        button-color: var(--yellow-text-color),
+        container-color: var(--yellow-background-color),
+        supporting-text-color: var(--yellow-text-color),
+      )
+    );
+  }
 }

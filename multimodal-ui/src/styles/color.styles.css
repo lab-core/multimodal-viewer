@@ -1,9 +1,9 @@
-* {
+html {
   --red-text-color: #ff0000;
   --red-background-color: #ffdddd;
 
-  --yellow-text-color: #ffc21b;
-  --yellow-background-color: #ffe6a4;
+  --yellow-text-color: #eb9d0e;
+  --yellow-background-color: #f8e6c5;
 
   --green-text-color: #00aa00;
   --green-background-color: #ccffcc;
