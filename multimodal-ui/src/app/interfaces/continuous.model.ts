@@ -298,8 +298,8 @@ function updateContinuousPassenger(
   allPassengers: PassengerState[][],
   passenger: Passenger,
   startTimestamp: number,
-  updateIndex: number,
   endTimestamp: number,
+  updateIndex: number,
   references: ContinuousEnvironmentReferences,
 ): void {
   // Get current continuous passenger
