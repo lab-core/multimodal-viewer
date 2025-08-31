@@ -3,7 +3,6 @@ import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { EntityMetadata } from '../../interfaces/entity.model';
 import { getAllLegs, Passenger } from '../../interfaces/passenger.model';
@@ -11,6 +10,7 @@ import { Stop } from '../../interfaces/stop.model';
 import { getAllStops, Vehicle } from '../../interfaces/vehicle.model';
 import { AnimationService } from '../../services/animation.service';
 import { FavoriteEntitiesService } from '../../services/favorite-entities.service';
+import { SnackBarService } from '../../services/snack-bar.service';
 import { VisualizationService } from '../../services/visualization.service';
 import { EntityNameComponent } from '../entity-name/entity-name.component';
 import { SelectedEntityRouteComponent } from '../selected-entity-route/selected-entity-route.component';
@@ -48,7 +48,7 @@ export class SelectedEntityTabComponent {
   constructor(
     private readonly animationService: AnimationService,
     private readonly favoriteEntitiesService: FavoriteEntitiesService,
-    private readonly snackBar: MatSnackBar,
+    private readonly snackBarService: SnackBarService,
     private readonly visualizationService: VisualizationService,
   ) {}
 
@@ -136,20 +136,15 @@ export class SelectedEntityTabComponent {
     );
   }
 
-  copyToClipboard(text: string): void {
-    navigator.clipboard
-      .writeText(text)
-      .then(() => {
-        this.snackBar.open('Copied to clipboard!', 'Close', {
-          duration: 2000,
-        });
-      })
-      .catch((err) => {
-        console.error('Failed to copy text: ', err);
-        this.snackBar.open('Failed to copy!', 'Close', {
-          duration: 2000,
-        });
-      });
+  async copyToClipboard(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+
+      this.snackBarService.showMessage('Copied to clipboard!', 'info');
+    } catch (error) {
+      console.error('Failed to copy text: ', error);
+      this.snackBarService.showMessage('Failed to copy!', 'error');
+    }
   }
 
   truncateId(id: string): string {
