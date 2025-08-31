@@ -2,10 +2,12 @@ import { DatePipe, PercentPipe, TitleCasePipe } from '@angular/common';
 import {
   Component,
   computed,
+  Injector,
   signal,
   Signal,
   WritableSignal,
 } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -21,20 +23,20 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import JSZip from 'jszip';
-import { firstValueFrom } from 'rxjs';
+import { filter, firstValueFrom, take, timeout } from 'rxjs';
 import {
   RUNNING_SIMULATION_STATUSES,
   Simulation,
 } from '../../interfaces/simulation.model';
 import { SimulationTimePipe } from '../../pipes/simulation-time.pipe';
-import { CommunicationService } from '../../services/communication.service';
 import { DataService } from '../../services/data.service';
 import { DialogService } from '../../services/dialog.service';
 import { HttpService } from '../../services/http.service';
+import { LoadingService } from '../../services/loading.service';
 import { SimulationService } from '../../services/simulation.service';
+import { SnackBarService } from '../../services/snack-bar.service';
 
 export type SimulationListDialogData = null;
 
@@ -104,8 +106,9 @@ export class SimulationListDialogComponent {
     private readonly dialogService: DialogService,
     private readonly matDialogRef: MatDialogRef<SimulationListDialogComponent>,
     private readonly httpService: HttpService,
-    private readonly communicationService: CommunicationService,
-    private readonly snackBar: MatSnackBar,
+    private readonly snackBarService: SnackBarService,
+    private readonly loadingService: LoadingService,
+    private readonly injector: Injector,
   ) {}
 
   get selectedSimulationIdSignal(): Signal<string | null> {
@@ -211,38 +214,42 @@ export class SimulationListDialogComponent {
     input.multiple = true;
 
     const handleFileChange = async (event: Event) => {
-      const files = (event.target as HTMLInputElement).files;
-      if (!files || files.length === 0) {
-        return;
-      }
+      try {
+        const files = (event.target as HTMLInputElement).files;
+        if (!files || files.length === 0) {
+          return;
+        }
 
-      const zip = new JSZip();
-      const baseFolder = files[0].webkitRelativePath.split('/')[0];
+        this.loadingService.start('Uploading simulation folder...');
 
-      for (const file of Array.from(files)) {
-        const relativePath = file.webkitRelativePath.replace(
-          baseFolder + '/',
-          '',
+        const zip = new JSZip();
+        const baseFolder = files[0].webkitRelativePath.split('/')[0];
+
+        for (const file of Array.from(files)) {
+          const relativePath = file.webkitRelativePath.replace(
+            baseFolder + '/',
+            '',
+          );
+          zip.file(relativePath, file);
+        }
+
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const formData = new FormData();
+        formData.append('file', blob, 'folder.zip');
+
+        const response = await firstValueFrom(
+          this.httpService.importFolder('simulation', baseFolder, formData),
         );
-        zip.file(relativePath, file);
+
+        await this.waitForSimulationToAppear(response.folderName);
+
+        this.snackBarService.showMessage('Upload successful', 'success');
+      } catch (error) {
+        console.error('HTTP error during upload:', error);
+        this.snackBarService.showMessage('Upload failed', 'error');
+      } finally {
+        this.loadingService.stop();
       }
-
-      const blob = await zip.generateAsync({ type: 'blob' });
-      const formData = new FormData();
-      formData.append('file', blob, 'folder.zip');
-
-      this.httpService
-        .importFolder('simulation', baseFolder, formData)
-        .subscribe({
-          next: (response: { message?: string; error?: string }) => {
-            if (response.error) {
-              console.error('Upload failed:', response.error);
-            }
-          },
-          error: (err) => {
-            console.error('HTTP error during upload:', err);
-          },
-        });
     };
 
     input.addEventListener('change', (event: Event) => {
@@ -254,23 +261,34 @@ export class SimulationListDialogComponent {
     input.click();
   }
 
-  exportSimulation(simulationId: string, event: Event) {
+  async exportSimulation(simulationId: string, event: Event) {
     event.stopPropagation(); // Prevent the click from toggling selection
 
-    const folderContents = 'simulation';
-    this.httpService
-      .exportFolder(folderContents, simulationId)
-      .subscribe((response: Blob) => {
-        const blob = new Blob([response], { type: 'application/zip' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = simulationId + '.zip';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-      });
+    try {
+      this.loadingService.start('Exporting simulation folder...');
+
+      const folderContents = 'simulation';
+      const response = await firstValueFrom(
+        this.httpService.exportFolder(folderContents, simulationId),
+      );
+
+      const blob = new Blob([response], { type: 'application/zip' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = simulationId + '.zip';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      this.snackBarService.showMessage('Export successful', 'success');
+    } catch (error) {
+      console.error('HTTP error during export:', error);
+      this.snackBarService.showMessage('Export failed', 'error');
+    } finally {
+      this.loadingService.stop();
+    }
   }
 
   async deleteSimulation(
@@ -280,27 +298,7 @@ export class SimulationListDialogComponent {
   ) {
     event.stopPropagation(); // Prevent the click from toggling selection
 
-    const isConfirmed = await this.confirmDeletion(simulationName);
-
-    if (!isConfirmed) {
-      return;
-    }
-
-    const folderContents = 'simulation';
-    this.httpService.deleteFolder(folderContents, simulationId).subscribe({
-      next: (response: { message?: string; error?: string }) => {
-        if (response.error) {
-          console.error('Failed to delete simulation:', response.error);
-        }
-      },
-      error: (err) => {
-        console.error('HTTP error during deletion:', err);
-      },
-    });
-  }
-
-  async confirmDeletion(simulationName: string) {
-    return await firstValueFrom(
+    const shouldContinue = await firstValueFrom(
       this.dialogService
         .openInformationDialog({
           title: 'Deleting Saved Simulation',
@@ -312,6 +310,29 @@ export class SimulationListDialogComponent {
         })
         .afterClosed(),
     );
+
+    if (!shouldContinue) {
+      return;
+    }
+
+    try {
+      this.loadingService.start('Deleting simulation folder...');
+
+      const folderContents = 'simulation';
+
+      await firstValueFrom(
+        this.httpService.deleteFolder(folderContents, simulationId),
+      );
+
+      await this.waitForSimulationToDisappear(simulationId);
+
+      this.snackBarService.showMessage('Deletion successful', 'success');
+    } catch (error) {
+      console.error('HTTP error during deletion:', error);
+      this.snackBarService.showMessage('Deletion failed', 'error');
+    } finally {
+      this.loadingService.stop();
+    }
   }
 
   getDuration(simulation: Simulation): number {
@@ -349,22 +370,55 @@ export class SimulationListDialogComponent {
   async copyToClipboard(text: string, event: Event): Promise<void> {
     event.stopPropagation(); // Prevent the click from toggling selection
 
-    await navigator.clipboard
-      .writeText(text)
-      .then(() => {
-        this.snackBar.open('Copied to clipboard!', 'Close', {
-          duration: 2000,
-        });
-      })
-      .catch((err) => {
-        console.error('Failed to copy text: ', err);
-        this.snackBar.open('Failed to copy!', 'Close', {
-          duration: 2000,
-        });
-      });
+    try {
+      await navigator.clipboard.writeText(text);
+
+      this.snackBarService.showMessage('Copied to clipboard!', 'info');
+    } catch (error) {
+      console.error('Failed to copy text: ', error);
+      this.snackBarService.showMessage('Failed to copy!', 'error');
+    }
   }
 
   isSimulationRunning(simulation: Simulation): boolean {
     return RUNNING_SIMULATION_STATUSES.includes(simulation.status);
+  }
+
+  private async waitForSimulationToAppear(simulationId: string) {
+    return await new Promise((resolve, reject) => {
+      toObservable(this.dataService.simulationsSignal, {
+        injector: this.injector,
+      })
+        .pipe(
+          filter((simulations) =>
+            simulations.some((simulation) => simulation.id === simulationId),
+          ),
+          timeout({ first: 3000 }),
+          take(1),
+        )
+        .subscribe({
+          next: (data) => resolve(data),
+          error: () => reject(new Error('Timeout waiting for available data')),
+        });
+    });
+  }
+
+  private async waitForSimulationToDisappear(simulationId: string) {
+    return await new Promise((resolve, reject) => {
+      toObservable(this.dataService.simulationsSignal, {
+        injector: this.injector,
+      })
+        .pipe(
+          filter((simulations) =>
+            simulations.every((simulation) => simulation.id !== simulationId),
+          ),
+          timeout({ first: 3000 }),
+          take(1),
+        )
+        .subscribe({
+          next: (data) => resolve(data),
+          error: () => reject(new Error('Timeout waiting for available data')),
+        });
+    });
   }
 }
