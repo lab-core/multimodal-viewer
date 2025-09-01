@@ -550,20 +550,3 @@ class SimulationManager:
             self.simulations[simulation_id] = simulation
 
             SimulationVisualizationDataManager.mark_simulation_as_corrupted(simulation_id)
-
-    def get_all_simulation_states(self, simulation_id: str) -> None:
-        if simulation_id not in self.simulations:
-            log(
-                f"{__file__} {inspect.currentframe().f_lineno}: Simulation {simulation_id} not found",
-                "server",
-                logging.ERROR,
-            )
-            return
-
-        states, updates = SimulationVisualizationDataManager.get_all_simulation_states(simulation_id)
-
-        emit(
-            "all-simulation-states",
-            (states, updates),
-            to=CLIENT_ROOM,
-        )
