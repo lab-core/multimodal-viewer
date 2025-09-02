@@ -3,7 +3,7 @@ import inspect
 import logging
 import multiprocessing
 import time
-from threading import Lock, Thread
+from threading import Thread
 
 from flask_socketio import SocketIO
 
@@ -382,12 +382,12 @@ class SimulationManager:
 
         log(f"Emitted polylines for simulation {simulation_id}", "server")
 
-    def emit_simulations(self):
+    def emit_simulations(self, loaded_simulations_ids: list[str]):
         all_simulation_ids = SimulationVisualizationDataManager.get_all_saved_simulation_ids()
 
         log("Emitting simulations", "server")
 
-        simulation_ids_to_delete = []
+        simulation_ids_to_delete: set[str] = set()
 
         for simulation_id, _ in list(self.simulations.items()):
             if simulation_id not in all_simulation_ids and self.simulations[simulation_id].status not in [
@@ -397,7 +397,11 @@ class SimulationManager:
                 SimulationStatus.STARTING,
                 SimulationStatus.LOST,
             ]:
-                simulation_ids_to_delete.append(simulation_id)
+                simulation_ids_to_delete.add(simulation_id)
+
+        for loaded_simulation_id in loaded_simulations_ids:
+            if not loaded_simulation_id in all_simulation_ids:
+                simulation_ids_to_delete.add(loaded_simulation_id)
 
         for simulation_id in simulation_ids_to_delete:
             self.on_simulation_delete(simulation_id)

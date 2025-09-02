@@ -61,8 +61,6 @@ export class DataService {
       this._simulationsSignal.update((simulations) => {
         const index = simulations.findIndex((s) => s.id === simulation.id);
 
-        console.log(simulations, simulation, index);
-
         if (index !== -1) {
           simulations[index] = simulation;
         } else {
@@ -105,6 +103,9 @@ export class DataService {
   }
 
   private querySimulations() {
-    this.communicationService.emit('get-simulations');
+    this.communicationService.emit(
+      'get-simulations',
+      this._simulationsSignal().map((simulation) => simulation.id),
+    );
   }
 }

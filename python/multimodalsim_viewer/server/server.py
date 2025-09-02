@@ -69,9 +69,9 @@ def configure_server() -> tuple[Flask, SocketIO]:  # pylint: disable=too-many-st
         simulation_manager.resume_simulation(simulation_id)
 
     @socketio.on("get-simulations")
-    def on_client_get_simulations():
-        log("getting simulations", "client")
-        simulation_manager.emit_simulations()
+    def on_client_get_simulations(loaded_simulations_ids: list[str]):
+        log(f"getting simulations with already loaded ids {loaded_simulations_ids}", "client")
+        simulation_manager.emit_simulations(loaded_simulations_ids)
 
     @socketio.on("get-available-data")
     def on_client_get_data():
