@@ -1,8 +1,11 @@
+import dataclasses
 import inspect
 import logging
 import multiprocessing
+import time
+from threading import Lock, Thread
 
-from flask_socketio import emit
+from flask_socketio import SocketIO
 
 from multimodalsim_viewer.common.utils import (
     CLIENT_ROOM,
@@ -69,15 +72,21 @@ class SimulationHandler:  # pylint: disable=too-many-instance-attributes, too-fe
         self.polylines_version = None
 
 
-class SimulationManager:
-    simulations: dict[str, SimulationHandler]
+@dataclasses.dataclass
+class ScheduledTask:
+    task: Thread | None
+    last_run: float | None = None
 
-    def __init__(self):
+
+class SimulationManager:
+    def __init__(self, socketio: SocketIO):
+        self.socketio = socketio
+
         self.simulations = {}
 
-    def start_simulation(
-        self, name: str, data: str, response_event: str, max_duration: float | None
-    ) -> SimulationHandler:
+        self.task_by_simulation_id: dict[str, ScheduledTask] = {}
+
+    def start_simulation(self, name: str, data: str, response_event: str, max_duration: float | None):
         simulation_id, start_time = build_simulation_id(name)
 
         simulation_process = multiprocessing.Process(
@@ -100,12 +109,13 @@ class SimulationManager:
 
         simulation_process.start()
 
-        self.emit_simulations()
-
         log(f'Emitting response event "{response_event}"', "server")
-        emit(response_event, simulation_id, to=CLIENT_ROOM)
 
-        return simulation_handler
+        self.socketio.emit(response_event, simulation_id, to=CLIENT_ROOM)
+
+        log(f"Started simulation {simulation_id}", "server")
+
+        self.emit_simulation(simulation_id)
 
     def on_simulation_start(self, simulation_id, socket_id, simulation_start_time):
         if simulation_id not in self.simulations:
@@ -122,7 +132,9 @@ class SimulationManager:
         simulation.status = SimulationStatus.RUNNING
         simulation.simulation_start_time = simulation_start_time
 
-        self.emit_simulations()
+        log(f"Simulation {simulation_id} started", "server")
+
+        self.emit_simulation(simulation_id)
 
     def stop_simulation(self, simulation_id):
         if simulation_id not in self.simulations:
@@ -136,7 +148,11 @@ class SimulationManager:
         simulation = self.simulations[simulation_id]
         simulation.status = SimulationStatus.STOPPING
 
-        emit("stop-simulation", to=simulation.socket_id)
+        self.socketio.emit("stop-simulation", to=simulation.socket_id)
+
+        log(f"Stopping simulation {simulation_id}", "server")
+
+        self.emit_simulation(simulation_id)
 
     def pause_simulation(self, simulation_id):
         if simulation_id not in self.simulations:
@@ -149,7 +165,9 @@ class SimulationManager:
 
         simulation = self.simulations[simulation_id]
 
-        emit("pause-simulation", to=simulation.socket_id)
+        self.socketio.emit("pause-simulation", to=simulation.socket_id)
+
+        log(f"Pausing simulation {simulation_id}", "server")
 
     def on_simulation_pause(self, simulation_id):
         if simulation_id not in self.simulations:
@@ -164,7 +182,9 @@ class SimulationManager:
 
         simulation.status = SimulationStatus.PAUSED
 
-        self.emit_simulations()
+        log(f"Simulation {simulation_id} paused", "server")
+
+        self.emit_simulation(simulation_id)
 
     def resume_simulation(self, simulation_id):
         if simulation_id not in self.simulations:
@@ -177,7 +197,9 @@ class SimulationManager:
 
         simulation = self.simulations[simulation_id]
 
-        emit("resume-simulation", to=simulation.socket_id)
+        self.socketio.emit("resume-simulation", to=simulation.socket_id)
+
+        log(f"Resuming simulation {simulation_id}", "server")
 
     def on_simulation_resume(self, simulation_id):
         if simulation_id not in self.simulations:
@@ -192,7 +214,9 @@ class SimulationManager:
 
         simulation.status = SimulationStatus.RUNNING
 
-        self.emit_simulations()
+        log(f"Simulation {simulation_id} resumed", "server")
+
+        self.emit_simulation(simulation_id)
 
     def edit_simulation_configuration(self, simulation_id: str, max_duration: float | None) -> None:
         if simulation_id not in self.simulations:
@@ -207,15 +231,11 @@ class SimulationManager:
 
         simulation.max_duration = max_duration
 
-        emit("edit-simulation-configuration", (max_duration,), to=simulation.socket_id)
+        self.socketio.emit("edit-simulation-configuration", (max_duration,), to=simulation.socket_id)
 
-        self.emit_simulations()
+        log(f"Edited simulation {simulation_id} configuration", "server")
 
-        log(
-            f"Emitted simulations with new max duration {max_duration} for simulation {simulation_id}",
-            "server",
-            logging.WARN,
-        )
+        self.emit_simulation(simulation_id)
 
     def on_simulation_disconnect(self, socket_id):
         matching_simulation_ids = [
@@ -243,7 +263,9 @@ class SimulationManager:
 
         simulation.socket_id = None
 
-        self.emit_simulations()
+        log(f"Simulation {simulation_id} disconnected", "server")
+
+        self.emit_simulation(simulation_id)
 
     def on_simulation_update_time(self, simulation_id, timestamp):
         if simulation_id not in self.simulations:
@@ -258,7 +280,9 @@ class SimulationManager:
 
         simulation.simulation_time = timestamp
 
-        self.emit_simulations()
+        log(f"Simulation {simulation_id} time updated to {timestamp}", "server")
+
+        self.emit_simulation(simulation_id)
 
     def on_simulation_update_estimated_end_time(self, simulation_id, estimated_end_time):
         if simulation_id not in self.simulations:
@@ -273,7 +297,9 @@ class SimulationManager:
 
         simulation.simulation_estimated_end_time = estimated_end_time
 
-        self.emit_simulations()
+        log(f"Simulation {simulation_id} estimated end time updated to {estimated_end_time}", "server")
+
+        self.emit_simulation(simulation_id)
 
     def on_simulation_update_polylines_version(self, simulation_id):
         if simulation_id not in self.simulations:
@@ -288,7 +314,9 @@ class SimulationManager:
 
         simulation.polylines_version = SimulationVisualizationDataManager.get_polylines_version_with_lock(simulation_id)
 
-        self.emit_simulations()
+        log(f"Simulation {simulation_id} polylines version updated", "server")
+
+        self.emit_simulation(simulation_id)
 
     def on_simulation_identification(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self,
@@ -301,7 +329,6 @@ class SimulationManager:
         status,
         socket_id,
     ):
-
         log(
             f"Identifying simulation {simulation_id}",
             "simulation",
@@ -338,52 +365,55 @@ class SimulationManager:
 
         simulation.polylines_version = SimulationVisualizationDataManager.get_polylines_version_with_lock(simulation_id)
 
-        self.emit_simulations()
+        self.emit_simulation(simulation_id)
+
+    def emit_simulation_polylines(self, simulation_id):
+        if simulation_id not in self.simulations:
+            log(
+                f"{__file__} {inspect.currentframe().f_lineno}: Simulation {simulation_id} not found",
+                "server",
+                logging.ERROR,
+            )
+            return
+
+        polylines, version = SimulationVisualizationDataManager.get_polylines(simulation_id)
+
+        self.socketio.emit(f"polylines-{simulation_id}", (polylines, version), to=CLIENT_ROOM)
+
+        log(f"Emitted polylines for simulation {simulation_id}", "server")
 
     def emit_simulations(self):
-        self.query_simulations()
-
-        serialized_simulations = []
-
-        for simulation_id, simulation in self.simulations.items():
-            serialized_simulation = {
-                "id": simulation_id,
-                "name": simulation.name,
-                "status": simulation.status.value,
-                "startTime": simulation.start_time,
-                "data": simulation.data,
-            }
-
-            if simulation.simulation_start_time is not None:
-                serialized_simulation["simulationStartTime"] = simulation.simulation_start_time
-
-            if simulation.simulation_end_time is not None:
-                serialized_simulation["simulationEndTime"] = simulation.simulation_end_time
-
-            if simulation.simulation_time is not None:
-                serialized_simulation["simulationTime"] = simulation.simulation_time
-
-            if simulation.simulation_estimated_end_time is not None:
-                serialized_simulation["simulationEstimatedEndTime"] = simulation.simulation_estimated_end_time
-
-            if simulation.max_duration is not None:
-                serialized_simulation["configuration"] = {"maxDuration": simulation.max_duration}
-
-            if simulation.polylines_version is not None:
-                serialized_simulation["polylinesVersion"] = simulation.polylines_version
-
-            if simulation.size is not None:
-                serialized_simulation["size"] = simulation.size
-
-            serialized_simulations.append(serialized_simulation)
-
-        emit(
-            "simulations",
-            serialized_simulations,
-            to=CLIENT_ROOM,
-        )
+        all_simulation_ids = SimulationVisualizationDataManager.get_all_saved_simulation_ids()
 
         log("Emitting simulations", "server")
+
+        simulation_ids_to_delete = []
+
+        for simulation_id, _ in list(self.simulations.items()):
+            if simulation_id not in all_simulation_ids and self.simulations[simulation_id].status not in [
+                SimulationStatus.RUNNING,
+                SimulationStatus.PAUSED,
+                SimulationStatus.STOPPING,
+                SimulationStatus.STARTING,
+                SimulationStatus.LOST,
+            ]:
+                simulation_ids_to_delete.append(simulation_id)
+
+        for simulation_id in simulation_ids_to_delete:
+            self.on_simulation_delete(simulation_id)
+
+        for simulation_id in all_simulation_ids:
+            self.emit_simulation(simulation_id)
+
+        log("Emitted simulations", "server")
+
+    def on_simulation_delete(self, simulation_id: str) -> None:
+        if simulation_id in self.simulations:
+            del self.simulations[simulation_id]
+
+        self.socketio.emit("delete-simulation", simulation_id, to=CLIENT_ROOM)
+
+        log(f"Deleted simulation {simulation_id} from simulation manager", "server")
 
     def emit_missing_simulation_states(
         self,
@@ -409,7 +439,7 @@ class SimulationManager:
                 simulation.status not in RUNNING_SIMULATION_STATUSES,
             )
 
-            emit(
+            self.socketio.emit(
                 "missing-simulation-states",
                 (missing_states, missing_updates, has_all_states),
                 to=get_session_id(),
@@ -431,39 +461,87 @@ class SimulationManager:
 
             SimulationVisualizationDataManager.mark_simulation_as_corrupted(simulation_id)
 
-            self.emit_simulations()
+            self.emit_simulation(simulation_id)
 
-    def emit_simulation_polylines(self, simulation_id):
-        if simulation_id not in self.simulations:
-            log(
-                f"{__file__} {inspect.currentframe().f_lineno}: Simulation {simulation_id} not found",
-                "server",
-                logging.ERROR,
-            )
-            return
+    def emit_simulation(self, simulation_id: str) -> None:
+        scheduled_task = self.task_by_simulation_id.get(simulation_id, None)
+        if scheduled_task is None:
+            scheduled_task = ScheduledTask(None)
+            self.task_by_simulation_id[simulation_id] = scheduled_task
 
-        polylines, version = SimulationVisualizationDataManager.get_polylines(simulation_id)
+        minimum_debounce_time = 1
+        actual_debounce_time = 0
+        now = time.monotonic()
 
-        emit(f"polylines-{simulation_id}", (polylines, version), to=CLIENT_ROOM)
+        if scheduled_task.last_run is not None and scheduled_task.last_run + minimum_debounce_time > now:
+            actual_debounce_time = scheduled_task.last_run + minimum_debounce_time - now
 
-    def query_simulations(self):
-        all_simulation_ids = SimulationVisualizationDataManager.get_all_saved_simulation_ids()
+        def action():
+            self.socketio.sleep(actual_debounce_time)
 
-        for simulation_id, _ in list(self.simulations.items()):
-            if simulation_id not in all_simulation_ids and self.simulations[simulation_id].status not in [
-                SimulationStatus.RUNNING,
-                SimulationStatus.PAUSED,
-                SimulationStatus.STOPPING,
-                SimulationStatus.STARTING,
-                SimulationStatus.LOST,
-            ]:
-                del self.simulations[simulation_id]
+            try:
+                self.query_simulation(simulation_id)
 
-        for simulation_id in all_simulation_ids:
-            # Non valid save files might throw an exception
-            self.query_simulation(simulation_id)
+                log(f"Emitting simulation {simulation_id}", "server")
+
+                simulation = self.simulations[simulation_id]
+
+                serialized_simulation = {
+                    "id": simulation_id,
+                    "name": simulation.name,
+                    "status": simulation.status.value,
+                    "startTime": simulation.start_time,
+                    "data": simulation.data,
+                }
+
+                if simulation.simulation_start_time is not None:
+                    serialized_simulation["simulationStartTime"] = simulation.simulation_start_time
+
+                if simulation.simulation_end_time is not None:
+                    serialized_simulation["simulationEndTime"] = simulation.simulation_end_time
+
+                if simulation.simulation_time is not None:
+                    serialized_simulation["simulationTime"] = simulation.simulation_time
+
+                if simulation.simulation_estimated_end_time is not None:
+                    serialized_simulation["simulationEstimatedEndTime"] = simulation.simulation_estimated_end_time
+
+                if simulation.max_duration is not None:
+                    serialized_simulation["configuration"] = {"maxDuration": simulation.max_duration}
+
+                if simulation.polylines_version is not None:
+                    serialized_simulation["polylinesVersion"] = simulation.polylines_version
+
+                if simulation.size is not None:
+                    serialized_simulation["size"] = simulation.size
+
+                self.socketio.emit("simulation", serialized_simulation, to=CLIENT_ROOM)
+
+                log(f"Emitted simulation {simulation_id}", "server")
+
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                log(
+                    f"Error while emitting simulation {simulation_id}: {e}",
+                    "server",
+                    logging.ERROR,
+                )
+            finally:
+                scheduled_task.last_run = time.monotonic()
+                scheduled_task.task = None
+
+        if scheduled_task.task is None:
+            if actual_debounce_time > 0:
+                scheduled_task.task = self.socketio.start_background_task(action)
+                log(f"Scheduled emit of simulation {simulation_id} in {actual_debounce_time}s", "server")
+            else:
+                action()
+                log(f"Emitted simulation {simulation_id} immediately", "server")
+        else:
+            log(f"Simulation {simulation_id} is already scheduled", "server")
 
     def query_simulation(self, simulation_id) -> None:
+        log(f"Querying simulation {simulation_id}", "server")
+
         if simulation_id in self.simulations and self.simulations[simulation_id].status in [
             SimulationStatus.RUNNING,
             SimulationStatus.PAUSED,
@@ -499,13 +577,11 @@ class SimulationManager:
                     log(
                         f"Simulation {simulation_id} version is outdated",
                         "server",
-                        logging.DEBUG,
                     )
                 if status == SimulationStatus.FUTURE:
                     log(
                         f"Simulation {simulation_id} version is future",
                         "server",
-                        logging.DEBUG,
                     )
 
                 simulation = SimulationHandler(
@@ -535,7 +611,7 @@ class SimulationManager:
                 is_corrupted = True
 
         if is_corrupted:
-            log(f"Simulation {simulation_id} is corrupted", "server", logging.DEBUG)
+            log(f"Simulation {simulation_id} is corrupted", "server")
 
             simulation = SimulationHandler(
                 simulation_id,
@@ -550,3 +626,5 @@ class SimulationManager:
             self.simulations[simulation_id] = simulation
 
             SimulationVisualizationDataManager.mark_simulation_as_corrupted(simulation_id)
+        else:
+            log(f"Simulation {simulation_id} queried successfully", "server")

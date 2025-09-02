@@ -7,11 +7,7 @@ from requests.exceptions import ConnectionError as RequestsConnectionError
 from socketio import Client
 from socketio.exceptions import ConnectionError as SocketIOConnectionError
 
-from multimodalsim_viewer.common.utils import (
-    CLIENT_PORT,
-    HOST,
-    SERVER_PORT,
-)
+from multimodalsim_viewer.common.utils import CLIENT_PORT, HOST, SERVER_PORT
 from multimodalsim_viewer.server.server import configure_server
 from multimodalsim_viewer.server.simulation import (
     configure_simulation_parser,

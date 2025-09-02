@@ -9,7 +9,6 @@ from json import dumps
 from dotenv import dotenv_values
 from filelock import FileLock
 from flask import request
-from flask_socketio import emit
 
 environment = {}
 
@@ -147,19 +146,11 @@ def build_simulation_id(name: str) -> tuple[str, str]:
     return simulation_id, start_time
 
 
-def log(message: str, auth_type: str, level=logging.INFO, should_emit=True) -> None:
+def log(message: str, auth_type: str, level=logging.INFO) -> None:
     if auth_type == "server":
         logging.log(level, "[%s] %s", auth_type, message)
-        if should_emit:
-            emit("log", f"{level} [{auth_type}] {message}", to=CLIENT_ROOM)
     else:
         logging.log(level, "[%s] %s %s", auth_type, get_session_id(), message)
-        if should_emit:
-            emit(
-                "log",
-                f"{level} [{auth_type}] {get_session_id()} {message}",
-                to=CLIENT_ROOM,
-            )
 
 
 def verify_simulation_name(name: str | None) -> str | None:

@@ -148,7 +148,7 @@ function extractStartTime(startTime: unknown): Date | null {
   return new Date(year, month, day, hours, minutes, seconds, milliseconds);
 }
 
-function extractSimulation(data: unknown): Simulation | null {
+export function extractSimulation(data: unknown): Simulation | null {
   if (typeof data !== 'object' || data === null) {
     console.error('Invalid data type for simulation', data);
     return null;
@@ -387,27 +387,6 @@ function extractSimulation(data: unknown): Simulation | null {
     polylinesVersion,
     size,
   };
-}
-
-export function extractSimulations(data: unknown): Simulation[] | null {
-  if (!Array.isArray(data)) {
-    console.error('Invalid data type for simulations', data);
-    return [];
-  }
-
-  const simulations: Simulation[] = [];
-  for (const simulationData of data) {
-    const simulation = extractSimulation(simulationData);
-
-    if (simulation !== null) {
-      simulations.push(simulation);
-    } else {
-      console.error('Invalid simulation data', simulationData);
-      return null;
-    }
-  }
-
-  return simulations;
 }
 
 export function sortSimulations(a: Simulation, b: Simulation): number {
