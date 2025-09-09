@@ -4,23 +4,13 @@ This package provides an interface to the [multimodalsim simulation project](htt
 
 ## Usage
 
-You have access to several commands that will allow you to run the project easily.
+You have access to several commands that will allow you to run the project easily. You can use the `--help` flag to see a list of available options.
 
 ```bash
 viewer start 
-viewer start --ui     # only start the UI side
-viewer start --server # only start the server 
 
 viewer stop
-viewer stop --ui     # only stop the UI side
-viewer stop --server # only stop the server
-```
 
-You can also run a simulation from the command line. This is useful for debugging, when you want to run a simulation without the web interface, and also for running simulations that uses a different version of the multimodalsim package.
-
-Several arguments are available to customize the simulation and can be found with the --help option, but the required arguments will be asked interactively if not provided. The command to run a simulation is:
-
-```bash
 viewer simulate
 ```
 
@@ -35,3 +25,7 @@ To run a simulation, you need to provide input data. You can upload input data f
 ```bash
 git clone https://github.com/lab-core/multimodal-data.git
 ```
+
+## Environment variables
+
+Some environment variables are available to customize the application. You can find a detailed list of these variables in the [README.md](https://github.com/lab-core/multimodal-simulator/blob/main/README.md#environment-variables) file of the multimodal-simulator repository.

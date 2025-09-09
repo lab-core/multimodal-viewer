@@ -41,7 +41,7 @@ try {
   // Write the environment variables to the public folder
   writeFileSync(PUBLIC_ENVIRONMENT_FILE_PATH, JSON.stringify(environment));
 
-  console.log(`Environment updated`);
+  console.info(`Environment updated`);
 } catch (error) {
   console.error('Error during environment setup:', error);
   process.exit(1);

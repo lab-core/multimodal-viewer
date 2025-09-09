@@ -70,7 +70,7 @@ export function extractVehicle(data: unknown): Vehicle | null {
     console.error('Invalid previous stops for vehicle', data);
     return null;
   }
-  const previousStops = data.previousStops.map(extractStop);
+  const previousStops = data.previousStops.map((stop) => extractStop(stop, id));
   if (!previousStops.every((stop) => stop !== null)) {
     const firstInvalidStop = previousStops.find((stop) => stop === null);
     console.error(
@@ -84,7 +84,7 @@ export function extractVehicle(data: unknown): Vehicle | null {
 
   let currentStop: Stop | null = null;
   if ('currentStop' in data) {
-    currentStop = extractStop(data.currentStop);
+    currentStop = extractStop(data.currentStop, id);
 
     if (currentStop === null) {
       console.error('Invalid current stop for vehicle', data);
@@ -96,7 +96,7 @@ export function extractVehicle(data: unknown): Vehicle | null {
     console.error('Invalid next stops for vehicle', data);
     return null;
   }
-  const nextStops = data.nextStops.map(extractStop);
+  const nextStops = data.nextStops.map((stop) => extractStop(stop, id));
   if (!nextStops.every((stop) => stop !== null)) {
     const firstInvalidStop = nextStops.find((stop) => stop === null);
     console.error(
@@ -121,7 +121,7 @@ export function extractVehicle(data: unknown): Vehicle | null {
       return null;
     }
 
-    tags = data.tags;
+    tags = data.tags.sort((a, b) => a.localeCompare(b));
   }
 
   return {
@@ -135,10 +135,17 @@ export function extractVehicle(data: unknown): Vehicle | null {
     nextStops,
     capacity,
     tags,
+    error: null, // Initially no error
   };
 }
 
 export function getAllStops(vehicle: Vehicle): Stop[] {
+  vehicle.previousStops.forEach((stop) => (stop.stopType = 'previous'));
+  if (vehicle.currentStop !== null) {
+    vehicle.currentStop.stopType = 'current';
+  }
+  vehicle.nextStops.forEach((stop) => (stop.stopType = 'next'));
+
   return vehicle.previousStops.concat(
     vehicle.currentStop === null ? [] : [vehicle.currentStop],
     vehicle.nextStops,

@@ -1,14 +1,4 @@
-import { BitmapText, Container, Graphics, Sprite } from 'pixi.js';
 import { Tagged } from './tags.model';
-
-export interface Entity<T> {
-  sprites: Sprite[];
-  texts: BitmapText[];
-  graphics: Graphics[];
-  container: Container;
-  backgroundContainer: Container;
-  data: T;
-}
 
 export type EntityFilterMode = 'all' | 'favorites';
 
@@ -20,4 +10,5 @@ export interface EntityMetadata extends Tagged {
   id: string;
   entityType: EntityType;
   name: string;
+  error: string | null; // If not null, there is an error with the entity
 }

@@ -35,6 +35,8 @@
         [matTooltipPosition]="'after'"
         (click)="selectStop(previousStop)"
         (keydown.enter)="selectStop(previousStop)"
+        (mouseenter)="preselectStop(previousStop)"
+        (mouseleave)="unpreselectStop()"
         >{{ previousStop.label }}</span
       >
     }
@@ -46,6 +48,8 @@
         [matTooltipPosition]="'after'"
         (click)="selectStop(currentStop)"
         (keydown.enter)="selectStop(currentStop)"
+        (mouseenter)="preselectStop(currentStop)"
+        (mouseleave)="unpreselectStop()"
         >{{ currentStop.label }}</span
       >
     }
@@ -57,6 +61,8 @@
         [matTooltipPosition]="'after'"
         (click)="selectStop(nextStop)"
         (keydown.enter)="selectStop(nextStop)"
+        (mouseenter)="preselectStop(nextStop)"
+        (mouseleave)="unpreselectStop()"
         >{{ nextStop.label }}</span
       >
     }

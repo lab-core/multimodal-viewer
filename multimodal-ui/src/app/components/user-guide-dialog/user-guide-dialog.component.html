@@ -41,8 +41,8 @@
       about seeing it, you can check the
       <strong>Run in the background</strong> option. That will launch the
       simulation and redirect you to the main menu. You can always visualize any
-      running simulation at any moment by finding it in the "Available
-      Simulations" window.
+      running simulation at any moment by finding it in the "Browse Simulations"
+      window.
     </p>
     <p>
       Optionally, define a simulation duration. This defines the maximum amount
@@ -61,7 +61,7 @@
     <p>
       Here you can stop running simulations as well as delete, import, and
       export finished ones. The rules for importing simulations are the same as
-      for the starting data. No need to zip the folders—we'll do it for you.
+      for the starting data. No need to zip the folders, we'll do it for you.
       Again, try avoiding importing simulations with the same name. It will make
       it hard to understand which one you are trying to run.
     </p>
@@ -92,8 +92,7 @@
     </p>
     <p>
       2. Visualization speed setting. This defines how fast things are
-      happening. Adjust it to speed up or slow down your visualization. Note
-      that entity movements might become janky if you go above x32 speed.
+      happening. Adjust it to speed up or slow down your visualization.
     </p>
     <p>
       3. These are the time skip buttons. They will move you a number of seconds
@@ -120,9 +119,8 @@
       jump to any timestamp at any time.
     </p>
     <p>
-      8. The main menu button will send you back to ... the main menu. If you
-      are running a simulation, it will continue to run in the background. If
-      you are replaying a saved simulation, it will stop running.
+      8. This button will send you back to the main menu. If you are running a
+      simulation, it will continue to run in the background.
     </p>
   </section>
 
@@ -136,8 +134,8 @@
       />
       <div>
         <p>
-          This is the control bar for the actual simulation happening on the
-          backend. This little window allows you to pause the simulation
+          This is the control bar for the actual simulation running on the
+          server. This little window allows you to pause the simulation
           processing, adjust the maximum simulation duration, or stop the
           simulation completely.
         </p>
@@ -146,9 +144,9 @@
           effectively completed and cannot be resumed, only replayed.
         </p>
         <p>
-          The <strong>Estimated end</strong> is the in-simulation time at which
-          the simulation is expected to end. It has nothing to do with the time
-          in real life.
+          The <strong>Estimated end</strong> is the in-simulation approximated
+          time at which the simulation is expected to end. It has nothing to do
+          with the time in real life.
         </p>
       </div>
     </div>
@@ -172,8 +170,7 @@
       vehicle The easiest way would be by simply clicking it on the map. If
       multiple entities are clumped together, a small dialog will pop up,
       allowing you to make a more precise choice. Your selected entity will be
-      highlighted in yellow, and you will see its past and future legs if they
-      exist.
+      highlighted in yellow, and you will see its path if it has one.
     </p>
     <p>
       You can also select an entity by using the search bar. To open the bar,
@@ -223,13 +220,23 @@
       OpenStreetMap to avoid compatibility issues.
     </p>
     <p>
-      In the same section, you can change the icons. The icon editor window is
-      pretty self-explanatory when it comes to changing the base icons. However,
-      adding custom ones might be a bit confusing. When you add a custom icon,
-      you will be prompted to type in a vehicle mode. Make sure you type it in
-      correctly, as the field is case-sensitive. If a certain vehicle mode does
-      not have its own icon, the default vehicle type (e.g., Bus) icon will be
-      used.
+      In the same section, you have a "Customize entities" button. This will
+      open a window where you can change the colors, icons and add other effects
+      to the visualization. You have a list of all the default icons for each
+      entity type, which you can edit directly by importing your own images. You
+      also have the option to change the colors used for tinting vehicles and
+      stops according to their occupancy.
+    </p>
+    <p>
+      You will see two buttons that allow you to add custom icons and background
+      shapes. Background shapes are colored shapes displayed behind the icons
+      that can be used to group or highlight certain entities. For each shape or
+      icon, you can specify the entity type, the mode (only for vehicles), and
+      the tags. The icon or shape will only be applied to entities matching
+      these criteria. They are displayed in decreasing order of priority,
+      meaning that if two or more rules match an entity, the first one of the
+      list will be applied. Lastly, you can also choose to limit an icon or
+      shape depending on the map zoom level.
     </p>
     <p>
       When adding new icons, we strongly recommend using transparent or white
@@ -237,9 +244,9 @@
       of a vehicle or stop might not work as expected.
     </p>
     <p>
-      You can export and import icons in bulk. The export button will generate a
-      JSON file with images encoded in base64. You can modify it directly and
-      then import it to change a few icons at a time.
+      You can export and import customization configurations using the buttons
+      on the bottom right. The configuration file is a JSON file with images
+      encoded in base64. You can modify it directly and share it with others.
     </p>
   </section>
 
@@ -251,13 +258,13 @@
       copy on your machine.
     </p>
     <p>
-      All the input data used to launch a simulation is located in the
-      <strong>/data</strong> folder within the root directory of your project.
-    </p>
-    <p>
-      The completed and saved simulations are located in the
-      <strong>/multimodal-server/saved-simulations</strong> folder within the
-      root directory of your project.
+      By default, the input data used to launch a simulation is located in the
+      <strong>/data</strong> folder while the visualizations files are located
+      in the <strong>/output</strong> folder. These folders are relative to the
+      folder you ran the simulation from. You can change these paths by setting
+      the <strong>INPUT_DATA_DIRECTORY_PATH</strong> and
+      <strong>OUTPUT_DATA_DIRECTORY_PATH</strong> environment variables. More on
+      that in the README file.
     </p>
   </section>
 </mat-dialog-content>

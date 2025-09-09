@@ -10,8 +10,14 @@
       "request": "launch",
       "program": "${workspaceFolder}/python/multimodalsim_viewer/server/scripts.py",
       "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/python",
-      "args": ["start"]
+      "cwd": "${workspaceFolder}",
+      "args": [
+        "simulate",
+        "--name",
+        "test-polylines",
+        "--data",
+        "instance_very_small_13"
+      ]
     }
   ]
 }

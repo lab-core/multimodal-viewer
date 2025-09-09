@@ -1,10 +1,12 @@
-import json
 import os
+from io import TextIOWrapper
+from json import dump, loads
 
 from filelock import FileLock
 
 from multimodalsim_viewer.common.utils import (
     INPUT_DATA_DIRECTORY_PATH,
+    NUMBER_OF_STATES_TO_SEND_AT_ONCE,
     SIMULATION_SAVE_FILE_SEPARATOR,
 )
 from multimodalsim_viewer.models.environment import VisualizedEnvironment
@@ -29,28 +31,17 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
     __STATES_UPDATE_INDEX_MINIMUM_LENGTH = 8
     __STATES_TIMESTAMP_MINIMUM_LENGTH = 8
 
-    # Only send a maximum of __MAX_STATES_AT_ONCE states at once
-    # This should be at least 2
-    __MAX_STATES_AT_ONCE = 2
-
-    # The client keeps a maximum of __MAX_STATES_IN_CLIENT_BEFORE_NECESSARY + __MAX_STATES_IN_CLIENT_AFTER_NECESSARY + 1
-    # states in memory
-    # The current one, the previous __MAX_STATES_IN_CLIENT_BEFORE_NECESSARY and
-    # the next __MAX_STATES_IN_CLIENT_AFTER_NECESSARY
-    # __MAX_STATES_IN_CLIENT_BEFORE_NECESSARY = 24
-    # __MAX_STATES_IN_CLIENT_AFTER_NECESSARY = 50
-
     # MARK: +- Format
     @staticmethod
     def __format_json_readable(data: dict, file: str) -> str:
-        return json.dump(data, file, indent=2, separators=(",", ": "), sort_keys=True)
+        return dump(data, file, indent=2, separators=(",", ": "), sort_keys=True)
 
     @staticmethod
-    def __format_json_one_line(data: dict, file: str) -> str:
+    def __format_json_one_line(data: dict | str | int | float | bool, file: str) -> str:
         # Add new line before if not empty
         if file.tell() != 0:
             file.write("\n")
-        return json.dump(data, file, separators=(",", ":"))
+        return dump(data, file, separators=(",", ":"))
 
     # MARK: +- File paths
     @staticmethod
@@ -238,9 +229,54 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
 
         with lock:
             with open(file_path, "w", encoding="utf-8") as file:
-                SimulationVisualizationDataManager.__format_json_one_line(environment.serialize(), file)
+                # Store timestamp
+                SimulationVisualizationDataManager.__format_json_one_line(environment.timestamp, file)
+
+                # Store update index
+                SimulationVisualizationDataManager.__format_json_one_line(environment.update_index, file)
+
+                # Store statistics
+                SimulationVisualizationDataManager.__format_json_one_line(
+                    environment.statistics if environment.statistics else {}, file
+                )
+
+                # Store total number of passengers
+                SimulationVisualizationDataManager.__format_json_one_line(len(environment.passengers), file)
+
+                # Store each passenger
+                for passenger in environment.passengers.values():
+                    SimulationVisualizationDataManager.__format_json_one_line(passenger.serialize(), file)
+
+                # Store total number of vehicles
+                SimulationVisualizationDataManager.__format_json_one_line(len(environment.vehicles), file)
+
+                # Store each vehicle
+                for vehicle in environment.vehicles.values():
+                    SimulationVisualizationDataManager.__format_json_one_line(vehicle.serialize(), file)
 
         return file_path
+
+    @staticmethod
+    def get_state_to_send(file: TextIOWrapper) -> dict:
+        state = {}
+
+        state["timestamp"] = loads(file.readline().strip())
+        state["updateIndex"] = loads(file.readline().strip())
+        state["statistics"] = file.readline().strip()
+
+        state["passengers"] = []
+
+        num_passengers = loads(file.readline().strip())
+        for _ in range(num_passengers):
+            state["passengers"].append(file.readline().strip())
+
+        state["vehicles"] = []
+
+        num_vehicles = loads(file.readline().strip())
+        for _ in range(num_vehicles):
+            state["vehicles"].append(file.readline().strip())
+
+        return state
 
     @staticmethod
     def save_update(file_path: str, update: Update) -> None:
@@ -253,13 +289,17 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
     def get_missing_states(  # pylint: disable=too-many-locals, too-many-branches, too-many-statements
         simulation_id: str,
         visualization_time: float,
-        loaded_state_update_indexes: list[int],
+        complete_state_update_indexes: list[int],
         is_simulation_complete: bool,
-    ) -> tuple[list[str], dict[list[str]], list[int], bool, int, int, int]:
+    ) -> tuple[list[dict], dict[list[str]], bool]:
         sorted_states = SimulationVisualizationDataManager.get_sorted_states(simulation_id)
 
         if len(sorted_states) == 0:
-            return ([], {}, [], False, 0, 0, 0)
+            return [], {}, False
+
+        if len(complete_state_update_indexes) == len(sorted_states):
+            # If the client has all states, no need to request more
+            return [], {}, True
 
         necessary_state_index = None
 
@@ -279,43 +319,14 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
         # Handle negative indexes
         necessary_state_index = max(0, necessary_state_index)
 
-        state_update_indexes_to_keep = []
         missing_states = []
         missing_updates = {}
-
-        last_state_index_in_client = -1
-        all_state_indexes_in_client = []
+        has_incomplete_states = False
 
         # We want to load the necessary state first, followed by
-        # the __MAX_STATES_IN_CLIENT_AFTER_NECESSARY next states and
-        # then the __MAX_STATES_IN_CLIENT_BEFORE_NECESSARY previous states
+        # the next states and then the previous states in reverse order.
         indexes_to_load = (
             [necessary_state_index]
-            # + [
-            #     next_state_index
-            #     for next_state_index in range(
-            #         necessary_state_index + 1,
-            #         min(
-            #             necessary_state_index
-            #             + SimulationVisualizationDataManager.__MAX_STATES_IN_CLIENT_AFTER_NECESSARY
-            #             + 1,
-            #             len(sorted_states),
-            #         ),
-            #     )
-            # ]
-            # + [
-            #     previous_state_index
-            #     for previous_state_index in range(
-            #         necessary_state_index - 1,
-            #         max(
-            #             necessary_state_index
-            #             - SimulationVisualizationDataManager.__MAX_STATES_IN_CLIENT_BEFORE_NECESSARY
-            #             - 1,
-            #             -1,
-            #         ),
-            #         -1,
-            #     )
-            # ]
             # All next states
             + list(range(necessary_state_index + 1, len(sorted_states)))
             # All previous states
@@ -325,20 +336,13 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
         for index in indexes_to_load:
             update_index, state_timestamp = sorted_states[index]
 
-            # If the client already has the state, skip it
-            # except the last state that might have changed
-            if update_index in loaded_state_update_indexes and not update_index == max(loaded_state_update_indexes):
-                state_update_indexes_to_keep.append(update_index)
-
-                all_state_indexes_in_client.append(index)
-
-                last_state_index_in_client = max(last_state_index_in_client, index)
-
+            # If the client already has the state, skip it.
+            if update_index in complete_state_update_indexes:
                 continue
 
             # Don't add states if the max number of states is reached
             # but continue the loop to know which states need to be kept
-            if len(missing_states) >= SimulationVisualizationDataManager.__MAX_STATES_AT_ONCE:
+            if len(missing_states) >= NUMBER_OF_STATES_TO_SEND_AT_ONCE:
                 continue
 
             state_file_path = SimulationVisualizationDataManager.get_saved_simulation_state_file_path(
@@ -349,8 +353,14 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
 
             with lock:
                 with open(state_file_path, "r", encoding="utf-8") as file:
-                    environment_data = file.readline()
-                    missing_states.append(environment_data)
+                    state = SimulationVisualizationDataManager.get_state_to_send(file)
+
+                    is_complete = is_simulation_complete or (index < len(sorted_states) - 1)
+                    if not is_complete:
+                        has_incomplete_states = True
+                    state["isComplete"] = is_complete
+
+                    missing_states.append(state)
 
                     updates_data = file.readlines()
                     current_state_updates = []
@@ -359,50 +369,11 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
 
                     missing_updates[update_index] = current_state_updates
 
-                    all_state_indexes_in_client.append(index)
-
-                    last_state_index_in_client = max(last_state_index_in_client, index)
-
-        client_has_last_state = last_state_index_in_client == len(sorted_states) - 1
-        client_has_max_states = len(missing_states) + len(state_update_indexes_to_keep) >= len(indexes_to_load)
-
-        should_request_more_states = (is_simulation_complete and not client_has_max_states) or (
-            not is_simulation_complete and (client_has_last_state or not client_has_max_states)
+        has_all_states = (
+            len(missing_states) + len(complete_state_update_indexes) == len(sorted_states) and not has_incomplete_states
         )
 
-        first_continuous_state_index = necessary_state_index
-        last_continuous_state_index = necessary_state_index
-
-        all_state_indexes_in_client.sort()
-
-        necessary_state_index_index = all_state_indexes_in_client.index(necessary_state_index)
-
-        for index in range(necessary_state_index_index - 1, -1, -1):
-            if all_state_indexes_in_client[index] == first_continuous_state_index - 1:
-                first_continuous_state_index -= 1
-            else:
-                break
-
-        for index in range(necessary_state_index_index + 1, len(all_state_indexes_in_client)):
-            if all_state_indexes_in_client[index] == last_continuous_state_index + 1:
-                last_continuous_state_index += 1
-            else:
-                break
-
-        first_continuous_state_update_index = sorted_states[first_continuous_state_index][0]
-        last_continuous_state_update_index = sorted_states[last_continuous_state_index][0]
-
-        necessary_state_update_index = sorted_states[necessary_state_index][0]
-
-        return (
-            missing_states,
-            missing_updates,
-            state_update_indexes_to_keep,
-            should_request_more_states,
-            first_continuous_state_update_index,
-            last_continuous_state_update_index,
-            necessary_state_update_index,
-        )
+        return (missing_states, missing_updates, has_all_states)
 
     # MARK: +- Polylines
 

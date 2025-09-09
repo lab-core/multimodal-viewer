@@ -65,12 +65,7 @@ export class FavoriteEntitiesService {
             favorite.entityType !== entity.entityType,
         );
       } else {
-        favorites.push({
-          id: entity.id,
-          name: entity.name,
-          entityType: entity.entityType,
-          tags: entity.tags,
-        });
+        favorites.push(entity);
       }
       return [...this.sortFavorites(favorites)];
     });
