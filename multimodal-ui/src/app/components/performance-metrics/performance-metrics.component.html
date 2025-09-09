@@ -32,9 +32,12 @@
     </button>
   </div>
 
+  <!-- The click event here is not an action from the user but a trick to correctly update the local storage -->
+  <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
   <div
     class="metrics-container flex-column align-main-end"
     [style.display]="isActive ? 'flex' : 'none'"
+    (click)="save()"
   >
     @for (metric of metrics; track $index) {
       <div class="metric">

@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, effect, OnInit, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -10,7 +10,7 @@ import Stats from 'stats.js';
   templateUrl: './performance-metrics.component.html',
   styleUrl: './performance-metrics.component.scss',
 })
-export class PerformanceMetricsComponent implements OnInit, OnDestroy {
+export class PerformanceMetricsComponent implements OnInit {
   private readonly LOCAL_STORAGE_KEY = 'multimodal.performance-metrics';
   readonly MIN_METRICS = 1;
   readonly MAX_METRICS = 3;
@@ -19,13 +19,15 @@ export class PerformanceMetricsComponent implements OnInit, OnDestroy {
 
   metricsSignal = signal<Stats[]>([]);
 
+  constructor() {
+    effect(() => {
+      this.save();
+    });
+  }
+
   ngOnInit() {
     this.initialize();
     this.animate();
-  }
-
-  ngOnDestroy(): void {
-    this.cleanup();
   }
 
   toggleIsActive() {
@@ -36,7 +38,6 @@ export class PerformanceMetricsComponent implements OnInit, OnDestroy {
     this.metricsSignal.update((metrics) => {
       const newMetric = new Stats();
       newMetric.showPanel(0);
-      newMetric.dom.removeAttribute('style');
       return [...metrics, newMetric];
     });
   }
@@ -45,6 +46,16 @@ export class PerformanceMetricsComponent implements OnInit, OnDestroy {
     this.metricsSignal.update((metrics) => {
       return [...metrics.slice(0, -1)];
     });
+  }
+
+  save() {
+    const metrics = this.metricsSignal();
+    const isActive = this.isActiveSignal();
+
+    localStorage.setItem(
+      this.LOCAL_STORAGE_KEY,
+      JSON.stringify({ isActive, metrics: metrics.map(this.getPanelIndex) }),
+    );
   }
 
   private initialize() {
@@ -118,6 +129,8 @@ export class PerformanceMetricsComponent implements OnInit, OnDestroy {
   private animate() {
     const metrics = this.metricsSignal();
 
+    metrics.forEach((metric) => metric.dom.removeAttribute('style'));
+
     metrics.forEach((metric) => metric.begin());
 
     const metricContainers = document.querySelectorAll('.metric-panel');
@@ -136,16 +149,6 @@ export class PerformanceMetricsComponent implements OnInit, OnDestroy {
     });
   }
 
-  private cleanup() {
-    const metrics = this.metricsSignal();
-    const isActive = this.isActiveSignal();
-
-    localStorage.setItem(
-      this.LOCAL_STORAGE_KEY,
-      JSON.stringify({ isActive, metrics: metrics.map(this.getPanelIndex) }),
-    );
-  }
-
   private getPanelIndex(this: void, metric: Stats): number {
     // Each metric has an innerHTML with all panels.
     // The one displayed has `style="display: block;"`.
@@ -154,5 +157,9 @@ export class PerformanceMetricsComponent implements OnInit, OnDestroy {
     return metric.dom.innerHTML
       .split('</canvas>')
       .findIndex((panel) => panel.includes('display: block;'));
+  }
+
+  test() {
+    console.log('test');
   }
 }
