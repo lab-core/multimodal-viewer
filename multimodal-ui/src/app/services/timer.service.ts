@@ -81,6 +81,8 @@ export class TimerService {
 
       if (activeSimulation !== null) {
         this.load(activeSimulation.id);
+      } else {
+        this.reset();
       }
     });
 
@@ -263,6 +265,21 @@ export class TimerService {
   }
 
   // MARK: Local Storage
+  private reset(): void {
+    this.nextIsPaused = null;
+    this.nextIsLoading = null;
+    this.nextSpeedPower = null;
+    this.nextDirection = null;
+    this._isPausedSignal.set(null);
+    this._isLoadingSignal.set(null);
+    this._speedPowerSignal.set(null);
+    this._directionSignal.set(null);
+    this._visualizationTime = null;
+    this.isEnvironmentLoaded = false;
+    this._continuousEnvironments = [];
+    this.lastUpdateTime = null;
+  }
+
   private load(simulationId: string): void {
     const isPaused = getVisualizationIsPausedLocalStorage(simulationId);
 
