@@ -31,7 +31,6 @@ import {
   isAnimatedVehicle,
 } from '../interfaces/animation.model';
 import {
-  ContinuousEnvironment,
   EnvironmentSlice,
   findClosestContinuousEnvironment,
   isIntervalCovered,
@@ -45,13 +44,14 @@ import { getAllStops, Vehicle } from '../interfaces/vehicle.model';
 import { FavoriteEntitiesService } from './favorite-entities.service';
 import { SpritesService } from './sprites.service';
 import { TaskService } from './task.service';
+import { TimerService } from './timer.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AnimationService {
   // MARK: Constants
-  private readonly MAXIMUM_ALLOWED_DESYNCHRONIZATION_DIFFERENCE = 1.5;
+  private readonly MAXIMUM_ANIMATION_JUMP = 30 / 1000; // ms
 
   private readonly WHITE = 0xffffff;
 
@@ -76,11 +76,8 @@ export class AnimationService {
   // MARK: Properties
 
   // Use two variables to avoid changing the ones used for the animation during the animation
-  private nextContinuousEnvironments: ContinuousEnvironment[] = [];
-  private nextWantedVisualizationTime: number | null = null;
   private nextPolylines: AllPolylines | null = null;
   private nextIsPaused = false;
-  private nextSpeed = 1;
   private nextFilters: Set<string> = new Set<string>();
   private nextFilterMode: EntityFilterMode = 'all';
   private nextShouldShowComplete = false;
@@ -90,9 +87,6 @@ export class AnimationService {
   private nextHighlightedLegIndex: number | null = null;
   private nextShouldFindCloseEntities = false;
 
-  private continuousEnvironments: ContinuousEnvironment[] = [];
-
-  private wantedVisualizationTime: number | null = null;
   private animationVisualizationTime = 0;
 
   private polylines: AllPolylines | null = null;
@@ -100,7 +94,6 @@ export class AnimationService {
   private hasCenteredInitially = false;
 
   private isPaused = false;
-  private speed = 1;
 
   private vehicleEntities: AnimatedVehicle[] = [];
   private vehicleEntitiesByVehicleId: Record<string, AnimatedVehicle> = {};
@@ -159,6 +152,7 @@ export class AnimationService {
     private readonly favoriteEntitiesService: FavoriteEntitiesService,
     private readonly spritesService: SpritesService,
     private readonly taskService: TaskService,
+    private readonly timerService: TimerService,
   ) {
     void Assets.load(this.BITMAP_TEXT_URL).then(() => {
       this.fontsLoaded = true;
@@ -213,10 +207,6 @@ export class AnimationService {
     this.nextShouldShowComplete = shouldShowComplete;
   }
 
-  setSpeed(speed: number) {
-    this.nextSpeed = speed;
-  }
-
   toggleShouldFollowEntity() {
     this.nextShouldFollowEntity = !this.nextShouldFollowEntity;
   }
@@ -265,24 +255,13 @@ export class AnimationService {
   }
 
   // MARK: Public Methods
-  updateEnvironment(continuousEnvironments: ContinuousEnvironment[]) {
-    this.nextContinuousEnvironments = continuousEnvironments;
-  }
-
-  updateWantedVisualizationTime(wantedVisualizationTime: number | null): void {
-    this.nextWantedVisualizationTime = wantedVisualizationTime;
-  }
-
   updatePolylines(polylines: AllPolylines | null) {
     this.nextPolylines = polylines;
   }
 
   clearAnimations() {
-    this.nextContinuousEnvironments = [];
-    this.nextWantedVisualizationTime = null;
     this.nextPolylines = null;
     this.nextIsPaused = false;
-    this.nextSpeed = 1;
     this.nextFilters.clear();
     this.nextFilterMode = 'all';
     this.nextShouldShowComplete = false;
@@ -291,9 +270,6 @@ export class AnimationService {
     this.nextClickEvent = null;
     this.nextHighlightedLegIndex = null;
 
-    this.continuousEnvironments = [];
-
-    this.wantedVisualizationTime = null;
     this.animationVisualizationTime = 0;
 
     this.polylines = null;
@@ -301,7 +277,6 @@ export class AnimationService {
     this.hasCenteredInitially = false;
 
     this.isPaused = false;
-    this.speed = 1;
 
     this.vehicleEntities = [];
     this.vehicleEntitiesByVehicleId = {};
@@ -387,11 +362,8 @@ export class AnimationService {
   private onRedraw(utils: PixiOverlayUtils) {
     if (!this.fontsLoaded) return;
 
-    this.continuousEnvironments = this.nextContinuousEnvironments;
-    this.wantedVisualizationTime = this.nextWantedVisualizationTime;
     this.polylines = this.nextPolylines;
     this.isPaused = this.nextIsPaused;
-    this.speed = this.nextSpeed;
     this.filters = this.nextFilters;
     this.filterMode = this.nextFilterMode;
     this.shouldShowComplete = this.nextShouldShowComplete;
@@ -402,33 +374,17 @@ export class AnimationService {
     this.shouldFindCloseEntities = this.nextShouldFindCloseEntities;
     this._shouldFollowEntitySignal.set(this.nextShouldFollowEntity);
 
-    if (this.wantedVisualizationTime === null) {
-      return; // Unknown wanted visualization time
-    }
-
-    if (this.continuousEnvironments.length === 0) {
-      return; // No continuous environments available
-    }
-
     if (this.polylines === null) {
       return; // No polylines available
     }
 
     this.updateAnimationTime();
 
-    const continuousEnvironment = findClosestContinuousEnvironment(
-      this.continuousEnvironments,
-      this.animationVisualizationTime,
-    );
+    const environment = this.updateEnvironment();
 
-    if (continuousEnvironment === null) {
-      return; // Environment not available
+    if (environment === null) {
+      return; // No environment available
     }
-
-    const environment = sliceEnvironment(
-      continuousEnvironment,
-      this.animationVisualizationTime,
-    );
 
     this.spritesService.calculateSpriteScales(utils);
 
@@ -455,42 +411,62 @@ export class AnimationService {
   }
 
   private updateAnimationTime() {
-    if (this.wantedVisualizationTime === null) {
+    const elapsedTime = this.timerService.updateTime();
+    const visualizationTime = this.timerService.visualizationTime;
+    const continuousEnvironments = this.timerService.continuousEnvironments;
+
+    if (visualizationTime === null || elapsedTime === null) {
       return; // Unknown wanted visualization time
     }
 
     // Verify that there is a continuous path from the current time to the wanted time
-    const minimum = Math.min(
-      this.wantedVisualizationTime,
-      this.animationVisualizationTime,
-    );
-    const maximum = Math.max(
-      this.wantedVisualizationTime,
-      this.animationVisualizationTime,
-    );
-    if (!isIntervalCovered(this.continuousEnvironments, minimum, maximum)) {
-      this.animationVisualizationTime = this.wantedVisualizationTime;
-      return; // No continuous path from current time to wanted time
+    if (
+      !isIntervalCovered(
+        continuousEnvironments,
+        visualizationTime,
+        this.animationVisualizationTime,
+      )
+    ) {
+      this.animationVisualizationTime = visualizationTime; // Jump to wanted time
+      return;
     }
 
-    const deltaSeconds = Ticker.shared.deltaMS / 1000;
-
-    if (!this.isPaused) {
-      this.animationVisualizationTime += deltaSeconds * this.speed;
-    } else {
-      this.animationVisualizationTime = this.wantedVisualizationTime;
+    if (this.isPaused) {
+      this.animationVisualizationTime = visualizationTime; // Jump to wanted time
+      return;
     }
 
     const desynchronizationDifference =
-      this.wantedVisualizationTime - this.animationVisualizationTime;
+      visualizationTime - this.animationVisualizationTime;
+
     if (
       Math.abs(desynchronizationDifference) >
-      this.MAXIMUM_ALLOWED_DESYNCHRONIZATION_DIFFERENCE * this.speed
+      this.MAXIMUM_ANIMATION_JUMP * this.timerService.speed
     ) {
+      // Accelerate to catch up
       this.animationVisualizationTime +=
-        desynchronizationDifference *
-        (1 - Math.exp(-5 * Math.abs(deltaSeconds)));
+        desynchronizationDifference * (1 - Math.exp(-5 * elapsedTime));
+    } else {
+      this.animationVisualizationTime = visualizationTime;
     }
+  }
+
+  private updateEnvironment(): EnvironmentSlice | null {
+    const continuousEnvironments = this.timerService.continuousEnvironments;
+
+    const closestContinuousEnvironment = findClosestContinuousEnvironment(
+      continuousEnvironments,
+      this.animationVisualizationTime,
+    );
+
+    if (closestContinuousEnvironment === null) {
+      return null;
+    }
+
+    return sliceEnvironment(
+      closestContinuousEnvironment,
+      this.animationVisualizationTime,
+    );
   }
 
   private onClick(event: LeafletMouseEvent) {

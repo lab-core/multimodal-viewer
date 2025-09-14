@@ -155,7 +155,6 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
     effect(() => {
       const speed = this.speedSignal();
       this.visualizationService.setVisualizationSpeed(speed);
-      this.animationService.setSpeed(speed);
     });
 
     this.editorVisualisationTimeForm.valueChanges.subscribe((value) => {

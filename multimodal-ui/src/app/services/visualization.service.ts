@@ -21,17 +21,13 @@ import {
 } from '../interfaces/simulation.model';
 import { AnimationService } from './animation.service';
 import { SimulationService } from './simulation.service';
+import { TimerService } from './timer.service';
 
 @Injectable()
 export class VisualizationService {
   // MARK: Properties
-
-  private speed = 1;
-
-  private tick = -1;
   private readonly tickSignal: WritableSignal<number> = signal<number>(0);
   private updateTickTimeout: number | null = null;
-  private lastUpdateTickTime = performance.now();
 
   private readonly ENVIRONMENT_TICK_INTERVAL = 1000;
   private readonly environmentTickSignal: WritableSignal<number> =
@@ -45,17 +41,15 @@ export class VisualizationService {
   private readonly _visualizationMaxTimeSignal: WritableSignal<number | null> =
     signal<number | null>(null);
 
+  private readonly _isLoadingSignal: WritableSignal<boolean> = signal(true);
   private readonly _isVisualizationPausedSignal = signal<boolean>(false);
 
-  // MARK: +- Time Logic
-  private visualizationTimeOverride: number | null = null;
-  private readonly visualizationTimeOverrideSignal: WritableSignal<
-    number | null
-  > = signal<number | null>(null);
-
-  private wantedVisualizationTime: number | null = null;
   private readonly _wantedVisualizationTimeSignal: Signal<number | null> =
-    computed(() => this.computeWantedVisualizationTime());
+    computed(() => {
+      this.tickSignal();
+
+      return this.timerService.visualizationTime;
+    });
 
   private environmentSlice: EnvironmentSlice | null = null;
   readonly environmentSignal: Signal<EnvironmentSlice | null> = computed(() =>
@@ -69,6 +63,7 @@ export class VisualizationService {
 
       return this._wantedVisualizationTimeSignal();
     });
+
   private controlledContinuousEnvironmentsSignal: Signal<
     ContinuousEnvironment[]
   > = computed(() => {
@@ -77,19 +72,13 @@ export class VisualizationService {
     return this.simulationService.continuousEnvironmentsSignal();
   });
 
-  private readonly _isLoadingSignal: WritableSignal<boolean> = signal(true);
-
   // MARK: Constructor
   constructor(
     private readonly injector: Injector,
     private readonly simulationService: SimulationService,
     private readonly animationService: AnimationService,
+    private readonly timerService: TimerService,
   ) {
-    effect(() => {
-      const wantedVisualizationTime = this._wantedVisualizationTimeSignal();
-      this.wantedVisualizationTime = wantedVisualizationTime;
-    });
-
     effect(() => {
       const environmentSlice = this.environmentSignal();
       this.environmentSlice = environmentSlice;
@@ -158,25 +147,18 @@ export class VisualizationService {
       }
     });
 
-    this.initializeAutoSave();
-    this.initializeAutoLoad();
+    // MARK: Timer
+    effect(() => {
+      const isPaused = this._isVisualizationPausedSignal();
+      this.timerService.isPaused = isPaused;
+    });
+
+    effect(() => {
+      const isLoading = this._isLoadingSignal();
+      this.timerService.isLoading = isLoading;
+    });
 
     // MARK: Animation
-    effect(() => {
-      const continuousEnvironments =
-        this.simulationService.continuousEnvironmentsSignal();
-
-      this.animationService.updateEnvironment(continuousEnvironments);
-    });
-
-    effect(() => {
-      const wantedVisualizationTime = this._wantedVisualizationTimeSignal();
-
-      this.animationService.updateWantedVisualizationTime(
-        wantedVisualizationTime,
-      );
-    });
-
     effect(() => {
       const polylines = this.simulationService.simulationPolylinesSignal();
       const simulation = this.simulationService.activeSimulationSignal();
@@ -194,60 +176,43 @@ export class VisualizationService {
   }
 
   // MARK: Local Storage
-  private initializeAutoSave(): void {
-    window.addEventListener('beforeunload', () => {
-      this.saveLocalStorageData();
-    });
-  }
+  // private saveLocalStorageData(): void {
+  //   const wantedVisualizationTime = this._wantedVisualizationTimeSignal();
+  //   const isVisualizationPaused = this._isVisualizationPausedSignal();
 
-  private saveLocalStorageData(): void {
-    const wantedVisualizationTime = this._wantedVisualizationTimeSignal();
-    const isVisualizationPaused = this._isVisualizationPausedSignal();
+  //   if (wantedVisualizationTime !== null) {
+  //     localStorage.setItem(
+  //       'wantedVisualizationTime',
+  //       wantedVisualizationTime.toString(),
+  //     );
+  //   }
+  //   localStorage.setItem(
+  //     'isVisualizationPaused',
+  //     JSON.stringify(isVisualizationPaused),
+  //   );
+  // }
 
-    if (wantedVisualizationTime !== null) {
-      localStorage.setItem(
-        'wantedVisualizationTime',
-        wantedVisualizationTime.toString(),
-      );
-    }
-    localStorage.setItem(
-      'isVisualizationPaused',
-      JSON.stringify(isVisualizationPaused),
-    );
-  }
+  // private loadWantedVisualizationTime(): void {
+  //   const savedWantedVisualizationTime = localStorage.getItem(
+  //     'wantedVisualizationTime',
+  //   );
+  //   const savedIsVisualizationPaused = localStorage.getItem(
+  //     'isVisualizationPaused',
+  //   );
 
-  private initializeAutoLoad(): void {
-    window.addEventListener('load', () => {
-      this.loadWantedVisualizationTime();
-    });
-  }
+  //   if (savedWantedVisualizationTime) {
+  //     const time = parseFloat(savedWantedVisualizationTime);
+  //     if (!isNaN(time)) {
+  //       this.wantedVisualizationTime = time;
+  //       this.visualizationTimeOverrideSignal.set(time);
+  //     }
+  //   }
 
-  private loadWantedVisualizationTime(): void {
-    const savedWantedVisualizationTime = localStorage.getItem(
-      'wantedVisualizationTime',
-    );
-    const savedIsVisualizationPaused = localStorage.getItem(
-      'isVisualizationPaused',
-    );
-
-    if (savedWantedVisualizationTime) {
-      const time = parseFloat(savedWantedVisualizationTime);
-      if (!isNaN(time)) {
-        this.wantedVisualizationTime = time;
-        this.visualizationTimeOverrideSignal.set(time);
-      }
-    }
-
-    if (savedIsVisualizationPaused !== null) {
-      const isPaused = JSON.parse(savedIsVisualizationPaused) as boolean;
-      this._isVisualizationPausedSignal.set(isPaused);
-    }
-  }
-
-  public clearLocalStorage(): void {
-    localStorage.removeItem('wantedVisualizationTime');
-    localStorage.removeItem('isVisualizationPaused');
-  }
+  //   if (savedIsVisualizationPaused !== null) {
+  //     const isPaused = JSON.parse(savedIsVisualizationPaused) as boolean;
+  //     this._isVisualizationPausedSignal.set(isPaused);
+  //   }
+  // }
 
   // MARK: Lifecycle
   init(simulation: Simulation) {
@@ -287,7 +252,6 @@ export class VisualizationService {
     this._simulationStartTimeSignal.set(null);
     this._simulationEndTimeSignal.set(null);
     this._visualizationMaxTimeSignal.set(null);
-    this.clearLocalStorage();
 
     if (this.updateTickTimeout !== null) {
       clearTimeout(this.updateTickTimeout);
@@ -344,11 +308,12 @@ export class VisualizationService {
   }
 
   setVisualizationTime(time: number) {
-    this.visualizationTimeOverrideSignal.set(time);
+    this.timerService.updateTime(time);
+    this.tickSignal.update((tick) => tick + 1);
   }
 
   setVisualizationSpeed(speed: number) {
-    this.speed = speed;
+    this.timerService.speed = speed;
   }
 
   // MARK: Private Methods
@@ -373,62 +338,6 @@ export class VisualizationService {
   }
 
   // MARK: Computed signals
-  private computeWantedVisualizationTime(): number | null {
-    const simulationStartTime = this.simulationStartTimeSignal();
-    const visualizationMaxTime = this.visualizationMaxTimeSignal();
-
-    if (simulationStartTime === null || visualizationMaxTime === null) {
-      return null;
-    }
-
-    const isLoading = this._isLoadingSignal();
-    const tick = this.tickSignal();
-    const visualizationTimeOverride = this.visualizationTimeOverrideSignal();
-    const isVisualizationPaused = this.isVisualizationPausedSignal();
-
-    const now = performance.now();
-    const lastUpdateTickTime = this.lastUpdateTickTime;
-    this.lastUpdateTickTime = now;
-
-    if (this.wantedVisualizationTime === null) {
-      return simulationStartTime;
-    }
-
-    if (
-      visualizationTimeOverride !== this.visualizationTimeOverride &&
-      visualizationTimeOverride !== null
-    ) {
-      this.visualizationTimeOverride = visualizationTimeOverride;
-      return Math.max(
-        Math.min(visualizationMaxTime, visualizationTimeOverride),
-        simulationStartTime,
-      );
-    }
-
-    if (isLoading) {
-      return this.wantedVisualizationTime;
-    }
-
-    if (tick === this.tick) {
-      return this.wantedVisualizationTime;
-    }
-
-    this.tick = tick;
-
-    if (isVisualizationPaused) {
-      return this.wantedVisualizationTime;
-    }
-
-    return Math.min(
-      visualizationMaxTime,
-      Math.max(
-        this.wantedVisualizationTime +
-          ((now - lastUpdateTickTime) / 1000) * this.speed,
-        simulationStartTime,
-      ),
-    );
-  }
-
   private sliceEnvironment(): EnvironmentSlice | null {
     this.environmentTickSignal();
 
