@@ -2062,7 +2062,9 @@ export class AnimationService {
         ),
       );
 
-      utils.getMap().flyToBounds(new LatLngBounds(southWest, northEast));
+      utils
+        .getMap()
+        .flyToBounds(new LatLngBounds(southWest, northEast), { maxZoom: 14 });
 
       this.hasCenteredInitially = true;
     }
