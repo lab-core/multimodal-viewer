@@ -52,6 +52,7 @@ import { EntitiesTabComponent } from '../entities-tab/entities-tab.component';
 import { FavoriteEntitiesComponent } from '../favorite-entities/favorite-entities.component';
 import { InformationDialogComponent } from '../information-dialog/information-dialog.component';
 import { MapLayersComponent } from '../map-tiles/map-tiles.component';
+import { PerformanceMetricsComponent } from '../performance-metrics/performance-metrics.component';
 import { RecursiveStatisticsComponent } from '../recursive-statistics/recursive-statistics.component';
 import { SelectedEntityTabComponent } from '../selected-entity-tab/selected-entity-tab.component';
 import { SimulationControlBarComponent } from '../simulation-control-bar/simulation-control-bar.component';
@@ -91,6 +92,7 @@ export interface EntitySearch {
     RecursiveStatisticsComponent,
     EntitiesTabComponent,
     SelectedEntityTabComponent,
+    PerformanceMetricsComponent,
   ],
   providers: [VisualizationService, VisualizationFilterService],
   templateUrl: './visualizer.component.html',
