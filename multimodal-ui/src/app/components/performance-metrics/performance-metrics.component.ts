@@ -158,8 +158,4 @@ export class PerformanceMetricsComponent implements OnInit {
       .split('</canvas>')
       .findIndex((panel) => panel.includes('display: block;'));
   }
-
-  test() {
-    console.log('test');
-  }
 }
