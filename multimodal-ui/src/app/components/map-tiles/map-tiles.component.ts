@@ -24,16 +24,14 @@ import { MapService } from '../../services/map.service';
   styleUrl: './map-tiles.component.css',
 })
 export class MapLayersComponent {
-  mapTiles: Signal<MapTile[]>;
-  selectedMapTile: Signal<MapTile | null>;
+  mapTilesSignal: Signal<MapTile[]> = this.mapService.mapTilesSignal;
+  selectedMapTileSignal: Signal<MapTile | null> =
+    this.mapService.selectedMapTileSignal;
 
   constructor(
     readonly mapService: MapService,
     readonly dialogService: DialogService,
-  ) {
-    this.mapTiles = mapService.mapTiles;
-    this.selectedMapTile = mapService.selectedMapTile;
-  }
+  ) {}
 
   setMapTile(tile: MapTile) {
     this.mapService.selectMapTile(tile);

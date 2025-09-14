@@ -12,71 +12,76 @@ import { MapTile, MapTileSaveData } from '../interfaces/map.model';
   providedIn: 'root',
 })
 export class MapService {
-  private readonly KEY_ADDED_TILES: string = 'multimodal.added-tiles';
-  private readonly KEY_SELECTED_TILE_INDEX: string =
+  private readonly ADDED_TILES_LOCAL_STORAGE_KEY: string =
+    'multimodal.added-tiles';
+  private readonly SELECTED_TILE_INDEX_LOCAL_STORAGE_KEY: string =
     'multimodal.selected-tile-index';
 
-  private readonly noWrap = true;
-  private readonly minZoom = 8;
-  private readonly maxZoom = 18;
+  private readonly NO_WRAP = true;
+  private readonly MINIMUM_ZOOM = 8;
+  private readonly MAXIMUM_ZOOM = 18;
 
-  map: Map | null = null;
+  private _map: Map | null = null;
 
-  private _selectedMapTile!: WritableSignal<MapTile>;
-  private _mapTiles: WritableSignal<MapTile[]> = signal([]);
+  private _selectedMapTileSignal: WritableSignal<MapTile | null> = signal(null);
+  private _mapTilesSignal: WritableSignal<MapTile[]> = signal([]);
 
-  get selectedMapTile(): Signal<MapTile> {
-    return this._selectedMapTile;
+  set map(map: Map) {
+    this._map = map;
   }
 
-  get mapTiles(): Signal<MapTile[]> {
-    return this._mapTiles;
+  get selectedMapTileSignal(): Signal<MapTile | null> {
+    return this._selectedMapTileSignal;
+  }
+
+  get mapTilesSignal(): Signal<MapTile[]> {
+    return this._mapTilesSignal;
   }
 
   constructor() {
     this.loadMapTilesData();
 
     effect(() => {
-      this.effectSaveMapTiles();
+      this.saveMapTilesEffect();
     });
 
     effect(() => {
-      this.effectUpdateIndex();
+      this.setIndexEffect();
     });
   }
 
-  selectMapTile(mapTile: MapTile) {
-    if (this.map == null) return;
+  selectMapTile(mapTile: MapTile | null) {
+    if (this._map == null || mapTile === null) return;
 
-    const selectedMapTile = this._selectedMapTile();
-    if (selectedMapTile !== undefined && selectedMapTile !== mapTile) {
-      this.map.removeLayer(selectedMapTile.tile);
+    const selectedMapTile = this._selectedMapTileSignal();
+    if (selectedMapTile !== null && selectedMapTile !== mapTile) {
+      this._map.removeLayer(selectedMapTile.tile);
     }
 
-    this._selectedMapTile.set(mapTile);
-    mapTile.tile.addTo(this.map);
+    this._selectedMapTileSignal.set(mapTile);
+    mapTile.tile.addTo(this._map);
   }
 
   addMapTile(name: string, url: string, attribution: string | null) {
-    this._mapTiles.update((mapTiles) => {
-      const newTile = this.createMapTile(name, url, attribution, true);
+    this._mapTilesSignal.update((mapTiles) => {
+      const newTile = this.createMapTile(name, url, attribution, false);
       return [...mapTiles, newTile];
     });
   }
 
   removeMapTile(tile: MapTile) {
-    this._mapTiles.update((mapTiles) => {
+    this._mapTilesSignal.update((mapTiles) => {
       return mapTiles.filter((mapTile) => mapTile !== tile);
     });
   }
 
-  private getDefaultTilesData() {
+  private getDefaultMapTiles() {
     const defaultMapTile = [
       this.createMapTile(
         'OpenStreetMap Standard',
         'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        false,
+        true,
       ),
       this.createMapTile(
         'Stadia Alidade Smooth Light',
@@ -97,29 +102,40 @@ export class MapService {
   }
 
   private loadMapTilesData() {
-    let tiles = this.loadSavedMapTiles();
-    if (tiles.length === 0) {
-      tiles = this.getDefaultTilesData();
-    }
+    const defaultMapTiles = this.getDefaultMapTiles();
+    const savedMapTiles = this.loadSavedMapTiles();
 
     const index = parseInt(
-      localStorage.getItem(this.KEY_SELECTED_TILE_INDEX) as string,
+      localStorage.getItem(
+        this.SELECTED_TILE_INDEX_LOCAL_STORAGE_KEY,
+      ) as string,
     );
 
-    if (!isNaN(index) && index < tiles.length) {
-      this._selectedMapTile = signal(tiles[index]);
+    const mapTiles = [...defaultMapTiles, ...savedMapTiles];
+
+    if (!isNaN(index) && index < mapTiles.length) {
+      this._selectedMapTileSignal = signal(mapTiles[index]);
     } else {
-      this._selectedMapTile = signal(tiles[0]);
+      this._selectedMapTileSignal = signal(mapTiles[0]);
     }
 
-    this._mapTiles.set(tiles);
+    this._mapTilesSignal.set(mapTiles);
   }
 
   private loadSavedMapTiles() {
-    const savedMapTilesJson = localStorage.getItem(this.KEY_ADDED_TILES);
+    const savedMapTilesJson = localStorage.getItem(
+      this.ADDED_TILES_LOCAL_STORAGE_KEY,
+    );
+
     if (savedMapTilesJson == null) return [];
 
     const savedMapTiles = JSON.parse(savedMapTilesJson) as MapTileSaveData[];
+
+    if (savedMapTiles.some((tile) => 'custom' in tile)) {
+      // Old format, clear localStorage
+      localStorage.removeItem(this.ADDED_TILES_LOCAL_STORAGE_KEY);
+      return [];
+    }
 
     const mapTiles = [];
     for (const savedMapTile of savedMapTiles) {
@@ -128,7 +144,7 @@ export class MapService {
           savedMapTile.name,
           savedMapTile.url,
           savedMapTile.attribution,
-          savedMapTile.custom,
+          false,
         ),
       );
     }
@@ -136,39 +152,50 @@ export class MapService {
     return mapTiles;
   }
 
-  private effectSaveMapTiles() {
-    const addedMapTiles = this._mapTiles();
-    const savedMapTiles: MapTileSaveData[] = addedMapTiles.map((tile) => {
-      return {
-        name: tile.name,
-        url: tile.url,
-        attribution: tile.attribution,
-        custom: tile.custom,
-      };
-    });
+  private saveMapTilesEffect() {
+    const savedMapTiles: MapTileSaveData[] = this.mapTilesSignal()
+      .filter((tile) => !tile.isDefault)
+      .map((tile) => {
+        return {
+          name: tile.name,
+          url: tile.url,
+          attribution: tile.attribution,
+        };
+      });
 
-    localStorage.setItem(this.KEY_ADDED_TILES, JSON.stringify(savedMapTiles));
+    localStorage.setItem(
+      this.ADDED_TILES_LOCAL_STORAGE_KEY,
+      JSON.stringify(savedMapTiles),
+    );
   }
 
-  private effectUpdateIndex() {
-    const selectedTile = this._selectedMapTile();
+  private setIndexEffect() {
+    const selectedTile = this.selectedMapTileSignal();
+
     if (selectedTile == null) return;
 
-    const mapTiles = this.mapTiles();
+    const mapTiles = this.mapTilesSignal();
+
+    if (mapTiles.length === 0) return;
+
     const index = mapTiles.findIndex((tile) => tile === selectedTile);
+
     if (index === -1) {
       this.selectMapTile(mapTiles[0]);
       return;
     }
 
-    localStorage.setItem(this.KEY_SELECTED_TILE_INDEX, index.toString());
+    localStorage.setItem(
+      this.SELECTED_TILE_INDEX_LOCAL_STORAGE_KEY,
+      index.toString(),
+    );
   }
 
   private createTileLayer(url: string, attribution: string | null): TileLayer {
     return tileLayer(url, {
-      noWrap: this.noWrap,
-      minZoom: this.minZoom,
-      maxZoom: this.maxZoom,
+      noWrap: this.NO_WRAP,
+      minZoom: this.MINIMUM_ZOOM,
+      maxZoom: this.MAXIMUM_ZOOM,
       attribution: attribution ?? undefined,
     });
   }
@@ -177,14 +204,14 @@ export class MapService {
     name: string,
     url: string,
     attribution: string | null,
-    custom: boolean,
+    isDefault: boolean,
   ): MapTile {
     return {
       name,
       url,
       attribution,
       tile: this.createTileLayer(url, attribution),
-      custom,
+      isDefault,
     };
   }
 }
