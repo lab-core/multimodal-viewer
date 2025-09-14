@@ -277,7 +277,7 @@ export class TimerService {
     if (speedPower !== null) {
       this.speedPower = speedPower;
     } else {
-      this.speedPower = 1;
+      this.speedPower = 0;
     }
 
     const direction = getVisualizationDirectionLocalStorage(simulationId);
