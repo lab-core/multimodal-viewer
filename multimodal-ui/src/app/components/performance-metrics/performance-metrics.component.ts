@@ -1,4 +1,4 @@
-import { Component, effect, OnInit, signal } from '@angular/core';
+import { Component, effect, OnDestroy, OnInit, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -10,14 +10,16 @@ import Stats from 'stats.js';
   templateUrl: './performance-metrics.component.html',
   styleUrl: './performance-metrics.component.scss',
 })
-export class PerformanceMetricsComponent implements OnInit {
+export class PerformanceMetricsComponent implements OnInit, OnDestroy {
   private readonly LOCAL_STORAGE_KEY = 'multimodal.performance-metrics';
   readonly MIN_METRICS = 1;
   readonly MAX_METRICS = 3;
 
-  isActiveSignal = signal(false);
+  readonly isActiveSignal = signal(false);
 
-  metricsSignal = signal<Stats[]>([]);
+  readonly metricsSignal = signal<Stats[]>([]);
+
+  private readonly isDestroyedSignal = signal(false);
 
   constructor() {
     effect(() => {
@@ -28,6 +30,10 @@ export class PerformanceMetricsComponent implements OnInit {
   ngOnInit() {
     this.initialize();
     this.animate();
+  }
+
+  ngOnDestroy() {
+    this.isDestroyedSignal.set(true);
   }
 
   toggleIsActive() {
@@ -142,6 +148,10 @@ export class PerformanceMetricsComponent implements OnInit {
         container.appendChild(metric.dom);
       }
     });
+
+    if (this.isDestroyedSignal()) {
+      return;
+    }
 
     requestAnimationFrame(() => {
       metrics.forEach((metric) => metric.end());
