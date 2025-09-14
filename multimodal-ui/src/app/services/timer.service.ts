@@ -138,7 +138,7 @@ export class TimerService {
   // MARK: Time Update
   /**
    *
-   * @returns The elapsed time in seconds since the last update, or null if there is no active simulation.
+   * @returns The elapsed time in seconds since the last update, or null if the visualization time could not be updated.
    */
   updateTime(visualizationTimeOverride?: number): number | null {
     if (this.nextIsPaused !== null) {

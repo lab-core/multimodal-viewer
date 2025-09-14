@@ -51,7 +51,7 @@ import { TimerService } from './timer.service';
 })
 export class AnimationService {
   // MARK: Constants
-  private readonly MAXIMUM_ANIMATION_JUMP = 30 / 1000; // ms
+  private readonly MAXIMUM_ANIMATION_JUMP = 30 / 1000; // 0.03 seconds (30 ms)
 
   private readonly WHITE = 0xffffff;
 
