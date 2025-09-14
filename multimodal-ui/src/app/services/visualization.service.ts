@@ -41,9 +41,6 @@ export class VisualizationService {
   private readonly _visualizationMaxTimeSignal: WritableSignal<number | null> =
     signal<number | null>(null);
 
-  private readonly _isLoadingSignal: WritableSignal<boolean> = signal(true);
-  private readonly _isVisualizationPausedSignal = signal<boolean>(false);
-
   private readonly _wantedVisualizationTimeSignal: Signal<number | null> =
     computed(() => {
       this.tickSignal();
@@ -88,21 +85,21 @@ export class VisualizationService {
       const hasAllStates = this.simulationService.hasAllStatesSignal();
 
       if (hasAllStates) {
-        this._isLoadingSignal.set(false);
+        this.timerService.isLoading = false;
         return;
       }
 
       const simulation = this.simulationService.activeSimulationSignal();
 
       if (simulation === null) {
-        this._isLoadingSignal.set(true);
+        this.timerService.isLoading = true;
         return;
       }
 
       const wantedVisualizationTime = this._wantedVisualizationTimeSignal();
 
       if (wantedVisualizationTime === null) {
-        this._isLoadingSignal.set(true);
+        this.timerService.isLoading = true;
         return;
       }
 
@@ -126,7 +123,7 @@ export class VisualizationService {
 
       const environmentSlice = this.environmentSignal();
 
-      this._isLoadingSignal.set(environmentSlice === null);
+      this.timerService.isLoading = environmentSlice === null;
     });
 
     effect(() => {
@@ -147,17 +144,6 @@ export class VisualizationService {
       }
     });
 
-    // MARK: Timer
-    effect(() => {
-      const isPaused = this._isVisualizationPausedSignal();
-      this.timerService.isPaused = isPaused;
-    });
-
-    effect(() => {
-      const isLoading = this._isLoadingSignal();
-      this.timerService.isLoading = isLoading;
-    });
-
     // MARK: Animation
     effect(() => {
       const polylines = this.simulationService.simulationPolylinesSignal();
@@ -174,45 +160,6 @@ export class VisualizationService {
       this.animationService.updatePolylines(polylines);
     });
   }
-
-  // MARK: Local Storage
-  // private saveLocalStorageData(): void {
-  //   const wantedVisualizationTime = this._wantedVisualizationTimeSignal();
-  //   const isVisualizationPaused = this._isVisualizationPausedSignal();
-
-  //   if (wantedVisualizationTime !== null) {
-  //     localStorage.setItem(
-  //       'wantedVisualizationTime',
-  //       wantedVisualizationTime.toString(),
-  //     );
-  //   }
-  //   localStorage.setItem(
-  //     'isVisualizationPaused',
-  //     JSON.stringify(isVisualizationPaused),
-  //   );
-  // }
-
-  // private loadWantedVisualizationTime(): void {
-  //   const savedWantedVisualizationTime = localStorage.getItem(
-  //     'wantedVisualizationTime',
-  //   );
-  //   const savedIsVisualizationPaused = localStorage.getItem(
-  //     'isVisualizationPaused',
-  //   );
-
-  //   if (savedWantedVisualizationTime) {
-  //     const time = parseFloat(savedWantedVisualizationTime);
-  //     if (!isNaN(time)) {
-  //       this.wantedVisualizationTime = time;
-  //       this.visualizationTimeOverrideSignal.set(time);
-  //     }
-  //   }
-
-  //   if (savedIsVisualizationPaused !== null) {
-  //     const isPaused = JSON.parse(savedIsVisualizationPaused) as boolean;
-  //     this._isVisualizationPausedSignal.set(isPaused);
-  //   }
-  // }
 
   // MARK: Lifecycle
   init(simulation: Simulation) {
@@ -286,34 +233,14 @@ export class VisualizationService {
     return this._visualizationMaxTimeSignal;
   }
 
-  get isVisualizationPausedSignal(): Signal<boolean> {
-    return this._isVisualizationPausedSignal;
-  }
-
   get wantedVisualizationTimeSignal(): Signal<number | null> {
     return this._wantedVisualizationTimeSignal;
   }
 
-  get isLoadingSignal(): Signal<boolean> {
-    return this._isLoadingSignal;
-  }
-
   // MARK: Handlers
-  pauseVisualization() {
-    this._isVisualizationPausedSignal.set(true);
-  }
-
-  resumeVisualization() {
-    this._isVisualizationPausedSignal.set(false);
-  }
-
   setVisualizationTime(time: number) {
     this.timerService.updateTime(time);
     this.tickSignal.update((tick) => tick + 1);
-  }
-
-  setVisualizationSpeed(speed: number) {
-    this.timerService.speed = speed;
   }
 
   // MARK: Private Methods

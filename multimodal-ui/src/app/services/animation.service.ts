@@ -77,7 +77,6 @@ export class AnimationService {
 
   // Use two variables to avoid changing the ones used for the animation during the animation
   private nextPolylines: AllPolylines | null = null;
-  private nextIsPaused = false;
   private nextFilters: Set<string> = new Set<string>();
   private nextFilterMode: EntityFilterMode = 'all';
   private nextShouldShowComplete = false;
@@ -92,8 +91,6 @@ export class AnimationService {
   private polylines: AllPolylines | null = null;
 
   private hasCenteredInitially = false;
-
-  private isPaused = false;
 
   private vehicleEntities: AnimatedVehicle[] = [];
   private vehicleEntitiesByVehicleId: Record<string, AnimatedVehicle> = {};
@@ -191,10 +188,6 @@ export class AnimationService {
   }
 
   // MARK: Setters
-  setPause(pause: boolean) {
-    this.nextIsPaused = pause;
-  }
-
   setFilters(filters: Set<string>) {
     this.nextFilters = filters;
   }
@@ -261,7 +254,6 @@ export class AnimationService {
 
   clearAnimations() {
     this.nextPolylines = null;
-    this.nextIsPaused = false;
     this.nextFilters.clear();
     this.nextFilterMode = 'all';
     this.nextShouldShowComplete = false;
@@ -275,8 +267,6 @@ export class AnimationService {
     this.polylines = null;
 
     this.hasCenteredInitially = false;
-
-    this.isPaused = false;
 
     this.vehicleEntities = [];
     this.vehicleEntitiesByVehicleId = {};
@@ -363,7 +353,6 @@ export class AnimationService {
     if (!this.fontsLoaded) return;
 
     this.polylines = this.nextPolylines;
-    this.isPaused = this.nextIsPaused;
     this.filters = this.nextFilters;
     this.filterMode = this.nextFilterMode;
     this.shouldShowComplete = this.nextShouldShowComplete;
@@ -431,7 +420,7 @@ export class AnimationService {
       return;
     }
 
-    if (this.isPaused) {
+    if (this.timerService.isPausedSignal()) {
       this.animationVisualizationTime = visualizationTime; // Jump to wanted time
       return;
     }
@@ -441,7 +430,7 @@ export class AnimationService {
 
     if (
       Math.abs(desynchronizationDifference) >
-      this.MAXIMUM_ANIMATION_JUMP * this.timerService.speed
+      this.MAXIMUM_ANIMATION_JUMP * this.timerService.speedSignal()
     ) {
       // Accelerate to catch up
       this.animationVisualizationTime +=
