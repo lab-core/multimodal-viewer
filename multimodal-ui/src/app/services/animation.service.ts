@@ -430,13 +430,17 @@ export class AnimationService {
 
     if (
       Math.abs(desynchronizationDifference) >
-      this.MAXIMUM_ANIMATION_JUMP_SECONDS * this.timerService.speedSignal()
+      Math.abs(
+        this.MAXIMUM_ANIMATION_JUMP_SECONDS * this.timerService.speedSignal(),
+      )
     ) {
       // Accelerate to catch up
       const direction = Math.sign(desynchronizationDifference);
       const absoluteDifference = Math.abs(desynchronizationDifference);
       const catchUp =
-        this.timerService.speedSignal() * this.MAXIMUM_ANIMATION_JUMP_SECONDS +
+        Math.abs(
+          this.timerService.speedSignal() * this.MAXIMUM_ANIMATION_JUMP_SECONDS,
+        ) +
         (absoluteDifference - this.MAXIMUM_ANIMATION_JUMP_SECONDS) *
           (1 - Math.exp(-5 * elapsedTime));
 
