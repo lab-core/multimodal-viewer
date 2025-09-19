@@ -51,7 +51,7 @@ import { TimerService } from './timer.service';
 })
 export class AnimationService {
   // MARK: Constants
-  private readonly MAXIMUM_ANIMATION_JUMP = 30 / 1000; // 0.03 seconds (30 ms)
+  private readonly MAXIMUM_ANIMATION_JUMP_SECONDS = 30 / 1000; // 0.03 seconds (30 ms)
 
   private readonly WHITE = 0xffffff;
 
@@ -430,11 +430,17 @@ export class AnimationService {
 
     if (
       Math.abs(desynchronizationDifference) >
-      this.MAXIMUM_ANIMATION_JUMP * this.timerService.speedSignal()
+      this.MAXIMUM_ANIMATION_JUMP_SECONDS * this.timerService.speedSignal()
     ) {
       // Accelerate to catch up
-      this.animationVisualizationTime +=
-        desynchronizationDifference * (1 - Math.exp(-5 * elapsedTime));
+      const direction = Math.sign(desynchronizationDifference);
+      const absoluteDifference = Math.abs(desynchronizationDifference);
+      const catchUp =
+        this.timerService.speedSignal() * this.MAXIMUM_ANIMATION_JUMP_SECONDS +
+        (absoluteDifference - this.MAXIMUM_ANIMATION_JUMP_SECONDS) *
+          (1 - Math.exp(-5 * elapsedTime));
+
+      this.animationVisualizationTime += catchUp * direction;
     } else {
       this.animationVisualizationTime = visualizationTime;
     }
