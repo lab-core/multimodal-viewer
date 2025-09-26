@@ -441,7 +441,9 @@ export class AnimationService {
         Math.abs(
           this.timerService.speedSignal() * this.MAXIMUM_ANIMATION_JUMP_SECONDS,
         ) +
-        (absoluteDifference - this.MAXIMUM_ANIMATION_JUMP_SECONDS) *
+        (absoluteDifference -
+          this.MAXIMUM_ANIMATION_JUMP_SECONDS *
+            this.timerService.speedSignal()) *
           (1 - Math.exp(-5 * elapsedTime));
 
       this.animationVisualizationTime += catchUp * direction;
