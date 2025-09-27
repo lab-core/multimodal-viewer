@@ -16,7 +16,7 @@ class InvalidFilesRequestError(Exception):
         self.error_message = error_message
 
 
-def http_routes(simulation_manager: SimulationManager):
+def http_routes(simulation_manager: SimulationManager):  # pylint: disable=too-many-statements
     blueprint = Blueprint("http_routes", __name__)
 
     # MARK: Helpers
