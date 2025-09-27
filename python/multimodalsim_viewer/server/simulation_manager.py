@@ -83,6 +83,11 @@ class SimulationNotFoundError(Exception):
         super().__init__(f"Simulation {simulation_id} not found")
 
 
+class MultipleSimulationsMatchingSocketIdError(Exception):
+    def __init__(self, socket_id: str, simulation_ids: list[str]):
+        super().__init__(f"Multiple simulations matching socket id {socket_id} : {', '.join(simulation_ids)}")
+
+
 # MARK: SimulationManager
 class SimulationManager:
     def __init__(self, socketio: SocketIO):
@@ -206,6 +211,9 @@ class SimulationManager:
 
             if len(matching_simulation_ids) == 1:
                 return matching_simulation_ids[0]
+
+            if len(matching_simulation_ids) > 1:
+                raise MultipleSimulationsMatchingSocketIdError(socket_id, matching_simulation_ids)
             return None
 
     def __get_all_simulation_ids(self) -> list[str]:
