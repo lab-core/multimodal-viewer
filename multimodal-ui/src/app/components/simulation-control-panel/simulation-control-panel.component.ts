@@ -37,6 +37,9 @@ export class SimulationControlPanelComponent {
     () => this.simulationInputSignal().status === 'paused',
   );
 
+  readonly isInitializedSignal: Signal<boolean> =
+    this.visualizationService.isInitializedSignal;
+
   // MARK: Inputs
   readonly simulationInputSignal: InputSignal<Simulation> =
     input.required<Simulation>({ alias: 'simulation' });
@@ -56,15 +59,6 @@ export class SimulationControlPanelComponent {
 
   // MARK: Constructor
   constructor(private readonly visualizationService: VisualizationService) {}
-
-  // MARK: Getters
-  get isInitializedSignal(): Signal<boolean> {
-    return this.visualizationService.isInitializedSignal;
-  }
-
-  get isVisualizationPausedSignal(): Signal<boolean> {
-    return this.visualizationService.isVisualizationPausedSignal;
-  }
 
   // MARK: Handlers
   toggleSimulationPause(wasPaused: boolean, id: string): void {

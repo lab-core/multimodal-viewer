@@ -43,7 +43,7 @@ import { CommunicationService } from '../../services/communication.service';
 import { DialogService } from '../../services/dialog.service';
 import { LoadingService } from '../../services/loading.service';
 import { SimulationService } from '../../services/simulation.service';
-import { TaskService } from '../../services/task.service';
+import { TimerService } from '../../services/timer.service';
 import { UserInterfaceService } from '../../services/user-interface.service';
 import { VisualizationFilterService } from '../../services/visualization-filter.service';
 import { VisualizationService } from '../../services/visualization.service';
@@ -530,6 +530,8 @@ export class VisualizerComponent implements OnDestroy {
   readonly entitySearchDisplayFunction = (entity: EntitySearch) =>
     entity?.displayedValue ?? '';
 
+  readonly isLoadingSignal = this.timerService.isLoadingSignal;
+
   // MARK: Constructor
   constructor(
     private readonly simulationService: SimulationService,
@@ -542,7 +544,7 @@ export class VisualizerComponent implements OnDestroy {
     private readonly visualizationService: VisualizationService,
     private readonly formBuilder: FormBuilder,
     private readonly visualizationFilterService: VisualizationFilterService,
-    private readonly taskService: TaskService,
+    private readonly timerService: TimerService,
   ) {
     this.tabControl = new FormControl('');
     this.tabControl.valueChanges.subscribe((value) => {
@@ -657,12 +659,6 @@ export class VisualizerComponent implements OnDestroy {
           this.searchInput.nativeElement.click();
         });
       }
-    });
-
-    effect(() => {
-      const isVisualizationPausedSignal =
-        this.visualizationService.isVisualizationPausedSignal();
-      this.animationService.setPause(isVisualizationPausedSignal);
     });
 
     effect(() => {
@@ -864,10 +860,6 @@ export class VisualizerComponent implements OnDestroy {
 
   get simulationSignal(): Signal<Simulation | null> {
     return this.simulationService.activeSimulationSignal;
-  }
-
-  get isLoadingSignal(): Signal<boolean> {
-    return this.visualizationService.isLoadingSignal;
   }
 
   // MARK: Handlers

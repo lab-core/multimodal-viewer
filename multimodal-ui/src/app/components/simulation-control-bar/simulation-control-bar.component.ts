@@ -2,7 +2,6 @@ import { DecimalPipe } from '@angular/common';
 import {
   Component,
   computed,
-  effect,
   ElementRef,
   input,
   InputSignal,
@@ -36,6 +35,7 @@ import { Simulation } from '../../interfaces/simulation.model';
 import { SimulationTimePipe } from '../../pipes/simulation-time.pipe';
 import { AnimationService } from '../../services/animation.service';
 import { SimulationService } from '../../services/simulation.service';
+import { TimerService } from '../../services/timer.service';
 import { VisualizationService } from '../../services/visualization.service';
 import { simulationTimeDisplay } from '../../utils/simulation-time.utils';
 
@@ -65,20 +65,17 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
   sliderTooltipX = 0;
 
   // MARK: Properties
-  readonly isSimulationPausedSignal: Signal<boolean> = computed(
-    () => this.simulationInputSignal().status === 'paused',
-  );
   readonly MIN_SPEED_POWER = 0;
   readonly MAX_SPEED_POWER = 7;
   readonly FAST_FORWARD_STEP = 1;
 
-  private readonly speedPowerSignal: WritableSignal<number> = signal(0);
+  readonly isVisualizationPausedSignal = this.timerService.isPausedSignal;
 
-  private readonly speedDirectionSignal: WritableSignal<number> = signal(1);
+  readonly speedPowerSignal = this.timerService.speedPowerSignal;
 
-  readonly speedSignal: Signal<number> = computed(
-    () => Math.pow(2, this.speedPowerSignal()) * this.speedDirectionSignal(),
-  );
+  readonly speedDirectionSignal = this.timerService.directionSignal;
+
+  readonly speedSignal = this.timerService.speedSignal;
 
   readonly fastForwardStepSignal: Signal<number> = computed(() => {
     return Math.abs(this.speedSignal()) * this.FAST_FORWARD_STEP;
@@ -151,13 +148,8 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
     private readonly visualizationService: VisualizationService,
     private readonly animationService: AnimationService,
     private readonly simulationService: SimulationService,
+    private readonly timerService: TimerService,
   ) {
-    effect(() => {
-      const speed = this.speedSignal();
-      this.visualizationService.setVisualizationSpeed(speed);
-      this.animationService.setSpeed(speed);
-    });
-
     this.editorVisualisationTimeForm.valueChanges.subscribe((value) => {
       this.editorVisualisationTimeValueSignal.set(
         value ? parseInt(value) : NaN,
@@ -165,7 +157,7 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
     });
 
     hotkeys('space', () => {
-      this.toggleVisualizationPause(this.isVisualizationPausedSignal());
+      this.toggleVisualizationPause(this.timerService.isPausedSignal());
     });
 
     hotkeys('ctrl+left,command+left,cmd+left', () => {
@@ -177,11 +169,11 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
     });
 
     hotkeys('ctrl+up,command+up,cmd+up', () => {
-      this.increaseSpeed();
+      this.increaseSpeedPower();
     });
 
     hotkeys('ctrl+down,command+down,cmd+down', () => {
-      this.decreaseSpeed();
+      this.decreaseSpeedPower();
     });
 
     hotkeys('r', () => {
@@ -226,36 +218,30 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
     return this.visualizationService.visualizationMaxTimeSignal;
   }
 
-  get isVisualizationPausedSignal(): Signal<boolean> {
-    return this.visualizationService.isVisualizationPausedSignal;
-  }
-
   get shouldFollowEntitySignal(): Signal<boolean> {
     return this.animationService.shouldFollowEntitySignal;
   }
 
   // MARK: Handlers
   toggleVisualizationPause(wasPaused: boolean): void {
-    if (wasPaused) {
-      this.visualizationService.resumeVisualization();
-    } else {
-      this.visualizationService.pauseVisualization();
-    }
+    this.timerService.isPaused = !wasPaused;
   }
 
-  setSpeed(speed: number): void {
-    this.speedPowerSignal.set(speed);
+  setSpeedPower(value: number): void {
+    this.timerService.speedPower = value;
   }
 
-  decreaseSpeed(): void {
-    this.speedPowerSignal.update((power) =>
-      Math.max(power - 1, this.MIN_SPEED_POWER),
+  decreaseSpeedPower(): void {
+    this.timerService.speedPower = Math.max(
+      this.timerService.speedPowerSignal() - 1,
+      this.MIN_SPEED_POWER,
     );
   }
 
-  increaseSpeed(): void {
-    this.speedPowerSignal.update((power) =>
-      Math.min(power + 1, this.MAX_SPEED_POWER),
+  increaseSpeedPower(): void {
+    this.timerService.speedPower = Math.min(
+      this.timerService.speedPowerSignal() + 1,
+      this.MAX_SPEED_POWER,
     );
   }
 
@@ -301,7 +287,7 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
   }
 
   toggleSimulationDirection(): void {
-    this.speedDirectionSignal.update((direction) => -direction);
+    this.timerService.direction = -this.timerService.directionSignal();
   }
 
   centerMap() {

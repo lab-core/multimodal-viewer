@@ -1033,6 +1033,12 @@ export function isIntervalCovered(
   start: number,
   end: number,
 ): boolean {
+  if (start >= end) {
+    const temp = start;
+    start = end;
+    end = temp;
+  }
+
   if (continuousEnvironments.length === 0) {
     return false;
   }
