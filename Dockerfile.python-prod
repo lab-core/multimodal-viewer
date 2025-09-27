@@ -1,11 +1,18 @@
-FROM python:3.13
+FROM python:3.13.7
 
 WORKDIR /app/python
 
 COPY python/requirements.txt python/setup.py /app/python/
 
-RUN pip install --upgrade pip -r requirements.txt
+RUN python -m pip install --upgrade pip -r requirements.txt
 
-RUN python -m pip install --upgrade -e .
+# Required to install with -e
+COPY python/multimodalsim_viewer/common/* /app/python/multimodalsim_viewer/common/
+COPY python/multimodalsim_viewer/models/* /app/python/multimodalsim_viewer/models/
+COPY python/multimodalsim_viewer/server/* /app/python/multimodalsim_viewer/server/
+COPY python/multimodalsim_viewer/ui/* /app/python/multimodalsim_viewer/ui/
+COPY python/multimodalsim_viewer/__init__.py /app/python/multimodalsim_viewer/
+
+RUN python -m pip install -e .
 
 CMD ["viewer", "start"]

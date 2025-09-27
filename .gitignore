@@ -5,8 +5,8 @@ venv
 __pycache__
 
 # Data files (saved_logs, saved_simulations)
-python/multimodalsim_viewer/data/saved_logs
-python/multimodalsim_viewer/data/saved_simulations
+output/saved_logs
+output/saved_simulations
 
 # Python Packages
 multimodal_ui.egg-info

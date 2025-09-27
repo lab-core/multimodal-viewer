@@ -7,6 +7,7 @@ from filelock import FileLock
 from multimodalsim_viewer.common.utils import (
     INPUT_DATA_DIRECTORY_PATH,
     NUMBER_OF_STATES_TO_SEND_AT_ONCE,
+    OUTPUT_DATA_DIRECTORY_PATH,
     SIMULATION_SAVE_FILE_SEPARATOR,
 )
 from multimodalsim_viewer.models.environment import VisualizedEnvironment
@@ -47,7 +48,7 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
     @staticmethod
     def get_saved_simulations_directory_path() -> str:
         directory_path = os.path.join(
-            SimulationVisualizationDataManager.get_data_directory_path(),
+            SimulationVisualizationDataManager.get_output_data_directory_path(),
             SimulationVisualizationDataManager.__SAVED_SIMULATIONS_DIRECTORY_NAME,
         )
 
@@ -528,19 +529,17 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
 
     # MARK: +- Simulation Data
     @staticmethod
-    def get_data_directory_path() -> str:
-        current_file_path = os.path.abspath(__file__)
-        current_file_dir = os.path.dirname(current_file_path)
-        data_directory_path = os.path.join(current_file_dir, "..", "data")
+    def get_output_data_directory_path() -> str:
+        output_data_directory = OUTPUT_DATA_DIRECTORY_PATH
 
-        if not os.path.exists(data_directory_path):
-            os.makedirs(data_directory_path)
+        if not os.path.exists(output_data_directory):
+            os.makedirs(output_data_directory)
 
-        return data_directory_path
+        return output_data_directory
 
     @staticmethod
     def get_saved_logs_directory_path() -> str:
-        data_directory_path = SimulationVisualizationDataManager.get_data_directory_path()
+        data_directory_path = SimulationVisualizationDataManager.get_output_data_directory_path()
         saved_logs_directory_path = os.path.join(data_directory_path, "saved_logs")
 
         if not os.path.exists(saved_logs_directory_path):
