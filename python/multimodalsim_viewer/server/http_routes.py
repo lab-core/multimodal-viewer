@@ -11,6 +11,11 @@ from multimodalsim_viewer.server.data_manager import SimulationVisualizationData
 from multimodalsim_viewer.server.simulation_manager import SimulationManager
 
 
+class InvalidFilesRequestError(Exception):
+    def __init__(self, error_message: str) -> None:
+        self.error_message = error_message
+
+
 def http_routes(simulation_manager: SimulationManager):
     blueprint = Blueprint("http_routes", __name__)
 
@@ -36,6 +41,30 @@ def http_routes(simulation_manager: SimulationManager):
 
         return zip_path
 
+    def save_and_extract_zip(path: str, files):
+        try:
+            if "file" not in files:
+                raise InvalidFilesRequestError("No file part")
+
+            file = files["file"]
+            if file.filename == "":
+                raise InvalidFilesRequestError("No selected file")
+
+            # Create temporary zip file
+            zip_path = os.path.join(tempfile.gettempdir(), file.filename)
+            file.save(zip_path)
+
+            # Extract files
+            with zipfile.ZipFile(zip_path, "r") as zip_ref:
+                zip_ref.extractall(path)
+                logging.info("Extracted files: %s", zip_ref.namelist())
+
+        # Let the exception propagate
+        finally:
+            # Remove temporary zip file
+            if os.path.exists(zip_path):
+                os.remove(zip_path)
+
     def handle_zip_upload(folder_path, on_success: Callable | None = None):
         parent_dir = os.path.dirname(folder_path)
         base_folder_name = os.path.basename(folder_path)
@@ -45,22 +74,10 @@ def http_routes(simulation_manager: SimulationManager):
 
         os.makedirs(actual_folder_path, exist_ok=True)
 
-        if "file" not in request.files:
-            return jsonify({"error": "No file part"}), 400
-
-        file = request.files["file"]
-        if file.filename == "":
-            return jsonify({"error": "No selected file"}), 400
-
-        zip_path = os.path.join(tempfile.gettempdir(), file.filename)
-        file.save(zip_path)
-
         try:
-            with zipfile.ZipFile(zip_path, "r") as zip_ref:
-                zip_ref.extractall(actual_folder_path)
-                logging.info("Extracted files: %s", zip_ref.namelist())
-
-            os.remove(zip_path)
+            save_and_extract_zip(actual_folder_path, request.files)
+        except InvalidFilesRequestError as error:
+            return jsonify({"error": error.error_message}), 400
         except zipfile.BadZipFile:
             return jsonify({"error": "Invalid ZIP file"}), 400
 
