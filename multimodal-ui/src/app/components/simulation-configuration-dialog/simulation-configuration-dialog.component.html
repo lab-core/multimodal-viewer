@@ -32,10 +32,13 @@
           </mat-form-field>
 
           <mat-form-field [subscriptSizing]="'dynamic'">
-            <mat-select
+            <input
+              type="text"
+              matInput
               formControlName="data"
-              (openedChange)="refreshAvailableData()"
-            >
+              [matAutocomplete]="auto"
+            />
+            <mat-autocomplete #auto (opened)="refreshAvailableData()">
               <mat-option (click)="instanceFolderImport.click()">
                 Import new instance
                 <mat-icon>add</mat-icon>
@@ -46,7 +49,8 @@
                 <mat-icon>add</mat-icon>
               </mat-option>
 
-              @for (data of availableSimulationDataSignal(); track data) {
+              @let filteredData = filteredData$ | async;
+              @for (data of filteredData; track data) {
                 <mat-option class="instance" [value]="data">
                   <mat-icon
                     class="delete"
@@ -57,10 +61,13 @@
                   {{ data }}
                 </mat-option>
               }
-            </mat-select>
+            </mat-autocomplete>
             <mat-label>Data</mat-label>
             @if (dataFormControl.hasError("required")) {
               <mat-error>Data is required</mat-error>
+            }
+            @if (dataFormControl.hasError("doesNotExist")) {
+              <mat-error>Provided data does not exist</mat-error>
             }
           </mat-form-field>
         </section>

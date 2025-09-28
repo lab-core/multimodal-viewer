@@ -1,4 +1,5 @@
-import { Component, Inject, Injector, OnDestroy, Signal } from '@angular/core';
+import { AsyncPipe } from '@angular/common';
+import { Component, Inject, Injector, OnDestroy } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
@@ -10,6 +11,10 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
+import {
+  MatAutocomplete,
+  MatAutocompleteModule,
+} from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import {
@@ -23,11 +28,14 @@ import {
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import JSZip from 'jszip';
 import {
+  combineLatest,
   filter,
   firstValueFrom,
+  map,
+  Observable,
+  startWith,
   Subject,
   take,
   takeUntil,
@@ -69,10 +77,12 @@ export interface SimulationConfigurationDialogResult {
     MatButtonModule,
     MatFormFieldModule,
     ReactiveFormsModule,
-    MatSelectModule,
+    MatAutocompleteModule,
     MatCheckboxModule,
     MatInputModule,
     MatIconModule,
+    MatAutocomplete,
+    AsyncPipe,
   ],
   templateUrl: './simulation-configuration-dialog.component.html',
   styleUrl: './simulation-configuration-dialog.component.css',
@@ -90,6 +100,8 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
   readonly shouldRunInBackgroundFormControl: FormControl<boolean | null>;
 
   private readonly unsubscribe$ = new Subject<void>();
+
+  readonly filteredData$: Observable<string[]>;
 
   constructor(
     @Inject(MAT_DIALOG_DATA)
@@ -121,7 +133,28 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     if (this.data.mode === 'start') {
       // eslint-disable-next-line @typescript-eslint/unbound-method
       this.dataFormControl.addValidators(Validators.required);
+      this.dataFormControl.addValidators(
+        (control: AbstractControl): ValidationErrors | null =>
+          this.dataService
+            .availableSimulationDataSignal()
+            .includes(control.value as string)
+            ? null
+            : { doesNotExist: true },
+      );
     }
+
+    this.filteredData$ = combineLatest([
+      this.dataFormControl.valueChanges.pipe(startWith('')),
+      toObservable(this.dataService.availableSimulationDataSignal),
+    ]).pipe(
+      map(([value, data]) =>
+        value
+          ? data.filter((name) =>
+              name.toLowerCase().includes(value.toLowerCase()),
+            )
+          : data,
+      ),
+    );
 
     this.shouldRunInBackgroundFormControl = this.formBuilder.control(false);
 
@@ -184,10 +217,6 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     } else {
       console.error('Invalid form', this.formGroup);
     }
-  }
-
-  get availableSimulationDataSignal(): Signal<string[]> {
-    return this.dataService.availableSimulationDataSignal;
   }
 
   refreshAvailableData() {
