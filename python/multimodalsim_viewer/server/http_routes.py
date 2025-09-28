@@ -154,8 +154,8 @@ def http_routes(simulation_manager: SimulationManager):  # pylint: disable=too-m
     def import_instances(folder_name):  # pylint: disable=unused-argument
         return handle_zip_multiple_upload(SimulationVisualizationDataManager.get_input_data_directory_path())
 
-    @blueprint.route("/api/input_data/<folder_name>", methods=["DELETE"])
-    def delete_input_data(folder_name):
+    @blueprint.route("/api/instance/<folder_name>", methods=["DELETE"])
+    def delete_instance(folder_name):
         folder_path = SimulationVisualizationDataManager.get_input_data_directory_path(folder_name)
         if not os.path.isdir(folder_path):
             return jsonify({"error": "Folder not found"}), 404

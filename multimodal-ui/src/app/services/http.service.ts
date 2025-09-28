@@ -5,6 +5,8 @@ import { environment } from '../../environments/environment';
 
 export type ImportFolderContent = 'instance' | 'instances' | 'simulation';
 
+export type DeleteFolderContent = 'instance' | 'simulation';
+
 export interface ImportFolderResponse {
   message: string;
   folderName: string;
@@ -36,7 +38,7 @@ export class HttpService {
   }
 
   deleteFolder(
-    folderContent: string,
+    folderContent: DeleteFolderContent,
     folderName: string,
   ): Observable<{ message: string }> {
     return this.http.delete<{ message: string }>(

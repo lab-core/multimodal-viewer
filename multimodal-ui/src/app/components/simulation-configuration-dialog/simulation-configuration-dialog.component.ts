@@ -36,6 +36,7 @@ import {
 import { SIMULATION_SAVE_FILE_SEPARATOR } from '../../../environments/environment';
 import { SimulationConfiguration } from '../../interfaces/simulation.model';
 import { DataService } from '../../services/data.service';
+import { DialogService } from '../../services/dialog.service';
 import {
   HttpService,
   ImportFolderContent,
@@ -103,6 +104,7 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     private readonly loadingService: LoadingService,
     private readonly snackBarService: SnackBarService,
     private readonly injector: Injector,
+    private readonly dialogService: DialogService,
   ) {
     // Initialize form
     this.nameFormControl = this.formBuilder.control(null, [
@@ -243,25 +245,7 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
       'Importing instance folder...',
       'instance',
       async (response: ImportFolderResponse) => {
-        await new Promise((resolve, reject) => {
-          toObservable(this.dataService.availableSimulationDataSignal, {
-            injector: this.injector,
-          })
-            .pipe(
-              filter((data) =>
-                data.some((dataName) => dataName === response.folderName),
-              ),
-              timeout({ first: 3000 }),
-              take(1),
-            )
-            .subscribe({
-              next: (data) => resolve(data),
-              error: () =>
-                reject(new Error('Timeout waiting for available data')),
-            });
-
-          this.dataService.queryAvailableData();
-        });
+        await this.waitForInstanceToAppear(response.folderName);
 
         this.dataFormControl.setValue(response.folderName);
       },
@@ -277,6 +261,45 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
         this.dataService.queryAvailableData();
       },
     );
+  }
+
+  async onDeleteInstance(event: Event, instanceName: string) {
+    event.stopPropagation();
+
+    const shouldContinue = await firstValueFrom(
+      this.dialogService
+        .openInformationDialog({
+          title: 'Deleting Instance ' + instanceName,
+          message:
+            'Are you sure you want to delete this instance? This action cannot be undone.',
+          type: 'warning',
+          confirmButtonOverride: null,
+          cancelButtonOverride: null,
+          canCancel: true,
+        })
+        .afterClosed(),
+    );
+
+    if (!shouldContinue) {
+      return;
+    }
+
+    try {
+      this.loadingService.start('Deleting instance folder...');
+
+      await firstValueFrom(
+        this.httpService.deleteFolder('instance', instanceName),
+      );
+
+      await this.waitForInstanceToDisappear(instanceName);
+
+      this.snackBarService.showMessage('Deletion successful', 'success');
+    } catch (error) {
+      console.error('HTTP error during deletion:', error);
+      this.snackBarService.showMessage('Deletion failed', 'error');
+    } finally {
+      this.loadingService.stop();
+    }
   }
 
   private async importInstanceOrInstances(
@@ -331,5 +354,42 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
       target.value = '';
       this.loadingService.stop();
     }
+  }
+  private async waitForInstanceToAppear(instanceName: string) {
+    return new Promise((resolve, reject) => {
+      toObservable(this.dataService.availableSimulationDataSignal, {
+        injector: this.injector,
+      })
+        .pipe(
+          filter((data) => data.some((dataName) => dataName === instanceName)),
+          timeout({ first: 3000 }),
+          take(1),
+        )
+        .subscribe({
+          next: (data) => resolve(data),
+          error: () => reject(new Error('Timeout waiting for available data')),
+        });
+
+      this.dataService.queryAvailableData();
+    });
+  }
+
+  private async waitForInstanceToDisappear(instanceName: string) {
+    return new Promise((resolve, reject) => {
+      toObservable(this.dataService.availableSimulationDataSignal, {
+        injector: this.injector,
+      })
+        .pipe(
+          filter((data) => data.every((dataName) => dataName !== instanceName)),
+          timeout({ first: 3000 }),
+          take(1),
+        )
+        .subscribe({
+          next: (data) => resolve(data),
+          error: () => reject(new Error('Timeout waiting for available data')),
+        });
+
+      this.dataService.queryAvailableData();
+    });
   }
 }

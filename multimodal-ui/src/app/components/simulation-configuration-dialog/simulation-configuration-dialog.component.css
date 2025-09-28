@@ -16,3 +16,25 @@
     flex: 1;
   }
 }
+
+mat-option.instance ::ng-deep .mdc-list-item__primary-text {
+  min-width: 0;
+  word-break: break-all;
+}
+
+mat-option:hover mat-icon.delete {
+  visibility: visible;
+}
+
+mat-option mat-icon.delete {
+  visibility: hidden;
+  padding: 0.5rem;
+  transform: translateX(-0.5rem);
+  margin-inline-end: 0;
+}
+
+mat-option mat-icon.delete:hover {
+  cursor: pointer;
+  background-color: #cccccc;
+  border-radius: 50%;
+}

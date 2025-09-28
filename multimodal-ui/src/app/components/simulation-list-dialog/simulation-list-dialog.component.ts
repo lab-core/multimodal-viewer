@@ -325,10 +325,8 @@ export class SimulationListDialogComponent {
     try {
       this.loadingService.start('Deleting simulation folder...');
 
-      const folderContents = 'simulation';
-
       await firstValueFrom(
-        this.httpService.deleteFolder(folderContents, simulationId),
+        this.httpService.deleteFolder('simulation', simulationId),
       );
 
       await this.waitForSimulationToDisappear(simulationId);
