@@ -3,6 +3,13 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
+export type ImportFolderContent = 'instance' | 'instances' | 'simulation';
+
+export interface ImportFolderResponse {
+  message: string;
+  folderName: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -18,10 +25,10 @@ export class HttpService {
   }
 
   importFolder(
-    folderContent: string,
+    folderContent: ImportFolderContent,
     folderName: string,
     formData: FormData,
-  ): Observable<{ message: string; folderName: string }> {
+  ): Observable<ImportFolderResponse> {
     return this.http.post<{ message: string; folderName: string }>(
       this.apiUrl + `${folderContent}/${folderName}`,
       formData,

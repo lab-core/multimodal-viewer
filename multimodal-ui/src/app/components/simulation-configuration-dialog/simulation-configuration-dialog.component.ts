@@ -36,7 +36,11 @@ import {
 import { SIMULATION_SAVE_FILE_SEPARATOR } from '../../../environments/environment';
 import { SimulationConfiguration } from '../../interfaces/simulation.model';
 import { DataService } from '../../services/data.service';
-import { HttpService } from '../../services/http.service';
+import {
+  HttpService,
+  ImportFolderContent,
+  ImportFolderResponse,
+} from '../../services/http.service';
 import { LoadingService } from '../../services/loading.service';
 import { SnackBarService } from '../../services/snack-bar.service';
 
@@ -233,41 +237,12 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     };
   }
 
-  importInputData() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.webkitdirectory = true;
-    input.multiple = true;
-
-    const handleFileChange = async (event: Event) => {
-      const files = (event.target as HTMLInputElement).files;
-      if (!files || files.length === 0) {
-        return;
-      }
-
-      try {
-        this.loadingService.start('Uploading data folder...');
-
-        const zip = new JSZip();
-        const baseFolder = files[0].webkitRelativePath.split('/')[0];
-
-        for (const file of Array.from(files)) {
-          const relativePath = file.webkitRelativePath.replace(
-            baseFolder + '/',
-            '',
-          );
-          zip.file(relativePath, file);
-        }
-
-        const blob = await zip.generateAsync({ type: 'blob' });
-        const contentType = 'input_data';
-        const formData = new FormData();
-        formData.append('file', blob, 'folder.zip');
-
-        const response = await firstValueFrom(
-          this.httpService.importFolder(contentType, baseFolder, formData),
-        );
-
+  async onInstanceFolderImport(event: Event) {
+    await this.importInstanceOrInstances(
+      event,
+      'Importing instance folder...',
+      'instance',
+      async (response: ImportFolderResponse) => {
         await new Promise((resolve, reject) => {
           toObservable(this.dataService.availableSimulationDataSignal, {
             injector: this.injector,
@@ -289,22 +264,72 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
         });
 
         this.dataFormControl.setValue(response.folderName);
+      },
+    );
+  }
 
-        this.snackBarService.showMessage('Upload successful', 'success');
-      } catch (error) {
-        console.error('Upload failed:', error);
-        this.snackBarService.showMessage('Upload failed', 'error');
-      } finally {
-        this.loadingService.stop();
+  async onInstancesFolderImport(event: Event) {
+    await this.importInstanceOrInstances(
+      event,
+      'Importing instances folder...',
+      'instances',
+      () => {
+        this.dataService.queryAvailableData();
+      },
+    );
+  }
+
+  private async importInstanceOrInstances(
+    event: Event,
+    loadingLabel: string,
+    importFolderContent: ImportFolderContent,
+    afterImport: (response: ImportFolderResponse) => Promise<void> | void,
+  ) {
+    const files = (event.target as HTMLInputElement).files;
+    if (!files || files.length === 0) {
+      return;
+    }
+
+    try {
+      this.loadingService.start(loadingLabel);
+
+      const zip = new JSZip();
+      const baseFolder = files[0].webkitRelativePath.split('/')[0];
+
+      for (const file of Array.from(files)) {
+        const relativePath = file.webkitRelativePath.replace(
+          baseFolder + '/',
+          '',
+        );
+        zip.file(relativePath, file);
       }
-    };
 
-    input.addEventListener('change', (event: Event) => {
-      handleFileChange(event).catch((error) => {
-        console.error('Error handling file change:', error);
-      });
-    });
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const formData = new FormData();
+      formData.append('file', blob, 'folder.zip');
 
-    input.click();
+      const response = await firstValueFrom(
+        this.httpService.importFolder(
+          importFolderContent,
+          baseFolder,
+          formData,
+        ),
+      );
+
+      const maybePromise = afterImport(response);
+
+      if (maybePromise instanceof Promise) {
+        await maybePromise;
+      }
+
+      this.snackBarService.showMessage('Import successful', 'success');
+    } catch (error) {
+      console.error('Import failed:', error);
+      this.snackBarService.showMessage('Import failed', 'error');
+    } finally {
+      const target = event.target as HTMLInputElement;
+      target.value = '';
+      this.loadingService.stop();
+    }
   }
 }
