@@ -164,6 +164,8 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
   }
 
   onSave() {
+    this.formGroup.markAllAsTouched();
+
     if (this.formGroup.valid) {
       this.dialogRef.close(this.buildResult());
     } else {

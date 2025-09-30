@@ -499,34 +499,6 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
 
         return polylines, version
 
-    @staticmethod
-    def get_all_simulation_states(simulation_id: str) -> tuple[list[str], dict[list[str]]]:
-        states = []
-        updates = {}
-
-        sorted_states = SimulationVisualizationDataManager.get_sorted_states(simulation_id)
-
-        for update_index, timestamp in sorted_states:
-            file_path = SimulationVisualizationDataManager.get_saved_simulation_state_file_path(
-                simulation_id, update_index, timestamp
-            )
-
-            lock = FileLock(f"{file_path}.lock")
-
-            with lock:
-                with open(file_path, "r", encoding="utf-8") as file:
-                    state_data = file.readline()
-                    states.append(state_data)
-
-                    updates_data = file.readlines()
-                    current_state_updates = []
-                    for update_data in updates_data:
-                        current_state_updates.append(update_data)
-
-                    updates[update_index] = current_state_updates
-
-        return states, updates
-
     # MARK: +- Simulation Data
     @staticmethod
     def get_output_data_directory_path() -> str:

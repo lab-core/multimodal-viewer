@@ -235,9 +235,7 @@ export class SimulationListDialogComponent {
         .importFolder('simulation', baseFolder, formData)
         .subscribe({
           next: (response: { message?: string; error?: string }) => {
-            if (response.message) {
-              this.communicationService.emit('get-simulations');
-            } else if (response.error) {
+            if (response.error) {
               console.error('Upload failed:', response.error);
             }
           },
@@ -294,7 +292,6 @@ export class SimulationListDialogComponent {
         if (response.error) {
           console.error('Failed to delete simulation:', response.error);
         }
-        this.communicationService.emit('get-simulations');
       },
       error: (err) => {
         console.error('HTTP error during deletion:', err);

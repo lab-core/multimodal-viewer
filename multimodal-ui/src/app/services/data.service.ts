@@ -6,7 +6,7 @@ import {
   WritableSignal,
 } from '@angular/core';
 import {
-  extractSimulations,
+  extractSimulation,
   Simulation,
   sortSimulations,
 } from '../interfaces/simulation.model';
@@ -50,15 +50,38 @@ export class DataService {
   }
 
   private listen() {
-    this.communicationService.on('simulations', (data) => {
-      const simulations = extractSimulations(data);
+    this.communicationService.on('simulation', (data) => {
+      const simulation = extractSimulation(data);
 
-      if (simulations === null) {
-        console.error('Invalid simulations data', data);
+      if (simulation === null) {
+        console.error('Invalid simulation data', data);
         return;
       }
 
-      this._simulationsSignal.set(simulations);
+      this._simulationsSignal.update((simulations) => {
+        const index = simulations.findIndex((s) => s.id === simulation.id);
+
+        if (index !== -1) {
+          simulations[index] = simulation;
+        } else {
+          simulations.push(simulation);
+        }
+
+        return [...simulations];
+      });
+    });
+
+    this.communicationService.on('delete-simulation', (data) => {
+      if (typeof data !== 'string') {
+        console.error('Invalid delete simulation data', data);
+        return;
+      }
+
+      const simulationId = data;
+
+      this._simulationsSignal.update((simulations) =>
+        simulations.filter((s) => s.id !== simulationId),
+      );
     });
 
     this.communicationService.on('available-data', (data) => {
@@ -80,6 +103,9 @@ export class DataService {
   }
 
   private querySimulations() {
-    this.communicationService.emit('get-simulations');
+    this.communicationService.emit(
+      'get-simulations',
+      this._simulationsSignal().map((simulation) => simulation.id),
+    );
   }
 }

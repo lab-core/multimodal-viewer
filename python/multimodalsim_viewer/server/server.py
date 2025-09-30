@@ -14,16 +14,16 @@ from multimodalsim_viewer.server.simulation_manager import SimulationManager
 def configure_server() -> tuple[Flask, SocketIO]:  # pylint: disable=too-many-statements, too-many-locals
     app = Flask(__name__)
 
+    socketio = SocketIO(app, cors_allowed_origins="*")
+
+    simulation_manager = SimulationManager(socketio)
+
     # Register HTTP routes
     CORS(app)
-    app.register_blueprint(http_routes)
-
-    socketio = SocketIO(app, cors_allowed_origins="*")
+    app.register_blueprint(http_routes(simulation_manager))
 
     # key = session id, value = auth type
     sockets_types_by_session_id = {}
-
-    simulation_manager = SimulationManager()
 
     # MARK: Main events
     @socketio.on("connect")
@@ -69,9 +69,9 @@ def configure_server() -> tuple[Flask, SocketIO]:  # pylint: disable=too-many-st
         simulation_manager.resume_simulation(simulation_id)
 
     @socketio.on("get-simulations")
-    def on_client_get_simulations():
-        log("getting simulations", "client")
-        simulation_manager.emit_simulations()
+    def on_client_get_simulations(loaded_simulations_ids: list[str]):
+        log(f"getting simulations with already loaded ids {loaded_simulations_ids}", "client")
+        simulation_manager.emit_simulations(loaded_simulations_ids)
 
     @socketio.on("get-available-data")
     def on_client_get_data():
@@ -135,10 +135,6 @@ def configure_server() -> tuple[Flask, SocketIO]:  # pylint: disable=too-many-st
     def on_simulation_resume(simulation_id):
         log(f"simulation {simulation_id} resumed", "simulation")
         simulation_manager.on_simulation_resume(simulation_id)
-
-    @socketio.on("log")
-    def on_simulation_log(simulation_id, message):
-        log(f"simulation  {simulation_id}: {message}", "simulation", logging.DEBUG)
 
     @socketio.on("simulation-update-time")
     def on_simulation_update_time(simulation_id, timestamp):
