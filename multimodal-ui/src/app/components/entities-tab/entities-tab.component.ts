@@ -16,12 +16,14 @@ import { EntityNameComponent } from '../entity-name/entity-name.component';
 })
 export class EntitiesTabComponent {
   // MARK: Properties
-  readonly getPassengers: Signal<Passenger[]> = computed(() => {
+  readonly passengersSignal: Signal<Passenger[]> = computed(() => {
     const environment = this.visualizationService.environmentSignal();
+
     if (environment === null) {
       return [];
     }
-    return Object.values(environment.passengers);
+
+    return environment.allPassengers;
   });
 
   readonly numberOfPassengersByStatusSignal: Signal<
@@ -31,21 +33,8 @@ export class EntitiesTabComponent {
       passengers: Passenger[];
     }[]
   > = computed(() => {
-    const environment = this.visualizationService.environmentSignal();
-    if (environment === null) {
-      return [];
-    }
+    const passengers = this.passengersSignal();
 
-    const passengers = Object.values(environment.passengers);
-    passengers.sort(
-      (a, b) =>
-        b.nextLegs.length +
-        b.previousLegs.length +
-        (b.currentLeg != null ? 1 : 0) -
-        (a.nextLegs.length +
-          a.previousLegs.length +
-          (a.currentLeg != null ? 1 : 0)),
-    );
     const counts: Record<string, Passenger[]> = {};
 
     for (const passenger of passengers) {
@@ -61,12 +50,14 @@ export class EntitiesTabComponent {
     }));
   });
 
-  readonly getVehicles: Signal<Vehicle[]> = computed(() => {
+  readonly vehiclesSignal: Signal<Vehicle[]> = computed(() => {
     const environment = this.visualizationService.environmentSignal();
+
     if (environment === null) {
       return [];
     }
-    return Object.values(environment.vehicles);
+
+    return environment.allVehicles;
   });
 
   readonly numberOfVehiclesByStatusSignal: Signal<
@@ -76,13 +67,8 @@ export class EntitiesTabComponent {
       vehicles: Vehicle[];
     }[]
   > = computed(() => {
-    const environment = this.visualizationService.environmentSignal();
+    const vehicles = this.vehiclesSignal();
 
-    if (environment === null) {
-      return [];
-    }
-
-    const vehicles = Object.values(environment.vehicles);
     const counts: Record<string, Vehicle[]> = {};
 
     for (const vehicle of vehicles) {
@@ -98,11 +84,13 @@ export class EntitiesTabComponent {
     }));
   });
 
+  // MARK: Constructor
   constructor(
     private readonly animationService: AnimationService,
     private readonly visualizationService: VisualizationService,
   ) {}
 
+  // MARK: Methods
   preselectEntity(entity: EntityMetadata) {
     this.animationService.preselectEntity(entity, false);
   }

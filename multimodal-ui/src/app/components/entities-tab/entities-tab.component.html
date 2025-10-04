@@ -1,97 +1,97 @@
 <mat-accordion multi="true">
   <mat-expansion-panel>
-    @let passengers = getPassengers();
+    @let passengers = passengersSignal();
     @let numberOfPassengersByStatus = numberOfPassengersByStatusSignal();
+
     <mat-expansion-panel-header>
       <mat-panel-title> Passengers ({{ passengers.length }}) </mat-panel-title>
     </mat-expansion-panel-header>
-    <div class="flex-column gap-0-5-rem">
-      <mat-accordion multi="true">
-        @for (
-          passengerStatusAndCount of numberOfPassengersByStatus;
-          track passengerStatusAndCount.status
-        ) {
-          <mat-expansion-panel>
-            <mat-expansion-panel-header>
-              <mat-panel-title>
-                {{ passengerStatusAndCount.status }} ({{
-                  passengerStatusAndCount.count
-                }})
-              </mat-panel-title>
-            </mat-expansion-panel-header>
-            <div class="flex-column gap-0-5-rem">
-              @for (
-                passenger of passengerStatusAndCount.passengers;
-                track passenger.id
-              ) {
-                <div
-                  tabindex="0"
-                  class="clickable indent"
-                  [matTooltip]="'Select passenger'"
-                  [matTooltipPosition]="'after'"
-                  (click)="selectEntity(passenger)"
-                  (mouseenter)="preselectEntity(passenger)"
-                  (mouseleave)="unpreselectEntity()"
-                  (keydown.enter)="selectEntity(passenger)"
-                >
-                  <app-entity-name
-                    [name]="passenger.name"
-                    [tags]="passenger.tags"
-                  />
-                </div>
-              }
-            </div>
-          </mat-expansion-panel>
-        }
-      </mat-accordion>
-    </div>
+
+    <mat-accordion multi="true">
+      @for (
+        passengerStatusAndCount of numberOfPassengersByStatus;
+        track passengerStatusAndCount.status
+      ) {
+        <mat-expansion-panel>
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              {{ passengerStatusAndCount.status }} ({{
+                passengerStatusAndCount.count
+              }})
+            </mat-panel-title>
+          </mat-expansion-panel-header>
+
+          @for (
+            passenger of passengerStatusAndCount.passengers;
+            track passenger.id
+          ) {
+            @defer (on viewport) {
+              <div
+                tabindex="0"
+                class="clickable indent"
+                [matTooltip]="'Select passenger'"
+                [matTooltipPosition]="'after'"
+                (click)="selectEntity(passenger)"
+                (mouseenter)="preselectEntity(passenger)"
+                (mouseleave)="unpreselectEntity()"
+                (keydown.enter)="selectEntity(passenger)"
+              >
+                <app-entity-name
+                  [name]="passenger.name"
+                  [tags]="passenger.tags"
+                />
+              </div>
+            } @placeholder {
+              <div class="placeholder"></div>
+            }
+          }
+        </mat-expansion-panel>
+      }
+    </mat-accordion>
   </mat-expansion-panel>
 
   <mat-expansion-panel>
-    @let vehicles = getVehicles();
+    @let vehicles = vehiclesSignal();
     @let numberOfVehiclesByStatus = numberOfVehiclesByStatusSignal();
+
     <mat-expansion-panel-header>
       <mat-panel-title> Vehicles ({{ vehicles.length }}) </mat-panel-title>
     </mat-expansion-panel-header>
-    <div class="flex-column gap-0-5-rem">
-      <mat-accordion multi="true">
-        @for (
-          vehicleStatusAndCount of numberOfVehiclesByStatus;
-          track vehicleStatusAndCount.status
-        ) {
-          <mat-expansion-panel>
-            <mat-expansion-panel-header>
-              <mat-panel-title>
-                {{ vehicleStatusAndCount.status }} ({{
-                  vehicleStatusAndCount.count
-                }})
-              </mat-panel-title>
-            </mat-expansion-panel-header>
-            <div class="flex-column gap-0-5-rem">
-              @for (
-                vehicle of vehicleStatusAndCount.vehicles;
-                track vehicle.id
-              ) {
-                <div
-                  tabindex="0"
-                  class="clickable indent"
-                  [matTooltip]="'Select vehicle'"
-                  [matTooltipPosition]="'after'"
-                  (click)="selectEntity(vehicle)"
-                  (mouseenter)="preselectEntity(vehicle)"
-                  (mouseleave)="unpreselectEntity()"
-                  (keydown.enter)="selectEntity(vehicle)"
-                >
-                  <app-entity-name
-                    [name]="vehicle.name"
-                    [tags]="vehicle.tags"
-                  />
-                </div>
-              }
-            </div>
-          </mat-expansion-panel>
-        }
-      </mat-accordion>
-    </div>
+
+    <mat-accordion multi="true">
+      @for (
+        vehicleStatusAndCount of numberOfVehiclesByStatus;
+        track vehicleStatusAndCount.status
+      ) {
+        <mat-expansion-panel>
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              {{ vehicleStatusAndCount.status }} ({{
+                vehicleStatusAndCount.count
+              }})
+            </mat-panel-title>
+          </mat-expansion-panel-header>
+
+          @for (vehicle of vehicleStatusAndCount.vehicles; track vehicle.id) {
+            @defer (on viewport) {
+              <div
+                tabindex="0"
+                class="clickable indent"
+                [matTooltip]="'Select vehicle'"
+                [matTooltipPosition]="'after'"
+                (click)="selectEntity(vehicle)"
+                (mouseenter)="preselectEntity(vehicle)"
+                (mouseleave)="unpreselectEntity()"
+                (keydown.enter)="selectEntity(vehicle)"
+              >
+                <app-entity-name [name]="vehicle.name" [tags]="vehicle.tags" />
+              </div>
+            } @placeholder {
+              <div class="placeholder"></div>
+            }
+          }
+        </mat-expansion-panel>
+      }
+    </mat-accordion>
   </mat-expansion-panel>
 </mat-accordion>

@@ -7,11 +7,10 @@ import { Component, input, InputSignal } from '@angular/core';
   styleUrl: './entity-name.component.scss',
 })
 export class EntityNameComponent {
-  nameInputSignal: InputSignal<string | null | undefined> = input.required<
-    string | null | undefined
-  >({ alias: 'name' });
+  readonly nameInputSignal: InputSignal<string | null | undefined> =
+    input.required<string | null | undefined>({ alias: 'name' });
 
-  tagsInputSignal: InputSignal<string[] | undefined> = input.required<
+  readonly tagsInputSignal: InputSignal<string[] | undefined> = input.required<
     string[] | undefined
   >({
     alias: 'tags',
