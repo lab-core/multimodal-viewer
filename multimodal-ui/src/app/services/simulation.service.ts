@@ -1,10 +1,12 @@
 import {
   computed,
+  effect,
   Injectable,
   signal,
   Signal,
   WritableSignal,
 } from '@angular/core';
+import { DEBUG_TASKS } from '../../environments/environment';
 import {
   ContinuousEnvironment,
   ContinuousEnvironmentReferences,
@@ -17,9 +19,11 @@ import {
 } from '../interfaces/polylines.model';
 import { Simulation } from '../interfaces/simulation.model';
 import { SimulationState } from '../interfaces/state.model';
+import { EXTRACT_STATE_TASK_PRIORITY, Task } from '../interfaces/task.model';
 import { CommunicationService } from './communication.service';
 import { DataService } from './data.service';
 import { TaskService } from './task.service';
+import { TimerService } from './timer.service';
 
 interface DebounceSettings {
   readonly debounceTime: number;
@@ -32,16 +36,23 @@ interface DebounceSettings {
 })
 export class SimulationService {
   // MARK: Properties
+  private readonly MAX_STATES_EXTRACTION_CONCURRENT_TASKS = 10;
+
+  private readonly stateExtractionTasks = new Map<
+    number,
+    { task: Task; startTimestamp: number }
+  >();
+
   private readonly _activeSimulationIdSignal: WritableSignal<string | null> =
     signal(null);
 
   private readonly _simulationPolylinesSignal: WritableSignal<AllPolylines | null> =
     signal(null);
 
-  private readonly _isFetchingStatesSignal: WritableSignal<boolean> =
+  private readonly isFetchingStatesSignal: WritableSignal<boolean> =
     signal(false);
 
-  private readonly _isFetchingPolylinesSignal: WritableSignal<boolean> =
+  private readonly isFetchingPolylinesSignal: WritableSignal<boolean> =
     signal(false);
 
   private readonly _continuousEnvironmentsSignal: WritableSignal<
@@ -53,7 +64,7 @@ export class SimulationService {
   private references: ContinuousEnvironmentReferences =
     createContinuousEnvironmentReferences();
 
-  private readonly _hasAllStatesSignal: WritableSignal<boolean> = signal(false);
+  private readonly hasAllStatesSignal: WritableSignal<boolean> = signal(false);
 
   private readonly getPolylinesDebounceSettings: DebounceSettings = {
     debounceTime: 500,
@@ -63,17 +74,35 @@ export class SimulationService {
 
   private readonly getMissingSimulationStatesDebounceSettings: DebounceSettings =
     {
-      debounceTime: 500,
+      debounceTime: 100,
       lastExecutionTime: null,
       timeoutId: null,
     };
+
+  private wantedVisualizationTimeSignal: WritableSignal<number | null> =
+    signal(null);
 
   // MARK: Constructor
   constructor(
     private readonly dataService: DataService,
     private readonly communicationService: CommunicationService,
     private readonly taskService: TaskService,
-  ) {}
+    private readonly timerService: TimerService,
+  ) {
+    effect(() => this.getPolylinesIfNeeded());
+
+    effect(() => this.getMissingSimulationStatesIfNeeded());
+
+    effect(
+      () => (this.timerService.simulation = this.activeSimulationSignal()),
+    );
+
+    effect(
+      () =>
+        (this.timerService.continuousEnvironments =
+          this.continuousEnvironmentsSignal()),
+    );
+  }
 
   // MARK: Active simulation
   setActiveSimulationId(simulationId: string) {
@@ -83,14 +112,9 @@ export class SimulationService {
 
     this.communicationService.on(
       'missing-simulation-states',
-      (
-        serializedMissingStatesEnvironments,
-        serializedMissingStatesUpdates,
-        hasAllStates,
-      ) => {
+      (serializedMissingStatesEnvironments, hasAllStates) => {
         this.onMissingSimulationStates(
           serializedMissingStatesEnvironments,
-          serializedMissingStatesUpdates,
           hasAllStates,
         );
       },
@@ -99,7 +123,7 @@ export class SimulationService {
     this.communicationService.on(
       `polylines-${simulationId}`,
       (polylinesByCoordinates, version) => {
-        this._isFetchingPolylinesSignal.set(false);
+        this.isFetchingPolylinesSignal.set(false);
 
         this._simulationPolylinesSignal.set(
           extractAllPolylines(polylinesByCoordinates, version),
@@ -115,8 +139,8 @@ export class SimulationService {
 
     this._simulationPolylinesSignal.set(null);
 
-    this._isFetchingStatesSignal.set(false);
-    this._isFetchingPolylinesSignal.set(false);
+    this.isFetchingStatesSignal.set(false);
+    this.isFetchingPolylinesSignal.set(false);
 
     this.communicationService.removeAllListeners('missing-simulation-states');
 
@@ -132,7 +156,7 @@ export class SimulationService {
 
     this.references = createContinuousEnvironmentReferences();
 
-    this._hasAllStatesSignal.set(false);
+    this.hasAllStatesSignal.set(false);
   }
 
   get activeSimulationSignal(): Signal<Simulation | null> {
@@ -176,26 +200,121 @@ export class SimulationService {
     );
   }
 
-  getMissingSimulationStates(
-    simulationId: string,
-    visualizationTime: number,
-    completeStateUpdateIndexes: number[],
-  ) {
-    return this.runWithDebounce(() => {
-      this.getMissingSimulationStatesWithDebounce(
-        simulationId,
-        visualizationTime,
-        completeStateUpdateIndexes,
+  // MARK: States
+  private getMissingSimulationStatesIfNeeded() {
+    const hasAllStates = this.hasAllStatesSignal();
+
+    if (hasAllStates) {
+      return;
+    }
+
+    const simulation = this.activeSimulationSignal();
+
+    if (simulation === null) {
+      this.timerService.isLoading = true;
+      return;
+    }
+
+    const wantedVisualizationTime = this.wantedVisualizationTimeSignal();
+
+    if (wantedVisualizationTime === null) {
+      this.timerService.isLoading = true;
+      return;
+    }
+
+    this.updateTasksPriority(wantedVisualizationTime);
+
+    const isFetching = this.isFetchingStatesSignal();
+
+    if (isFetching) {
+      return;
+    }
+
+    const continuousEnvironments = this.continuousEnvironmentsSignal();
+
+    if (
+      this.stateExtractionTasks.size >=
+      this.MAX_STATES_EXTRACTION_CONCURRENT_TASKS
+    ) {
+      return;
+    }
+
+    const completeStateUpdateIndexes = continuousEnvironments
+      .filter((continuousEnvironment) => continuousEnvironment.isComplete)
+      .map((continuousEnvironment) => continuousEnvironment.startUpdateIndex);
+
+    const currentlyProcessingStateUpdateIndexes = Array.from(
+      this.stateExtractionTasks.keys(),
+    );
+
+    this.runWithDebounce(() => {
+      this.getMissingSimulationStates(
+        simulation.id,
+        wantedVisualizationTime,
+        Array.from(
+          new Set(
+            completeStateUpdateIndexes.concat(
+              currentlyProcessingStateUpdateIndexes,
+            ),
+          ),
+        ),
       );
     }, this.getMissingSimulationStatesDebounceSettings);
   }
 
-  private getMissingSimulationStatesWithDebounce(
+  private updateTasksPriority(wantedVisualizationTime: number) {
+    let mostUrgentTask: { task: Task; startTimestamp: number } | null = null;
+
+    for (const task of this.stateExtractionTasks.values()) {
+      task.task.priority = EXTRACT_STATE_TASK_PRIORITY;
+
+      const proximity = wantedVisualizationTime - task.startTimestamp;
+
+      const previousProximity = mostUrgentTask === null ? Infinity : proximity;
+
+      /**
+       * The most urgent task is the one with a start time before the wanted
+       * visualization time that is the closest to it.
+       *
+       * If all tasks are after the wanted visualization time, then the most
+       * urgent task is the one with the closest start time.
+       **/
+      if (
+        (proximity < 0 &&
+          (previousProximity > 0 || proximity > previousProximity)) ||
+        proximity < previousProximity
+      ) {
+        mostUrgentTask = task;
+      }
+    }
+
+    if (mostUrgentTask) {
+      mostUrgentTask.task.priority = EXTRACT_STATE_TASK_PRIORITY + 1;
+    }
+
+    if (DEBUG_TASKS) {
+      console.debug('updateTasksPriority', {
+        wantedVisualizationTime,
+        mostUrgentTask,
+        stateExtractionTasks: this.stateExtractionTasks,
+      });
+    }
+  }
+
+  private getMissingSimulationStates(
     simulationId: string,
     visualizationTime: number,
     completeStateUpdateIndexes: number[],
   ) {
-    this._isFetchingStatesSignal.set(true);
+    if (DEBUG_TASKS) {
+      console.debug('getMissingSimulationStates', {
+        simulationId,
+        visualizationTime,
+        completeStateUpdateIndexes,
+      });
+    }
+
+    this.isFetchingStatesSignal.set(true);
 
     this.communicationService.emit(
       'get-missing-simulation-states',
@@ -205,14 +324,37 @@ export class SimulationService {
     );
   }
 
-  getPolylines(simulationId: string) {
-    this.runWithDebounce(() => {
-      this.getPolylinesWithoutDebounce(simulationId);
-    }, this.getPolylinesDebounceSettings);
+  set wantedVisualizationTime(visualizationTime: number | null) {
+    this.wantedVisualizationTimeSignal.set(visualizationTime);
+  }
+
+  get continuousEnvironmentsSignal(): Signal<ContinuousEnvironment[]> {
+    return this._continuousEnvironmentsSignal;
+  }
+
+  // MARK: Polylines
+  private getPolylinesIfNeeded() {
+    const simulation = this.activeSimulationSignal();
+
+    if (simulation === null) {
+      return;
+    }
+
+    const polylines = this.simulationPolylinesSignal();
+    const isFetching = this.isFetchingPolylinesSignal();
+
+    const needPolylineUpdate =
+      polylines === null || polylines.version !== simulation.polylinesVersion;
+
+    if (needPolylineUpdate && !isFetching) {
+      this.runWithDebounce(() => {
+        this.getPolylinesWithoutDebounce(simulation.id);
+      }, this.getPolylinesDebounceSettings);
+    }
   }
 
   private getPolylinesWithoutDebounce(simulationId: string) {
-    this._isFetchingPolylinesSignal.set(true);
+    this.isFetchingPolylinesSignal.set(true);
 
     this.communicationService.emit('get-polylines', simulationId);
   }
@@ -221,79 +363,187 @@ export class SimulationService {
     return this._simulationPolylinesSignal;
   }
 
-  get isFetchingStatesSignal(): Signal<boolean> {
-    return this._isFetchingStatesSignal;
-  }
-
-  get isFetchingPolylinesSignal(): Signal<boolean> {
-    return this._isFetchingPolylinesSignal;
-  }
-
-  get continuousEnvironmentsSignal(): Signal<ContinuousEnvironment[]> {
-    return this._continuousEnvironmentsSignal;
-  }
-
-  get hasAllStatesSignal(): Signal<boolean> {
-    return this._hasAllStatesSignal;
-  }
-
   // MARK: Event handlers
   private onMissingSimulationStates(
-    serializedMissingStatesEnvironments: unknown,
-    serializedMissingStatesUpdates: unknown,
+    serializedMissingStates: unknown,
     hasAllStates: unknown,
   ): void {
-    this.taskService.extractStateTask(
-      serializedMissingStatesEnvironments,
-      serializedMissingStatesUpdates,
-      (extractedStates) =>
-        this.afterExtractStateTask(extractedStates, hasAllStates),
-    );
-  }
+    if (DEBUG_TASKS) {
+      console.debug('onMissingSimulationStates', {
+        serializedMissingStates,
+        hasAllStates,
+      });
+    }
 
-  private afterExtractStateTask(
-    extractedStates: SimulationState[] | null,
-    hasAllStates: unknown,
-  ): void {
-    if (extractedStates === null) {
+    this.isFetchingStatesSignal.set(false);
+
+    if (!Array.isArray(serializedMissingStates)) {
       console.error(
-        'Failed to extract missing simulation states from the server response.',
+        'Received invalid serializedMissingStates value from the server.',
       );
-
-      this._isFetchingStatesSignal.set(false);
       return;
     }
 
-    this.taskService.buildContinuousEnvironmentsTask(
-      extractedStates,
-      this.references,
-      (continuousEnvironments) =>
-        this.afterBuildContinuousEnvironmentsTask(
-          continuousEnvironments,
-          hasAllStates,
-        ),
-    );
+    for (const serializedMissingState of serializedMissingStates as unknown[]) {
+      if (
+        typeof serializedMissingState !== 'object' ||
+        serializedMissingState === null
+      ) {
+        console.error(
+          'Received invalid serializedMissingState value from the server.',
+        );
+        return;
+      }
+
+      if (!('environment' in serializedMissingState)) {
+        console.error(
+          'Received invalid serializedMissingState value from the server. Missing environment.',
+        );
+        return;
+      }
+
+      if (!('updates' in serializedMissingState)) {
+        console.error(
+          'Received invalid serializedMissingState value from the server. Missing updates.',
+        );
+        return;
+      }
+
+      if (!('startTimestamp' in serializedMissingState)) {
+        console.error(
+          'Received invalid serializedMissingState value from the server. Missing startTimestamp.',
+        );
+        return;
+      }
+
+      if (typeof serializedMissingState.startTimestamp !== 'number') {
+        console.error(
+          'Received invalid serializedMissingState value from the server. Invalid startTimestamp.',
+        );
+        return;
+      }
+
+      if (!('startUpdateIndex' in serializedMissingState)) {
+        console.error(
+          'Received invalid serializedMissingState value from the server. Missing startUpdateIndex.',
+        );
+        return;
+      }
+
+      if (typeof serializedMissingState.startUpdateIndex !== 'number') {
+        console.error(
+          'Received invalid serializedMissingState value from the server. Invalid startUpdateIndex.',
+        );
+        return;
+      }
+
+      const startTimestamp = serializedMissingState.startTimestamp;
+      const startUpdateIndex = serializedMissingState.startUpdateIndex;
+
+      const task = this.taskService.extractStateTask(
+        serializedMissingState.environment,
+        serializedMissingState.updates,
+        (extractedState) =>
+          this.afterExtractStateTask(
+            extractedState,
+            startUpdateIndex,
+            startTimestamp,
+          ),
+      );
+
+      this.stateExtractionTasks.set(startUpdateIndex, {
+        task,
+        startTimestamp,
+      });
+
+      if (DEBUG_TASKS) {
+        console.debug('stateExtractionTasks', this.stateExtractionTasks);
+      }
+    }
+
+    if (typeof hasAllStates !== 'boolean') {
+      console.error('Received invalid hasAllStates value from the server.');
+      return;
+    }
+
+    this.hasAllStatesSignal.set(hasAllStates);
   }
 
-  private afterBuildContinuousEnvironmentsTask(
-    continuousEnvironments: ContinuousEnvironment[],
-    hasAllStates: unknown,
+  private afterExtractStateTask(
+    extractedState: SimulationState | null,
+    startUpdateIndex: number,
+    startTimestamp: number,
+  ): void {
+    if (DEBUG_TASKS) {
+      console.debug('afterExtractStateTask', {
+        extractedState,
+        startUpdateIndex,
+        startTimestamp,
+      });
+    }
+
+    if (extractedState === null) {
+      console.error(
+        'Failed to extract missing simulation state from the server response.',
+      );
+
+      this.stateExtractionTasks.delete(startUpdateIndex);
+
+      if (DEBUG_TASKS) {
+        console.debug('stateExtractionTasks', this.stateExtractionTasks);
+      }
+
+      return;
+    }
+
+    this.stateExtractionTasks.set(startUpdateIndex, {
+      task: this.taskService.buildContinuousEnvironmentTask(
+        extractedState,
+        this.references,
+        (continuousEnvironment) =>
+          this.afterBuildContinuousEnvironmentTask(
+            continuousEnvironment,
+            startUpdateIndex,
+          ),
+      ),
+      startTimestamp,
+    });
+
+    if (DEBUG_TASKS) {
+      console.debug('stateExtractionTasks', this.stateExtractionTasks);
+    }
+  }
+
+  private afterBuildContinuousEnvironmentTask(
+    continuousEnvironment: ContinuousEnvironment,
+    startUpdateIndex: number,
   ) {
+    if (DEBUG_TASKS) {
+      console.debug('afterBuildContinuousEnvironmentTask', {
+        continuousEnvironment,
+        startUpdateIndex,
+      });
+    }
+
+    this.stateExtractionTasks.delete(startUpdateIndex);
+
+    if (DEBUG_TASKS) {
+      console.debug('stateExtractionTasks', this.stateExtractionTasks);
+    }
+
     this._continuousEnvironmentsSignal.update((environments) => {
       const newEnvironments = [...environments];
 
-      for (const environment of continuousEnvironments) {
-        const existingEnvironmentIndex = newEnvironments.findIndex(
-          (existingEnvironment) =>
-            existingEnvironment.startUpdateIndex ===
-            environment.startUpdateIndex,
-        );
+      const existingEnvironmentIndex = newEnvironments.findIndex(
+        (existingEnvironment) =>
+          existingEnvironment.startUpdateIndex ===
+          continuousEnvironment.startUpdateIndex,
+      );
 
-        if (existingEnvironmentIndex === -1) {
-          newEnvironments.push(environment);
-        } else {
-          newEnvironments[existingEnvironmentIndex] = environment;
-        }
+      if (existingEnvironmentIndex === -1) {
+        newEnvironments.push(continuousEnvironment);
+      } else {
+        newEnvironments[existingEnvironmentIndex] = continuousEnvironment;
       }
 
       newEnvironments.sort((a, b) => a.startUpdateIndex - b.startUpdateIndex);
@@ -305,16 +555,6 @@ export class SimulationService {
 
       return newEnvironments;
     });
-
-    if (typeof hasAllStates !== 'boolean') {
-      console.error('Received invalid hasAllStates value from the server.');
-
-      hasAllStates = false;
-    } else {
-      this._hasAllStatesSignal.set(hasAllStates);
-    }
-
-    this._isFetchingStatesSignal.set(false);
   }
 
   private runWithDebounce(

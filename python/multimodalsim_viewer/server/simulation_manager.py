@@ -556,7 +556,7 @@ class SimulationManager:
     ) -> None:
 
         try:
-            (missing_states, missing_updates, has_all_states) = SimulationVisualizationDataManager.get_missing_states(
+            (missing_states, has_all_states) = SimulationVisualizationDataManager.get_missing_states(
                 simulation_id,
                 visualization_time,
                 complete_state_update_indexes,
@@ -565,7 +565,7 @@ class SimulationManager:
 
             self.socketio.emit(
                 "missing-simulation-states",
-                (missing_states, missing_updates, has_all_states),
+                (missing_states, has_all_states),
                 to=get_session_id(),
             )
 

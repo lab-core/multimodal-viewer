@@ -6,12 +6,7 @@ import { SimulationState } from './state.model';
 import { Statistics } from './statistics.model';
 import { Stop } from './stop.model';
 import { Tagged } from './tags.model';
-import {
-  AtomicTask,
-  BUILD_CONTINUOUS_ENVIRONMENT_TASK_PRIORITY as BUILD_CONTINUOUS_ENVIRONMENTS_TASK_PRIORITY,
-  CompositeTask,
-  Task,
-} from './task.model';
+import { AtomicTask, CompositeTask, Task } from './task.model';
 import {
   PassengerUpdate,
   StatisticsUpdate,
@@ -112,42 +107,14 @@ export function createContinuousEnvironmentReferences(): ContinuousEnvironmentRe
 }
 
 // MARK: Tasks
-export class BuildContinuousEnvironmentsTask extends CompositeTask {
-  private readonly continuousEnvironments: ContinuousEnvironment[] = [];
-
-  constructor(
-    queue: SortedList<Task>,
-    private readonly states: SimulationState[],
-    private readonly references: ContinuousEnvironmentReferences,
-    private readonly callback: (environments: ContinuousEnvironment[]) => void,
-  ) {
-    super(BUILD_CONTINUOUS_ENVIRONMENTS_TASK_PRIORITY, queue);
-  }
-
-  protected override beforeAll(): void {
-    for (const state of this.states) {
-      new BuildContinuousEnvironmentTask(
-        this.subtasks,
-        state,
-        this.references,
-        this.continuousEnvironments,
-      ).addToQueue();
-    }
-  }
-
-  protected override afterAll(): void {
-    this.callback(this.continuousEnvironments);
-  }
-}
-
-class BuildContinuousEnvironmentTask extends CompositeTask {
+export class BuildContinuousEnvironmentTask extends CompositeTask {
   private readonly continuousEnvironment: ContinuousEnvironment;
 
   constructor(
     queue: SortedList<Task>,
     private readonly state: SimulationState,
     private readonly references: ContinuousEnvironmentReferences,
-    private readonly continuousEnvironments: ContinuousEnvironment[],
+    private readonly callback: (environment: ContinuousEnvironment) => void,
   ) {
     super(0, queue);
 
@@ -207,7 +174,7 @@ class BuildContinuousEnvironmentTask extends CompositeTask {
   }
 
   protected override afterAll(): void {
-    this.continuousEnvironments.push(this.continuousEnvironment);
+    this.callback(this.continuousEnvironment);
   }
 
   private buildEmptyContinuousEnvironment(): ContinuousEnvironment {

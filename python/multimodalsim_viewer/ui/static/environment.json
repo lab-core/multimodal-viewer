@@ -1,5 +1,6 @@
 {
   "CLIENT_PORT": "8085",
+  "DEBUG_TASKS": "true",
   "HOST": "127.0.0.1",
   "INPUT_DATA_DIRECTORY_PATH": "data",
   "NUMBER_OF_STATES_TO_SEND_AT_ONCE": "1",

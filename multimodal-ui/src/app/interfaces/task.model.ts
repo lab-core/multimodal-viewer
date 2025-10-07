@@ -14,7 +14,7 @@ export function emptyTaskQueue(): SortedList<Task> {
  */
 export abstract class Task {
   constructor(
-    public readonly priority: number,
+    public priority: number,
     protected readonly queue: SortedList<Task>,
   ) {}
 

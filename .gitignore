@@ -4,6 +4,9 @@ venv
 # Python cache
 __pycache__
 
+# Input data
+data/
+
 # Data files (saved_logs, saved_simulations)
 output/saved_logs
 output/saved_simulations
