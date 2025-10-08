@@ -296,11 +296,11 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
         sorted_states = SimulationVisualizationDataManager.get_sorted_states(simulation_id)
 
         if len(sorted_states) == 0:
-            return [], {}, False
+            return [], False
 
         if len(complete_state_update_indexes) == len(sorted_states):
             # If the client has all states, no need to request more
-            return [], {}, True
+            return [], True
 
         necessary_state_index = None
 
