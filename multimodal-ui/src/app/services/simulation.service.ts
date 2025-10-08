@@ -6,7 +6,10 @@ import {
   Signal,
   WritableSignal,
 } from '@angular/core';
-import { DEBUG_TASKS } from '../../environments/environment';
+import {
+  DEBUG_TASKS,
+  MAX_STATES_EXTRACTION_CONCURRENT_TASKS,
+} from '../../environments/environment';
 import {
   ContinuousEnvironment,
   ContinuousEnvironmentReferences,
@@ -36,8 +39,6 @@ interface DebounceSettings {
 })
 export class SimulationService {
   // MARK: Properties
-  private readonly MAX_STATES_EXTRACTION_CONCURRENT_TASKS = 10;
-
   private readonly stateExtractionTasks = new Map<
     number,
     { task: Task; startTimestamp: number }
@@ -233,8 +234,7 @@ export class SimulationService {
     const continuousEnvironments = this.continuousEnvironmentsSignal();
 
     if (
-      this.stateExtractionTasks.size >=
-      this.MAX_STATES_EXTRACTION_CONCURRENT_TASKS
+      this.stateExtractionTasks.size >= MAX_STATES_EXTRACTION_CONCURRENT_TASKS
     ) {
       return;
     }
