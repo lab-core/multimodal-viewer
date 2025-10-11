@@ -14,7 +14,14 @@ export class SortedList<T> {
   }
 
   public remove(item: T): void {
-    const index = this._items.indexOf(item);
+    const startIndex = this.findFirstEqualIndex(item);
+
+    if (startIndex === null) {
+      // Item not in list
+      return;
+    }
+
+    const index = this._items.indexOf(item, startIndex);
 
     if (index !== -1) {
       this._items.splice(index, 1);
@@ -51,5 +58,37 @@ export class SortedList<T> {
     }
 
     return low; // Insertion point
+  }
+
+  private findFirstEqualIndex(item: T): number | null {
+    let low = 0;
+    let high = this._items.length - 1;
+
+    while (low < high) {
+      const mid = Math.floor((low + high) / 2);
+      const comparison = this.compare(this._items[mid], item);
+
+      if (comparison < 0) {
+        low = mid + 1;
+      } else if (comparison > 0) {
+        high = mid - 1;
+      } else {
+        high = mid;
+      }
+    }
+
+    const lowComparison = this.compare(this._items[low], item);
+
+    if (lowComparison === 0) {
+      return low;
+    }
+
+    const highComparison = this.compare(this._items[high], item);
+
+    if (highComparison === 0) {
+      return high;
+    }
+
+    return null;
   }
 }
