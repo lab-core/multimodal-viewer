@@ -265,12 +265,12 @@ export class SimulationService {
   private updateTasksPriority(wantedVisualizationTime: number) {
     let mostUrgentTask: { task: Task; startTimestamp: number } | null = null;
 
+    let previousProximity = Infinity;
+
     for (const task of this.stateExtractionTasks.values()) {
-      task.task.priority = EXTRACT_STATE_TASK_PRIORITY;
+      task.task.updatePriority(EXTRACT_STATE_TASK_PRIORITY);
 
-      const proximity = wantedVisualizationTime - task.startTimestamp;
-
-      const previousProximity = mostUrgentTask === null ? Infinity : proximity;
+      const proximity = task.startTimestamp - wantedVisualizationTime;
 
       /**
        * The most urgent task is the one with a start time before the wanted
@@ -285,18 +285,20 @@ export class SimulationService {
         proximity < previousProximity
       ) {
         mostUrgentTask = task;
+
+        previousProximity = proximity;
       }
     }
 
     if (mostUrgentTask) {
-      mostUrgentTask.task.priority = EXTRACT_STATE_TASK_PRIORITY + 1;
+      mostUrgentTask.task.updatePriority(EXTRACT_STATE_TASK_PRIORITY + 1);
     }
 
     if (DEBUG_TASKS) {
       console.debug('updateTasksPriority', {
         wantedVisualizationTime,
         mostUrgentTask,
-        stateExtractionTasks: this.stateExtractionTasks,
+        stateExtractionTasks: Array.from(this.stateExtractionTasks.entries()),
       });
     }
   }
@@ -457,7 +459,10 @@ export class SimulationService {
       });
 
       if (DEBUG_TASKS) {
-        console.debug('stateExtractionTasks', this.stateExtractionTasks);
+        console.debug(
+          'stateExtractionTasks',
+          Array.from(this.stateExtractionTasks.entries()),
+        );
       }
     }
 
@@ -490,7 +495,10 @@ export class SimulationService {
       this.stateExtractionTasks.delete(startUpdateIndex);
 
       if (DEBUG_TASKS) {
-        console.debug('stateExtractionTasks', this.stateExtractionTasks);
+        console.debug(
+          'stateExtractionTasks',
+          Array.from(this.stateExtractionTasks.entries()),
+        );
       }
 
       return;
@@ -510,7 +518,10 @@ export class SimulationService {
     });
 
     if (DEBUG_TASKS) {
-      console.debug('stateExtractionTasks', this.stateExtractionTasks);
+      console.debug(
+        'stateExtractionTasks',
+        Array.from(this.stateExtractionTasks.entries()),
+      );
     }
   }
 
@@ -528,7 +539,10 @@ export class SimulationService {
     this.stateExtractionTasks.delete(startUpdateIndex);
 
     if (DEBUG_TASKS) {
-      console.debug('stateExtractionTasks', this.stateExtractionTasks);
+      console.debug(
+        'stateExtractionTasks',
+        Array.from(this.stateExtractionTasks.entries()),
+      );
     }
 
     this._continuousEnvironmentsSignal.update((environments) => {

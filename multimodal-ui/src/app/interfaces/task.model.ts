@@ -13,10 +13,14 @@ export function emptyTaskQueue(): SortedList<Task> {
  * Tasks should be quick to process.
  */
 export abstract class Task {
+  protected _priority: number;
+
   constructor(
-    public priority: number,
+    priority: number,
     protected readonly queue: SortedList<Task>,
-  ) {}
+  ) {
+    this._priority = priority;
+  }
 
   public addToQueue(): void {
     this.queue.add(this);
@@ -32,6 +36,19 @@ export abstract class Task {
   // eslint-disable-next-line @typescript-eslint/class-literal-property-style
   public get numberOfTasks(): number {
     return 1;
+  }
+
+  public get priority(): number {
+    return this._priority;
+  }
+
+  public updatePriority(newPriority: number): void {
+    if (this._priority !== newPriority) {
+      this.queue.remove(this);
+
+      this._priority = newPriority;
+      this.addToQueue();
+    }
   }
 }
 

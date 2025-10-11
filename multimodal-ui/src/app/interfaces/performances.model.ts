@@ -13,6 +13,14 @@ export class SortedList<T> {
     return this._items.shift();
   }
 
+  public remove(item: T): void {
+    const index = this._items.indexOf(item);
+
+    if (index !== -1) {
+      this._items.splice(index, 1);
+    }
+  }
+
   public get length(): number {
     return this._items.length;
   }
