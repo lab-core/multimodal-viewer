@@ -140,7 +140,7 @@ export class SimulationListDialogComponent {
 
   async editSimulationConfiguration(
     simulation: Simulation,
-    event: Event,
+    event: PointerEvent,
   ): Promise<void> {
     event.stopPropagation(); // Prevent the click from toggling selection
 
@@ -163,7 +163,10 @@ export class SimulationListDialogComponent {
     );
   }
 
-  async stopSimulation(simulationId: string, event: Event): Promise<void> {
+  async stopSimulation(
+    simulationId: string,
+    event: PointerEvent,
+  ): Promise<void> {
     event.stopPropagation(); // Prevent the click from toggling selection
 
     const result = await firstValueFrom(
@@ -187,7 +190,7 @@ export class SimulationListDialogComponent {
     this.simulationService.stopSimulation(simulationId);
   }
 
-  visualizeSimulation(simulation: Simulation, event: Event): void {
+  visualizeSimulation(simulation: Simulation, event: PointerEvent): void {
     event.stopPropagation(); // Prevent the click from toggling selection
 
     this.matDialogRef.close({ simulationToVisualize: simulation });
@@ -197,7 +200,11 @@ export class SimulationListDialogComponent {
     return this.dataService.simulationsSignal;
   }
 
-  pauseResumeHandler(simulationId: string, isRunning: boolean, event: Event) {
+  pauseResumeHandler(
+    simulationId: string,
+    isRunning: boolean,
+    event: PointerEvent,
+  ) {
     event.stopPropagation(); // Prevent the click from toggling selection
 
     if (isRunning) {
@@ -261,8 +268,10 @@ export class SimulationListDialogComponent {
     input.click();
   }
 
-  async exportSimulation(simulationId: string, event: Event) {
+  async exportSimulation(simulationId: string, event: PointerEvent) {
     event.stopPropagation(); // Prevent the click from toggling selection
+
+    let url: string | null = null;
 
     try {
       this.loadingService.start('Exporting simulation folder...');
@@ -273,28 +282,29 @@ export class SimulationListDialogComponent {
       );
 
       const blob = new Blob([response], { type: 'application/zip' });
-      const url = window.URL.createObjectURL(blob);
+      url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = simulationId + '.zip';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-
       this.snackBarService.showMessage('Export successful', 'success');
     } catch (error) {
       console.error('HTTP error during export:', error);
       this.snackBarService.showMessage('Export failed', 'error');
     } finally {
       this.loadingService.stop();
+      if (url) {
+        window.URL.revokeObjectURL(url);
+      }
     }
   }
 
   async deleteSimulation(
     simulationId: string,
     simulationName: string,
-    event: Event,
+    event: PointerEvent,
   ) {
     event.stopPropagation(); // Prevent the click from toggling selection
 
