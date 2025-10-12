@@ -1,4 +1,5 @@
-import { Component, Inject, OnDestroy, Signal } from '@angular/core';
+import { Component, Inject, Injector, OnDestroy, Signal } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
   FormBuilder,
@@ -24,11 +25,20 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import JSZip from 'jszip';
-import { Subject, takeUntil } from 'rxjs';
+import {
+  filter,
+  firstValueFrom,
+  Subject,
+  take,
+  takeUntil,
+  timeout,
+} from 'rxjs';
 import { SIMULATION_SAVE_FILE_SEPARATOR } from '../../../environments/environment';
 import { SimulationConfiguration } from '../../interfaces/simulation.model';
 import { DataService } from '../../services/data.service';
 import { HttpService } from '../../services/http.service';
+import { LoadingService } from '../../services/loading.service';
+import { SnackBarService } from '../../services/snack-bar.service';
 
 export interface SimulationConfigurationDialogData {
   mode: 'start' | 'edit';
@@ -42,12 +52,6 @@ export interface SimulationConfigurationDialogResult {
     shouldRunInBackground: boolean;
   };
   configuration: SimulationConfiguration;
-}
-
-export interface ImportFolderResponse {
-  message: string;
-  actual_folder_name?: string;
-  error?: string;
 }
 
 @Component({
@@ -91,7 +95,10 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
       SimulationConfigurationDialogResult
     >,
     private readonly formBuilder: FormBuilder,
-    private httpService: HttpService,
+    private readonly httpService: HttpService,
+    private readonly loadingService: LoadingService,
+    private readonly snackBarService: SnackBarService,
+    private readonly injector: Injector,
   ) {
     // Initialize form
     this.nameFormControl = this.formBuilder.control(null, [
@@ -238,39 +245,58 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
         return;
       }
 
-      const zip = new JSZip();
-      const baseFolder = files[0].webkitRelativePath.split('/')[0];
+      try {
+        this.loadingService.start('Uploading data folder...');
 
-      for (const file of Array.from(files)) {
-        const relativePath = file.webkitRelativePath.replace(
-          baseFolder + '/',
-          '',
+        const zip = new JSZip();
+        const baseFolder = files[0].webkitRelativePath.split('/')[0];
+
+        for (const file of Array.from(files)) {
+          const relativePath = file.webkitRelativePath.replace(
+            baseFolder + '/',
+            '',
+          );
+          zip.file(relativePath, file);
+        }
+
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const contentType = 'input_data';
+        const formData = new FormData();
+        formData.append('file', blob, 'folder.zip');
+
+        const response = await firstValueFrom(
+          this.httpService.importFolder(contentType, baseFolder, formData),
         );
-        zip.file(relativePath, file);
-      }
 
-      const blob = await zip.generateAsync({ type: 'blob' });
-      const contentType = 'input_data';
-      const formData = new FormData();
-      formData.append('file', blob, 'folder.zip');
+        await new Promise((resolve, reject) => {
+          toObservable(this.dataService.availableSimulationDataSignal, {
+            injector: this.injector,
+          })
+            .pipe(
+              filter((data) =>
+                data.some((dataName) => dataName === response.folderName),
+              ),
+              timeout({ first: 3000 }),
+              take(1),
+            )
+            .subscribe({
+              next: (data) => resolve(data),
+              error: () =>
+                reject(new Error('Timeout waiting for available data')),
+            });
 
-      this.httpService
-        .importFolder(contentType, baseFolder, formData)
-        .subscribe({
-          next: (response) => {
-            this.refreshAvailableData();
-            const actualFolderName =
-              'actual_folder_name' in response
-                ? (response.actual_folder_name as string)
-                : baseFolder;
-            setTimeout(() => {
-              this.dataFormControl.setValue(actualFolderName);
-            }, 100);
-          },
-          error: (error) => {
-            console.error('Upload failed:', error);
-          },
+          this.dataService.queryAvailableData();
         });
+
+        this.dataFormControl.setValue(response.folderName);
+
+        this.snackBarService.showMessage('Upload successful', 'success');
+      } catch (error) {
+        console.error('Upload failed:', error);
+        this.snackBarService.showMessage('Upload failed', 'error');
+      } finally {
+        this.loadingService.stop();
+      }
     };
 
     input.addEventListener('change', (event: Event) => {
@@ -280,38 +306,5 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     });
 
     input.click();
-  }
-
-  exportInputData(simulationId: string) {
-    const folderContents = 'input_data';
-    this.httpService
-      .exportFolder(folderContents, simulationId)
-      .subscribe((response: Blob) => {
-        const blob = new Blob([response], { type: 'application/zip' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = simulationId + '.zip';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-      });
-  }
-
-  deleteInputData(simulationId: string): void {
-    const folderContents = 'input_data';
-    this.httpService.deleteFolder(folderContents, simulationId).subscribe({
-      next: (response: { message?: string; error?: string }) => {
-        if (response.message) {
-          // this.dataService.removeSimulation(simulationId);
-        } else if (response.error) {
-          console.error('Failed to delete the data folder:', response.error);
-        }
-      },
-      error: (err) => {
-        console.error('HTTP error during deletion:', err);
-      },
-    });
   }
 }

@@ -89,7 +89,7 @@ def http_routes(simulation_manager: SimulationManager):  # pylint: disable=too-m
             on_success()
 
         return (
-            jsonify({"message": response_message, "actual_folder_name": unique_folder_name}),
+            jsonify({"message": response_message, "folderName": unique_folder_name}),
             201,
         )
 
