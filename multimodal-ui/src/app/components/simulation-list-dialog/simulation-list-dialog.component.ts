@@ -140,7 +140,7 @@ export class SimulationListDialogComponent {
 
   async editSimulationConfiguration(
     simulation: Simulation,
-    event: PointerEvent,
+    event: MouseEvent,
   ): Promise<void> {
     event.stopPropagation(); // Prevent the click from toggling selection
 
@@ -163,10 +163,7 @@ export class SimulationListDialogComponent {
     );
   }
 
-  async stopSimulation(
-    simulationId: string,
-    event: PointerEvent,
-  ): Promise<void> {
+  async stopSimulation(simulationId: string, event: MouseEvent): Promise<void> {
     event.stopPropagation(); // Prevent the click from toggling selection
 
     const result = await firstValueFrom(
@@ -190,7 +187,7 @@ export class SimulationListDialogComponent {
     this.simulationService.stopSimulation(simulationId);
   }
 
-  visualizeSimulation(simulation: Simulation, event: PointerEvent): void {
+  visualizeSimulation(simulation: Simulation, event: MouseEvent): void {
     event.stopPropagation(); // Prevent the click from toggling selection
 
     this.matDialogRef.close({ simulationToVisualize: simulation });
@@ -203,7 +200,7 @@ export class SimulationListDialogComponent {
   pauseResumeHandler(
     simulationId: string,
     isRunning: boolean,
-    event: PointerEvent,
+    event: MouseEvent,
   ) {
     event.stopPropagation(); // Prevent the click from toggling selection
 
@@ -268,7 +265,7 @@ export class SimulationListDialogComponent {
     input.click();
   }
 
-  async exportSimulation(simulationId: string, event: PointerEvent) {
+  async exportSimulation(simulationId: string, event: MouseEvent) {
     event.stopPropagation(); // Prevent the click from toggling selection
 
     let url: string | null = null;
@@ -304,7 +301,7 @@ export class SimulationListDialogComponent {
   async deleteSimulation(
     simulationId: string,
     simulationName: string,
-    event: PointerEvent,
+    event: MouseEvent,
   ) {
     event.stopPropagation(); // Prevent the click from toggling selection
 
