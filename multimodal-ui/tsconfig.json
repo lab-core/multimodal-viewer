@@ -28,5 +28,13 @@
   },
   "ts-node": {
     "compilerOptions": { "module": "commonjs" }
-  }
+  },
+  "references": [
+    {
+      "path": "./tsconfig.app.json"
+    },
+    {
+      "path": "./tsconfig.spec.json"
+    }
+  ]
 }

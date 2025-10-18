@@ -44,16 +44,12 @@ export class TaskService {
     serializedUpdates: unknown,
     callback: (states: SimulationState | null) => void,
   ): ExtractStateTask {
-    const task = new ExtractStateTask(
+    return new ExtractStateTask(
       this.queue,
       serializedEnvironment,
       serializedUpdates,
       callback,
-    );
-
-    task.addToQueue();
-
-    return task;
+    ).addToQueue();
   }
 
   buildContinuousEnvironmentTask(
@@ -61,16 +57,12 @@ export class TaskService {
     references: ContinuousEnvironmentReferences,
     callback: (environment: ContinuousEnvironment) => void,
   ): BuildContinuousEnvironmentTask {
-    const task = new BuildContinuousEnvironmentTask(
+    return new BuildContinuousEnvironmentTask(
       this.queue,
       states,
       references,
       callback,
-    );
-
-    task.addToQueue();
-
-    return task;
+    ).addToQueue();
   }
 
   // For debugging purposes

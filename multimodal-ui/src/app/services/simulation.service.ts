@@ -34,6 +34,12 @@ interface DebounceSettings {
   timeoutId: ReturnType<typeof setTimeout> | null;
 }
 
+export interface StateExtractionTask {
+  task: Task;
+  startTimestamp: number;
+  startUpdateIndex: number;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -41,7 +47,7 @@ export class SimulationService {
   // MARK: Properties
   private readonly stateExtractionTasks = new Map<
     number,
-    { task: Task; startTimestamp: number }
+    StateExtractionTask
   >();
 
   private readonly _activeSimulationIdSignal: WritableSignal<string | null> =
@@ -263,7 +269,7 @@ export class SimulationService {
   }
 
   private updateTasksPriority(wantedVisualizationTime: number) {
-    let mostUrgentTask: { task: Task; startTimestamp: number } | null = null;
+    let mostUrgentTask: StateExtractionTask | null = null;
 
     let previousProximity = Infinity;
 
@@ -282,7 +288,11 @@ export class SimulationService {
       if (
         (proximity < 0 &&
           (previousProximity > 0 || proximity > previousProximity)) ||
-        proximity < previousProximity
+        (proximity > 0 && proximity < previousProximity) ||
+        (proximity === 0 &&
+          (previousProximity !== 0 ||
+            (mostUrgentTask?.startUpdateIndex ?? -Infinity) <
+              task.startUpdateIndex))
       ) {
         mostUrgentTask = task;
 
@@ -456,6 +466,7 @@ export class SimulationService {
       this.stateExtractionTasks.set(startUpdateIndex, {
         task,
         startTimestamp,
+        startUpdateIndex,
       });
 
       if (DEBUG_TASKS) {
@@ -515,6 +526,7 @@ export class SimulationService {
           ),
       ),
       startTimestamp,
+      startUpdateIndex,
     });
 
     if (DEBUG_TASKS) {

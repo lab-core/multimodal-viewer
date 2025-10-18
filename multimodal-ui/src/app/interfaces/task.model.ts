@@ -1,7 +1,7 @@
 import { SortedList } from './performances.model';
 
 export const EXTRACT_STATE_TASK_PRIORITY = 1;
-export const BUILD_CONTINUOUS_ENVIRONMENT_TASK_PRIORITY = 2;
+export const BUILD_CONTINUOUS_ENVIRONMENT_TASK_PRIORITY = 1;
 
 export function emptyTaskQueue(): SortedList<Task> {
   return new SortedList<Task>((a, b) => b.priority - a.priority);
@@ -22,8 +22,9 @@ export abstract class Task {
     this._priority = priority;
   }
 
-  public addToQueue(): void {
+  public addToQueue<T extends Task>(this: T): T {
     this.queue.add(this);
+    return this;
   }
 
   /**
