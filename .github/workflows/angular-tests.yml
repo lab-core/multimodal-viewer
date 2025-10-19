@@ -13,7 +13,7 @@ on:
       - 'python/**'
 
 jobs:
-  verify-python-format-and-lint:
+  angular-tests:
     runs-on: ubuntu-latest
 
     steps:

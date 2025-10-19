@@ -29,6 +29,7 @@
   "ts-node": {
     "compilerOptions": { "module": "commonjs" }
   },
+  "files": [],
   "references": [
     {
       "path": "./tsconfig.app.json"
