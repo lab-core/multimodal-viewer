@@ -93,31 +93,27 @@
 
   <!-- MARK: Tab Elements
  -->
-  <app-visualizer-filter
-    class="tab-content fade"
+  <app-visualizer-filter class="tab-content fade"
     [class.fade-show]="showFilter"
     [class.enable-pointer-events]="showFilter"
-  ></app-visualizer-filter>
+   />
 
   @if (showFavorites) {
-    <app-favorite-entities
-      class="tab-content fade"
+    <app-favorite-entities class="tab-content fade"
       [class.fade-show]="showFavorites"
       [class.enable-pointer-events]="showFavorites"
-    ></app-favorite-entities>
+     />
   }
 
-  <app-click-history
-    class="tab-content fade"
+  <app-click-history class="tab-content fade"
     [class.fade-show]="showClickHistory"
     [class.enable-pointer-events]="showClickHistory"
-  ></app-click-history>
+   />
 
-  <app-map-tiles
-    class="tab-content fade"
+  <app-map-tiles class="tab-content fade"
     [class.fade-show]="showLayers"
     [class.enable-pointer-events]="showLayers"
-  ></app-map-tiles>
+   />
 
   <!-- MARK: Information Panel
     -->
@@ -215,7 +211,7 @@
       <mat-card-content class="flex-1">
         <mat-card-title> Entities </mat-card-title>
 
-        <app-entities-tab></app-entities-tab>
+        <app-entities-tab />
       </mat-card-content>
     </mat-card>
   }
@@ -229,8 +225,7 @@
       [class.enable-pointer-events]="showSelectedEntityTab"
     >
       <mat-card-content class="flex-1">
-        <app-selected-entity-tab
-          [selectedPassenger]="selectedPassenger"
+        <app-selected-entity-tab [selectedPassenger]="selectedPassenger"
           [selectedPassengerStop]="selectedPassengerStopSignal()"
           [selectedPassengerVehicle]="selectedPassengerVehicleSignal()"
           [selectedVehicle]="selectedVehicle"
@@ -244,7 +239,7 @@
             selectedStopCompletedPassengersSignal()
           "
           [selectedStopVehicles]="selectedStopVehiclesSignal()"
-        ></app-selected-entity-tab>
+         />
       </mat-card-content>
     </mat-card>
   }

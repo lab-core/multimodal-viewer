@@ -149,12 +149,11 @@
                   <b>{{ leg.assignedVehicleId }}</b>
                 }
               </div>
-              <app-selected-entity-route
-                class="indent"
+              <app-selected-entity-route class="indent"
                 [previousStops]="selectedPassengerLegPreviousStops"
                 [currentStop]="selectedPassengerLegCurrentStop"
                 [nextStops]="selectedPassengerLegNextStops"
-              ></app-selected-entity-route>
+               />
             </div>
           }
         </div>
@@ -320,12 +319,11 @@
           <mat-panel-title>Vehicle route</mat-panel-title>
         </mat-expansion-panel-header>
         <div class="flex-column gap-0-5-rem">
-          <app-selected-entity-route
-            class="indent"
+          <app-selected-entity-route class="indent"
             [previousStops]="selectedVehicle.previousStops"
             [currentStop]="selectedVehicle.currentStop"
             [nextStops]="selectedVehicle.nextStops"
-          ></app-selected-entity-route>
+           />
         </div>
       </mat-expansion-panel>
     </mat-accordion>
