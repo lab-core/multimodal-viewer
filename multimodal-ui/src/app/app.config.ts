@@ -4,7 +4,6 @@ import {
   importProvidersFrom,
   provideZoneChangeDetection,
 } from '@angular/core';
-import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { provideRouter } from '@angular/router';
 
 import { SocketIoConfig, SocketIoModule } from 'ngx-socket-io';
@@ -13,7 +12,7 @@ import { routes } from './app.routes';
 
 const socketIoConfiguration: SocketIoConfig = {
   url: environment.socketUrl,
-  options: { auth: { type: 'client' } },
+  options: { auth: { type: 'client' } } as SocketIoConfig['options'],
 };
 
 export const appConfig: ApplicationConfig = {
@@ -21,7 +20,6 @@ export const appConfig: ApplicationConfig = {
     importProvidersFrom(SocketIoModule.forRoot(socketIoConfiguration)),
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
-    provideAnimationsAsync(),
     provideHttpClient(),
   ],
 };
