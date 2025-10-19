@@ -9,7 +9,7 @@ import {
   OnInit,
   signal,
   Signal,
-  ViewChild,
+  viewChild,
   WritableSignal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -118,7 +118,8 @@ export class VisualizerComponent implements OnDestroy, OnInit {
   private readonly timerService = inject(TimerService);
   private readonly destroyRef = inject(DestroyRef);
 
-  @ViewChild('searchInput') searchInput!: ElementRef<HTMLInputElement>;
+  readonly searchInput =
+    viewChild.required<ElementRef<HTMLInputElement>>('searchInput');
   // MARK: Properties
   private matDialogRef: MatDialogRef<InformationDialogComponent> | null = null;
   readonly selectedModeSignal: WritableSignal<string | null> = signal(null);
@@ -613,8 +614,9 @@ export class VisualizerComponent implements OnDestroy, OnInit {
           (searchValue.entity as { mode: string }).mode,
         );
         this.searchControl.setValue(searchValue, { emitEvent: false });
+        const searchInput = this.searchInput();
         setTimeout(() => {
-          this.searchInput.nativeElement.click();
+          searchInput.nativeElement.click();
         });
       }
     });
