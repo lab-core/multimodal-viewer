@@ -27,9 +27,6 @@
     "typeCheckHostBindings": true,
     "strictTemplates": true
   },
-  "ts-node": {
-    "compilerOptions": { "module": "commonjs" }
-  },
   "files": [],
   "ts-node": {
     "compilerOptions": { "module": "commonjs" }
