@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, input } from '@angular/core';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { Statistics } from '../../interfaces/statistics.model';
 
@@ -9,11 +9,9 @@ import { Statistics } from '../../interfaces/statistics.model';
   styleUrl: './recursive-statistics.component.css',
 })
 export class RecursiveStatisticsComponent {
-  @Input() recursiveDict: Statistics;
-
-  constructor() {
-    this.recursiveDict = {};
-  }
+  readonly recursiveDictSignal = input.required<Statistics>({
+    alias: 'recursiveDict',
+  });
 
   capitalize(str: string): string {
     if (!str) return str; // Handle empty strings
@@ -21,14 +19,15 @@ export class RecursiveStatisticsComponent {
   }
 
   keys(): string[] {
-    for (const key of Object.keys(this.recursiveDict)) {
-      if (this.recursiveDict[key] instanceof Array) {
-        delete this.recursiveDict[key];
+    for (const key of Object.keys(this.recursiveDictSignal())) {
+      const recursiveDict = this.recursiveDictSignal();
+      if (recursiveDict[key] instanceof Array) {
+        delete recursiveDict[key];
       }
     }
-    return Object.keys(this.recursiveDict).sort((a, b) => {
-      const isAObject = typeof this.recursiveDict[a] === 'object';
-      const isBObject = typeof this.recursiveDict[b] === 'object';
+    return Object.keys(this.recursiveDictSignal()).sort((a, b) => {
+      const isAObject = typeof this.recursiveDictSignal()[a] === 'object';
+      const isBObject = typeof this.recursiveDictSignal()[b] === 'object';
 
       // Prioritize number keys (move them earlier)
       if (isAObject && !isBObject) return 1;

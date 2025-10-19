@@ -106,11 +106,11 @@ export class CommunicationService {
   }
 
   onDisconnect(listener: SocketEventListener): void {
-    this.socket.on('disconnect', () => void listener);
+    this.socket.on('disconnect', () => void listener());
   }
 
   onConnect(listener: SocketEventListener): void {
-    this.socket.on('connect', () => void listener);
+    this.socket.on('connect', () => void listener());
   }
 
   removeAllListeners(event: string): void {

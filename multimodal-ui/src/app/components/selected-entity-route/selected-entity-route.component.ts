@@ -1,4 +1,4 @@
-import { Component, Input, inject } from '@angular/core';
+import { Component, inject, input } from '@angular/core';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Stop } from '../../interfaces/stop.model';
 import { AnimationService } from '../../services/animation.service';
@@ -12,9 +12,13 @@ import { AnimationService } from '../../services/animation.service';
 export class SelectedEntityRouteComponent {
   private animationService = inject(AnimationService);
 
-  @Input() previousStops: Stop[] = [];
-  @Input() currentStop: Stop | null = null;
-  @Input() nextStops: Stop[] = [];
+  readonly previousStopsSignal = input.required<Stop[]>({
+    alias: 'previousStops',
+  });
+  readonly currentStopSignal = input.required<Stop | null>({
+    alias: 'currentStop',
+  });
+  readonly nextStopsSignal = input.required<Stop[]>({ alias: 'nextStops' });
 
   unpreselectStop() {
     this.animationService.unpreselectEntity();

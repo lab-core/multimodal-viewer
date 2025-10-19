@@ -1,4 +1,5 @@
 <mat-accordion multi="true">
+  @let recursiveDict = recursiveDictSignal();
   @for (key of keys(); track key) {
     @if (isStatistics(recursiveDict[key])) {
       <mat-expansion-panel>

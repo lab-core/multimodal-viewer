@@ -1,4 +1,4 @@
-import { Component, inject, Input } from '@angular/core';
+import { Component, inject, input } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -35,23 +35,41 @@ export class SelectedEntityTabComponent {
   private readonly snackBarService = inject(SnackBarService);
   private readonly visualizationService = inject(VisualizationService);
 
-  @Input({ required: true }) selectedPassenger: Passenger | null = null;
-  @Input({ required: true }) selectedPassengerStop: Stop | null = null;
-  @Input({ required: true }) selectedPassengerVehicle: Vehicle | null = null;
+  readonly selectedPassengerSignal = input.required<Passenger | null>({
+    alias: 'selectedPassenger',
+  });
+  readonly selectedPassengerStopSignal = input.required<Stop | null>({
+    alias: 'selectedPassengerStop',
+  });
+  readonly selectedPassengerVehicleSignal = input.required<Vehicle | null>({
+    alias: 'selectedPassengerVehicle',
+  });
 
-  @Input({ required: true }) selectedVehicle: Vehicle | null = null;
-  @Input({ required: true }) selectedVehicleStop: Stop | null = null;
-  @Input({ required: true }) selectedVehiclePassengers: Passenger[] = [];
+  readonly selectedVehicleSignal = input.required<Vehicle | null>({
+    alias: 'selectedVehicle',
+  });
+  readonly selectedVehicleStopSignal = input.required<Stop | null>({
+    alias: 'selectedVehicleStop',
+  });
+  readonly selectedVehiclePassengersSignal = input.required<Passenger[]>({
+    alias: 'selectedVehiclePassengers',
+  });
 
-  @Input({ required: true }) selectedStop: Stop | null = null;
-  @Input({ required: true })
-  selectedStopWaitingPassengers: Passenger[] = [];
-  @Input({ required: true })
-  selectedStopCompletedPassengers: Passenger[] = [];
-  @Input({ required: true }) selectedStopVehicles: Vehicle[] = [];
+  readonly selectedStopSignal = input.required<Stop | null>({
+    alias: 'selectedStop',
+  });
+  readonly selectedStopWaitingPassengersSignal = input.required<Passenger[]>({
+    alias: 'selectedStopWaitingPassengers',
+  });
+  readonly selectedStopCompletedPassengersSignal = input.required<Passenger[]>({
+    alias: 'selectedStopCompletedPassengers',
+  });
+  readonly selectedStopVehiclesSignal = input.required<Vehicle[]>({
+    alias: 'selectedStopVehicles',
+  });
 
   get selectedPassengerLegs() {
-    const passenger = this.selectedPassenger;
+    const passenger = this.selectedPassengerSignal();
     return passenger === null ? [] : getAllLegs(passenger);
   }
 
@@ -60,7 +78,7 @@ export class SelectedEntityTabComponent {
   }
 
   get selectedVehiclePassengerTags() {
-    const selectedVehiclePassengers = this.selectedVehiclePassengers;
+    const selectedVehiclePassengers = this.selectedVehiclePassengersSignal();
 
     return selectedVehiclePassengers
       .flatMap((passenger) => passenger.tags)
@@ -69,7 +87,8 @@ export class SelectedEntityTabComponent {
   }
 
   get selectedStopPassengerTags() {
-    const selectedStopWaitingPassengers = this.selectedStopWaitingPassengers;
+    const selectedStopWaitingPassengers =
+      this.selectedStopWaitingPassengersSignal();
 
     return selectedStopWaitingPassengers
       .flatMap((passenger) => passenger.tags)
@@ -78,39 +97,41 @@ export class SelectedEntityTabComponent {
   }
 
   get selectedPassengerLegStops() {
-    if (this.selectedPassenger === null) {
+    const selectedPassenger = this.selectedPassengerSignal();
+    if (selectedPassenger === null) {
       return [];
     }
 
-    if (this.selectedPassenger.currentLeg === null) {
+    if (selectedPassenger.currentLeg === null) {
       return [];
     }
 
-    if (this.selectedPassengerVehicle === null) {
+    const selectedPassengerVehicle = this.selectedPassengerVehicleSignal();
+    if (selectedPassengerVehicle === null) {
       return [];
     }
 
     if (
-      this.selectedPassenger.currentLeg.boardingStopIndex === null ||
-      this.selectedPassenger.currentLeg.alightingStopIndex === null
+      selectedPassenger.currentLeg.boardingStopIndex === null ||
+      selectedPassenger.currentLeg.alightingStopIndex === null
     ) {
       return [];
     }
 
-    const allStops = getAllStops(this.selectedPassengerVehicle);
+    const allStops = getAllStops(selectedPassengerVehicle);
 
     if (
-      this.selectedPassenger.currentLeg.boardingStopIndex < 0 ||
-      this.selectedPassenger.currentLeg.boardingStopIndex >= allStops.length ||
-      this.selectedPassenger.currentLeg.alightingStopIndex < 0 ||
-      this.selectedPassenger.currentLeg.alightingStopIndex >= allStops.length
+      selectedPassenger.currentLeg.boardingStopIndex < 0 ||
+      selectedPassenger.currentLeg.boardingStopIndex >= allStops.length ||
+      selectedPassenger.currentLeg.alightingStopIndex < 0 ||
+      selectedPassenger.currentLeg.alightingStopIndex >= allStops.length
     ) {
       return [];
     }
 
     return allStops.slice(
-      this.selectedPassenger.currentLeg.boardingStopIndex,
-      this.selectedPassenger.currentLeg.alightingStopIndex + 1,
+      selectedPassenger.currentLeg.boardingStopIndex,
+      selectedPassenger.currentLeg.alightingStopIndex + 1,
     );
   }
 
@@ -173,7 +194,7 @@ export class SelectedEntityTabComponent {
 
   // Highlight function
   highlightLeg(legIndex: number) {
-    if (this.selectedPassenger) {
+    if (this.selectedPassengerSignal()) {
       this.animationService.highlightLeg(legIndex);
     }
   }

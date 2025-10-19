@@ -21,6 +21,6 @@ export const MAX_STATES_EXTRACTION_CONCURRENT_TASKS = Number(
 );
 
 export const environment = {
-  socketUrl: `:${SERVER_PORT}/`,
+  socketUrl: `http://${HOST}:${SERVER_PORT}`,
   apiUrl: `http://${HOST}:${SERVER_PORT}/api/`,
 };

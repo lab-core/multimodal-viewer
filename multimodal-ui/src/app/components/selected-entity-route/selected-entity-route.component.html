@@ -1,6 +1,7 @@
 <div class="flex-row">
   <div class="flex-column center" style="padding: 5px 0px">
     <!--Previous stops-->
+    @let previousStops = previousStopsSignal();
     @for (
       previousStop of previousStops;
       track previousStop.label;
@@ -11,14 +12,18 @@
         <span class="line route-done"></span>
       }
     }
+
     <!--Current stop-->
+    @let currentStop = currentStopSignal();
     @if (currentStop !== null) {
       @if (previousStops.length > 0) {
         <span class="line route-done"></span>
       }
       <span class="dot route-done"></span>
     }
+
     <!--Next stops-->
+    @let nextStops = nextStopsSignal();
     @for (nextStop of nextStops; track nextStop.label; let idx = $index) {
       @if (idx !== 0 || previousStops.length > 0 || currentStop !== null) {
         <span class="line route-left"></span>
@@ -40,6 +45,7 @@
         >{{ previousStop.label }}</span
       >
     }
+
     @if (currentStop !== null) {
       <span
         tabindex="0"
@@ -53,6 +59,7 @@
         >{{ currentStop.label }}</span
       >
     }
+
     @for (nextStop of nextStops; track nextStop.label) {
       <span
         tabindex="0"

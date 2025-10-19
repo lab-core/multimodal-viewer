@@ -3,6 +3,7 @@
 
 @let environment = environmentSignal();
 
+@let selectedPassenger = selectedPassengerSignal();
 @if (selectedPassenger !== null) {
   @let isFavoritePassenger = isFavoriteEntity(selectedPassenger);
   <mat-card-title style="display: flex; align-items: center; gap: 8px"
@@ -68,6 +69,8 @@
           }}
         </mat-card-content>
       </mat-card>
+
+      @let selectedPassengerStop = selectedPassengerStopSignal();
       @if (selectedPassengerStop !== null) {
         <mat-card>
           <mat-card-content
@@ -87,6 +90,8 @@
           </mat-card-content>
         </mat-card>
       }
+
+      @let selectedPassengerVehicle = selectedPassengerVehicleSignal();
       @if (selectedPassengerVehicle !== null) {
         <mat-card>
           <mat-card-content
@@ -160,6 +165,7 @@
 
 <!--MARK: Selected Vehicle
       -->
+@let selectedVehicle = selectedVehicleSignal();
 @if (selectedVehicle !== null) {
   @let isFavoriteVehicle = isFavoriteEntity(selectedVehicle);
   <mat-card-title style="display: flex; align-items: center; gap: 8px"
@@ -247,6 +253,7 @@
           }}
         </mat-card-content>
       </mat-card>
+      @let selectedVehicleStop = selectedVehicleStopSignal();
       @if (selectedVehicleStop !== null) {
         <mat-card>
           <mat-card-content
@@ -273,6 +280,7 @@
       }
     </div>
 
+    @let selectedVehiclePassengers = selectedVehiclePassengersSignal();
     @if (selectedVehiclePassengers.length > 0) {
       <mat-accordion>
         <mat-expansion-panel>
@@ -326,6 +334,7 @@
 
 <!--MARK: Selected Stop
       -->
+@let selectedStop = selectedStopSignal();
 @if (selectedStop !== null) {
   @let isFavoriteStop = isFavoriteEntity(selectedStop);
   <mat-card-title style="display: flex; align-items: center; gap: 8px"
@@ -389,6 +398,7 @@
       }
     </div>
 
+    @let selectedStopWaitingPassengers = selectedStopWaitingPassengersSignal();
     @if (selectedStopWaitingPassengers.length > 0) {
       <mat-accordion>
         <mat-expansion-panel>
@@ -425,6 +435,8 @@
       </mat-accordion>
     }
 
+    @let selectedStopCompletedPassengers =
+      selectedStopCompletedPassengersSignal();
     @if (selectedStopCompletedPassengers.length > 0) {
       <mat-accordion>
         <mat-expansion-panel>
@@ -461,6 +473,7 @@
       </mat-accordion>
     }
 
+    @let selectedStopVehicles = selectedStopVehiclesSignal();
     @if (selectedStopVehicles.length > 0) {
       <mat-accordion>
         <mat-expansion-panel>
