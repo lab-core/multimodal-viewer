@@ -1,6 +1,7 @@
 import {
   computed,
   effect,
+  inject,
   Injectable,
   Injector,
   runInInjectionContext,
@@ -25,6 +26,11 @@ import { TimerService } from './timer.service';
 
 @Injectable()
 export class VisualizationService {
+  private readonly injector = inject(Injector);
+  private readonly simulationService = inject(SimulationService);
+  private readonly animationService = inject(AnimationService);
+  private readonly timerService = inject(TimerService);
+
   // MARK: Properties
   private readonly tickSignal: WritableSignal<number> = signal<number>(0);
   private updateTickTimeout: number | null = null;
@@ -70,12 +76,7 @@ export class VisualizationService {
   });
 
   // MARK: Constructor
-  constructor(
-    private readonly injector: Injector,
-    private readonly simulationService: SimulationService,
-    private readonly animationService: AnimationService,
-    private readonly timerService: TimerService,
-  ) {
+  constructor() {
     effect(
       () =>
         (this.simulationService.wantedVisualizationTime =

@@ -1,6 +1,7 @@
 import {
   computed,
   effect,
+  inject,
   Injectable,
   Signal,
   signal,
@@ -18,6 +19,8 @@ interface FavoritesSaveData {
   providedIn: 'root',
 })
 export class FavoriteEntitiesService {
+  private simulationService = inject(SimulationService);
+
   // Arrays to have them sorted
   // Sets to quickly search
 
@@ -38,7 +41,7 @@ export class FavoriteEntitiesService {
     return this._favoriteEntitiesSignal;
   }
 
-  constructor(private simulationService: SimulationService) {
+  constructor() {
     effect(() => {
       this.loadFavoritesFromLocalStorage();
     });

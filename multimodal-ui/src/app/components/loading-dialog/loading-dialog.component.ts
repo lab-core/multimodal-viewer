@@ -1,4 +1,4 @@
-import { Component, Inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogContent } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
@@ -15,5 +15,5 @@ export type LoadingDialogResult = null;
   styleUrl: './loading-dialog.component.css',
 })
 export class LoadingDialogComponent {
-  constructor(@Inject(MAT_DIALOG_DATA) public data: LoadingDialogData) {}
+  data = inject<LoadingDialogData>(MAT_DIALOG_DATA);
 }

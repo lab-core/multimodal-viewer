@@ -1,6 +1,7 @@
 import {
   Component,
   computed,
+  inject,
   input,
   InputSignal,
   output,
@@ -32,6 +33,8 @@ import { VisualizationService } from '../../services/visualization.service';
   styleUrl: './simulation-control-panel.component.css',
 })
 export class SimulationControlPanelComponent {
+  private readonly visualizationService = inject(VisualizationService);
+
   // MARK: Properties
   readonly isSimulationPausedSignal: Signal<boolean> = computed(
     () => this.simulationInputSignal().status === 'paused',
@@ -56,9 +59,6 @@ export class SimulationControlPanelComponent {
   readonly editSimulationConfigurationOutput = output<Simulation>({
     alias: 'editSimulationConfiguration',
   });
-
-  // MARK: Constructor
-  constructor(private readonly visualizationService: VisualizationService) {}
 
   // MARK: Handlers
   toggleSimulationPause(wasPaused: boolean, id: string): void {

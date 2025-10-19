@@ -1,14 +1,18 @@
 import {
   Component,
   computed,
+  DestroyRef,
   effect,
   ElementRef,
+  inject,
   OnDestroy,
+  OnInit,
   signal,
   Signal,
   ViewChild,
   WritableSignal,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
@@ -98,7 +102,22 @@ export interface EntitySearch {
   templateUrl: './visualizer.component.html',
   styleUrl: './visualizer.component.css',
 })
-export class VisualizerComponent implements OnDestroy {
+export class VisualizerComponent implements OnDestroy, OnInit {
+  private readonly simulationService = inject(SimulationService);
+  private readonly userInterfaceService = inject(UserInterfaceService);
+  private readonly router = inject(Router);
+  private readonly communicationService = inject(CommunicationService);
+  private readonly dialogService = inject(DialogService);
+  private readonly animationService = inject(AnimationService);
+  private readonly loadingService = inject(LoadingService);
+  private readonly visualizationService = inject(VisualizationService);
+  private readonly formBuilder = inject(FormBuilder);
+  private readonly visualizationFilterService = inject(
+    VisualizationFilterService,
+  );
+  private readonly timerService = inject(TimerService);
+  private readonly destroyRef = inject(DestroyRef);
+
   @ViewChild('searchInput') searchInput!: ElementRef<HTMLInputElement>;
   // MARK: Properties
   private matDialogRef: MatDialogRef<InformationDialogComponent> | null = null;
@@ -445,14 +464,16 @@ export class VisualizerComponent implements OnDestroy {
     return [...passengers, ...vehicles];
   });
 
-  readonly tabControl: FormControl<string | null>;
+  readonly tabControl: FormControl<string | null> =
+    this.formBuilder.control(null);
   showSearch = false;
   showFilter = false;
   showFavorites = false;
   showClickHistory = false;
   showLayers = false;
 
-  readonly informationTabControl: FormControl<string[] | null>;
+  readonly informationTabControl: FormControl<string[] | null> =
+    this.formBuilder.control(null);
   showSimulationInformation = false;
   showStatistics = false;
   showEntitiesTab = false;
@@ -464,7 +485,8 @@ export class VisualizerComponent implements OnDestroy {
     { equal: (a, b) => JSON.stringify(a) === JSON.stringify(b) },
   );
 
-  readonly searchControl: FormControl<string | EntitySearch | null>;
+  readonly searchControl: FormControl<string | EntitySearch | null> =
+    this.formBuilder.control(null);
 
   readonly filteredEntitySearchDataSignal: Signal<EntitySearch[]> = computed(
     () => {
@@ -533,71 +555,7 @@ export class VisualizerComponent implements OnDestroy {
   readonly isLoadingSignal = this.timerService.isLoadingSignal;
 
   // MARK: Constructor
-  constructor(
-    private readonly simulationService: SimulationService,
-    private readonly userInterfaceService: UserInterfaceService,
-    private readonly router: Router,
-    private readonly communicationService: CommunicationService,
-    private readonly dialogService: DialogService,
-    private readonly animationService: AnimationService,
-    private readonly loadingService: LoadingService,
-    private readonly visualizationService: VisualizationService,
-    private readonly formBuilder: FormBuilder,
-    private readonly visualizationFilterService: VisualizationFilterService,
-    private readonly timerService: TimerService,
-  ) {
-    this.tabControl = new FormControl('');
-    this.tabControl.valueChanges.subscribe((value) => {
-      // To make tabs unselectable, we have to allow multiple options
-      // but only keep the last one selected.
-      const values = value as unknown as string[];
-      if (values.length > 1) {
-        const lastSelected = values[values.length - 1];
-        this.tabControl.setValue([lastSelected] as unknown as string);
-        return;
-      }
-
-      const tab = values[0];
-      this.showSearch = false;
-      this.showFilter = false;
-      this.showFavorites = false;
-      this.showClickHistory = false;
-      this.showLayers = false;
-      if (tab === 'search') this.showSearch = true;
-      else if (tab === 'filter') this.showFilter = true;
-      else if (tab === 'favorites') this.showFavorites = true;
-      else if (tab === 'history') this.showClickHistory = true;
-      else if (tab === 'layers') this.showLayers = true;
-    });
-
-    this.informationTabControl = new FormControl(['']);
-    this.informationTabControl.valueChanges.subscribe((value) => {
-      if (this.informationTabControl.value !== null) {
-        if (this.informationTabControl.value.length > 1) {
-          this.informationTabControl.setValue([
-            this.informationTabControl.value[
-              this.informationTabControl.value.length - 1
-            ],
-          ]);
-          return;
-        }
-
-        this.showSimulationInformation =
-          this.informationTabControl.value[0] === 'information';
-        this.showStatistics =
-          this.informationTabControl.value[0] === 'statistics';
-        this.showEntitiesTab =
-          this.informationTabControl.value[0] === 'entities';
-        this.showSelectedEntityTab =
-          this.informationTabControl.value[0] === 'selectedEntity';
-      }
-    });
-
-    this.searchControl = this.formBuilder.control('');
-    this.searchControl.valueChanges.subscribe((value) => {
-      this.searchValueSignal.set(value ?? '');
-    });
-
+  constructor() {
     // MARK: Effects
     effect(() => {
       const preselectedEntity = this.animationService.preselectedEntitySignal();
@@ -834,6 +792,60 @@ export class VisualizerComponent implements OnDestroy {
   }
 
   // MARK: Lifecycle
+
+  ngOnInit() {
+    this.tabControl.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => {
+        // To make tabs unselectable, we have to allow multiple options
+        // but only keep the last one selected.
+        const values = value as unknown as string[];
+        if (values.length > 1) {
+          const lastSelected = values[values.length - 1];
+          this.tabControl.setValue([lastSelected] as unknown as string);
+          return;
+        }
+
+        const tab = values[0];
+        this.showSearch = false;
+        this.showFilter = false;
+        this.showFavorites = false;
+        this.showClickHistory = false;
+        this.showLayers = false;
+        if (tab === 'search') this.showSearch = true;
+        else if (tab === 'filter') this.showFilter = true;
+        else if (tab === 'favorites') this.showFavorites = true;
+        else if (tab === 'history') this.showClickHistory = true;
+        else if (tab === 'layers') this.showLayers = true;
+      });
+
+    this.informationTabControl.valueChanges.subscribe((value) => {
+      if (this.informationTabControl.value !== null) {
+        if (this.informationTabControl.value.length > 1) {
+          this.informationTabControl.setValue([
+            this.informationTabControl.value[
+              this.informationTabControl.value.length - 1
+            ],
+          ]);
+          return;
+        }
+
+        this.showSimulationInformation =
+          this.informationTabControl.value[0] === 'information';
+        this.showStatistics =
+          this.informationTabControl.value[0] === 'statistics';
+        this.showEntitiesTab =
+          this.informationTabControl.value[0] === 'entities';
+        this.showSelectedEntityTab =
+          this.informationTabControl.value[0] === 'selectedEntity';
+      }
+    });
+
+    this.searchControl.valueChanges.subscribe((value) => {
+      this.searchValueSignal.set(value ?? '');
+    });
+  }
+
   ngOnDestroy() {
     this.visualizationService.destroy();
   }

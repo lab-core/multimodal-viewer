@@ -1,4 +1,4 @@
-import { Component, Signal } from '@angular/core';
+import { Component, OnInit, Signal, inject } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatChipsModule } from '@angular/material/chips';
@@ -25,17 +25,16 @@ import { VisualizationFilterService } from '../../services/visualization-filter.
   templateUrl: './visualizer-filter.component.html',
   styleUrl: './visualizer-filter.component.css',
 })
-export class VisualizerFilterComponent {
-  filters: Signal<Set<string>>;
-  vehicleModes: Signal<string[]>;
+export class VisualizerFilterComponent implements OnInit {
+  readonly visualizationFilterService = inject(VisualizationFilterService);
+  private readonly animationService = inject(AnimationService);
 
-  constructor(
-    readonly visualizationFilterService: VisualizationFilterService,
-    private readonly animationService: AnimationService,
-  ) {
-    this.filters = visualizationFilterService.filters;
-    this.vehicleModes = visualizationFilterService.vehicleModes;
+  readonly filters: Signal<Set<string>> =
+    this.visualizationFilterService.filters;
+  readonly vehicleModes: Signal<string[]> =
+    this.visualizationFilterService.vehicleModes;
 
+  ngOnInit() {
     this.animationService.setFilterMode('all');
   }
 

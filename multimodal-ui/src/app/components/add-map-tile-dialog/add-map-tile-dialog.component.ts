@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import {
   FormBuilder,
   FormControl,
@@ -47,38 +47,34 @@ export interface AddMapTileDialogResult {
   styleUrl: './add-map-tile-dialog.component.css',
 })
 export class AddMapTileDialogComponent {
-  readonly formGroup: FormGroup;
+  private readonly dialogRef =
+    inject<MatDialogRef<AddMapTileDialogComponent, AddMapTileDialogResult>>(
+      MatDialogRef,
+    );
+  private readonly formBuilder = inject(FormBuilder);
 
-  readonly nameFormControl: FormControl<string | null>;
-  readonly urlFormControl: FormControl<string | null>;
-  readonly attributionFormControl: FormControl<string | null>;
-
-  constructor(
-    private readonly dialogRef: MatDialogRef<
-      AddMapTileDialogComponent,
-      AddMapTileDialogResult
-    >,
-    private readonly formBuilder: FormBuilder,
-  ) {
-    this.nameFormControl = this.formBuilder.control(null, [
+  readonly nameFormControl: FormControl<string | null> =
+    this.formBuilder.control(null, [
       Validators.minLength(3),
       Validators.maxLength(30),
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      Validators.required,
     ]);
-    this.urlFormControl = this.formBuilder.control(null);
-    this.attributionFormControl = this.formBuilder.control(null);
 
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    this.nameFormControl.addValidators(Validators.required);
+  readonly urlFormControl: FormControl<string | null> =
+    this.formBuilder.control(null, [
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      Validators.required,
+    ]);
 
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    this.urlFormControl.addValidators(Validators.required);
+  readonly attributionFormControl: FormControl<string | null> =
+    this.formBuilder.control(null);
 
-    this.formGroup = this.formBuilder.group({
-      name: this.nameFormControl,
-      url: this.urlFormControl,
-      attribution: this.attributionFormControl,
-    });
-  }
+  readonly formGroup: FormGroup = this.formBuilder.group({
+    name: this.nameFormControl,
+    url: this.urlFormControl,
+    attribution: this.attributionFormControl,
+  });
 
   onAdd() {
     if (this.formGroup.valid) {

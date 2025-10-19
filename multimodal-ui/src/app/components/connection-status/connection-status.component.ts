@@ -1,4 +1,4 @@
-import { Component, Signal } from '@angular/core';
+import { Component, Signal, inject } from '@angular/core';
 import {
   CommunicationService,
   CommunicationStatus,
@@ -13,7 +13,7 @@ import { MatIconModule } from '@angular/material/icon';
   styleUrl: './connection-status.component.css',
 })
 export class ConnectionStatusComponent {
-  constructor(private readonly communicationService: CommunicationService) {}
+  private readonly communicationService = inject(CommunicationService);
 
   get communicationStatusSignal(): Signal<CommunicationStatus> {
     return this.communicationService.communicationStatusSignal;

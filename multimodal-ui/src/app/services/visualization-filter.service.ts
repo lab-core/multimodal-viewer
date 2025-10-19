@@ -1,5 +1,6 @@
 import {
   effect,
+  inject,
   Injectable,
   signal,
   Signal,
@@ -11,6 +12,9 @@ import { VisualizationService } from './visualization.service';
 
 @Injectable()
 export class VisualizationFilterService {
+  readonly visualizationService = inject(VisualizationService);
+  readonly animationService = inject(AnimationService);
+
   private _filters: WritableSignal<Set<string>> = signal(
     new Set<string>(['stops']),
   );
@@ -25,10 +29,7 @@ export class VisualizationFilterService {
     return this._vehicleModes;
   }
 
-  constructor(
-    readonly visualizationService: VisualizationService,
-    readonly animationService: AnimationService,
-  ) {
+  constructor() {
     effect(() => {
       this.effectUpdateVehicleModeFilters();
     });

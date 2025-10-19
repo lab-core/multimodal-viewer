@@ -1,4 +1,4 @@
-import { Component, computed, Signal } from '@angular/core';
+import { Component, computed, inject, Signal } from '@angular/core';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { EntityMetadata } from '../../interfaces/entity.model';
@@ -15,6 +15,9 @@ import { EntityNameComponent } from '../entity-name/entity-name.component';
   styleUrl: './entities-tab.component.css',
 })
 export class EntitiesTabComponent {
+  private readonly animationService = inject(AnimationService);
+  private readonly visualizationService = inject(VisualizationService);
+
   // MARK: Properties
   readonly getPassengers: Signal<Passenger[]> = computed(() => {
     const environment = this.visualizationService.environmentSignal();
@@ -97,11 +100,6 @@ export class EntitiesTabComponent {
       vehicles,
     }));
   });
-
-  constructor(
-    private readonly animationService: AnimationService,
-    private readonly visualizationService: VisualizationService,
-  ) {}
 
   preselectEntity(entity: EntityMetadata) {
     this.animationService.preselectEntity(entity, false);

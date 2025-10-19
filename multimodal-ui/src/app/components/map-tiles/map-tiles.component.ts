@@ -1,4 +1,4 @@
-import { Component, Signal } from '@angular/core';
+import { Component, Signal, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
@@ -24,14 +24,12 @@ import { MapService } from '../../services/map.service';
   styleUrl: './map-tiles.component.css',
 })
 export class MapLayersComponent {
+  readonly mapService = inject(MapService);
+  readonly dialogService = inject(DialogService);
+
   mapTilesSignal: Signal<MapTile[]> = this.mapService.mapTilesSignal;
   selectedMapTileSignal: Signal<MapTile | null> =
     this.mapService.selectedMapTileSignal;
-
-  constructor(
-    readonly mapService: MapService,
-    readonly dialogService: DialogService,
-  ) {}
 
   setMapTile(tile: MapTile) {
     this.mapService.selectMapTile(tile);

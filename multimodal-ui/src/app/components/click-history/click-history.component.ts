@@ -1,4 +1,10 @@
-import { Component, effect, signal, WritableSignal } from '@angular/core';
+import {
+  Component,
+  effect,
+  inject,
+  signal,
+  WritableSignal,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
@@ -6,7 +12,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { EntityMetadata } from '../../interfaces/entity.model';
 import { AnimationService } from '../../services/animation.service';
-import { VisualizationService } from '../../services/visualization.service';
 import { EntityNameComponent } from '../entity-name/entity-name.component';
 
 @Component({
@@ -23,15 +28,14 @@ import { EntityNameComponent } from '../entity-name/entity-name.component';
   styleUrl: './click-history.component.scss',
 })
 export class ClickHistoryComponent {
+  private readonly animationService = inject(AnimationService);
+
   history: WritableSignal<EntityMetadata[]> = signal([]);
 
   // Don't make selects from the history change the order of the history
   _ignoreNextSelect = false;
 
-  constructor(
-    private readonly visualizationService: VisualizationService,
-    private readonly animationService: AnimationService,
-  ) {
+  constructor() {
     effect(() => {
       this.effectOnEntitySelected();
     });

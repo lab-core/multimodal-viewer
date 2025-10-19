@@ -3,6 +3,7 @@ import {
   computed,
   effect,
   ElementRef,
+  inject,
   signal,
   viewChild,
 } from '@angular/core';
@@ -20,6 +21,8 @@ import { EntityNameComponent } from '../entity-name/entity-name.component';
   styleUrl: './close-entities-menu.component.css',
 })
 export class CloseEntitiesMenuComponent {
+  private readonly animationService = inject(AnimationService);
+
   private readonly offset = 30;
   private readonly maxHeightPadding = 150;
   private readonly width = 250;
@@ -88,7 +91,7 @@ export class CloseEntitiesMenuComponent {
     return y - this.maxHeightPadding + 'px';
   });
 
-  constructor(private readonly animationService: AnimationService) {
+  constructor() {
     // Show menu when click position triggered
     effect(() => {
       const position = this.animationService.clickPositionSignal();

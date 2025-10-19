@@ -227,10 +227,10 @@
             </button>
 
             <button
-              mat-icon-button
               matTooltip="{{
                 backgroundShape.isActive ? 'Deactivate' : 'Activate'
               }} Background Shape"
+              mat-icon-button
               (click)="toggleBackgroundShapeIsActive(backgroundShapeIndex)"
             >
               <mat-icon>
@@ -421,10 +421,10 @@
             </button>
 
             <button
-              mat-icon-button
               matTooltip="{{
                 customTexture.isActive ? 'Deactivate' : 'Activate'
               }} Custom Icon"
+              mat-icon-button
               (click)="toggleCustomTextureIsActive(customTextureIndex)"
             >
               <mat-icon>
@@ -473,11 +473,11 @@
             subscriptSizing="dynamic"
           >
             <input
-              matInput
-              disabled
               value="Default {{
                 defaultIconType.replaceAll('-', ' ') | titlecase
               }} Icon"
+              disabled
+              matInput
             />
           </mat-form-field>
 

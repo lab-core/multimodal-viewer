@@ -1,6 +1,6 @@
 import { AsyncPipe } from '@angular/common';
-import { Component, Inject, Injector, OnDestroy } from '@angular/core';
-import { toObservable } from '@angular/core/rxjs-interop';
+import { Component, DestroyRef, inject, Injector, OnInit } from '@angular/core';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
   FormBuilder,
@@ -34,11 +34,8 @@ import {
   filter,
   firstValueFrom,
   map,
-  Observable,
   startWith,
-  Subject,
   take,
-  takeUntil,
   timeout,
 } from 'rxjs';
 import { SIMULATION_SAVE_FILE_SEPARATOR } from '../../../environments/environment';
@@ -87,49 +84,68 @@ export interface SimulationConfigurationDialogResult {
   templateUrl: './simulation-configuration-dialog.component.html',
   styleUrl: './simulation-configuration-dialog.component.css',
 })
-export class SimulationConfigurationDialogComponent implements OnDestroy {
+export class SimulationConfigurationDialogComponent implements OnInit {
+  readonly data = inject<SimulationConfigurationDialogData>(MAT_DIALOG_DATA);
+  readonly dataService = inject(DataService);
+  private readonly dialogRef =
+    inject<
+      MatDialogRef<
+        SimulationConfigurationDialogComponent,
+        SimulationConfigurationDialogResult
+      >
+    >(MatDialogRef);
+  private readonly formBuilder = inject(FormBuilder);
+  private readonly httpService = inject(HttpService);
+  private readonly loadingService = inject(LoadingService);
+  private readonly snackBarService = inject(SnackBarService);
+  private readonly injector = inject(Injector);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly dialogService = inject(DialogService);
+
   readonly SIMULATION_SAVE_FILE_SEPARATOR = SIMULATION_SAVE_FILE_SEPARATOR;
 
-  readonly formGroup: FormGroup;
-  readonly generalFormGroup: FormGroup;
-  readonly configurationFormGroup: FormGroup;
-
-  readonly nameFormControl: FormControl<string | null>;
-  readonly dataFormControl: FormControl<string | null>;
-  readonly maxDurationFormControl: FormControl<number | null>;
-  readonly shouldRunInBackgroundFormControl: FormControl<boolean | null>;
-
-  private readonly unsubscribe$ = new Subject<void>();
-
-  readonly filteredData$: Observable<string[]>;
-
-  constructor(
-    @Inject(MAT_DIALOG_DATA)
-    public readonly data: SimulationConfigurationDialogData,
-    public readonly dataService: DataService,
-    private readonly dialogRef: MatDialogRef<
-      SimulationConfigurationDialogComponent,
-      SimulationConfigurationDialogResult
-    >,
-    private readonly formBuilder: FormBuilder,
-    private readonly httpService: HttpService,
-    private readonly loadingService: LoadingService,
-    private readonly snackBarService: SnackBarService,
-    private readonly injector: Injector,
-    private readonly dialogService: DialogService,
-  ) {
-    // Initialize form
-    this.nameFormControl = this.formBuilder.control(null, [
+  readonly nameFormControl: FormControl<string | null> =
+    this.formBuilder.control(null, [
       Validators.minLength(3),
       Validators.maxLength(50),
       this.validateName(),
     ]);
-    if (this.data.mode === 'start') {
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      this.nameFormControl.addValidators(Validators.required);
-    }
+  readonly dataFormControl: FormControl<string | null> =
+    this.formBuilder.control(null);
+  readonly maxDurationFormControl: FormControl<number | null> =
+    this.formBuilder.control(null, [Validators.min(0)]);
+  readonly shouldRunInBackgroundFormControl: FormControl<boolean | null> =
+    this.formBuilder.control(false);
 
-    this.dataFormControl = this.formBuilder.control(null);
+  readonly generalFormGroup: FormGroup = this.formBuilder.group({
+    name: this.nameFormControl,
+    data: this.dataFormControl,
+    shouldRunInBackground: this.shouldRunInBackgroundFormControl,
+  });
+  readonly configurationFormGroup: FormGroup = this.formBuilder.group({
+    maxDuration: this.maxDurationFormControl,
+  });
+
+  readonly formGroup: FormGroup = this.formBuilder.group({
+    general: this.generalFormGroup,
+    configuration: this.configurationFormGroup,
+  });
+
+  readonly filteredData$ = combineLatest([
+    this.dataFormControl.valueChanges.pipe(startWith('')),
+    toObservable(this.dataService.availableSimulationDataSignal),
+  ]).pipe(
+    map(([value, data]) =>
+      value
+        ? data.filter((name) =>
+            name.toLowerCase().includes(value.toLowerCase()),
+          )
+        : data,
+    ),
+  );
+
+  ngOnInit() {
+    // Initialize form
     if (this.data.mode === 'start') {
       // eslint-disable-next-line @typescript-eslint/unbound-method
       this.dataFormControl.addValidators(Validators.required);
@@ -143,40 +159,6 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
       );
     }
 
-    this.filteredData$ = combineLatest([
-      this.dataFormControl.valueChanges.pipe(startWith('')),
-      toObservable(this.dataService.availableSimulationDataSignal),
-    ]).pipe(
-      map(([value, data]) =>
-        value
-          ? data.filter((name) =>
-              name.toLowerCase().includes(value.toLowerCase()),
-            )
-          : data,
-      ),
-    );
-
-    this.shouldRunInBackgroundFormControl = this.formBuilder.control(false);
-
-    this.maxDurationFormControl = this.formBuilder.control(null, [
-      Validators.min(0),
-    ]);
-
-    this.generalFormGroup = this.formBuilder.group({
-      name: this.nameFormControl,
-      data: this.dataFormControl,
-      shouldRunInBackground: this.shouldRunInBackgroundFormControl,
-    });
-
-    this.configurationFormGroup = this.formBuilder.group({
-      maxDuration: this.maxDurationFormControl,
-    });
-
-    this.formGroup = this.formBuilder.group({
-      general: this.generalFormGroup,
-      configuration: this.configurationFormGroup,
-    });
-
     // Prefill form
     if (this.data.mode === 'edit' && this.data.currentConfiguration) {
       this.maxDurationFormControl.setValue(
@@ -189,7 +171,7 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     // Disable fields if data is not provided
     if (this.data.mode === 'start') {
       this.dataFormControl.valueChanges
-        .pipe(takeUntil(this.unsubscribe$))
+        .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe((value) => {
           if (value) {
             this.enableConfigurationFields();
@@ -202,11 +184,6 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
         this.disableConfigurationFields();
       }
     }
-  }
-
-  ngOnDestroy(): void {
-    this.unsubscribe$.next();
-    this.unsubscribe$.complete();
   }
 
   onSave() {

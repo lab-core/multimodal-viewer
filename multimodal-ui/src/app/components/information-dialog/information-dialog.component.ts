@@ -1,4 +1,4 @@
-import { Component, Inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import {
   MAT_DIALOG_DATA,
@@ -34,5 +34,5 @@ export type InformationDialogResult = boolean | null;
   styleUrl: './information-dialog.component.css',
 })
 export class InformationDialogComponent {
-  constructor(@Inject(MAT_DIALOG_DATA) public data: InformationDialogData) {}
+  data = inject<InformationDialogData>(MAT_DIALOG_DATA);
 }

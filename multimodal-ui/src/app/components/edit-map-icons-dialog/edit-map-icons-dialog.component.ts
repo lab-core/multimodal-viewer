@@ -10,6 +10,7 @@ import {
   Component,
   computed,
   ElementRef,
+  inject,
   signal,
   viewChild,
   WritableSignal,
@@ -103,9 +104,17 @@ export type EditMapIconsDialogResult = null;
   styleUrl: './edit-map-icons-dialog.component.css',
 })
 export class EditMapIconsDialogComponent {
-  readonly SPRITE_SIZE;
-  readonly PRESET_LIGHT_COLOR_THEME;
-  readonly PRESET_SATURATED_COLOR_THEME;
+  private readonly dialogRef =
+    inject<MatDialogRef<EditMapIconsDialogComponent, EditMapIconsDialogResult>>(
+      MatDialogRef,
+    );
+  private readonly spritesService = inject(SpritesService);
+
+  readonly SPRITE_SIZE = this.spritesService.SPRITE_SIZE;
+  readonly PRESET_LIGHT_COLOR_THEME =
+    this.spritesService.PRESET_LIGHT_COLOR_THEME;
+  readonly PRESET_SATURATED_COLOR_THEME =
+    this.spritesService.PRESET_SATURATED_COLOR_THEME;
   readonly EDITABLE_DEFAULT_ICON_TYPES = EDITABLE_DEFAULT_ICON_TYPES;
   readonly CUSTOMIZATION_ENTITY_TYPES = CUSTOMIZATION_ENTITY_TYPES;
   readonly CUSTOMIZATION_ZOOMS = CUSTOMIZATION_ZOOMS;
@@ -115,88 +124,62 @@ export class EditMapIconsDialogComponent {
 
   currentError = '';
 
-  colorPresetIndex = 0;
-  customColors = signal(['#00ff00', '#ff0000']);
+  colorPresetIndex = this.spritesService.colorPresetIndex;
 
-  testScaleValue = 0;
+  readonly customColors = signal(
+    structuredClone(this.spritesService.customColors),
+  );
+
+  private testScaleValue = 0;
   testScaleColor = '#ffffff';
 
-  customTexturesSignal: WritableSignal<CustomTexture[]> = signal([]);
-  backgroundShapesSignal: WritableSignal<BackgroundShape[]> = signal([]);
+  readonly customTexturesSignal: WritableSignal<CustomTexture[]> = signal(
+    this.spritesService.customTextures,
+  );
 
-  vehicleTextureUrlSignal: WritableSignal<string> = signal('');
-  passengerTextureUrlSignal: WritableSignal<string> = signal('');
-  stopTextureUrlSignal: WritableSignal<string> = signal('');
+  readonly backgroundShapesSignal: WritableSignal<BackgroundShape[]> = signal(
+    this.spritesService.backgroundShapes,
+  );
 
-  zoomedOutVehicleTextureUrlSignal: WritableSignal<string> = signal('');
-  zoomedOutPassengerTextureUrlSignal: WritableSignal<string> = signal('');
-  zoomedOutStopTextureUrlSignal: WritableSignal<string> = signal('');
+  private readonly vehicleTextureUrlSignal: WritableSignal<string> = signal(
+    (this.spritesService.vehicleTexture.baseTexture.resource as ImageResource)
+      .url,
+  );
+  private readonly passengerTextureUrlSignal: WritableSignal<string> = signal(
+    (this.spritesService.passengerTexture.baseTexture.resource as ImageResource)
+      .url,
+  );
+  private readonly stopTextureUrlSignal: WritableSignal<string> = signal(
+    (this.spritesService.stopTexture.baseTexture.resource as ImageResource).url,
+  );
 
-  uploadButton =
-    viewChild.required<ElementRef<HTMLButtonElement>>('iconFileUpload');
-
-  private selectedTextureIndex: number | null = null;
-  private selectedDefaultTextureType: EditableDefaultIconType | null = null;
-
-  constructor(
-    private readonly dialogRef: MatDialogRef<
-      EditMapIconsDialogComponent,
-      EditMapIconsDialogResult
-    >,
-    private readonly spritesService: SpritesService,
-  ) {
-    this.SPRITE_SIZE = this.spritesService.SPRITE_SIZE;
-    this.PRESET_LIGHT_COLOR_THEME =
-      this.spritesService.PRESET_LIGHT_COLOR_THEME;
-    this.PRESET_SATURATED_COLOR_THEME =
-      this.spritesService.PRESET_SATURATED_COLOR_THEME;
-
-    // Safe to assume it's an ImageResource with a url because they are all loaded from a url.
-    this.vehicleTextureUrlSignal.set(
-      (this.spritesService.vehicleTexture.baseTexture.resource as ImageResource)
-        .url,
-    );
-
-    this.passengerTextureUrlSignal.set(
-      (
-        this.spritesService.passengerTexture.baseTexture
-          .resource as ImageResource
-      ).url,
-    );
-
-    this.stopTextureUrlSignal.set(
-      (this.spritesService.stopTexture.baseTexture.resource as ImageResource)
-        .url,
-    );
-
-    this.zoomedOutVehicleTextureUrlSignal.set(
+  private readonly zoomedOutVehicleTextureUrlSignal: WritableSignal<string> =
+    signal(
       (
         this.spritesService.zoomedOutVehicleTexture.baseTexture
           .resource as ImageResource
       ).url,
     );
-
-    this.zoomedOutPassengerTextureUrlSignal.set(
+  private readonly zoomedOutPassengerTextureUrlSignal: WritableSignal<string> =
+    signal(
       (
         this.spritesService.zoomedOutPassengerTexture.baseTexture
           .resource as ImageResource
       ).url,
     );
-
-    this.zoomedOutStopTextureUrlSignal.set(
+  private readonly zoomedOutStopTextureUrlSignal: WritableSignal<string> =
+    signal(
       (
         this.spritesService.zoomedOutStopTexture.baseTexture
           .resource as ImageResource
       ).url,
     );
 
-    this.customTexturesSignal.set(this.spritesService.customTextures);
+  private readonly uploadButton =
+    viewChild.required<ElementRef<HTMLButtonElement>>('iconFileUpload');
 
-    this.backgroundShapesSignal.set(this.spritesService.backgroundShapes);
-
-    this.colorPresetIndex = this.spritesService.colorPresetIndex;
-    this.customColors.set(structuredClone(this.spritesService.customColors));
-  }
+  private selectedTextureIndex: number | null = null;
+  private selectedDefaultTextureType: EditableDefaultIconType | null = null;
 
   dropCustomColor(event: CdkDragDrop<string[]>) {
     this.customColors.update((customColors) => {

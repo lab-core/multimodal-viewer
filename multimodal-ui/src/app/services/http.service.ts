@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
@@ -16,9 +16,9 @@ export interface ImportFolderResponse {
   providedIn: 'root',
 })
 export class HttpService {
-  private apiUrl = environment.apiUrl;
+  private http = inject(HttpClient);
 
-  constructor(private http: HttpClient) {}
+  private apiUrl = environment.apiUrl;
 
   exportFolder(folderContent: string, folderName: string): Observable<Blob> {
     return this.http.get(this.apiUrl + `${folderContent}/${folderName}`, {

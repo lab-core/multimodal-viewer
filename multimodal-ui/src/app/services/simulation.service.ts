@@ -1,6 +1,7 @@
 import {
   computed,
   effect,
+  inject,
   Injectable,
   signal,
   Signal,
@@ -44,6 +45,11 @@ export interface StateExtractionTask {
   providedIn: 'root',
 })
 export class SimulationService {
+  private readonly dataService = inject(DataService);
+  private readonly communicationService = inject(CommunicationService);
+  private readonly taskService = inject(TaskService);
+  private readonly timerService = inject(TimerService);
+
   // MARK: Properties
   private readonly stateExtractionTasks = new Map<
     number,
@@ -90,12 +96,7 @@ export class SimulationService {
     signal(null);
 
   // MARK: Constructor
-  constructor(
-    private readonly dataService: DataService,
-    private readonly communicationService: CommunicationService,
-    private readonly taskService: TaskService,
-    private readonly timerService: TimerService,
-  ) {
+  constructor() {
     effect(() => this.getPolylinesIfNeeded());
 
     effect(() => this.getMissingSimulationStatesIfNeeded());

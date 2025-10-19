@@ -2,7 +2,9 @@ import { DecimalPipe } from '@angular/common';
 import {
   Component,
   computed,
+  DestroyRef,
   ElementRef,
+  inject,
   input,
   InputSignal,
   OnDestroy,
@@ -13,6 +15,7 @@ import {
   viewChild,
   WritableSignal,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
   FormControl,
@@ -59,6 +62,12 @@ import { simulationTimeDisplay } from '../../utils/simulation-time.utils';
   styleUrl: './simulation-control-bar.component.css',
 })
 export class SimulationControlBarComponent implements OnInit, OnDestroy {
+  private readonly visualizationService = inject(VisualizationService);
+  private readonly animationService = inject(AnimationService);
+  private readonly simulationService = inject(SimulationService);
+  private readonly timerService = inject(TimerService);
+  private readonly destroyRef = inject(DestroyRef);
+
   sliderWrapper = viewChild<ElementRef<HTMLElement>>('sliderWrapper');
   sliderHoverSimulationTime: string | null = null;
   sliderHoverTimestamp = 0;
@@ -143,18 +152,15 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
     return getCoveredTimeIntervals(continuousEnvironments);
   });
 
-  // MARK: Constructor
-  constructor(
-    private readonly visualizationService: VisualizationService,
-    private readonly animationService: AnimationService,
-    private readonly simulationService: SimulationService,
-    private readonly timerService: TimerService,
-  ) {
-    this.editorVisualisationTimeForm.valueChanges.subscribe((value) => {
-      this.editorVisualisationTimeValueSignal.set(
-        value ? parseInt(value) : NaN,
-      );
-    });
+  // MARK: Lifecycle
+  ngOnInit() {
+    this.editorVisualisationTimeForm.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => {
+        this.editorVisualisationTimeValueSignal.set(
+          value ? parseInt(value) : NaN,
+        );
+      });
 
     hotkeys('space', () => {
       this.toggleVisualizationPause(this.timerService.isPausedSignal());
@@ -187,9 +193,7 @@ export class SimulationControlBarComponent implements OnInit, OnDestroy {
     hotkeys('f', () => {
       this.toggleShouldFollowEntity();
     });
-  }
 
-  ngOnInit() {
     this.interval = setInterval(() => {
       this.sliderUpdateSignal.update((value) => value + 1);
     }, this.SLIDER_UPDATE_INTERVAL);

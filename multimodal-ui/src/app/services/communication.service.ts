@@ -1,6 +1,7 @@
 import {
   computed,
   effect,
+  inject,
   Injectable,
   Signal,
   signal,
@@ -26,6 +27,9 @@ export type CommunicationStatus = 'connected' | 'disconnected' | 'connecting';
   providedIn: 'root',
 })
 export class CommunicationService {
+  private readonly socket = inject(Socket);
+  private readonly dialogService = inject(DialogService);
+
   private readonly _communicationStatusSignal: WritableSignal<CommunicationStatus> =
     signal('connecting');
 
@@ -34,10 +38,7 @@ export class CommunicationService {
     InformationDialogResult
   > | null = null;
 
-  constructor(
-    private readonly socket: Socket,
-    private readonly dialogService: DialogService,
-  ) {
+  constructor() {
     effect(() => {
       const communicationStatus = this._communicationStatusSignal();
 
@@ -105,11 +106,11 @@ export class CommunicationService {
   }
 
   onDisconnect(listener: SocketEventListener): void {
-    this.socket.on('disconnect', listener);
+    this.socket.on('disconnect', () => void listener);
   }
 
   onConnect(listener: SocketEventListener): void {
-    this.socket.on('connect', listener);
+    this.socket.on('connect', () => void listener);
   }
 
   removeAllListeners(event: string): void {

@@ -1,4 +1,4 @@
-import { Component, Signal } from '@angular/core';
+import { Component, Signal, inject } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
@@ -22,11 +22,9 @@ import { EntityNameComponent } from '../entity-name/entity-name.component';
   styleUrl: './favorite-entities.component.css',
 })
 export class FavoriteEntitiesComponent {
-  constructor(
-    private readonly favoriteEntitiesService: FavoriteEntitiesService,
-    private readonly visualizationService: VisualizationService,
-    private readonly animationService: AnimationService,
-  ) {}
+  private readonly favoriteEntitiesService = inject(FavoriteEntitiesService);
+  private readonly visualizationService = inject(VisualizationService);
+  private readonly animationService = inject(AnimationService);
 
   get favoriteEntitiesSignal(): Signal<EntityMetadata[]> {
     return this.favoriteEntitiesService.favoriteEntitiesSignal;

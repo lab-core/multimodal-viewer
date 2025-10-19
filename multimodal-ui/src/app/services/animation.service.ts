@@ -1,6 +1,12 @@
 import 'leaflet-pixi-overlay';
 
-import { Injectable, Signal, signal, WritableSignal } from '@angular/core';
+import {
+  inject,
+  Injectable,
+  Signal,
+  signal,
+  WritableSignal,
+} from '@angular/core';
 import { color as d3Color } from 'd3-color';
 import { interpolateRgbBasis as d3InterpolateRgb } from 'd3-interpolate';
 import {
@@ -50,6 +56,11 @@ import { TimerService } from './timer.service';
   providedIn: 'root',
 })
 export class AnimationService {
+  private readonly favoriteEntitiesService = inject(FavoriteEntitiesService);
+  private readonly spritesService = inject(SpritesService);
+  private readonly taskService = inject(TaskService);
+  private readonly timerService = inject(TimerService);
+
   // MARK: Constants
   private readonly MAXIMUM_ANIMATION_JUMP_SECONDS = 30 / 1000; // 0.03 seconds (30 ms)
 
@@ -148,12 +159,7 @@ export class AnimationService {
     signal(false);
 
   // MARK: Constructor
-  constructor(
-    private readonly favoriteEntitiesService: FavoriteEntitiesService,
-    private readonly spritesService: SpritesService,
-    private readonly taskService: TaskService,
-    private readonly timerService: TimerService,
-  ) {
+  constructor() {
     void Assets.load(this.BITMAP_TEXT_URL).then(() => {
       this.fontsLoaded = true;
     });

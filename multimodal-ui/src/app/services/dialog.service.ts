@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import {
   AddMapTileDialogComponent,
@@ -31,7 +31,7 @@ import { UserGuideComponent } from '../components/user-guide-dialog/user-guide-d
   providedIn: 'root',
 })
 export class DialogService {
-  constructor(private readonly matDialog: MatDialog) {}
+  private readonly matDialog = inject(MatDialog);
 
   openSimulationConfigurationDialog(
     data: SimulationConfigurationDialogData,

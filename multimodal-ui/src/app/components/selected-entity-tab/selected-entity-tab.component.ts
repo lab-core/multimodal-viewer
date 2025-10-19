@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, inject, Input } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -30,6 +30,11 @@ import { SelectedEntityRouteComponent } from '../selected-entity-route/selected-
   styleUrl: './selected-entity-tab.component.css',
 })
 export class SelectedEntityTabComponent {
+  private readonly animationService = inject(AnimationService);
+  private readonly favoriteEntitiesService = inject(FavoriteEntitiesService);
+  private readonly snackBarService = inject(SnackBarService);
+  private readonly visualizationService = inject(VisualizationService);
+
   @Input({ required: true }) selectedPassenger: Passenger | null = null;
   @Input({ required: true }) selectedPassengerStop: Stop | null = null;
   @Input({ required: true }) selectedPassengerVehicle: Vehicle | null = null;
@@ -44,13 +49,6 @@ export class SelectedEntityTabComponent {
   @Input({ required: true })
   selectedStopCompletedPassengers: Passenger[] = [];
   @Input({ required: true }) selectedStopVehicles: Vehicle[] = [];
-
-  constructor(
-    private readonly animationService: AnimationService,
-    private readonly favoriteEntitiesService: FavoriteEntitiesService,
-    private readonly snackBarService: SnackBarService,
-    private readonly visualizationService: VisualizationService,
-  ) {}
 
   get selectedPassengerLegs() {
     const passenger = this.selectedPassenger;

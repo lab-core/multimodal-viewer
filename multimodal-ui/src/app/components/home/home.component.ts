@@ -1,4 +1,4 @@
-import { Component, signal, WritableSignal } from '@angular/core';
+import { Component, inject, signal, WritableSignal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { Router } from '@angular/router';
@@ -15,14 +15,12 @@ import { GithubButtonComponent } from '../github-button/github-button.component'
   styleUrl: './home.component.css',
 })
 export class HomeComponent {
-  readonly shouldShowMainMenuSignal: WritableSignal<boolean> = signal(true);
+  private readonly dialogService = inject(DialogService);
+  private readonly loadingService = inject(LoadingService);
+  private readonly communicationService = inject(CommunicationService);
+  private readonly router = inject(Router);
 
-  constructor(
-    private readonly dialogService: DialogService,
-    private readonly loadingService: LoadingService,
-    private readonly communicationService: CommunicationService,
-    private readonly router: Router,
-  ) {}
+  readonly shouldShowMainMenuSignal: WritableSignal<boolean> = signal(true);
 
   async onStartSimulation() {
     this.shouldShowMainMenuSignal.set(false);

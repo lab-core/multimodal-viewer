@@ -2,6 +2,7 @@ import { DatePipe, PercentPipe, TitleCasePipe } from '@angular/common';
 import {
   Component,
   computed,
+  inject,
   Injector,
   signal,
   Signal,
@@ -71,6 +72,16 @@ export type SimulationListGroup = 'running' | 'completed';
   styleUrl: './simulation-list-dialog.component.css',
 })
 export class SimulationListDialogComponent {
+  private readonly dataService = inject(DataService);
+  private readonly simulationService = inject(SimulationService);
+  private readonly dialogService = inject(DialogService);
+  private readonly matDialogRef =
+    inject<MatDialogRef<SimulationListDialogComponent>>(MatDialogRef);
+  private readonly httpService = inject(HttpService);
+  private readonly snackBarService = inject(SnackBarService);
+  private readonly loadingService = inject(LoadingService);
+  private readonly injector = inject(Injector);
+
   readonly groupedSimulationsSignal: Signal<
     {
       group: SimulationListGroup;
@@ -99,17 +110,6 @@ export class SimulationListDialogComponent {
 
   private readonly _selectedSimulationIdSignal: WritableSignal<string | null> =
     signal(null);
-
-  constructor(
-    private readonly dataService: DataService,
-    private readonly simulationService: SimulationService,
-    private readonly dialogService: DialogService,
-    private readonly matDialogRef: MatDialogRef<SimulationListDialogComponent>,
-    private readonly httpService: HttpService,
-    private readonly snackBarService: SnackBarService,
-    private readonly loadingService: LoadingService,
-    private readonly injector: Injector,
-  ) {}
 
   get selectedSimulationIdSignal(): Signal<string | null> {
     return this._selectedSimulationIdSignal;

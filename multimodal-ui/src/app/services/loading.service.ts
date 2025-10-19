@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import {
   LoadingDialogComponent,
@@ -10,12 +10,12 @@ import {
   providedIn: 'root',
 })
 export class LoadingService {
+  private readonly matDialog = inject(MatDialog);
+
   private loadingDialogRef: MatDialogRef<
     LoadingDialogComponent,
     LoadingDialogResult
   > | null = null;
-
-  constructor(private readonly matDialog: MatDialog) {}
 
   start(message: string | null): void {
     this.loadingDialogRef = this.matDialog.open<

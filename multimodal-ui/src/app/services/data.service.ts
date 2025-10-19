@@ -1,5 +1,6 @@
 import {
   computed,
+  inject,
   Injectable,
   Signal,
   signal,
@@ -16,6 +17,8 @@ import { CommunicationService } from './communication.service';
   providedIn: 'root',
 })
 export class DataService {
+  private readonly communicationService = inject(CommunicationService);
+
   // MARK: Properties
   private readonly _simulationsSignal: WritableSignal<Simulation[]> = signal(
     [],
@@ -25,7 +28,7 @@ export class DataService {
     signal([]);
 
   // MARK: Constructor
-  constructor(private readonly communicationService: CommunicationService) {
+  constructor() {
     this.listen();
 
     this.query();

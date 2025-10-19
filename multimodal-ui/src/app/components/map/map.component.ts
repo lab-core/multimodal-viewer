@@ -1,4 +1,4 @@
-import { Component, OnDestroy } from '@angular/core';
+import { Component, inject, OnDestroy, OnInit } from '@angular/core';
 import { LeafletModule } from '@bluehalo/ngx-leaflet';
 import { latLng, Map } from 'leaflet';
 import {
@@ -15,13 +15,13 @@ import { CloseEntitiesMenuComponent } from '../close-entities-menu/close-entitie
   templateUrl: './map.component.html',
   styleUrl: './map.component.css',
 })
-export class MapComponent implements OnDestroy {
+export class MapComponent implements OnInit, OnDestroy {
+  private readonly mapService = inject(MapService);
+  private readonly animationService = inject(AnimationService);
+
   private map: Map | null = null;
 
-  constructor(
-    private readonly mapService: MapService,
-    private readonly animationService: AnimationService,
-  ) {
+  ngOnInit() {
     window.addEventListener('beforeunload', this.saveMapState.bind(this));
   }
 
