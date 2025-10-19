@@ -5,16 +5,16 @@ button {
   border-style: solid;
   border-width: 0;
   background-color: var(
-    --mdc-elevated-card-container-color,
+    --mat-card-elevated-container-color,
     var(--mat-sys-surface-container-low)
   );
   border-color: var(
-    --mdc-elevated-card-container-color,
+    --mat-card-elevated-container-color,
     var(--mat-sys-surface-container-low)
   );
   border-radius: 50%;
   box-shadow: var(
-    --mdc-elevated-card-container-elevation,
+    --mat-card-elevated-container-elevation,
     var(--mat-sys-level1)
   );
 
