@@ -42,9 +42,14 @@ import {
   isIntervalCovered,
   sliceEnvironment,
 } from '../interfaces/continuous.model';
-import { EntityFilterMode, EntityMetadata } from '../interfaces/entity.model';
+import { EntityMetadata } from '../interfaces/entity.model';
 import { getAllLegs, Passenger } from '../interfaces/passenger.model';
 import { AllPolylines, Polyline } from '../interfaces/polylines.model';
+import {
+  execute,
+  QueryCondition,
+  QueryObject,
+} from '../interfaces/query.model';
 import { Stop } from '../interfaces/stop.model';
 import { getAllStops, Vehicle } from '../interfaces/vehicle.model';
 import { FavoriteEntitiesService } from './favorite-entities.service';
@@ -91,9 +96,7 @@ export class AnimationService {
 
   // Use two variables to avoid changing the ones used for the animation during the animation
   private nextPolylines: AllPolylines | null = null;
-  private nextFilters: Set<string> = new Set<string>();
-  private nextFilterMode: EntityFilterMode = 'all';
-  private nextShouldShowComplete = false;
+  private nextFilters: QueryCondition | null = null;
   private nextShouldCenterMap = false;
   private nextShouldFollowEntity = false;
   private nextClickEvent: LeafletMouseEvent | null = null;
@@ -127,9 +130,7 @@ export class AnimationService {
 
   private selectedEntityPolylines: Graphics[] = [];
 
-  private filters: Set<string> = new Set<string>();
-  private filterMode: EntityFilterMode = 'all';
-  private shouldShowComplete = false;
+  private filters: QueryCondition | null = null;
 
   private shouldCenterMap = false;
 
@@ -197,16 +198,8 @@ export class AnimationService {
   }
 
   // MARK: Setters
-  setFilters(filters: Set<string>) {
+  setFilters(filters: QueryCondition | null) {
     this.nextFilters = filters;
-  }
-
-  setFilterMode(filterMode: EntityFilterMode) {
-    this.nextFilterMode = filterMode;
-  }
-
-  setShouldShowComplete(shouldShowComplete: boolean) {
-    this.nextShouldShowComplete = shouldShowComplete;
   }
 
   toggleShouldFollowEntity() {
@@ -263,9 +256,7 @@ export class AnimationService {
 
   clearAnimations() {
     this.nextPolylines = null;
-    this.nextFilters.clear();
-    this.nextFilterMode = 'all';
-    this.nextShouldShowComplete = false;
+    this.nextFilters = null;
     this.nextShouldCenterMap = false;
     this.nextShouldFollowEntity = false;
     this.nextClickEvent = null;
@@ -289,9 +280,7 @@ export class AnimationService {
 
     this.selectedEntityPolylines.forEach((polyline) => polyline.clear());
 
-    this.filters.clear();
-    this.filterMode = 'all';
-    this.shouldShowComplete = false;
+    this.filters = null;
 
     this.shouldCenterMap = false;
 
@@ -366,8 +355,6 @@ export class AnimationService {
 
     this.polylines = this.nextPolylines;
     this.filters = this.nextFilters;
-    this.filterMode = this.nextFilterMode;
-    this.shouldShowComplete = this.nextShouldShowComplete;
     this.shouldCenterMap = this.nextShouldCenterMap;
     this.nextShouldCenterMap = false; // This is not a toggle, so reset it after use
     this.clickEvent = this.nextClickEvent;
@@ -396,6 +383,7 @@ export class AnimationService {
 
     this.resetEntities();
     this.createEntities(environment, utils);
+    this.applyFavorites();
     this.filterEntities(environment);
 
     const selectedEntity = this.updateSelectedEntity();
@@ -501,6 +489,7 @@ export class AnimationService {
       vehicle.isVisible = false;
       vehicle.isFiltered = false;
       vehicle.entity.error = null;
+      vehicle.entity.isFavorite = false;
       vehicle.additionalInformation.passengerIds = [];
       vehicle.additionalInformation.numberOfPassengers = 0;
       vehicle.additionalInformation.numberOfNotVisiblePassengers = 0;
@@ -518,6 +507,7 @@ export class AnimationService {
       passenger.isVisible = false;
       passenger.isFiltered = false;
       passenger.entity.error = null;
+      passenger.entity.isFavorite = false;
       passenger.additionalInformation.stop = null;
       passenger.additionalInformation.vehicle = null;
     }
@@ -529,6 +519,7 @@ export class AnimationService {
       stop.isVisible = false;
       stop.isFiltered = false;
       stop.entity.error = null;
+      stop.entity.isFavorite = false;
       stop.additionalInformation.passengerIds = [];
       stop.additionalInformation.numberOfPassengers = 0;
       stop.additionalInformation.numberOfCompletePassengers = 0;
@@ -735,46 +726,77 @@ export class AnimationService {
     this.stopEntitiesByPosition[stop.id] = entity;
   }
 
+  // MARK: Favorites
+  private applyFavorites() {
+    this.favoriteEntitiesService.favoriteEntitiesSignal().forEach((entity) => {
+      switch (entity.entityType) {
+        case 'vehicle': {
+          const vehicle = this.vehicleEntitiesByVehicleId[entity.id];
+          if (vehicle !== undefined) {
+            vehicle.entity.isFavorite = entity.isFavorite;
+          }
+          break;
+        }
+        case 'passenger': {
+          const passenger = this.passengerEntitiesByPassengerId[entity.id];
+          if (passenger !== undefined) {
+            passenger.entity.isFavorite = entity.isFavorite;
+          }
+          break;
+        }
+        case 'stop': {
+          const stop = this.stopEntitiesByPosition[entity.id];
+          if (stop !== undefined) {
+            stop.entity.isFavorite = entity.isFavorite;
+          }
+          break;
+        }
+      }
+    });
+  }
+
   // MARK: Filters
   private filterEntities(environment: EnvironmentSlice) {
-    const filters = this.filters;
-
-    const shouldShowVehicles = !filters.has('vehicle');
-    const shouldShowPassengers = !filters.has('passenger');
-    const shouldShowStops = !filters.has('stops');
-    const shouldShowFavoritesOnly = this.filterMode === 'favorites';
-    const shouldShowComplete = this.shouldShowComplete;
+    const filters: QueryCondition | null = this.filters;
 
     for (const vehicle of this.presentVehicleEntities) {
+      if (filters === null) {
+        vehicle.isVisible = true;
+        vehicle.isFiltered = false;
+        continue;
+      }
+
       vehicle.isVisible =
         environment.vehicles[vehicle.entity.id] !== undefined && // Is vehicle in the environment
-        shouldShowVehicles && // Are vehicles not filtered
-        !filters.has(vehicle.entity.mode ?? 'unknown') && // Is mode not filtered
-        (!shouldShowFavoritesOnly || // Is favorites filter on and is in favorites
-          this.favoriteEntitiesService.isFavoriteEntity(vehicle.entity)) &&
-        (shouldShowComplete || // Is complete filter on or is not complete
-          vehicle.entity.status !== 'complete');
+        execute(filters, vehicle.entity as unknown as QueryObject);
+
       vehicle.isFiltered = !vehicle.isVisible;
     }
 
     for (const passenger of this.presentPassengerEntities) {
+      if (filters === null) {
+        passenger.isVisible = true;
+        passenger.isFiltered = false;
+        continue;
+      }
+
       passenger.isVisible =
         environment.passengers[passenger.entity.id] !== undefined && // Is passenger in the environment
-        shouldShowPassengers && // Are passengers not filtered
-        (!shouldShowFavoritesOnly || // Is favorites filter on and is in favorites
-          this.favoriteEntitiesService.isFavoriteEntity(passenger.entity)) &&
-        (shouldShowComplete || // Is complete filter on or is not complete
-          passenger.entity.status !== 'complete');
+        execute(filters, passenger.entity as unknown as QueryObject);
 
       passenger.isFiltered = !passenger.isVisible;
     }
 
     for (const stop of this.presentStopEntities) {
+      if (filters === null) {
+        stop.isVisible = true;
+        stop.isFiltered = false;
+        continue;
+      }
+
       stop.isVisible =
         environment.stops[stop.entity.id] !== undefined && // Is stop in the environment
-        shouldShowStops && // Are stops not filtered
-        (!shouldShowFavoritesOnly || // Is favorites filter on and is in favorites
-          this.favoriteEntitiesService.isFavoriteEntity(stop.entity));
+        execute(filters, stop.entity as unknown as QueryObject);
 
       stop.isFiltered = !stop.isVisible;
     }

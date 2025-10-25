@@ -11,4 +11,5 @@ export interface EntityMetadata extends Tagged {
   entityType: EntityType;
   name: string;
   error: string | null; // If not null, there is an error with the entity
+  isFavorite: boolean;
 }

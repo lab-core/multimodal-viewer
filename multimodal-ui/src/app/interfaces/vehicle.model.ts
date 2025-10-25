@@ -136,6 +136,7 @@ export function extractVehicle(data: unknown): Vehicle | null {
     capacity,
     tags,
     error: null, // Initially no error
+    isFavorite: false, // Initially not favorite
   };
 }
 

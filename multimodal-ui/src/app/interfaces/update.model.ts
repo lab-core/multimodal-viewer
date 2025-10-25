@@ -197,6 +197,7 @@ export class PassengerUpdate extends Update {
         currentLeg: null,
         nextLegs: [],
         error: null, // Initially no error
+        isFavorite: false, // Initially not favorite
       };
     } else {
       passenger = {
@@ -581,6 +582,7 @@ export class VehicleUpdate extends Update {
         currentStop: null,
         nextStops: [],
         error: null, // Initially no error
+        isFavorite: false, // Initially not favorite
       };
     } else {
       vehicle = {

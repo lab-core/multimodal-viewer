@@ -131,6 +131,7 @@ export function extractPassenger(data: unknown): Passenger | null {
     numberOfPassengers,
     tags,
     error: null, // Initially no error
+    isFavorite: false, // Initially not favorite
   };
 }
 

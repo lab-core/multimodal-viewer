@@ -8,7 +8,6 @@ import {
   MatSlideToggleChange,
   MatSlideToggleModule,
 } from '@angular/material/slide-toggle';
-import { EntityFilterMode } from '../../interfaces/entity.model';
 import { AnimationService } from '../../services/animation.service';
 import { VisualizationFilterService } from '../../services/visualization-filter.service';
 
@@ -35,14 +34,14 @@ export class VisualizerFilterComponent implements OnInit {
     this.visualizationFilterService.vehicleModes;
 
   ngOnInit() {
-    this.animationService.setFilterMode('all');
+    // this.animationService.setFilterMode('all');
   }
 
   onRadioChange(change: MatRadioChange) {
-    this.animationService.setFilterMode(change.value as EntityFilterMode);
+    // this.animationService.setFilterMode(change.value as EntityFilterMode);
   }
 
   onShouldShowCompleteChange(event: MatSlideToggleChange) {
-    this.animationService.setShouldShowComplete(event.checked);
+    // this.animationService.setShouldShowComplete(event.checked);
   }
 }

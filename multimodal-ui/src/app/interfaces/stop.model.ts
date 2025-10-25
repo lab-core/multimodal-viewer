@@ -114,5 +114,6 @@ export function extractStop(data: unknown, vehicleId: string): Stop | null {
     label,
     vehicleId,
     error: null, // Initially no error
+    isFavorite: false, // Initially not favorite
   };
 }

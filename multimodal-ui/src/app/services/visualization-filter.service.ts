@@ -40,7 +40,7 @@ export class VisualizationFilterService {
   }
 
   private effectOnFilterChanged() {
-    this.animationService.setFilters(this._filters());
+    // this.animationService.setFilters(this._filters());
   }
 
   private effectUpdateVehicleModeFilters() {
