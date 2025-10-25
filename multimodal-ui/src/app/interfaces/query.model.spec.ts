@@ -1,22 +1,22 @@
 import {
-  AnyAtomicSearchCondition,
+  AnyAtomicQueryCondition,
   execute,
   ExecuteAtomicError,
   executeAtomicWithoutIsNot,
   executeWithoutIsNot,
   extractField,
   ExtractFieldError,
-  SearchCondition,
-  SearchData,
-  SearchDataFieldValue,
-  SearchOperator,
-} from './search.model';
+  QueryCondition,
+  QueryFieldValue,
+  QueryObject,
+  QueryOperator,
+} from './query.model';
 
-describe('Search model', () => {
+describe('Query model', () => {
   describe('execute', () => {
     describe('when isNot is true', () => {
       it('should return the opposite of executeWithoutIsNot', () => {
-        const searchCondition: AnyAtomicSearchCondition = {
+        const queryCondition: AnyAtomicQueryCondition = {
           field: 'field',
           operator: '=',
           value: 'value',
@@ -24,19 +24,19 @@ describe('Search model', () => {
           isOptional: false,
         };
 
-        const data: SearchData = {
+        const data: QueryObject = {
           field: 'value',
         };
 
-        const result = execute(searchCondition, data);
+        const result = execute(queryCondition, data);
 
-        expect(result).toEqual(!executeWithoutIsNot(searchCondition, data));
+        expect(result).toEqual(!executeWithoutIsNot(queryCondition, data));
       });
     });
 
     describe('when isNot is false', () => {
       it('should return executeWithoutIsNot', () => {
-        const searchCondition: AnyAtomicSearchCondition = {
+        const queryCondition: AnyAtomicQueryCondition = {
           field: 'field',
           operator: '=',
           value: 'value',
@@ -44,13 +44,13 @@ describe('Search model', () => {
           isOptional: false,
         };
 
-        const data: SearchData = {
+        const data: QueryObject = {
           field: 'value',
         };
 
-        const result = execute(searchCondition, data);
+        const result = execute(queryCondition, data);
 
-        expect(result).toEqual(executeWithoutIsNot(searchCondition, data));
+        expect(result).toEqual(executeWithoutIsNot(queryCondition, data));
       });
     });
   });
@@ -58,7 +58,7 @@ describe('Search model', () => {
     describe('when aggregator is AND', () => {
       describe('when all conditions are true', () => {
         it('should return true', () => {
-          const searchCondition: SearchCondition = {
+          const queryCondition: QueryCondition = {
             conditions: [
               {
                 field: 'field.a',
@@ -80,14 +80,14 @@ describe('Search model', () => {
             isOptional: false,
           };
 
-          const data: SearchData = {
+          const data: QueryObject = {
             field: {
               a: 0,
               b: 'a',
             },
           };
 
-          const result = executeWithoutIsNot(searchCondition, data);
+          const result = executeWithoutIsNot(queryCondition, data);
 
           expect(result).toEqual(true);
         });
@@ -95,7 +95,7 @@ describe('Search model', () => {
 
       describe('when at least one condition is false', () => {
         it('should return false', () => {
-          const searchCondition: SearchCondition = {
+          const queryCondition: QueryCondition = {
             conditions: [
               {
                 field: 'field.a',
@@ -117,14 +117,14 @@ describe('Search model', () => {
             isOptional: false,
           };
 
-          const data: SearchData = {
+          const data: QueryObject = {
             field: {
               a: 0,
               b: 'b',
             },
           };
 
-          const result = executeWithoutIsNot(searchCondition, data);
+          const result = executeWithoutIsNot(queryCondition, data);
 
           expect(result).toEqual(false);
         });
@@ -134,7 +134,7 @@ describe('Search model', () => {
     describe('when aggregator is OR', () => {
       describe('when no conditions are true', () => {
         it('should return false', () => {
-          const searchCondition: SearchCondition = {
+          const queryCondition: QueryCondition = {
             conditions: [
               {
                 field: 'field.a',
@@ -156,14 +156,14 @@ describe('Search model', () => {
             isOptional: false,
           };
 
-          const data: SearchData = {
+          const data: QueryObject = {
             field: {
               a: 1,
               b: 'b',
             },
           };
 
-          const result = executeWithoutIsNot(searchCondition, data);
+          const result = executeWithoutIsNot(queryCondition, data);
 
           expect(result).toEqual(false);
         });
@@ -171,7 +171,7 @@ describe('Search model', () => {
 
       describe('when at least one condition is true', () => {
         it('should return true', () => {
-          const searchCondition: SearchCondition = {
+          const queryCondition: QueryCondition = {
             conditions: [
               {
                 field: 'field.a',
@@ -193,14 +193,14 @@ describe('Search model', () => {
             isOptional: false,
           };
 
-          const data: SearchData = {
+          const data: QueryObject = {
             field: {
               a: 0,
               b: 'b',
             },
           };
 
-          const result = executeWithoutIsNot(searchCondition, data);
+          const result = executeWithoutIsNot(queryCondition, data);
 
           expect(result).toEqual(true);
         });
@@ -211,7 +211,7 @@ describe('Search model', () => {
       describe('during the field extraction', () => {
         describe('and isOptional is false', () => {
           it('should propagate the error', () => {
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field.error',
               operator: '=',
               value: 'value',
@@ -219,14 +219,14 @@ describe('Search model', () => {
               isOptional: false,
             };
 
-            const data: SearchData = {
+            const data: QueryObject = {
               field: 'value',
             };
 
             let error: ExtractFieldError | null = null;
 
             try {
-              executeWithoutIsNot(searchCondition, data);
+              executeWithoutIsNot(queryCondition, data);
             } catch (e) {
               error = e as ExtractFieldError;
             }
@@ -237,7 +237,7 @@ describe('Search model', () => {
 
         describe('and isOptional is true', () => {
           it('should return false', () => {
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field.error',
               operator: '=',
               value: 'value',
@@ -245,7 +245,7 @@ describe('Search model', () => {
               isOptional: true,
             };
 
-            const data: SearchData = {
+            const data: QueryObject = {
               field: 'value',
             };
 
@@ -253,7 +253,7 @@ describe('Search model', () => {
             let result: boolean | null = null;
 
             try {
-              result = executeWithoutIsNot(searchCondition, data);
+              result = executeWithoutIsNot(queryCondition, data);
             } catch (e) {
               error = e as ExtractFieldError;
             }
@@ -267,22 +267,22 @@ describe('Search model', () => {
       describe('during the atomic execution', () => {
         describe('and isOptional is false', () => {
           it('should propagate the error', () => {
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
-              operator: 'unknown' as SearchOperator,
+              operator: 'unknown' as QueryOperator,
               value: 'value',
               isNot: false,
               isOptional: false,
             };
 
-            const data: SearchData = {
+            const data: QueryObject = {
               field: 'value',
             };
 
             let error: ExtractFieldError | null = null;
 
             try {
-              executeWithoutIsNot(searchCondition, data);
+              executeWithoutIsNot(queryCondition, data);
             } catch (e) {
               error = e as ExtractFieldError;
             }
@@ -293,15 +293,15 @@ describe('Search model', () => {
 
         describe('and isOptional is true', () => {
           it('should return false', () => {
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
-              operator: 'unknown' as SearchOperator,
+              operator: 'unknown' as QueryOperator,
               value: 'value',
               isNot: false,
               isOptional: true,
             };
 
-            const data: SearchData = {
+            const data: QueryObject = {
               field: 'value',
             };
 
@@ -309,7 +309,7 @@ describe('Search model', () => {
             let result: boolean | null = null;
 
             try {
-              result = executeWithoutIsNot(searchCondition, data);
+              result = executeWithoutIsNot(queryCondition, data);
             } catch (e) {
               error = e as ExtractFieldError;
             }
@@ -326,9 +326,9 @@ describe('Search model', () => {
     describe('=', () => {
       describe('when the values are equal', () => {
         it('should return true', () => {
-          const fieldValue: SearchDataFieldValue = 'value';
+          const fieldValue: QueryFieldValue = 'value';
 
-          const searchCondition: AnyAtomicSearchCondition = {
+          const queryCondition: AnyAtomicQueryCondition = {
             field: 'field',
             operator: '=',
             value: fieldValue,
@@ -336,7 +336,7 @@ describe('Search model', () => {
             isOptional: false,
           };
 
-          const result = executeAtomicWithoutIsNot(searchCondition, fieldValue);
+          const result = executeAtomicWithoutIsNot(queryCondition, fieldValue);
 
           expect(result).toEqual(true);
         });
@@ -344,9 +344,9 @@ describe('Search model', () => {
 
       describe('when the values are not equal', () => {
         it('should return false', () => {
-          const fieldValue: SearchDataFieldValue = 'value';
+          const fieldValue: QueryFieldValue = 'value';
 
-          const searchCondition: AnyAtomicSearchCondition = {
+          const queryCondition: AnyAtomicQueryCondition = {
             field: 'field',
             operator: '=',
             value: 'other',
@@ -354,7 +354,7 @@ describe('Search model', () => {
             isOptional: false,
           };
 
-          const result = executeAtomicWithoutIsNot(searchCondition, fieldValue);
+          const result = executeAtomicWithoutIsNot(queryCondition, fieldValue);
 
           expect(result).toEqual(false);
         });
@@ -363,9 +363,9 @@ describe('Search model', () => {
       describe('when comparing to null', () => {
         describe('when the value is null', () => {
           it('should return true', () => {
-            const fieldValue: SearchDataFieldValue = null;
+            const fieldValue: QueryFieldValue = null;
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '=',
               value: fieldValue,
@@ -374,7 +374,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -384,9 +384,9 @@ describe('Search model', () => {
 
         describe('when the value is not null', () => {
           it('should return false', () => {
-            const fieldValue: SearchDataFieldValue = 'value';
+            const fieldValue: QueryFieldValue = 'value';
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '=',
               value: null,
@@ -395,7 +395,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -407,9 +407,9 @@ describe('Search model', () => {
       describe('when comparing to undefined', () => {
         describe('when the value is undefined', () => {
           it('should return true', () => {
-            const fieldValue: SearchDataFieldValue = undefined;
+            const fieldValue: QueryFieldValue = undefined;
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '=',
               value: fieldValue,
@@ -418,7 +418,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -428,9 +428,9 @@ describe('Search model', () => {
 
         describe('when the value is not undefined', () => {
           it('should return false', () => {
-            const fieldValue: SearchDataFieldValue = 'value';
+            const fieldValue: QueryFieldValue = 'value';
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '=',
               value: undefined,
@@ -439,7 +439,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -451,9 +451,9 @@ describe('Search model', () => {
       describe('when comparing booleans', () => {
         describe('when the values are equal', () => {
           it('should return true', () => {
-            const fieldValue: SearchDataFieldValue = true;
+            const fieldValue: QueryFieldValue = true;
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '=',
               value: fieldValue,
@@ -462,7 +462,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -472,9 +472,9 @@ describe('Search model', () => {
 
         describe('when the values are not equal', () => {
           it('should return false', () => {
-            const fieldValue: SearchDataFieldValue = true;
+            const fieldValue: QueryFieldValue = true;
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '=',
               value: !fieldValue,
@@ -483,7 +483,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -496,9 +496,9 @@ describe('Search model', () => {
     describe('!=', () => {
       describe('when the values are not equal', () => {
         it('should return true', () => {
-          const fieldValue: SearchDataFieldValue = 'value';
+          const fieldValue: QueryFieldValue = 'value';
 
-          const searchCondition: AnyAtomicSearchCondition = {
+          const queryCondition: AnyAtomicQueryCondition = {
             field: 'field',
             operator: '!=',
             value: 'other',
@@ -506,7 +506,7 @@ describe('Search model', () => {
             isOptional: false,
           };
 
-          const result = executeAtomicWithoutIsNot(searchCondition, fieldValue);
+          const result = executeAtomicWithoutIsNot(queryCondition, fieldValue);
 
           expect(result).toEqual(true);
         });
@@ -514,9 +514,9 @@ describe('Search model', () => {
 
       describe('when the values are equal', () => {
         it('should return false', () => {
-          const fieldValue: SearchDataFieldValue = 'value';
+          const fieldValue: QueryFieldValue = 'value';
 
-          const searchCondition: AnyAtomicSearchCondition = {
+          const queryCondition: AnyAtomicQueryCondition = {
             field: 'field',
             operator: '!=',
             value: fieldValue,
@@ -524,7 +524,7 @@ describe('Search model', () => {
             isOptional: false,
           };
 
-          const result = executeAtomicWithoutIsNot(searchCondition, fieldValue);
+          const result = executeAtomicWithoutIsNot(queryCondition, fieldValue);
 
           expect(result).toEqual(false);
         });
@@ -533,9 +533,9 @@ describe('Search model', () => {
       describe('when comparing to null', () => {
         describe('when the value is null', () => {
           it('should return false', () => {
-            const fieldValue: SearchDataFieldValue = null;
+            const fieldValue: QueryFieldValue = null;
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '!=',
               value: fieldValue,
@@ -544,7 +544,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -554,9 +554,9 @@ describe('Search model', () => {
 
         describe('when the value is not null', () => {
           it('should return true', () => {
-            const fieldValue: SearchDataFieldValue = 'value';
+            const fieldValue: QueryFieldValue = 'value';
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '!=',
               value: null,
@@ -565,7 +565,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -577,9 +577,9 @@ describe('Search model', () => {
       describe('when comparing to undefined', () => {
         describe('when the value is undefined', () => {
           it('should return false', () => {
-            const fieldValue: SearchDataFieldValue = undefined;
+            const fieldValue: QueryFieldValue = undefined;
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '!=',
               value: fieldValue,
@@ -588,7 +588,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -598,9 +598,9 @@ describe('Search model', () => {
 
         describe('when the value is not undefined', () => {
           it('should return true', () => {
-            const fieldValue: SearchDataFieldValue = 'value';
+            const fieldValue: QueryFieldValue = 'value';
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '!=',
               value: undefined,
@@ -609,7 +609,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -621,9 +621,9 @@ describe('Search model', () => {
       describe('when comparing booleans', () => {
         describe('when the values are equal', () => {
           it('should return false', () => {
-            const fieldValue: SearchDataFieldValue = true;
+            const fieldValue: QueryFieldValue = true;
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '!=',
               value: fieldValue,
@@ -632,7 +632,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -642,9 +642,9 @@ describe('Search model', () => {
 
         describe('when the values are not equal', () => {
           it('should return true', () => {
-            const fieldValue: SearchDataFieldValue = true;
+            const fieldValue: QueryFieldValue = true;
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '!=',
               value: !fieldValue,
@@ -653,7 +653,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -667,9 +667,9 @@ describe('Search model', () => {
       describe('when comparing numbers', () => {
         describe('when the first value is greater', () => {
           it('should return true', () => {
-            const fieldValue: SearchDataFieldValue = 1;
+            const fieldValue: QueryFieldValue = 1;
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '>',
               value: 0,
@@ -678,7 +678,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -688,9 +688,9 @@ describe('Search model', () => {
 
         describe('when the first value is lower', () => {
           it('should return false', () => {
-            const fieldValue: SearchDataFieldValue = 0;
+            const fieldValue: QueryFieldValue = 0;
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '>',
               value: 1,
@@ -699,7 +699,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -709,9 +709,9 @@ describe('Search model', () => {
 
         describe('when the values are equal', () => {
           it('should return false', () => {
-            const fieldValue: SearchDataFieldValue = 0;
+            const fieldValue: QueryFieldValue = 0;
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '>',
               value: 0,
@@ -720,7 +720,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -732,9 +732,9 @@ describe('Search model', () => {
       describe('when comparing strings', () => {
         describe('when the first value is greater', () => {
           it('should return true', () => {
-            const fieldValue: SearchDataFieldValue = 'b';
+            const fieldValue: QueryFieldValue = 'b';
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '>',
               value: 'a',
@@ -743,7 +743,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -753,9 +753,9 @@ describe('Search model', () => {
 
         describe('when the first value is lower', () => {
           it('should return false', () => {
-            const fieldValue: SearchDataFieldValue = 'a';
+            const fieldValue: QueryFieldValue = 'a';
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '>',
               value: 'b',
@@ -764,7 +764,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -774,9 +774,9 @@ describe('Search model', () => {
 
         describe('when the values are equal', () => {
           it('should return false', () => {
-            const fieldValue: SearchDataFieldValue = 'a';
+            const fieldValue: QueryFieldValue = 'a';
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '>',
               value: 'a',
@@ -785,7 +785,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -796,9 +796,9 @@ describe('Search model', () => {
 
       describe('when the values are not comparable', () => {
         it('should throw an error', () => {
-          const fieldValue: SearchDataFieldValue = 'value';
+          const fieldValue: QueryFieldValue = 'value';
 
-          const searchCondition: AnyAtomicSearchCondition = {
+          const queryCondition: AnyAtomicQueryCondition = {
             field: 'field',
             operator: '>',
             value: 0,
@@ -809,7 +809,7 @@ describe('Search model', () => {
           let error: ExecuteAtomicError | null = null;
 
           try {
-            executeAtomicWithoutIsNot(searchCondition, fieldValue);
+            executeAtomicWithoutIsNot(queryCondition, fieldValue);
           } catch (e) {
             error = e as ExecuteAtomicError;
           }
@@ -817,7 +817,7 @@ describe('Search model', () => {
           expect(error).not.toBeNull();
           expect(error).toBeInstanceOf(ExecuteAtomicError);
           expect(error?.message).toEqual('Cannot compare elements');
-          expect(error?.payload.searchCondition).toEqual(searchCondition);
+          expect(error?.payload.atomicQueryCondition).toEqual(queryCondition);
           expect(error?.payload.fieldValue).toEqual(fieldValue);
         });
       });
@@ -827,9 +827,9 @@ describe('Search model', () => {
       describe('when comparing numbers', () => {
         describe('when the first value is lower', () => {
           it('should return true', () => {
-            const fieldValue: SearchDataFieldValue = 0;
+            const fieldValue: QueryFieldValue = 0;
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '<',
               value: 1,
@@ -838,7 +838,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -848,9 +848,9 @@ describe('Search model', () => {
 
         describe('when the first value is greater', () => {
           it('should return false', () => {
-            const fieldValue: SearchDataFieldValue = 1;
+            const fieldValue: QueryFieldValue = 1;
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '<',
               value: 0,
@@ -859,7 +859,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -869,9 +869,9 @@ describe('Search model', () => {
 
         describe('when the values are equal', () => {
           it('should return false', () => {
-            const fieldValue: SearchDataFieldValue = 0;
+            const fieldValue: QueryFieldValue = 0;
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '<',
               value: 0,
@@ -880,7 +880,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -892,9 +892,9 @@ describe('Search model', () => {
       describe('when comparing strings', () => {
         describe('when the first value is lower', () => {
           it('should return true', () => {
-            const fieldValue: SearchDataFieldValue = 'a';
+            const fieldValue: QueryFieldValue = 'a';
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '<',
               value: 'b',
@@ -903,7 +903,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -913,9 +913,9 @@ describe('Search model', () => {
 
         describe('when the first value is greater', () => {
           it('should return false', () => {
-            const fieldValue: SearchDataFieldValue = 'b';
+            const fieldValue: QueryFieldValue = 'b';
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '<',
               value: 'a',
@@ -924,7 +924,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -934,9 +934,9 @@ describe('Search model', () => {
 
         describe('when the values are equal', () => {
           it('should return false', () => {
-            const fieldValue: SearchDataFieldValue = 'a';
+            const fieldValue: QueryFieldValue = 'a';
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '<',
               value: 'a',
@@ -945,7 +945,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -956,9 +956,9 @@ describe('Search model', () => {
 
       describe('when the values are not comparable', () => {
         it('should throw an error', () => {
-          const fieldValue: SearchDataFieldValue = 'value';
+          const fieldValue: QueryFieldValue = 'value';
 
-          const searchCondition: AnyAtomicSearchCondition = {
+          const queryCondition: AnyAtomicQueryCondition = {
             field: 'field',
             operator: '<',
             value: 0,
@@ -969,7 +969,7 @@ describe('Search model', () => {
           let error: ExecuteAtomicError | null = null;
 
           try {
-            executeAtomicWithoutIsNot(searchCondition, fieldValue);
+            executeAtomicWithoutIsNot(queryCondition, fieldValue);
           } catch (e) {
             error = e as ExecuteAtomicError;
           }
@@ -977,7 +977,7 @@ describe('Search model', () => {
           expect(error).not.toBeNull();
           expect(error).toBeInstanceOf(ExecuteAtomicError);
           expect(error?.message).toEqual('Cannot compare elements');
-          expect(error?.payload.searchCondition).toEqual(searchCondition);
+          expect(error?.payload.atomicQueryCondition).toEqual(queryCondition);
           expect(error?.payload.fieldValue).toEqual(fieldValue);
         });
       });
@@ -987,9 +987,9 @@ describe('Search model', () => {
       describe('when comparing numbers', () => {
         describe('when the first value is lower', () => {
           it('should return false', () => {
-            const fieldValue: SearchDataFieldValue = 0;
+            const fieldValue: QueryFieldValue = 0;
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '>=',
               value: 1,
@@ -998,7 +998,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -1008,9 +1008,9 @@ describe('Search model', () => {
 
         describe('when the first value is greater', () => {
           it('should return true', () => {
-            const fieldValue: SearchDataFieldValue = 1;
+            const fieldValue: QueryFieldValue = 1;
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '>=',
               value: 0,
@@ -1019,7 +1019,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -1029,9 +1029,9 @@ describe('Search model', () => {
 
         describe('when the values are equal', () => {
           it('should return true', () => {
-            const fieldValue: SearchDataFieldValue = 0;
+            const fieldValue: QueryFieldValue = 0;
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '>=',
               value: 0,
@@ -1040,7 +1040,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -1052,9 +1052,9 @@ describe('Search model', () => {
       describe('when comparing strings', () => {
         describe('when the first value is lower', () => {
           it('should return false', () => {
-            const fieldValue: SearchDataFieldValue = 'a';
+            const fieldValue: QueryFieldValue = 'a';
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '>=',
               value: 'b',
@@ -1063,7 +1063,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -1073,9 +1073,9 @@ describe('Search model', () => {
 
         describe('when the first value is greater', () => {
           it('should return true', () => {
-            const fieldValue: SearchDataFieldValue = 'b';
+            const fieldValue: QueryFieldValue = 'b';
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '>=',
               value: 'a',
@@ -1084,7 +1084,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -1094,9 +1094,9 @@ describe('Search model', () => {
 
         describe('when the values are equal', () => {
           it('should return true', () => {
-            const fieldValue: SearchDataFieldValue = 'a';
+            const fieldValue: QueryFieldValue = 'a';
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '>=',
               value: 'a',
@@ -1105,7 +1105,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -1116,9 +1116,9 @@ describe('Search model', () => {
 
       describe('when the values are not comparable', () => {
         it('should throw an error', () => {
-          const fieldValue: SearchDataFieldValue = 'value';
+          const fieldValue: QueryFieldValue = 'value';
 
-          const searchCondition: AnyAtomicSearchCondition = {
+          const queryCondition: AnyAtomicQueryCondition = {
             field: 'field',
             operator: '>=',
             value: 0,
@@ -1129,7 +1129,7 @@ describe('Search model', () => {
           let error: ExecuteAtomicError | null = null;
 
           try {
-            executeAtomicWithoutIsNot(searchCondition, fieldValue);
+            executeAtomicWithoutIsNot(queryCondition, fieldValue);
           } catch (e) {
             error = e as ExecuteAtomicError;
           }
@@ -1137,7 +1137,7 @@ describe('Search model', () => {
           expect(error).not.toBeNull();
           expect(error).toBeInstanceOf(ExecuteAtomicError);
           expect(error?.message).toEqual('Cannot compare elements');
-          expect(error?.payload.searchCondition).toEqual(searchCondition);
+          expect(error?.payload.atomicQueryCondition).toEqual(queryCondition);
           expect(error?.payload.fieldValue).toEqual(fieldValue);
         });
       });
@@ -1147,9 +1147,9 @@ describe('Search model', () => {
       describe('when comparing numbers', () => {
         describe('when the first value is lower', () => {
           it('should return true', () => {
-            const fieldValue: SearchDataFieldValue = 0;
+            const fieldValue: QueryFieldValue = 0;
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '<=',
               value: 1,
@@ -1158,7 +1158,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -1168,9 +1168,9 @@ describe('Search model', () => {
 
         describe('when the first value is greater', () => {
           it('should return false', () => {
-            const fieldValue: SearchDataFieldValue = 1;
+            const fieldValue: QueryFieldValue = 1;
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '<=',
               value: 0,
@@ -1179,7 +1179,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -1189,9 +1189,9 @@ describe('Search model', () => {
 
         describe('when the values are equal', () => {
           it('should return true', () => {
-            const fieldValue: SearchDataFieldValue = 0;
+            const fieldValue: QueryFieldValue = 0;
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '<=',
               value: 0,
@@ -1200,7 +1200,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -1212,9 +1212,9 @@ describe('Search model', () => {
       describe('when comparing strings', () => {
         describe('when the first value is lower', () => {
           it('should return true', () => {
-            const fieldValue: SearchDataFieldValue = 'a';
+            const fieldValue: QueryFieldValue = 'a';
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '<=',
               value: 'b',
@@ -1223,7 +1223,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -1233,9 +1233,9 @@ describe('Search model', () => {
 
         describe('when the first value is greater', () => {
           it('should return false', () => {
-            const fieldValue: SearchDataFieldValue = 'b';
+            const fieldValue: QueryFieldValue = 'b';
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '<=',
               value: 'a',
@@ -1244,7 +1244,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -1254,9 +1254,9 @@ describe('Search model', () => {
 
         describe('when the values are equal', () => {
           it('should return true', () => {
-            const fieldValue: SearchDataFieldValue = 'a';
+            const fieldValue: QueryFieldValue = 'a';
 
-            const searchCondition: AnyAtomicSearchCondition = {
+            const queryCondition: AnyAtomicQueryCondition = {
               field: 'field',
               operator: '<=',
               value: 'a',
@@ -1265,7 +1265,7 @@ describe('Search model', () => {
             };
 
             const result = executeAtomicWithoutIsNot(
-              searchCondition,
+              queryCondition,
               fieldValue,
             );
 
@@ -1276,9 +1276,9 @@ describe('Search model', () => {
 
       describe('when the values are not comparable', () => {
         it('should throw an error', () => {
-          const fieldValue: SearchDataFieldValue = 'value';
+          const fieldValue: QueryFieldValue = 'value';
 
-          const searchCondition: AnyAtomicSearchCondition = {
+          const queryCondition: AnyAtomicQueryCondition = {
             field: 'field',
             operator: '<=',
             value: 0,
@@ -1289,7 +1289,7 @@ describe('Search model', () => {
           let error: ExecuteAtomicError | null = null;
 
           try {
-            executeAtomicWithoutIsNot(searchCondition, fieldValue);
+            executeAtomicWithoutIsNot(queryCondition, fieldValue);
           } catch (e) {
             error = e as ExecuteAtomicError;
           }
@@ -1297,7 +1297,7 @@ describe('Search model', () => {
           expect(error).not.toBeNull();
           expect(error).toBeInstanceOf(ExecuteAtomicError);
           expect(error?.message).toEqual('Cannot compare elements');
-          expect(error?.payload.searchCondition).toEqual(searchCondition);
+          expect(error?.payload.atomicQueryCondition).toEqual(queryCondition);
           expect(error?.payload.fieldValue).toEqual(fieldValue);
         });
       });
@@ -1306,9 +1306,9 @@ describe('Search model', () => {
     describe('IN', () => {
       describe('when the element is in the array', () => {
         it('should return true', () => {
-          const fieldValue: SearchDataFieldValue = 'value';
+          const fieldValue: QueryFieldValue = 'value';
 
-          const searchCondition: AnyAtomicSearchCondition = {
+          const queryCondition: AnyAtomicQueryCondition = {
             field: 'field',
             operator: 'IN',
             value: ['value', 'other'],
@@ -1316,7 +1316,7 @@ describe('Search model', () => {
             isOptional: false,
           };
 
-          const result = executeAtomicWithoutIsNot(searchCondition, fieldValue);
+          const result = executeAtomicWithoutIsNot(queryCondition, fieldValue);
 
           expect(result).toEqual(true);
         });
@@ -1324,9 +1324,9 @@ describe('Search model', () => {
 
       describe('when the element is not in the array', () => {
         it('should return false', () => {
-          const fieldValue: SearchDataFieldValue = 'value';
+          const fieldValue: QueryFieldValue = 'value';
 
-          const searchCondition: AnyAtomicSearchCondition = {
+          const queryCondition: AnyAtomicQueryCondition = {
             field: 'field',
             operator: 'IN',
             value: ['other'],
@@ -1334,7 +1334,7 @@ describe('Search model', () => {
             isOptional: false,
           };
 
-          const result = executeAtomicWithoutIsNot(searchCondition, fieldValue);
+          const result = executeAtomicWithoutIsNot(queryCondition, fieldValue);
 
           expect(result).toEqual(false);
         });
@@ -1344,9 +1344,9 @@ describe('Search model', () => {
     describe('NOT IN', () => {
       describe('when the element is not in the array', () => {
         it('should return true', () => {
-          const fieldValue: SearchDataFieldValue = 'value';
+          const fieldValue: QueryFieldValue = 'value';
 
-          const searchCondition: AnyAtomicSearchCondition = {
+          const queryCondition: AnyAtomicQueryCondition = {
             field: 'field',
             operator: 'NOT IN',
             value: ['other'],
@@ -1354,7 +1354,7 @@ describe('Search model', () => {
             isOptional: false,
           };
 
-          const result = executeAtomicWithoutIsNot(searchCondition, fieldValue);
+          const result = executeAtomicWithoutIsNot(queryCondition, fieldValue);
 
           expect(result).toEqual(true);
         });
@@ -1362,9 +1362,9 @@ describe('Search model', () => {
 
       describe('when the element is in the array', () => {
         it('should return false', () => {
-          const fieldValue: SearchDataFieldValue = 'value';
+          const fieldValue: QueryFieldValue = 'value';
 
-          const searchCondition: AnyAtomicSearchCondition = {
+          const queryCondition: AnyAtomicQueryCondition = {
             field: 'field',
             operator: 'NOT IN',
             value: ['value', 'other'],
@@ -1372,7 +1372,7 @@ describe('Search model', () => {
             isOptional: false,
           };
 
-          const result = executeAtomicWithoutIsNot(searchCondition, fieldValue);
+          const result = executeAtomicWithoutIsNot(queryCondition, fieldValue);
 
           expect(result).toEqual(false);
         });
@@ -1382,9 +1382,9 @@ describe('Search model', () => {
     describe('INCLUDES', () => {
       describe('when the element is in the array', () => {
         it('should return true', () => {
-          const fieldValue: SearchDataFieldValue = ['value', 'other'];
+          const fieldValue: QueryFieldValue = ['value', 'other'];
 
-          const searchCondition: AnyAtomicSearchCondition = {
+          const queryCondition: AnyAtomicQueryCondition = {
             field: 'field',
             operator: 'INCLUDES',
             value: 'value',
@@ -1392,7 +1392,7 @@ describe('Search model', () => {
             isOptional: false,
           };
 
-          const result = executeAtomicWithoutIsNot(searchCondition, fieldValue);
+          const result = executeAtomicWithoutIsNot(queryCondition, fieldValue);
 
           expect(result).toEqual(true);
         });
@@ -1400,9 +1400,9 @@ describe('Search model', () => {
 
       describe('when the element is not in the array', () => {
         it('should return false', () => {
-          const fieldValue: SearchDataFieldValue = ['other'];
+          const fieldValue: QueryFieldValue = ['other'];
 
-          const searchCondition: AnyAtomicSearchCondition = {
+          const queryCondition: AnyAtomicQueryCondition = {
             field: 'field',
             operator: 'INCLUDES',
             value: 'value',
@@ -1410,7 +1410,7 @@ describe('Search model', () => {
             isOptional: false,
           };
 
-          const result = executeAtomicWithoutIsNot(searchCondition, fieldValue);
+          const result = executeAtomicWithoutIsNot(queryCondition, fieldValue);
 
           expect(result).toEqual(false);
         });
@@ -1420,9 +1420,9 @@ describe('Search model', () => {
     describe('DOES NOT INCLUDE', () => {
       describe('when the element is not in the array', () => {
         it('should return true', () => {
-          const fieldValue: SearchDataFieldValue = ['other'];
+          const fieldValue: QueryFieldValue = ['other'];
 
-          const searchCondition: AnyAtomicSearchCondition = {
+          const queryCondition: AnyAtomicQueryCondition = {
             field: 'field',
             operator: 'DOES NOT INCLUDE',
             value: 'value',
@@ -1430,7 +1430,7 @@ describe('Search model', () => {
             isOptional: false,
           };
 
-          const result = executeAtomicWithoutIsNot(searchCondition, fieldValue);
+          const result = executeAtomicWithoutIsNot(queryCondition, fieldValue);
 
           expect(result).toEqual(true);
         });
@@ -1438,9 +1438,9 @@ describe('Search model', () => {
 
       describe('when the element is in the array', () => {
         it('should return false', () => {
-          const fieldValue: SearchDataFieldValue = ['value', 'other'];
+          const fieldValue: QueryFieldValue = ['value', 'other'];
 
-          const searchCondition: AnyAtomicSearchCondition = {
+          const queryCondition: AnyAtomicQueryCondition = {
             field: 'field',
             operator: 'DOES NOT INCLUDE',
             value: 'value',
@@ -1448,7 +1448,7 @@ describe('Search model', () => {
             isOptional: false,
           };
 
-          const result = executeAtomicWithoutIsNot(searchCondition, fieldValue);
+          const result = executeAtomicWithoutIsNot(queryCondition, fieldValue);
 
           expect(result).toEqual(false);
         });
@@ -1457,11 +1457,11 @@ describe('Search model', () => {
 
     describe('when using an unknown operator', () => {
       it('should throw an error', () => {
-        const fieldValue: SearchDataFieldValue = undefined;
+        const fieldValue: QueryFieldValue = undefined;
 
-        const searchCondition: AnyAtomicSearchCondition = {
+        const queryCondition: AnyAtomicQueryCondition = {
           field: 'field',
-          operator: 'unknown' as SearchOperator,
+          operator: 'unknown' as QueryOperator,
           value: 'value',
           isNot: false,
           isOptional: false,
@@ -1470,7 +1470,7 @@ describe('Search model', () => {
         let error: ExecuteAtomicError | null = null;
 
         try {
-          executeAtomicWithoutIsNot(searchCondition, fieldValue);
+          executeAtomicWithoutIsNot(queryCondition, fieldValue);
         } catch (e) {
           error = e as ExecuteAtomicError;
         }
@@ -1478,7 +1478,7 @@ describe('Search model', () => {
         expect(error).not.toBeNull();
         expect(error).toBeInstanceOf(ExecuteAtomicError);
         expect(error?.message).toEqual('Unknown operator');
-        expect(error?.payload.searchCondition).toEqual(searchCondition);
+        expect(error?.payload.atomicQueryCondition).toEqual(queryCondition);
         expect(error?.payload.fieldValue).toEqual(fieldValue);
       });
     });
