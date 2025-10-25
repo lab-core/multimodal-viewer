@@ -157,7 +157,11 @@ export function getPassengerCurrentStopIdWithVehicleId(
   stopId: string;
   vehicleId: string;
 } | null {
-  const leg = passenger.currentLeg ?? passenger.nextLegs[0] ?? null;
+  const leg =
+    passenger.currentLeg ??
+    passenger.nextLegs[0] ??
+    passenger.previousLegs[passenger.previousLegs.length - 1] ??
+    null;
 
   if (leg === null) {
     return null;
@@ -189,7 +193,11 @@ export function getPassengerCurrentVehicleId(
   passenger: Passenger,
   timestamp: number,
 ): string | null {
-  const leg = passenger.currentLeg ?? passenger.nextLegs[0] ?? null;
+  const leg =
+    passenger.currentLeg ??
+    passenger.nextLegs[0] ??
+    passenger.previousLegs[passenger.previousLegs.length - 1] ??
+    null;
 
   if (leg === null) {
     return null;
@@ -214,7 +222,11 @@ export function isPassengerAtStop(
   stopId: string,
   timestamp: number,
 ): boolean {
-  const leg = passenger.currentLeg ?? passenger.nextLegs[0] ?? null;
+  const leg =
+    passenger.currentLeg ??
+    passenger.nextLegs[0] ??
+    passenger.previousLegs[passenger.previousLegs.length - 1] ??
+    null;
 
   if (leg === null) {
     return false;
@@ -239,7 +251,11 @@ export function isPassengerOnVehicle(
   vehicleId: string,
   timestamp: number,
 ): boolean {
-  const leg = passenger.currentLeg ?? passenger.nextLegs[0] ?? null;
+  const leg =
+    passenger.currentLeg ??
+    passenger.nextLegs[0] ??
+    passenger.previousLegs[passenger.previousLegs.length - 1] ??
+    null;
 
   if (leg === null) {
     return false;
