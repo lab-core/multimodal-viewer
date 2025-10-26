@@ -108,13 +108,20 @@ export type AnyAtomicQuery = AtomicQuery<keyof QueryValueByOperator>;
 
 export type QueryAggregator = 'AND' | 'OR';
 
-export type Query =
-  | AnyAtomicQuery
-  | {
-      conditions: Query[];
-      aggregator: QueryAggregator;
-      isNot: boolean;
-    };
+export type ShorthandQueryAggregator = '&' | '|';
+
+export const SHORTHAND_QUERY_AGGREGATORS: ShorthandQueryAggregator[] = [
+  '&',
+  '|',
+];
+
+export interface CompoundQuery {
+  conditions: Query[];
+  aggregator: QueryAggregator;
+  isNot: boolean;
+}
+
+export type Query = AnyAtomicQuery | CompoundQuery;
 
 export function isAtomicQueryWithOperator<T extends keyof QueryValueByOperator>(
   atomicQuery: AnyAtomicQuery,
@@ -274,7 +281,7 @@ export function executeAtomicWithoutIsNot(
   });
 }
 
-// MARK: extractField
+// MARK: Extract field
 export class ExtractFieldError extends Error {
   constructor(
     message: string,
@@ -337,7 +344,7 @@ export function extractField(data: QueryObject, field: string) {
   return currentFieldValue;
 }
 
-// MARK: Parser
+// MARK: Parse query
 
 /**
  * Tokens :
@@ -401,7 +408,9 @@ export type ParseErrorString =
   | 'Closing bracket not found'
   | 'Breakable character not found after string break character'
   | 'Closing string delimiter not found'
-  | 'Number not found';
+  | 'String does not match number format'
+  | 'Number not found'
+  | 'Closing bracket encountered without opening bracket';
 
 export class ParseError extends Error {
   constructor(
@@ -413,9 +422,13 @@ export class ParseError extends Error {
 }
 
 export function parseQuery(queryString: string): Query;
-export function parseQuery(processedQuery: ProcessedQuery): Query;
+export function parseQuery(
+  processedQuery: ProcessedQuery,
+  isAggregated: boolean,
+): Query;
 export function parseQuery(
   queryStringOrProcessedQuery: string | ProcessedQuery,
+  isAggregated = false,
 ): Query {
   let processedQuery: ProcessedQuery;
 
@@ -439,7 +452,7 @@ export function parseQuery(
 
   if (hasNegation) {
     // TODO Query handle negation on condition vs parenthesis
-    const query = parseQuery(processedQuery);
+    const query = parseQuery(processedQuery, false);
     query.isNot = !query.isNot;
     return query;
   }
@@ -448,13 +461,127 @@ export function parseQuery(
 
   if (hasParenthesis) {
     // TODO Query handle parenthesis
-    const query = parseQuery(processedQuery);
+    const query = parseQuery(processedQuery, false);
     return query;
   }
 
   // TODO Query handle compound (AND, OR)
   const query = parseAtomicQuery(processedQuery);
-  return query;
+
+  processedQuery.currentQuery = processedQuery.currentQuery.trim();
+
+  if (isAggregated) {
+    return query;
+  }
+
+  if (processedQuery.currentQuery === '') {
+    return query;
+  }
+
+  let aggregator: QueryAggregator | null = null;
+
+  const followingQueries: {
+    query: Query;
+    precedingAggregator: QueryAggregator;
+  }[] = [];
+
+  do {
+    if (processedQuery.currentQuery.startsWith(')')) {
+      if (processedQuery.depth === 0) {
+        throw new ParseError(
+          'Closing bracket encountered without opening bracket',
+          processedQuery,
+        );
+      }
+
+      processedQuery.depth -= 1;
+      processedQuery.currentQuery = processedQuery.currentQuery.slice(1);
+      break;
+    }
+
+    aggregator = null;
+
+    if (processedQuery.currentQuery.startsWith('&')) {
+      aggregator = 'AND';
+      processedQuery.currentQuery = processedQuery.currentQuery.slice(1);
+    } else if (
+      processedQuery.currentQuery.length >= 'and'.length &&
+      processedQuery.currentQuery.slice(0, 'and'.length).toLocaleLowerCase() ===
+        'and'
+    ) {
+      aggregator = 'AND';
+      processedQuery.currentQuery = processedQuery.currentQuery.slice(
+        'and'.length,
+      );
+    } else if (processedQuery.currentQuery.startsWith('|')) {
+      aggregator = 'OR';
+      processedQuery.currentQuery = processedQuery.currentQuery.slice(1);
+    } else if (
+      processedQuery.currentQuery.length >= 'or'.length &&
+      processedQuery.currentQuery.slice(0, 'or'.length).toLocaleLowerCase() ===
+        'or'
+    ) {
+      aggregator = 'OR';
+      processedQuery.currentQuery = processedQuery.currentQuery.slice(
+        'or'.length,
+      );
+    }
+
+    processedQuery.currentQuery = processedQuery.currentQuery.trim();
+
+    if (aggregator !== null) {
+      followingQueries.push({
+        query: parseQuery(processedQuery, true),
+        precedingAggregator: aggregator,
+      });
+    }
+  } while (aggregator !== null && processedQuery.currentQuery.length > 0);
+
+  if (followingQueries.length === 0) {
+    return query;
+  }
+
+  const conjunctions: Query[] = [];
+
+  let currentConjunctionConditions: Query[] = [query];
+
+  for (const followingQuery of followingQueries) {
+    if (followingQuery.precedingAggregator === 'AND') {
+      currentConjunctionConditions.push(followingQuery.query);
+    } else {
+      if (currentConjunctionConditions.length > 1) {
+        conjunctions.push({
+          conditions: currentConjunctionConditions,
+          aggregator: 'AND',
+          isNot: false,
+        });
+      } else {
+        conjunctions.push(currentConjunctionConditions[0]);
+      }
+
+      currentConjunctionConditions = [followingQuery.query];
+    }
+  }
+
+  if (currentConjunctionConditions.length > 1) {
+    conjunctions.push({
+      conditions: currentConjunctionConditions,
+      aggregator: 'AND',
+      isNot: false,
+    });
+  } else {
+    conjunctions.push(currentConjunctionConditions[0]);
+  }
+
+  if (conjunctions.length === 1) {
+    return conjunctions[0];
+  }
+
+  return {
+    conditions: conjunctions,
+    aggregator: 'OR',
+    isNot: false,
+  };
 }
 
 // TODO Query test parse
@@ -682,25 +809,24 @@ export function parseString(
 ): string {
   let stringValue = '';
 
-  let currentQueryCopy = processedQuery.currentQuery;
+  let currentQuery = processedQuery.currentQuery;
 
-  while (currentQueryCopy.length > 0) {
-    if (processedQuery.currentQuery.startsWith(stringDelimiter)) {
-      currentQueryCopy = currentQueryCopy.slice(1);
-      processedQuery.currentQuery = currentQueryCopy;
+  while (currentQuery.length > 0) {
+    if (currentQuery.startsWith(stringDelimiter)) {
+      currentQuery = currentQuery.slice(1);
+      processedQuery.currentQuery = currentQuery;
       return stringValue;
-    } else if (processedQuery.currentQuery.startsWith(stringBreakCharacter)) {
+    } else if (currentQuery.startsWith(stringBreakCharacter)) {
       let hasFoundBreakableCharacter = false;
       for (const breakableCharacter of [
         stringBreakCharacter,
         stringDelimiter,
       ]) {
-        const remainder = processedQuery.currentQuery.slice(
-          stringBreakCharacter.length,
-        );
+        const remainder = currentQuery.slice(stringBreakCharacter.length);
         if (remainder.startsWith(breakableCharacter)) {
           hasFoundBreakableCharacter = true;
           stringValue += breakableCharacter;
+          currentQuery = remainder.slice(breakableCharacter.length);
           break;
         }
       }
@@ -712,19 +838,25 @@ export function parseString(
         );
       }
     } else {
-      stringValue += currentQueryCopy[0];
-      currentQueryCopy = currentQueryCopy.slice(1);
+      stringValue += currentQuery[0];
+      currentQuery = currentQuery.slice(1);
     }
   }
 
   throw new ParseError('Closing string delimiter not found', processedQuery);
 }
 
+export const JAVA_SCRIPT_NUMBER_REGEX =
+  /^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]*)?$/;
+
 export function parseNumber(
   processedQuery: ProcessedQuery,
   isInArray: boolean,
 ): number {
-  const possibleFollowingCharactersAfterNumber: string[] = [' '];
+  const possibleFollowingCharactersAfterNumber: string[] = [
+    ' ',
+    ...SHORTHAND_QUERY_AGGREGATORS,
+  ];
 
   if (processedQuery.depth > 0) {
     possibleFollowingCharactersAfterNumber.push(')');
@@ -739,35 +871,42 @@ export function parseNumber(
       processedQuery.currentQuery.indexOf(character),
     );
 
-  let followingCharacterIndex = -1;
+  let followingCharacterIndex = Infinity;
   let followingCharacter: string | null = null;
   for (const possibleFollowingCharacterIndex of possibleFollowingCharactersAfterNumberIndexes) {
-    if (possibleFollowingCharacterIndex > followingCharacterIndex) {
+    if (
+      possibleFollowingCharacterIndex > 0 &&
+      possibleFollowingCharacterIndex < followingCharacterIndex
+    ) {
       followingCharacterIndex = possibleFollowingCharacterIndex;
       followingCharacter =
         possibleFollowingCharactersAfterNumber[possibleFollowingCharacterIndex];
     }
   }
 
-  let number: number | null = null;
-  let nextCurrentQuery = processedQuery.currentQuery;
+  let numberString: string;
   if (followingCharacter === null) {
-    number = parseFloat(processedQuery.currentQuery);
-    nextCurrentQuery = '';
+    numberString = processedQuery.currentQuery;
   } else {
-    number = parseFloat(
-      processedQuery.currentQuery.slice(0, followingCharacterIndex),
-    );
-    nextCurrentQuery = processedQuery.currentQuery.slice(
+    numberString = processedQuery.currentQuery.slice(
+      0,
       followingCharacterIndex,
     );
   }
+
+  if (numberString.match(JAVA_SCRIPT_NUMBER_REGEX) === null) {
+    throw new ParseError('Number not found', processedQuery);
+  }
+
+  const number = Number(numberString);
 
   if (isNaN(number)) {
     throw new ParseError('Number not found', processedQuery);
   }
 
-  processedQuery.currentQuery = nextCurrentQuery;
+  processedQuery.currentQuery = processedQuery.currentQuery.slice(
+    numberString.length,
+  );
 
   return number;
 }

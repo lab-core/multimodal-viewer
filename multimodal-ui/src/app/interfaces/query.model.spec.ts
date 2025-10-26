@@ -6,13 +6,21 @@ import {
   executeWithoutIsNot,
   extractField,
   ExtractFieldError,
+  JAVA_SCRIPT_NUMBER_REGEX,
+  ParseError,
+  parseNumber,
+  parsePrimitiveValue,
+  parseString,
+  ProcessedQuery,
   Query,
   QueryObject,
   QueryObjectFieldValue,
   QueryOperator,
+  stringBreakCharacter,
 } from './query.model';
 
 describe('Query model', () => {
+  // MARK: Execute
   describe('execute', () => {
     describe('when isNot is true', () => {
       it('should return the opposite of executeWithoutIsNot', () => {
@@ -1377,6 +1385,7 @@ describe('Query model', () => {
     });
   });
 
+  // MARK: Extract field
   describe('extractField', () => {
     describe('when encountering a string value', () => {
       it('should throw an error', () => {
@@ -1565,5 +1574,513 @@ describe('Query model', () => {
 
       expect(result).toEqual('value');
     });
+  });
+
+  // MARK: Parse primitive value
+  describe('parsePrimitiveValue', () => {
+    describe('when the value is a number', () => {
+      it('should return a number', () => {
+        const value = 123;
+        const processedQuery: ProcessedQuery = {
+          initialQuery: value.toString(),
+          currentQuery: value.toString(),
+          depth: 0,
+        };
+
+        const result = parsePrimitiveValue(processedQuery, false);
+
+        expect(result).toEqual(value);
+        expect(processedQuery.currentQuery).toEqual('');
+      });
+    });
+
+    const trueValues = ['true', 'TRUE', 'TrUe'];
+    for (const trueValue of trueValues) {
+      describe(`when the value is ${trueValue}`, () => {
+        it(`should return true`, () => {
+          const processedQuery: ProcessedQuery = {
+            initialQuery: trueValue,
+            currentQuery: trueValue,
+            depth: 0,
+          };
+
+          const result = parsePrimitiveValue(processedQuery, false);
+
+          expect(result).toEqual(true);
+          expect(processedQuery.currentQuery).toEqual('');
+        });
+      });
+    }
+
+    const falseValues = ['false', 'FALSE', 'FaLsE'];
+    for (const falseValue of falseValues) {
+      describe(`when the value is ${falseValue}`, () => {
+        it(`should return false`, () => {
+          const processedQuery: ProcessedQuery = {
+            initialQuery: falseValue,
+            currentQuery: falseValue,
+            depth: 0,
+          };
+
+          const result = parsePrimitiveValue(processedQuery, false);
+
+          expect(result).toEqual(false);
+          expect(processedQuery.currentQuery).toEqual('');
+        });
+      });
+    }
+
+    const nullValues = ['null', 'NULL', 'NuLl'];
+    for (const nullValue of nullValues) {
+      describe(`when the value is ${nullValue}`, () => {
+        it(`should return null`, () => {
+          const processedQuery: ProcessedQuery = {
+            initialQuery: nullValue,
+            currentQuery: nullValue,
+            depth: 0,
+          };
+
+          const result = parsePrimitiveValue(processedQuery, false);
+
+          expect(result).toEqual(null);
+          expect(processedQuery.currentQuery).toEqual('');
+        });
+      });
+    }
+
+    const undefinedValues = ['undefined', 'UNDEFINED', 'UnDeFiNeD'];
+    for (const undefinedValue of undefinedValues) {
+      describe(`when the value is ${undefinedValue}`, () => {
+        it(`should return undefined`, () => {
+          const processedQuery: ProcessedQuery = {
+            initialQuery: undefinedValue,
+            currentQuery: undefinedValue,
+            depth: 0,
+          };
+
+          const result = parsePrimitiveValue(processedQuery, false);
+
+          expect(result).toEqual(undefined);
+          expect(processedQuery.currentQuery).toEqual('');
+        });
+      });
+    }
+
+    describe('when the value is a string', () => {
+      it('should return a string', () => {
+        const value = 'value';
+        const stringDelimiter = '"';
+        const queryString = `${stringDelimiter}${value}${stringDelimiter}`;
+        const processedQuery: ProcessedQuery = {
+          initialQuery: queryString,
+          currentQuery: queryString,
+          depth: 0,
+        };
+
+        const result = parsePrimitiveValue(processedQuery, false);
+
+        expect(result).toEqual(value);
+        expect(processedQuery.currentQuery).toEqual('');
+      });
+    });
+  });
+
+  // MARK: Parse string
+  describe('parseString', () => {
+    describe("when using ' as quote", () => {
+      it('should return a string', () => {
+        const value = 'value';
+        const stringDelimiter = "'";
+        const followingString = ') abc';
+        const queryString = `${value}${stringDelimiter}${followingString}`;
+        const processedQuery: ProcessedQuery = {
+          initialQuery: queryString,
+          currentQuery: queryString,
+          depth: 0,
+        };
+
+        const result = parseString(processedQuery, stringDelimiter);
+
+        expect(result).toEqual(value);
+        expect(processedQuery.currentQuery).toEqual(followingString);
+      });
+    });
+
+    describe('when using " as quote', () => {
+      it('should return a string', () => {
+        const value = 'value';
+        const followingString = ') abc';
+        const stringDelimiter = '"';
+        const queryString = `${value}${stringDelimiter}${followingString}`;
+        const processedQuery: ProcessedQuery = {
+          initialQuery: queryString,
+          currentQuery: queryString,
+          depth: 0,
+        };
+
+        const result = parseString(processedQuery, stringDelimiter);
+
+        expect(result).toEqual(value);
+        expect(processedQuery.currentQuery).toEqual(followingString);
+      });
+    });
+
+    describe('when using quote inside the string with a break character', () => {
+      it('should return the string with the quote but without the break character', () => {
+        const stringDelimiter = '"';
+        const value = `value with ${stringBreakCharacter}${stringDelimiter} inside`;
+        const followingString = ') abc';
+        const queryString = `${value}${stringDelimiter}${followingString}`;
+        const processedQuery: ProcessedQuery = {
+          initialQuery: queryString,
+          currentQuery: queryString,
+          depth: 0,
+        };
+
+        const result = parseString(processedQuery, stringDelimiter);
+
+        expect(result).toEqual(value.replace(stringBreakCharacter, ''));
+        expect(processedQuery.currentQuery).toEqual(followingString);
+      });
+    });
+
+    describe('when using the break character doubled inside the string', () => {
+      it('should return the string with only one break character', () => {
+        const stringDelimiter = '"';
+        const value = `value with ${stringBreakCharacter}${stringBreakCharacter} inside`;
+        const followingString = ') abc';
+        const queryString = `${value}${stringDelimiter}${followingString}`;
+        const processedQuery: ProcessedQuery = {
+          initialQuery: queryString,
+          currentQuery: queryString,
+          depth: 0,
+        };
+
+        const result = parseString(processedQuery, stringDelimiter);
+
+        expect(result).toEqual(
+          value.replace(stringBreakCharacter.repeat(2), stringBreakCharacter),
+        );
+        expect(processedQuery.currentQuery).toEqual(followingString);
+      });
+    });
+
+    describe('when using the break character without a breakable string following', () => {
+      it('should throw an error', () => {
+        const stringDelimiter = '"';
+        const value = `value with ${stringBreakCharacter} inside`;
+        const followingString = ') abc';
+        const queryString = `${value}${stringDelimiter}${followingString}`;
+        const processedQuery: ProcessedQuery = {
+          initialQuery: queryString,
+          currentQuery: queryString,
+          depth: 0,
+        };
+
+        let error: ParseError | null = null;
+
+        try {
+          parseString(processedQuery, stringDelimiter);
+        } catch (e) {
+          error = e as ParseError;
+        }
+
+        expect(error).not.toBeNull();
+        expect(error?.message).toEqual(
+          'Breakable character not found after string break character',
+        );
+        expect(error?.payload).toEqual(processedQuery);
+        expect(processedQuery.currentQuery).toEqual(queryString);
+      });
+    });
+
+    describe('when the closing quote is missing', () => {
+      it('should throw an error', () => {
+        const stringDelimiter = '"';
+        const value = `value`;
+        const followingString = ') abc';
+        const queryString = `${value}${followingString}`;
+        const processedQuery: ProcessedQuery = {
+          initialQuery: queryString,
+          currentQuery: queryString,
+          depth: 0,
+        };
+
+        let error: ParseError | null = null;
+
+        try {
+          parseString(processedQuery, stringDelimiter);
+        } catch (e) {
+          error = e as ParseError;
+        }
+
+        expect(error).not.toBeNull();
+        expect(error?.message).toEqual('Closing string delimiter not found');
+        expect(error?.payload).toEqual(processedQuery);
+        expect(processedQuery.currentQuery).toEqual(queryString);
+      });
+    });
+  });
+
+  // MARK: Parse number
+  describe('parseNumber', () => {
+    const testNumbers: [string, number][] = [
+      ['0', 0],
+      ['5', 5],
+      ['+5', 5],
+      ['-5', -5],
+      ['0.5', 0.5],
+      ['+0.5', 0.5],
+      ['-0.5', -0.5],
+      ['1e10', 1e10],
+      ['+1e10', 1e10],
+      ['-1e10', -1e10],
+      ['1e-10', 1e-10],
+      ['+1e-10', 1e-10],
+      ['-1e-10', -1e-10],
+      ['1.2345e10', 1.2345e10],
+      ['1.2345e+10', 1.2345e10],
+      ['1.2345e-10', 1.2345e-10],
+    ];
+
+    for (const [number, expectedNumber] of testNumbers) {
+      describe('testing number ' + number, () => {
+        it('should match the regex', () => {
+          expect(number.match(JAVA_SCRIPT_NUMBER_REGEX)).not.toBeNull();
+        });
+
+        describe('when the number is alone', () => {
+          it('should return the number', () => {
+            const queryString = number;
+
+            expect(
+              parseNumber(
+                {
+                  initialQuery: queryString,
+                  currentQuery: queryString,
+                  depth: 0,
+                },
+                false,
+              ),
+            ).toEqual(expectedNumber);
+          });
+        });
+
+        describe('when the number is followed by a space', () => {
+          it('should return the number', () => {
+            const followingString = ' abc';
+            const queryString = number + followingString;
+            const processedQuery: ProcessedQuery = {
+              initialQuery: queryString,
+              currentQuery: queryString,
+              depth: 0,
+            };
+
+            expect(parseNumber(processedQuery, false)).toEqual(expectedNumber);
+            expect(processedQuery.currentQuery).toEqual(followingString);
+          });
+        });
+
+        describe('when the number is followed by a &', () => {
+          it('should return the number', () => {
+            const followingString = '& abc';
+            const queryString = number + followingString;
+            const processedQuery: ProcessedQuery = {
+              initialQuery: queryString,
+              currentQuery: queryString,
+              depth: 0,
+            };
+
+            expect(parseNumber(processedQuery, false)).toEqual(expectedNumber);
+            expect(processedQuery.currentQuery).toEqual(followingString);
+          });
+        });
+
+        describe('when the number is followed by a |', () => {
+          it('should return the number', () => {
+            const followingString = '| abc';
+            const queryString = number + followingString;
+            const processedQuery: ProcessedQuery = {
+              initialQuery: queryString,
+              currentQuery: queryString,
+              depth: 0,
+            };
+
+            expect(parseNumber(processedQuery, false)).toEqual(expectedNumber);
+            expect(processedQuery.currentQuery).toEqual(followingString);
+          });
+        });
+
+        describe('when the number is followed by a )', () => {
+          describe('and the depth is 0', () => {
+            it('should throw an error', () => {
+              let error: ParseError | null = null;
+
+              const followingString = ') abc';
+              const queryString = number + followingString;
+              const processedQuery: ProcessedQuery = {
+                initialQuery: queryString,
+                currentQuery: queryString,
+                depth: 0,
+              };
+
+              try {
+                parseNumber(processedQuery, false);
+              } catch (e) {
+                error = e as ParseError;
+              }
+
+              expect(error).toBeInstanceOf(ParseError);
+              expect(error?.payload).toEqual(processedQuery);
+              expect(error?.message).toEqual('Number not found');
+              expect(processedQuery.currentQuery).toEqual(queryString);
+            });
+          });
+
+          describe('and the depth is 1', () => {
+            it('should return the number', () => {
+              const followingString = ') abc';
+              const queryString = number + followingString;
+              const processedQuery: ProcessedQuery = {
+                initialQuery: queryString,
+                currentQuery: queryString,
+                depth: 1,
+              };
+
+              expect(parseNumber(processedQuery, false)).toEqual(
+                expectedNumber,
+              );
+              expect(processedQuery.currentQuery).toEqual(followingString);
+            });
+          });
+        });
+
+        describe('when the number is followed by a ]', () => {
+          describe('and is not in an array', () => {
+            it('should throw an error', () => {
+              let error: ParseError | null = null;
+
+              const followingString = '] abc';
+              const queryString = number + followingString;
+              const processedQuery: ProcessedQuery = {
+                initialQuery: queryString,
+                currentQuery: queryString,
+                depth: 0,
+              };
+
+              try {
+                parseNumber(processedQuery, false);
+              } catch (e) {
+                error = e as ParseError;
+              }
+
+              expect(error).toBeInstanceOf(ParseError);
+              expect(error?.payload).toEqual(processedQuery);
+              expect(error?.message).toEqual('Number not found');
+              expect(processedQuery.currentQuery).toEqual(queryString);
+            });
+          });
+
+          describe('and is in an array', () => {
+            it('should return the number', () => {
+              const followingString = '] abc';
+              const queryString = number + followingString;
+              const processedQuery: ProcessedQuery = {
+                initialQuery: queryString,
+                currentQuery: queryString,
+                depth: 0,
+              };
+
+              expect(parseNumber(processedQuery, true)).toEqual(expectedNumber);
+              expect(processedQuery.currentQuery).toEqual(followingString);
+            });
+          });
+        });
+
+        describe('when the number is followed by a ,', () => {
+          describe('and is not in an array', () => {
+            it('should throw an error', () => {
+              let error: ParseError | null = null;
+
+              const followingString = ', abc';
+              const queryString = number + followingString;
+              const processedQuery: ProcessedQuery = {
+                initialQuery: queryString,
+                currentQuery: queryString,
+                depth: 0,
+              };
+
+              try {
+                parseNumber(processedQuery, false);
+              } catch (e) {
+                error = e as ParseError;
+              }
+
+              expect(error).toBeInstanceOf(ParseError);
+              expect(error?.payload).toEqual(processedQuery);
+              expect(error?.message).toEqual('Number not found');
+              expect(processedQuery.currentQuery).toEqual(queryString);
+            });
+          });
+
+          describe('and is in an array', () => {
+            it('should return the number', () => {
+              const followingString = ', abc';
+              const queryString = number + followingString;
+              const processedQuery: ProcessedQuery = {
+                initialQuery: queryString,
+                currentQuery: queryString,
+                depth: 0,
+              };
+
+              expect(parseNumber(processedQuery, true)).toEqual(expectedNumber);
+              expect(processedQuery.currentQuery).toEqual(followingString);
+            });
+          });
+        });
+
+        describe('when the number is followed by ;', () => {
+          describe('and is not in an array', () => {
+            it('should throw an error', () => {
+              let error: ParseError | null = null;
+
+              const followingString = '; abc';
+              const queryString = number + followingString;
+              const processedQuery: ProcessedQuery = {
+                initialQuery: queryString,
+                currentQuery: queryString,
+                depth: 0,
+              };
+
+              try {
+                parseNumber(processedQuery, false);
+              } catch (e) {
+                error = e as ParseError;
+              }
+
+              expect(error).toBeInstanceOf(ParseError);
+              expect(error?.payload).toEqual(processedQuery);
+              expect(error?.message).toEqual('Number not found');
+              expect(processedQuery.currentQuery).toEqual(queryString);
+            });
+          });
+
+          describe('and is in an array', () => {
+            it('should return the number', () => {
+              const followingString = '; abc';
+              const queryString = number + followingString;
+              const processedQuery: ProcessedQuery = {
+                initialQuery: queryString,
+                currentQuery: queryString,
+                depth: 0,
+              };
+
+              expect(parseNumber(processedQuery, true)).toEqual(expectedNumber);
+              expect(processedQuery.currentQuery).toEqual(followingString);
+            });
+          });
+        });
+      });
+    }
   });
 });
