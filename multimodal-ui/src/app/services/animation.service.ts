@@ -45,11 +45,7 @@ import {
 import { EntityMetadata } from '../interfaces/entity.model';
 import { getAllLegs, Passenger } from '../interfaces/passenger.model';
 import { AllPolylines, Polyline } from '../interfaces/polylines.model';
-import {
-  execute,
-  QueryCondition,
-  QueryObject,
-} from '../interfaces/query.model';
+import { execute, Query, QueryObject } from '../interfaces/query.model';
 import { Stop } from '../interfaces/stop.model';
 import { getAllStops, Vehicle } from '../interfaces/vehicle.model';
 import { FavoriteEntitiesService } from './favorite-entities.service';
@@ -96,7 +92,7 @@ export class AnimationService {
 
   // Use two variables to avoid changing the ones used for the animation during the animation
   private nextPolylines: AllPolylines | null = null;
-  private nextFilters: QueryCondition | null = null;
+  private nextFilters: Query | null = null;
   private nextShouldCenterMap = false;
   private nextShouldFollowEntity = false;
   private nextClickEvent: LeafletMouseEvent | null = null;
@@ -130,7 +126,7 @@ export class AnimationService {
 
   private selectedEntityPolylines: Graphics[] = [];
 
-  private filters: QueryCondition | null = null;
+  private filters: Query | null = null;
 
   private shouldCenterMap = false;
 
@@ -198,7 +194,7 @@ export class AnimationService {
   }
 
   // MARK: Setters
-  setFilters(filters: QueryCondition | null) {
+  setFilters(filters: Query | null) {
     this.nextFilters = filters;
   }
 
@@ -757,7 +753,7 @@ export class AnimationService {
 
   // MARK: Filters
   private filterEntities(environment: EnvironmentSlice) {
-    const filters: QueryCondition | null = this.filters;
+    const filters: Query | null = this.filters;
 
     for (const vehicle of this.presentVehicleEntities) {
       if (filters === null) {

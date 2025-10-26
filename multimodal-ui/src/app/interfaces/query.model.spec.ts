@@ -1,14 +1,14 @@
 import {
-  AnyAtomicQueryCondition,
+  AnyAtomicQuery,
   execute,
   ExecuteAtomicError,
   executeAtomicWithoutIsNot,
   executeWithoutIsNot,
   extractField,
   ExtractFieldError,
-  QueryCondition,
-  QueryFieldValue,
+  Query,
   QueryObject,
+  QueryObjectFieldValue,
   QueryOperator,
 } from './query.model';
 
@@ -16,7 +16,7 @@ describe('Query model', () => {
   describe('execute', () => {
     describe('when isNot is true', () => {
       it('should return the opposite of executeWithoutIsNot', () => {
-        const queryCondition: AnyAtomicQueryCondition = {
+        const query: AnyAtomicQuery = {
           field: 'field',
           operator: '=',
           value: 'value',
@@ -28,15 +28,15 @@ describe('Query model', () => {
           field: 'value',
         };
 
-        const result = execute(queryCondition, data);
+        const result = execute(query, data);
 
-        expect(result).toEqual(!executeWithoutIsNot(queryCondition, data));
+        expect(result).toEqual(!executeWithoutIsNot(query, data));
       });
     });
 
     describe('when isNot is false', () => {
       it('should return executeWithoutIsNot', () => {
-        const queryCondition: AnyAtomicQueryCondition = {
+        const query: AnyAtomicQuery = {
           field: 'field',
           operator: '=',
           value: 'value',
@@ -48,17 +48,18 @@ describe('Query model', () => {
           field: 'value',
         };
 
-        const result = execute(queryCondition, data);
+        const result = execute(query, data);
 
-        expect(result).toEqual(executeWithoutIsNot(queryCondition, data));
+        expect(result).toEqual(executeWithoutIsNot(query, data));
       });
     });
   });
+
   describe('executeWithoutIsNot', () => {
     describe('when aggregator is AND', () => {
       describe('when all conditions are true', () => {
         it('should return true', () => {
-          const queryCondition: QueryCondition = {
+          const query: Query = {
             conditions: [
               {
                 field: 'field.a',
@@ -87,7 +88,7 @@ describe('Query model', () => {
             },
           };
 
-          const result = executeWithoutIsNot(queryCondition, data);
+          const result = executeWithoutIsNot(query, data);
 
           expect(result).toEqual(true);
         });
@@ -95,7 +96,7 @@ describe('Query model', () => {
 
       describe('when at least one condition is false', () => {
         it('should return false', () => {
-          const queryCondition: QueryCondition = {
+          const query: Query = {
             conditions: [
               {
                 field: 'field.a',
@@ -124,7 +125,7 @@ describe('Query model', () => {
             },
           };
 
-          const result = executeWithoutIsNot(queryCondition, data);
+          const result = executeWithoutIsNot(query, data);
 
           expect(result).toEqual(false);
         });
@@ -134,7 +135,7 @@ describe('Query model', () => {
     describe('when aggregator is OR', () => {
       describe('when no conditions are true', () => {
         it('should return false', () => {
-          const queryCondition: QueryCondition = {
+          const query: Query = {
             conditions: [
               {
                 field: 'field.a',
@@ -163,7 +164,7 @@ describe('Query model', () => {
             },
           };
 
-          const result = executeWithoutIsNot(queryCondition, data);
+          const result = executeWithoutIsNot(query, data);
 
           expect(result).toEqual(false);
         });
@@ -171,7 +172,7 @@ describe('Query model', () => {
 
       describe('when at least one condition is true', () => {
         it('should return true', () => {
-          const queryCondition: QueryCondition = {
+          const query: Query = {
             conditions: [
               {
                 field: 'field.a',
@@ -200,7 +201,7 @@ describe('Query model', () => {
             },
           };
 
-          const result = executeWithoutIsNot(queryCondition, data);
+          const result = executeWithoutIsNot(query, data);
 
           expect(result).toEqual(true);
         });
@@ -211,7 +212,7 @@ describe('Query model', () => {
       describe('during the field extraction', () => {
         describe('and isOptional is false', () => {
           it('should propagate the error', () => {
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field.error',
               operator: '=',
               value: 'value',
@@ -226,7 +227,7 @@ describe('Query model', () => {
             let error: ExtractFieldError | null = null;
 
             try {
-              executeWithoutIsNot(queryCondition, data);
+              executeWithoutIsNot(query, data);
             } catch (e) {
               error = e as ExtractFieldError;
             }
@@ -237,7 +238,7 @@ describe('Query model', () => {
 
         describe('and isOptional is true', () => {
           it('should return false', () => {
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field.error',
               operator: '=',
               value: 'value',
@@ -253,7 +254,7 @@ describe('Query model', () => {
             let result: boolean | null = null;
 
             try {
-              result = executeWithoutIsNot(queryCondition, data);
+              result = executeWithoutIsNot(query, data);
             } catch (e) {
               error = e as ExtractFieldError;
             }
@@ -267,7 +268,7 @@ describe('Query model', () => {
       describe('during the atomic execution', () => {
         describe('and isOptional is false', () => {
           it('should propagate the error', () => {
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: 'unknown' as QueryOperator,
               value: 'value',
@@ -282,7 +283,7 @@ describe('Query model', () => {
             let error: ExtractFieldError | null = null;
 
             try {
-              executeWithoutIsNot(queryCondition, data);
+              executeWithoutIsNot(query, data);
             } catch (e) {
               error = e as ExtractFieldError;
             }
@@ -293,7 +294,7 @@ describe('Query model', () => {
 
         describe('and isOptional is true', () => {
           it('should return false', () => {
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: 'unknown' as QueryOperator,
               value: 'value',
@@ -309,7 +310,7 @@ describe('Query model', () => {
             let result: boolean | null = null;
 
             try {
-              result = executeWithoutIsNot(queryCondition, data);
+              result = executeWithoutIsNot(query, data);
             } catch (e) {
               error = e as ExtractFieldError;
             }
@@ -326,9 +327,9 @@ describe('Query model', () => {
     describe('=', () => {
       describe('when the values are equal', () => {
         it('should return true', () => {
-          const fieldValue: QueryFieldValue = 'value';
+          const fieldValue: QueryObjectFieldValue = 'value';
 
-          const queryCondition: AnyAtomicQueryCondition = {
+          const query: AnyAtomicQuery = {
             field: 'field',
             operator: '=',
             value: fieldValue,
@@ -336,7 +337,7 @@ describe('Query model', () => {
             isOptional: false,
           };
 
-          const result = executeAtomicWithoutIsNot(queryCondition, fieldValue);
+          const result = executeAtomicWithoutIsNot(query, fieldValue);
 
           expect(result).toEqual(true);
         });
@@ -344,9 +345,9 @@ describe('Query model', () => {
 
       describe('when the values are not equal', () => {
         it('should return false', () => {
-          const fieldValue: QueryFieldValue = 'value';
+          const fieldValue: QueryObjectFieldValue = 'value';
 
-          const queryCondition: AnyAtomicQueryCondition = {
+          const query: AnyAtomicQuery = {
             field: 'field',
             operator: '=',
             value: 'other',
@@ -354,7 +355,7 @@ describe('Query model', () => {
             isOptional: false,
           };
 
-          const result = executeAtomicWithoutIsNot(queryCondition, fieldValue);
+          const result = executeAtomicWithoutIsNot(query, fieldValue);
 
           expect(result).toEqual(false);
         });
@@ -363,9 +364,9 @@ describe('Query model', () => {
       describe('when comparing to null', () => {
         describe('when the value is null', () => {
           it('should return true', () => {
-            const fieldValue: QueryFieldValue = null;
+            const fieldValue: QueryObjectFieldValue = null;
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '=',
               value: fieldValue,
@@ -373,10 +374,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(true);
           });
@@ -384,9 +382,9 @@ describe('Query model', () => {
 
         describe('when the value is not null', () => {
           it('should return false', () => {
-            const fieldValue: QueryFieldValue = 'value';
+            const fieldValue: QueryObjectFieldValue = 'value';
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '=',
               value: null,
@@ -394,10 +392,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(false);
           });
@@ -407,9 +402,9 @@ describe('Query model', () => {
       describe('when comparing to undefined', () => {
         describe('when the value is undefined', () => {
           it('should return true', () => {
-            const fieldValue: QueryFieldValue = undefined;
+            const fieldValue: QueryObjectFieldValue = undefined;
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '=',
               value: fieldValue,
@@ -417,10 +412,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(true);
           });
@@ -428,9 +420,9 @@ describe('Query model', () => {
 
         describe('when the value is not undefined', () => {
           it('should return false', () => {
-            const fieldValue: QueryFieldValue = 'value';
+            const fieldValue: QueryObjectFieldValue = 'value';
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '=',
               value: undefined,
@@ -438,10 +430,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(false);
           });
@@ -451,9 +440,9 @@ describe('Query model', () => {
       describe('when comparing booleans', () => {
         describe('when the values are equal', () => {
           it('should return true', () => {
-            const fieldValue: QueryFieldValue = true;
+            const fieldValue: QueryObjectFieldValue = true;
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '=',
               value: fieldValue,
@@ -461,10 +450,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(true);
           });
@@ -472,9 +458,9 @@ describe('Query model', () => {
 
         describe('when the values are not equal', () => {
           it('should return false', () => {
-            const fieldValue: QueryFieldValue = true;
+            const fieldValue: QueryObjectFieldValue = true;
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '=',
               value: !fieldValue,
@@ -482,10 +468,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(false);
           });
@@ -496,9 +479,9 @@ describe('Query model', () => {
     describe('!=', () => {
       describe('when the values are not equal', () => {
         it('should return true', () => {
-          const fieldValue: QueryFieldValue = 'value';
+          const fieldValue: QueryObjectFieldValue = 'value';
 
-          const queryCondition: AnyAtomicQueryCondition = {
+          const query: AnyAtomicQuery = {
             field: 'field',
             operator: '!=',
             value: 'other',
@@ -506,7 +489,7 @@ describe('Query model', () => {
             isOptional: false,
           };
 
-          const result = executeAtomicWithoutIsNot(queryCondition, fieldValue);
+          const result = executeAtomicWithoutIsNot(query, fieldValue);
 
           expect(result).toEqual(true);
         });
@@ -514,9 +497,9 @@ describe('Query model', () => {
 
       describe('when the values are equal', () => {
         it('should return false', () => {
-          const fieldValue: QueryFieldValue = 'value';
+          const fieldValue: QueryObjectFieldValue = 'value';
 
-          const queryCondition: AnyAtomicQueryCondition = {
+          const query: AnyAtomicQuery = {
             field: 'field',
             operator: '!=',
             value: fieldValue,
@@ -524,7 +507,7 @@ describe('Query model', () => {
             isOptional: false,
           };
 
-          const result = executeAtomicWithoutIsNot(queryCondition, fieldValue);
+          const result = executeAtomicWithoutIsNot(query, fieldValue);
 
           expect(result).toEqual(false);
         });
@@ -533,9 +516,9 @@ describe('Query model', () => {
       describe('when comparing to null', () => {
         describe('when the value is null', () => {
           it('should return false', () => {
-            const fieldValue: QueryFieldValue = null;
+            const fieldValue: QueryObjectFieldValue = null;
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '!=',
               value: fieldValue,
@@ -543,10 +526,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(false);
           });
@@ -554,9 +534,9 @@ describe('Query model', () => {
 
         describe('when the value is not null', () => {
           it('should return true', () => {
-            const fieldValue: QueryFieldValue = 'value';
+            const fieldValue: QueryObjectFieldValue = 'value';
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '!=',
               value: null,
@@ -564,10 +544,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(true);
           });
@@ -577,9 +554,9 @@ describe('Query model', () => {
       describe('when comparing to undefined', () => {
         describe('when the value is undefined', () => {
           it('should return false', () => {
-            const fieldValue: QueryFieldValue = undefined;
+            const fieldValue: QueryObjectFieldValue = undefined;
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '!=',
               value: fieldValue,
@@ -587,10 +564,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(false);
           });
@@ -598,9 +572,9 @@ describe('Query model', () => {
 
         describe('when the value is not undefined', () => {
           it('should return true', () => {
-            const fieldValue: QueryFieldValue = 'value';
+            const fieldValue: QueryObjectFieldValue = 'value';
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '!=',
               value: undefined,
@@ -608,10 +582,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(true);
           });
@@ -621,9 +592,9 @@ describe('Query model', () => {
       describe('when comparing booleans', () => {
         describe('when the values are equal', () => {
           it('should return false', () => {
-            const fieldValue: QueryFieldValue = true;
+            const fieldValue: QueryObjectFieldValue = true;
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '!=',
               value: fieldValue,
@@ -631,10 +602,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(false);
           });
@@ -642,9 +610,9 @@ describe('Query model', () => {
 
         describe('when the values are not equal', () => {
           it('should return true', () => {
-            const fieldValue: QueryFieldValue = true;
+            const fieldValue: QueryObjectFieldValue = true;
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '!=',
               value: !fieldValue,
@@ -652,10 +620,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(true);
           });
@@ -667,9 +632,9 @@ describe('Query model', () => {
       describe('when comparing numbers', () => {
         describe('when the first value is greater', () => {
           it('should return true', () => {
-            const fieldValue: QueryFieldValue = 1;
+            const fieldValue: QueryObjectFieldValue = 1;
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '>',
               value: 0,
@@ -677,10 +642,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(true);
           });
@@ -688,9 +650,9 @@ describe('Query model', () => {
 
         describe('when the first value is lower', () => {
           it('should return false', () => {
-            const fieldValue: QueryFieldValue = 0;
+            const fieldValue: QueryObjectFieldValue = 0;
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '>',
               value: 1,
@@ -698,10 +660,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(false);
           });
@@ -709,9 +668,9 @@ describe('Query model', () => {
 
         describe('when the values are equal', () => {
           it('should return false', () => {
-            const fieldValue: QueryFieldValue = 0;
+            const fieldValue: QueryObjectFieldValue = 0;
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '>',
               value: 0,
@@ -719,10 +678,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(false);
           });
@@ -732,9 +688,9 @@ describe('Query model', () => {
       describe('when comparing strings', () => {
         describe('when the first value is greater', () => {
           it('should return true', () => {
-            const fieldValue: QueryFieldValue = 'b';
+            const fieldValue: QueryObjectFieldValue = 'b';
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '>',
               value: 'a',
@@ -742,10 +698,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(true);
           });
@@ -753,9 +706,9 @@ describe('Query model', () => {
 
         describe('when the first value is lower', () => {
           it('should return false', () => {
-            const fieldValue: QueryFieldValue = 'a';
+            const fieldValue: QueryObjectFieldValue = 'a';
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '>',
               value: 'b',
@@ -763,10 +716,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(false);
           });
@@ -774,9 +724,9 @@ describe('Query model', () => {
 
         describe('when the values are equal', () => {
           it('should return false', () => {
-            const fieldValue: QueryFieldValue = 'a';
+            const fieldValue: QueryObjectFieldValue = 'a';
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '>',
               value: 'a',
@@ -784,10 +734,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(false);
           });
@@ -796,9 +743,9 @@ describe('Query model', () => {
 
       describe('when the values are not comparable', () => {
         it('should throw an error', () => {
-          const fieldValue: QueryFieldValue = 'value';
+          const fieldValue: QueryObjectFieldValue = 'value';
 
-          const queryCondition: AnyAtomicQueryCondition = {
+          const query: AnyAtomicQuery = {
             field: 'field',
             operator: '>',
             value: 0,
@@ -809,7 +756,7 @@ describe('Query model', () => {
           let error: ExecuteAtomicError | null = null;
 
           try {
-            executeAtomicWithoutIsNot(queryCondition, fieldValue);
+            executeAtomicWithoutIsNot(query, fieldValue);
           } catch (e) {
             error = e as ExecuteAtomicError;
           }
@@ -817,7 +764,7 @@ describe('Query model', () => {
           expect(error).not.toBeNull();
           expect(error).toBeInstanceOf(ExecuteAtomicError);
           expect(error?.message).toEqual('Cannot compare elements');
-          expect(error?.payload.atomicQueryCondition).toEqual(queryCondition);
+          expect(error?.payload.atomicQuery).toEqual(query);
           expect(error?.payload.fieldValue).toEqual(fieldValue);
         });
       });
@@ -827,9 +774,9 @@ describe('Query model', () => {
       describe('when comparing numbers', () => {
         describe('when the first value is lower', () => {
           it('should return true', () => {
-            const fieldValue: QueryFieldValue = 0;
+            const fieldValue: QueryObjectFieldValue = 0;
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '<',
               value: 1,
@@ -837,10 +784,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(true);
           });
@@ -848,9 +792,9 @@ describe('Query model', () => {
 
         describe('when the first value is greater', () => {
           it('should return false', () => {
-            const fieldValue: QueryFieldValue = 1;
+            const fieldValue: QueryObjectFieldValue = 1;
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '<',
               value: 0,
@@ -858,10 +802,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(false);
           });
@@ -869,9 +810,9 @@ describe('Query model', () => {
 
         describe('when the values are equal', () => {
           it('should return false', () => {
-            const fieldValue: QueryFieldValue = 0;
+            const fieldValue: QueryObjectFieldValue = 0;
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '<',
               value: 0,
@@ -879,10 +820,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(false);
           });
@@ -892,9 +830,9 @@ describe('Query model', () => {
       describe('when comparing strings', () => {
         describe('when the first value is lower', () => {
           it('should return true', () => {
-            const fieldValue: QueryFieldValue = 'a';
+            const fieldValue: QueryObjectFieldValue = 'a';
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '<',
               value: 'b',
@@ -902,10 +840,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(true);
           });
@@ -913,9 +848,9 @@ describe('Query model', () => {
 
         describe('when the first value is greater', () => {
           it('should return false', () => {
-            const fieldValue: QueryFieldValue = 'b';
+            const fieldValue: QueryObjectFieldValue = 'b';
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '<',
               value: 'a',
@@ -923,10 +858,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(false);
           });
@@ -934,9 +866,9 @@ describe('Query model', () => {
 
         describe('when the values are equal', () => {
           it('should return false', () => {
-            const fieldValue: QueryFieldValue = 'a';
+            const fieldValue: QueryObjectFieldValue = 'a';
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '<',
               value: 'a',
@@ -944,10 +876,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(false);
           });
@@ -956,9 +885,9 @@ describe('Query model', () => {
 
       describe('when the values are not comparable', () => {
         it('should throw an error', () => {
-          const fieldValue: QueryFieldValue = 'value';
+          const fieldValue: QueryObjectFieldValue = 'value';
 
-          const queryCondition: AnyAtomicQueryCondition = {
+          const query: AnyAtomicQuery = {
             field: 'field',
             operator: '<',
             value: 0,
@@ -969,7 +898,7 @@ describe('Query model', () => {
           let error: ExecuteAtomicError | null = null;
 
           try {
-            executeAtomicWithoutIsNot(queryCondition, fieldValue);
+            executeAtomicWithoutIsNot(query, fieldValue);
           } catch (e) {
             error = e as ExecuteAtomicError;
           }
@@ -977,7 +906,7 @@ describe('Query model', () => {
           expect(error).not.toBeNull();
           expect(error).toBeInstanceOf(ExecuteAtomicError);
           expect(error?.message).toEqual('Cannot compare elements');
-          expect(error?.payload.atomicQueryCondition).toEqual(queryCondition);
+          expect(error?.payload.atomicQuery).toEqual(query);
           expect(error?.payload.fieldValue).toEqual(fieldValue);
         });
       });
@@ -987,9 +916,9 @@ describe('Query model', () => {
       describe('when comparing numbers', () => {
         describe('when the first value is lower', () => {
           it('should return false', () => {
-            const fieldValue: QueryFieldValue = 0;
+            const fieldValue: QueryObjectFieldValue = 0;
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '>=',
               value: 1,
@@ -997,10 +926,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(false);
           });
@@ -1008,9 +934,9 @@ describe('Query model', () => {
 
         describe('when the first value is greater', () => {
           it('should return true', () => {
-            const fieldValue: QueryFieldValue = 1;
+            const fieldValue: QueryObjectFieldValue = 1;
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '>=',
               value: 0,
@@ -1018,10 +944,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(true);
           });
@@ -1029,9 +952,9 @@ describe('Query model', () => {
 
         describe('when the values are equal', () => {
           it('should return true', () => {
-            const fieldValue: QueryFieldValue = 0;
+            const fieldValue: QueryObjectFieldValue = 0;
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '>=',
               value: 0,
@@ -1039,10 +962,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(true);
           });
@@ -1052,9 +972,9 @@ describe('Query model', () => {
       describe('when comparing strings', () => {
         describe('when the first value is lower', () => {
           it('should return false', () => {
-            const fieldValue: QueryFieldValue = 'a';
+            const fieldValue: QueryObjectFieldValue = 'a';
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '>=',
               value: 'b',
@@ -1062,10 +982,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(false);
           });
@@ -1073,9 +990,9 @@ describe('Query model', () => {
 
         describe('when the first value is greater', () => {
           it('should return true', () => {
-            const fieldValue: QueryFieldValue = 'b';
+            const fieldValue: QueryObjectFieldValue = 'b';
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '>=',
               value: 'a',
@@ -1083,10 +1000,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(true);
           });
@@ -1094,9 +1008,9 @@ describe('Query model', () => {
 
         describe('when the values are equal', () => {
           it('should return true', () => {
-            const fieldValue: QueryFieldValue = 'a';
+            const fieldValue: QueryObjectFieldValue = 'a';
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '>=',
               value: 'a',
@@ -1104,10 +1018,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(true);
           });
@@ -1116,9 +1027,9 @@ describe('Query model', () => {
 
       describe('when the values are not comparable', () => {
         it('should throw an error', () => {
-          const fieldValue: QueryFieldValue = 'value';
+          const fieldValue: QueryObjectFieldValue = 'value';
 
-          const queryCondition: AnyAtomicQueryCondition = {
+          const query: AnyAtomicQuery = {
             field: 'field',
             operator: '>=',
             value: 0,
@@ -1129,7 +1040,7 @@ describe('Query model', () => {
           let error: ExecuteAtomicError | null = null;
 
           try {
-            executeAtomicWithoutIsNot(queryCondition, fieldValue);
+            executeAtomicWithoutIsNot(query, fieldValue);
           } catch (e) {
             error = e as ExecuteAtomicError;
           }
@@ -1137,7 +1048,7 @@ describe('Query model', () => {
           expect(error).not.toBeNull();
           expect(error).toBeInstanceOf(ExecuteAtomicError);
           expect(error?.message).toEqual('Cannot compare elements');
-          expect(error?.payload.atomicQueryCondition).toEqual(queryCondition);
+          expect(error?.payload.atomicQuery).toEqual(query);
           expect(error?.payload.fieldValue).toEqual(fieldValue);
         });
       });
@@ -1147,9 +1058,9 @@ describe('Query model', () => {
       describe('when comparing numbers', () => {
         describe('when the first value is lower', () => {
           it('should return true', () => {
-            const fieldValue: QueryFieldValue = 0;
+            const fieldValue: QueryObjectFieldValue = 0;
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '<=',
               value: 1,
@@ -1157,10 +1068,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(true);
           });
@@ -1168,9 +1076,9 @@ describe('Query model', () => {
 
         describe('when the first value is greater', () => {
           it('should return false', () => {
-            const fieldValue: QueryFieldValue = 1;
+            const fieldValue: QueryObjectFieldValue = 1;
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '<=',
               value: 0,
@@ -1178,10 +1086,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(false);
           });
@@ -1189,9 +1094,9 @@ describe('Query model', () => {
 
         describe('when the values are equal', () => {
           it('should return true', () => {
-            const fieldValue: QueryFieldValue = 0;
+            const fieldValue: QueryObjectFieldValue = 0;
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '<=',
               value: 0,
@@ -1199,10 +1104,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(true);
           });
@@ -1212,9 +1114,9 @@ describe('Query model', () => {
       describe('when comparing strings', () => {
         describe('when the first value is lower', () => {
           it('should return true', () => {
-            const fieldValue: QueryFieldValue = 'a';
+            const fieldValue: QueryObjectFieldValue = 'a';
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '<=',
               value: 'b',
@@ -1222,10 +1124,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(true);
           });
@@ -1233,9 +1132,9 @@ describe('Query model', () => {
 
         describe('when the first value is greater', () => {
           it('should return false', () => {
-            const fieldValue: QueryFieldValue = 'b';
+            const fieldValue: QueryObjectFieldValue = 'b';
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '<=',
               value: 'a',
@@ -1243,10 +1142,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(false);
           });
@@ -1254,9 +1150,9 @@ describe('Query model', () => {
 
         describe('when the values are equal', () => {
           it('should return true', () => {
-            const fieldValue: QueryFieldValue = 'a';
+            const fieldValue: QueryObjectFieldValue = 'a';
 
-            const queryCondition: AnyAtomicQueryCondition = {
+            const query: AnyAtomicQuery = {
               field: 'field',
               operator: '<=',
               value: 'a',
@@ -1264,10 +1160,7 @@ describe('Query model', () => {
               isOptional: false,
             };
 
-            const result = executeAtomicWithoutIsNot(
-              queryCondition,
-              fieldValue,
-            );
+            const result = executeAtomicWithoutIsNot(query, fieldValue);
 
             expect(result).toEqual(true);
           });
@@ -1276,9 +1169,9 @@ describe('Query model', () => {
 
       describe('when the values are not comparable', () => {
         it('should throw an error', () => {
-          const fieldValue: QueryFieldValue = 'value';
+          const fieldValue: QueryObjectFieldValue = 'value';
 
-          const queryCondition: AnyAtomicQueryCondition = {
+          const query: AnyAtomicQuery = {
             field: 'field',
             operator: '<=',
             value: 0,
@@ -1289,7 +1182,7 @@ describe('Query model', () => {
           let error: ExecuteAtomicError | null = null;
 
           try {
-            executeAtomicWithoutIsNot(queryCondition, fieldValue);
+            executeAtomicWithoutIsNot(query, fieldValue);
           } catch (e) {
             error = e as ExecuteAtomicError;
           }
@@ -1297,7 +1190,7 @@ describe('Query model', () => {
           expect(error).not.toBeNull();
           expect(error).toBeInstanceOf(ExecuteAtomicError);
           expect(error?.message).toEqual('Cannot compare elements');
-          expect(error?.payload.atomicQueryCondition).toEqual(queryCondition);
+          expect(error?.payload.atomicQuery).toEqual(query);
           expect(error?.payload.fieldValue).toEqual(fieldValue);
         });
       });
@@ -1306,9 +1199,9 @@ describe('Query model', () => {
     describe('IN', () => {
       describe('when the element is in the array', () => {
         it('should return true', () => {
-          const fieldValue: QueryFieldValue = 'value';
+          const fieldValue: QueryObjectFieldValue = 'value';
 
-          const queryCondition: AnyAtomicQueryCondition = {
+          const query: AnyAtomicQuery = {
             field: 'field',
             operator: 'IN',
             value: ['value', 'other'],
@@ -1316,7 +1209,7 @@ describe('Query model', () => {
             isOptional: false,
           };
 
-          const result = executeAtomicWithoutIsNot(queryCondition, fieldValue);
+          const result = executeAtomicWithoutIsNot(query, fieldValue);
 
           expect(result).toEqual(true);
         });
@@ -1324,9 +1217,9 @@ describe('Query model', () => {
 
       describe('when the element is not in the array', () => {
         it('should return false', () => {
-          const fieldValue: QueryFieldValue = 'value';
+          const fieldValue: QueryObjectFieldValue = 'value';
 
-          const queryCondition: AnyAtomicQueryCondition = {
+          const query: AnyAtomicQuery = {
             field: 'field',
             operator: 'IN',
             value: ['other'],
@@ -1334,7 +1227,7 @@ describe('Query model', () => {
             isOptional: false,
           };
 
-          const result = executeAtomicWithoutIsNot(queryCondition, fieldValue);
+          const result = executeAtomicWithoutIsNot(query, fieldValue);
 
           expect(result).toEqual(false);
         });
@@ -1344,9 +1237,9 @@ describe('Query model', () => {
     describe('NOT IN', () => {
       describe('when the element is not in the array', () => {
         it('should return true', () => {
-          const fieldValue: QueryFieldValue = 'value';
+          const fieldValue: QueryObjectFieldValue = 'value';
 
-          const queryCondition: AnyAtomicQueryCondition = {
+          const query: AnyAtomicQuery = {
             field: 'field',
             operator: 'NOT IN',
             value: ['other'],
@@ -1354,7 +1247,7 @@ describe('Query model', () => {
             isOptional: false,
           };
 
-          const result = executeAtomicWithoutIsNot(queryCondition, fieldValue);
+          const result = executeAtomicWithoutIsNot(query, fieldValue);
 
           expect(result).toEqual(true);
         });
@@ -1362,9 +1255,9 @@ describe('Query model', () => {
 
       describe('when the element is in the array', () => {
         it('should return false', () => {
-          const fieldValue: QueryFieldValue = 'value';
+          const fieldValue: QueryObjectFieldValue = 'value';
 
-          const queryCondition: AnyAtomicQueryCondition = {
+          const query: AnyAtomicQuery = {
             field: 'field',
             operator: 'NOT IN',
             value: ['value', 'other'],
@@ -1372,7 +1265,7 @@ describe('Query model', () => {
             isOptional: false,
           };
 
-          const result = executeAtomicWithoutIsNot(queryCondition, fieldValue);
+          const result = executeAtomicWithoutIsNot(query, fieldValue);
 
           expect(result).toEqual(false);
         });
@@ -1382,9 +1275,9 @@ describe('Query model', () => {
     describe('INCLUDES', () => {
       describe('when the element is in the array', () => {
         it('should return true', () => {
-          const fieldValue: QueryFieldValue = ['value', 'other'];
+          const fieldValue: QueryObjectFieldValue = ['value', 'other'];
 
-          const queryCondition: AnyAtomicQueryCondition = {
+          const query: AnyAtomicQuery = {
             field: 'field',
             operator: 'INCLUDES',
             value: 'value',
@@ -1392,7 +1285,7 @@ describe('Query model', () => {
             isOptional: false,
           };
 
-          const result = executeAtomicWithoutIsNot(queryCondition, fieldValue);
+          const result = executeAtomicWithoutIsNot(query, fieldValue);
 
           expect(result).toEqual(true);
         });
@@ -1400,9 +1293,9 @@ describe('Query model', () => {
 
       describe('when the element is not in the array', () => {
         it('should return false', () => {
-          const fieldValue: QueryFieldValue = ['other'];
+          const fieldValue: QueryObjectFieldValue = ['other'];
 
-          const queryCondition: AnyAtomicQueryCondition = {
+          const query: AnyAtomicQuery = {
             field: 'field',
             operator: 'INCLUDES',
             value: 'value',
@@ -1410,7 +1303,7 @@ describe('Query model', () => {
             isOptional: false,
           };
 
-          const result = executeAtomicWithoutIsNot(queryCondition, fieldValue);
+          const result = executeAtomicWithoutIsNot(query, fieldValue);
 
           expect(result).toEqual(false);
         });
@@ -1420,9 +1313,9 @@ describe('Query model', () => {
     describe('DOES NOT INCLUDE', () => {
       describe('when the element is not in the array', () => {
         it('should return true', () => {
-          const fieldValue: QueryFieldValue = ['other'];
+          const fieldValue: QueryObjectFieldValue = ['other'];
 
-          const queryCondition: AnyAtomicQueryCondition = {
+          const query: AnyAtomicQuery = {
             field: 'field',
             operator: 'DOES NOT INCLUDE',
             value: 'value',
@@ -1430,7 +1323,7 @@ describe('Query model', () => {
             isOptional: false,
           };
 
-          const result = executeAtomicWithoutIsNot(queryCondition, fieldValue);
+          const result = executeAtomicWithoutIsNot(query, fieldValue);
 
           expect(result).toEqual(true);
         });
@@ -1438,9 +1331,9 @@ describe('Query model', () => {
 
       describe('when the element is in the array', () => {
         it('should return false', () => {
-          const fieldValue: QueryFieldValue = ['value', 'other'];
+          const fieldValue: QueryObjectFieldValue = ['value', 'other'];
 
-          const queryCondition: AnyAtomicQueryCondition = {
+          const query: AnyAtomicQuery = {
             field: 'field',
             operator: 'DOES NOT INCLUDE',
             value: 'value',
@@ -1448,7 +1341,7 @@ describe('Query model', () => {
             isOptional: false,
           };
 
-          const result = executeAtomicWithoutIsNot(queryCondition, fieldValue);
+          const result = executeAtomicWithoutIsNot(query, fieldValue);
 
           expect(result).toEqual(false);
         });
@@ -1457,9 +1350,9 @@ describe('Query model', () => {
 
     describe('when using an unknown operator', () => {
       it('should throw an error', () => {
-        const fieldValue: QueryFieldValue = undefined;
+        const fieldValue: QueryObjectFieldValue = undefined;
 
-        const queryCondition: AnyAtomicQueryCondition = {
+        const query: AnyAtomicQuery = {
           field: 'field',
           operator: 'unknown' as QueryOperator,
           value: 'value',
@@ -1470,7 +1363,7 @@ describe('Query model', () => {
         let error: ExecuteAtomicError | null = null;
 
         try {
-          executeAtomicWithoutIsNot(queryCondition, fieldValue);
+          executeAtomicWithoutIsNot(query, fieldValue);
         } catch (e) {
           error = e as ExecuteAtomicError;
         }
@@ -1478,7 +1371,7 @@ describe('Query model', () => {
         expect(error).not.toBeNull();
         expect(error).toBeInstanceOf(ExecuteAtomicError);
         expect(error?.message).toEqual('Unknown operator');
-        expect(error?.payload.atomicQueryCondition).toEqual(queryCondition);
+        expect(error?.payload.atomicQuery).toEqual(query);
         expect(error?.payload.fieldValue).toEqual(fieldValue);
       });
     });
