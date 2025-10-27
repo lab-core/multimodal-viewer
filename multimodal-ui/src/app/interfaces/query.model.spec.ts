@@ -7,16 +7,24 @@ import {
   extractField,
   ExtractFieldError,
   JAVA_SCRIPT_NUMBER_REGEX,
+  OPERATORS,
+  parseAtomicQuery,
   ParseError,
+  parseField,
   parseNumber,
+  parseOperator,
+  parsePrimitiveArray,
   parsePrimitiveValue,
   parseString,
+  parseValue,
   ProcessedQuery,
   Query,
   QueryObject,
   QueryObjectFieldValue,
   QueryOperator,
+  SHORTHAND_QUERY_AGGREGATORS,
   stringBreakCharacter,
+  SYMBOL_OPERATORS,
 } from './query.model';
 
 describe('Query model', () => {
@@ -29,7 +37,7 @@ describe('Query model', () => {
           operator: '=',
           value: 'value',
           isNot: true,
-          isOptional: false,
+          isOptional: true,
         };
 
         const data: QueryObject = {
@@ -49,7 +57,7 @@ describe('Query model', () => {
           operator: '=',
           value: 'value',
           isNot: false,
-          isOptional: false,
+          isOptional: true,
         };
 
         const data: QueryObject = {
@@ -74,19 +82,19 @@ describe('Query model', () => {
                 operator: '=',
                 value: 0,
                 isNot: false,
-                isOptional: false,
+                isOptional: true,
               },
               {
                 field: 'field.b',
                 operator: '=',
                 value: 'a',
                 isNot: false,
-                isOptional: false,
+                isOptional: true,
               },
             ],
             aggregator: 'AND',
             isNot: false,
-            isOptional: false,
+            isOptional: true,
           };
 
           const data: QueryObject = {
@@ -111,19 +119,19 @@ describe('Query model', () => {
                 operator: '=',
                 value: 0,
                 isNot: false,
-                isOptional: false,
+                isOptional: true,
               },
               {
                 field: 'field,b',
                 operator: '=',
                 value: 'a',
                 isNot: false,
-                isOptional: false,
+                isOptional: true,
               },
             ],
             aggregator: 'AND',
             isNot: false,
-            isOptional: false,
+            isOptional: true,
           };
 
           const data: QueryObject = {
@@ -150,19 +158,19 @@ describe('Query model', () => {
                 operator: '=',
                 value: 0,
                 isNot: false,
-                isOptional: false,
+                isOptional: true,
               },
               {
                 field: 'field.b',
                 operator: '=',
                 value: 'a',
                 isNot: false,
-                isOptional: false,
+                isOptional: true,
               },
             ],
             aggregator: 'OR',
             isNot: false,
-            isOptional: false,
+            isOptional: true,
           };
 
           const data: QueryObject = {
@@ -187,19 +195,19 @@ describe('Query model', () => {
                 operator: '=',
                 value: 0,
                 isNot: false,
-                isOptional: false,
+                isOptional: true,
               },
               {
                 field: 'field.b',
                 operator: '=',
                 value: 'a',
                 isNot: false,
-                isOptional: false,
+                isOptional: true,
               },
             ],
             aggregator: 'OR',
             isNot: false,
-            isOptional: false,
+            isOptional: true,
           };
 
           const data: QueryObject = {
@@ -342,7 +350,7 @@ describe('Query model', () => {
             operator: '=',
             value: fieldValue,
             isNot: false,
-            isOptional: false,
+            isOptional: true,
           };
 
           const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -360,7 +368,7 @@ describe('Query model', () => {
             operator: '=',
             value: 'other',
             isNot: false,
-            isOptional: false,
+            isOptional: true,
           };
 
           const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -379,7 +387,7 @@ describe('Query model', () => {
               operator: '=',
               value: fieldValue,
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -397,7 +405,7 @@ describe('Query model', () => {
               operator: '=',
               value: null,
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -417,7 +425,7 @@ describe('Query model', () => {
               operator: '=',
               value: fieldValue,
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -435,7 +443,7 @@ describe('Query model', () => {
               operator: '=',
               value: undefined,
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -455,7 +463,7 @@ describe('Query model', () => {
               operator: '=',
               value: fieldValue,
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -473,7 +481,7 @@ describe('Query model', () => {
               operator: '=',
               value: !fieldValue,
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -494,7 +502,7 @@ describe('Query model', () => {
             operator: '!=',
             value: 'other',
             isNot: false,
-            isOptional: false,
+            isOptional: true,
           };
 
           const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -512,7 +520,7 @@ describe('Query model', () => {
             operator: '!=',
             value: fieldValue,
             isNot: false,
-            isOptional: false,
+            isOptional: true,
           };
 
           const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -531,7 +539,7 @@ describe('Query model', () => {
               operator: '!=',
               value: fieldValue,
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -549,7 +557,7 @@ describe('Query model', () => {
               operator: '!=',
               value: null,
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -569,7 +577,7 @@ describe('Query model', () => {
               operator: '!=',
               value: fieldValue,
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -587,7 +595,7 @@ describe('Query model', () => {
               operator: '!=',
               value: undefined,
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -607,7 +615,7 @@ describe('Query model', () => {
               operator: '!=',
               value: fieldValue,
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -625,7 +633,7 @@ describe('Query model', () => {
               operator: '!=',
               value: !fieldValue,
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -647,7 +655,7 @@ describe('Query model', () => {
               operator: '>',
               value: 0,
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -665,7 +673,7 @@ describe('Query model', () => {
               operator: '>',
               value: 1,
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -683,7 +691,7 @@ describe('Query model', () => {
               operator: '>',
               value: 0,
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -703,7 +711,7 @@ describe('Query model', () => {
               operator: '>',
               value: 'a',
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -721,7 +729,7 @@ describe('Query model', () => {
               operator: '>',
               value: 'b',
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -739,7 +747,7 @@ describe('Query model', () => {
               operator: '>',
               value: 'a',
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -758,7 +766,7 @@ describe('Query model', () => {
             operator: '>',
             value: 0,
             isNot: false,
-            isOptional: false,
+            isOptional: true,
           };
 
           let error: ExecuteAtomicError | null = null;
@@ -789,7 +797,7 @@ describe('Query model', () => {
               operator: '<',
               value: 1,
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -807,7 +815,7 @@ describe('Query model', () => {
               operator: '<',
               value: 0,
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -825,7 +833,7 @@ describe('Query model', () => {
               operator: '<',
               value: 0,
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -845,7 +853,7 @@ describe('Query model', () => {
               operator: '<',
               value: 'b',
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -863,7 +871,7 @@ describe('Query model', () => {
               operator: '<',
               value: 'a',
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -881,7 +889,7 @@ describe('Query model', () => {
               operator: '<',
               value: 'a',
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -900,7 +908,7 @@ describe('Query model', () => {
             operator: '<',
             value: 0,
             isNot: false,
-            isOptional: false,
+            isOptional: true,
           };
 
           let error: ExecuteAtomicError | null = null;
@@ -931,7 +939,7 @@ describe('Query model', () => {
               operator: '>=',
               value: 1,
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -949,7 +957,7 @@ describe('Query model', () => {
               operator: '>=',
               value: 0,
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -967,7 +975,7 @@ describe('Query model', () => {
               operator: '>=',
               value: 0,
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -987,7 +995,7 @@ describe('Query model', () => {
               operator: '>=',
               value: 'b',
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -1005,7 +1013,7 @@ describe('Query model', () => {
               operator: '>=',
               value: 'a',
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -1023,7 +1031,7 @@ describe('Query model', () => {
               operator: '>=',
               value: 'a',
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -1042,7 +1050,7 @@ describe('Query model', () => {
             operator: '>=',
             value: 0,
             isNot: false,
-            isOptional: false,
+            isOptional: true,
           };
 
           let error: ExecuteAtomicError | null = null;
@@ -1073,7 +1081,7 @@ describe('Query model', () => {
               operator: '<=',
               value: 1,
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -1091,7 +1099,7 @@ describe('Query model', () => {
               operator: '<=',
               value: 0,
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -1109,7 +1117,7 @@ describe('Query model', () => {
               operator: '<=',
               value: 0,
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -1129,7 +1137,7 @@ describe('Query model', () => {
               operator: '<=',
               value: 'b',
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -1147,7 +1155,7 @@ describe('Query model', () => {
               operator: '<=',
               value: 'a',
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -1165,7 +1173,7 @@ describe('Query model', () => {
               operator: '<=',
               value: 'a',
               isNot: false,
-              isOptional: false,
+              isOptional: true,
             };
 
             const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -1184,7 +1192,7 @@ describe('Query model', () => {
             operator: '<=',
             value: 0,
             isNot: false,
-            isOptional: false,
+            isOptional: true,
           };
 
           let error: ExecuteAtomicError | null = null;
@@ -1214,7 +1222,7 @@ describe('Query model', () => {
             operator: 'IN',
             value: ['value', 'other'],
             isNot: false,
-            isOptional: false,
+            isOptional: true,
           };
 
           const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -1232,7 +1240,7 @@ describe('Query model', () => {
             operator: 'IN',
             value: ['other'],
             isNot: false,
-            isOptional: false,
+            isOptional: true,
           };
 
           const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -1252,7 +1260,7 @@ describe('Query model', () => {
             operator: 'NOT IN',
             value: ['other'],
             isNot: false,
-            isOptional: false,
+            isOptional: true,
           };
 
           const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -1270,7 +1278,7 @@ describe('Query model', () => {
             operator: 'NOT IN',
             value: ['value', 'other'],
             isNot: false,
-            isOptional: false,
+            isOptional: true,
           };
 
           const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -1290,7 +1298,7 @@ describe('Query model', () => {
             operator: 'INCLUDES',
             value: 'value',
             isNot: false,
-            isOptional: false,
+            isOptional: true,
           };
 
           const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -1308,7 +1316,7 @@ describe('Query model', () => {
             operator: 'INCLUDES',
             value: 'value',
             isNot: false,
-            isOptional: false,
+            isOptional: true,
           };
 
           const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -1328,7 +1336,7 @@ describe('Query model', () => {
             operator: 'DOES NOT INCLUDE',
             value: 'value',
             isNot: false,
-            isOptional: false,
+            isOptional: true,
           };
 
           const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -1346,7 +1354,7 @@ describe('Query model', () => {
             operator: 'DOES NOT INCLUDE',
             value: 'value',
             isNot: false,
-            isOptional: false,
+            isOptional: true,
           };
 
           const result = executeAtomicWithoutIsNot(query, fieldValue);
@@ -1365,7 +1373,7 @@ describe('Query model', () => {
           operator: 'unknown' as QueryOperator,
           value: 'value',
           isNot: false,
-          isOptional: false,
+          isOptional: true,
         };
 
         let error: ExecuteAtomicError | null = null;
@@ -1576,8 +1584,571 @@ describe('Query model', () => {
     });
   });
 
+  // MARK: Parse atomic query
+  describe('parseAtomicQuery', () => {
+    describe('when the query consists only of a field', () => {
+      it('should return an atomic query where the field is compared to true', () => {
+        const field = 'field';
+        const followingString = ' & abc = 5';
+        const queryString = field + followingString;
+        const processedQuery: ProcessedQuery = {
+          initialQuery: queryString,
+          currentQuery: queryString,
+          depth: 0,
+        };
+
+        const result = parseAtomicQuery(processedQuery);
+
+        expect(result).toEqual({
+          field: field,
+          operator: '=',
+          value: true,
+          isNot: false,
+          isOptional: true,
+        });
+        expect(processedQuery.currentQuery).toEqual(followingString.trim());
+      });
+    });
+
+    describe('when the query has a primitive value', () => {
+      it('should return an atomic query with the primitive value', () => {
+        const queryString = 'field = 5';
+        const processedQuery: ProcessedQuery = {
+          initialQuery: queryString,
+          currentQuery: queryString,
+          depth: 0,
+        };
+
+        const result = parseAtomicQuery(processedQuery);
+
+        expect(result).toEqual({
+          field: 'field',
+          operator: '=',
+          value: 5,
+          isNot: false,
+          isOptional: true,
+        });
+        expect(processedQuery.currentQuery).toEqual('');
+      });
+    });
+
+    describe('when the query has an array value', () => {
+      it('should return an atomic query with the array value', () => {
+        const queryString = 'field NOT IN [5, 6, 7, 8]';
+        const processedQuery: ProcessedQuery = {
+          initialQuery: queryString,
+          currentQuery: queryString,
+          depth: 0,
+        };
+
+        const result = parseAtomicQuery(processedQuery);
+
+        expect(result).toEqual({
+          field: 'field',
+          operator: 'NOT IN',
+          value: [5, 6, 7, 8],
+          isNot: false,
+          isOptional: true,
+        });
+        expect(processedQuery.currentQuery).toEqual('');
+      });
+    });
+  });
+
+  // MARK: Parse field
+  describe('parseField', () => {
+    describe('when the string is empty', () => {
+      it('should throw an error', () => {
+        const processedQuery: ProcessedQuery = {
+          initialQuery: '',
+          currentQuery: '',
+          depth: 0,
+        };
+
+        let error: ParseError | null = null;
+
+        try {
+          parseField(processedQuery);
+        } catch (e) {
+          error = e as ParseError;
+        }
+
+        expect(error).not.toBeNull();
+        expect(error).toBeInstanceOf(ParseError);
+        expect(error?.message).toEqual('Empty query encountered on field');
+        expect(error?.payload).toEqual(processedQuery);
+      });
+    });
+
+    describe('when the string starts immediately with an operator', () => {
+      it('should throw an error', () => {
+        const queryString = '=value';
+        const processedQuery: ProcessedQuery = {
+          initialQuery: queryString,
+          currentQuery: queryString,
+          depth: 0,
+        };
+
+        let error: ParseError | null = null;
+
+        try {
+          parseField(processedQuery);
+        } catch (e) {
+          error = e as ParseError;
+        }
+
+        expect(error).not.toBeNull();
+        expect(error).toBeInstanceOf(ParseError);
+        expect(error?.message).toEqual('Field not found');
+        expect(error?.payload).toEqual(processedQuery);
+        expect(processedQuery.currentQuery).toEqual(queryString);
+      });
+    });
+
+    for (const operator of SYMBOL_OPERATORS) {
+      describe(`when the field is followed by ${operator}`, () => {
+        it('should return the field', () => {
+          const queryString = 'field' + operator;
+          const processedQuery: ProcessedQuery = {
+            initialQuery: queryString,
+            currentQuery: queryString,
+            depth: 0,
+          };
+
+          const result = parseField(processedQuery);
+
+          expect(result).toEqual('field');
+          expect(processedQuery.currentQuery).toEqual(operator);
+        });
+      });
+    }
+
+    for (const shorthandQueryAggregator of SHORTHAND_QUERY_AGGREGATORS) {
+      describe(`when the field is followed by ${shorthandQueryAggregator}`, () => {
+        it('should return the field', () => {
+          const queryString = 'field' + shorthandQueryAggregator;
+          const processedQuery: ProcessedQuery = {
+            initialQuery: queryString,
+            currentQuery: queryString,
+            depth: 0,
+          };
+
+          const result = parseField(processedQuery);
+
+          expect(result).toEqual('field');
+          expect(processedQuery.currentQuery).toEqual(shorthandQueryAggregator);
+        });
+      });
+    }
+
+    describe('when the field is followed by a space', () => {
+      it('should return the field', () => {
+        const followingString = ' abc';
+        const queryString = 'field' + followingString;
+        const processedQuery: ProcessedQuery = {
+          initialQuery: queryString,
+          currentQuery: queryString,
+          depth: 0,
+        };
+
+        const result = parseField(processedQuery);
+
+        expect(result).toEqual('field');
+        expect(processedQuery.currentQuery).toEqual(followingString);
+      });
+    });
+
+    describe('when the string contains only the field', () => {
+      it('should return the field', () => {
+        const queryString = 'field';
+        const processedQuery: ProcessedQuery = {
+          initialQuery: queryString,
+          currentQuery: queryString,
+          depth: 0,
+        };
+
+        const result = parseField(processedQuery);
+
+        expect(result).toEqual('field');
+        expect(processedQuery.currentQuery).toEqual('');
+      });
+    });
+  });
+
+  // MARK: Parse operator
+  describe('parseOperator', () => {
+    for (const operator of OPERATORS) {
+      describe(`when the string stars with ${operator}`, () => {
+        it('should return the operator', () => {
+          const processedQuery: ProcessedQuery = {
+            initialQuery: operator,
+            currentQuery: operator,
+            depth: 0,
+          };
+
+          const result = parseOperator(processedQuery);
+
+          expect(result).toEqual(operator);
+          expect(processedQuery.currentQuery).toEqual('');
+        });
+      });
+    }
+
+    const alteredCaseOperators: [string, QueryOperator][] = [
+      ['iN', 'IN'],
+      ['nOT iN', 'NOT IN'],
+      ['iNCludes', 'INCLUDES'],
+      ['doEs not iNClude', 'DOES NOT INCLUDE'],
+    ];
+
+    for (const [alteredOperator, operator] of alteredCaseOperators) {
+      describe(`when the string stars with ${alteredOperator}`, () => {
+        it('should return the operator', () => {
+          const processedQuery: ProcessedQuery = {
+            initialQuery: alteredOperator,
+            currentQuery: alteredOperator,
+            depth: 0,
+          };
+
+          const result = parseOperator(processedQuery);
+
+          expect(result).toEqual(operator);
+          expect(processedQuery.currentQuery).toEqual('');
+        });
+      });
+    }
+
+    describe('when the string does not start with an operator', () => {
+      it('should return null', () => {
+        const processedQuery: ProcessedQuery = {
+          initialQuery: 'value',
+          currentQuery: 'value',
+          depth: 0,
+        };
+
+        const result = parseOperator(processedQuery);
+
+        expect(result).toBeNull();
+        expect(processedQuery.currentQuery).toEqual('value');
+      });
+    });
+
+    describe('when the string is empty', () => {
+      it('should return null', () => {
+        const processedQuery: ProcessedQuery = {
+          initialQuery: '',
+          currentQuery: '',
+          depth: 0,
+        };
+
+        const result = parseOperator(processedQuery);
+
+        expect(result).toBeNull();
+        expect(processedQuery.currentQuery).toEqual('');
+      });
+    });
+  });
+
+  // MARK: Parse value
+  describe('parseValue', () => {
+    describe('when the operator is IN', () => {
+      describe('and the value is an array', () => {
+        it('should return the array', () => {
+          const value = '[1, 2, 3, TRUE, FALSE, null, undefined, "string"]';
+          const processedQuery: ProcessedQuery = {
+            initialQuery: value,
+            currentQuery: value,
+            depth: 0,
+          };
+
+          const result = parseValue(processedQuery, 'IN');
+
+          expect(result).toEqual([
+            1,
+            2,
+            3,
+            true,
+            false,
+            null,
+            undefined,
+            'string',
+          ]);
+          expect(processedQuery.currentQuery).toEqual('');
+        });
+      });
+
+      describe('and the value is not an array', () => {
+        it('should throw an error', () => {
+          const value = '"value"';
+          const processedQuery: ProcessedQuery = {
+            initialQuery: value,
+            currentQuery: value,
+            depth: 0,
+          };
+
+          let error: ParseError | null = null;
+
+          try {
+            parseValue(processedQuery, 'IN');
+          } catch (e) {
+            error = e as ParseError;
+          }
+
+          expect(error).not.toBeNull();
+          expect(error).toBeInstanceOf(ParseError);
+          expect(error?.message).toEqual('Opening bracket not found');
+          expect(error?.payload).toEqual(processedQuery);
+        });
+      });
+    });
+
+    describe('when the operator is NOT IN', () => {
+      describe('and the value is an array', () => {
+        it('should return the array', () => {
+          const value = '[1, 2, 3, TRUE, FALSE, null, undefined, "string"]';
+          const processedQuery: ProcessedQuery = {
+            initialQuery: value,
+            currentQuery: value,
+            depth: 0,
+          };
+
+          const result = parseValue(processedQuery, 'NOT IN');
+
+          expect(result).toEqual([
+            1,
+            2,
+            3,
+            true,
+            false,
+            null,
+            undefined,
+            'string',
+          ]);
+          expect(processedQuery.currentQuery).toEqual('');
+        });
+      });
+
+      describe('and the value is not an array', () => {
+        it('should throw an error', () => {
+          const value = '"value"';
+          const processedQuery: ProcessedQuery = {
+            initialQuery: value,
+            currentQuery: value,
+            depth: 0,
+          };
+
+          let error: ParseError | null = null;
+
+          try {
+            parseValue(processedQuery, 'NOT IN');
+          } catch (e) {
+            error = e as ParseError;
+          }
+
+          expect(error).not.toBeNull();
+          expect(error).toBeInstanceOf(ParseError);
+          expect(error?.message).toEqual('Opening bracket not found');
+          expect(error?.payload).toEqual(processedQuery);
+        });
+      });
+    });
+
+    describe('when the operator is =', () => {
+      describe('and the value is an array', () => {
+        it('should throw an error', () => {
+          const value = '[1, 2, 3, TRUE, FALSE, null, undefined, "string"]';
+          const processedQuery: ProcessedQuery = {
+            initialQuery: value,
+            currentQuery: value,
+            depth: 0,
+          };
+
+          let error: ParseError | null = null;
+
+          try {
+            parseValue(processedQuery, '=');
+          } catch (e) {
+            error = e as ParseError;
+          }
+
+          expect(error).not.toBeNull();
+          expect(error).toBeInstanceOf(ParseError);
+          expect(error?.message).toEqual('Number not found');
+          expect(error?.payload).toEqual(processedQuery);
+        });
+      });
+
+      describe('and the value is not an array', () => {
+        it('should return the value', () => {
+          const value = '"value"';
+          const processedQuery: ProcessedQuery = {
+            initialQuery: value,
+            currentQuery: value,
+            depth: 0,
+          };
+
+          const result = parseValue(processedQuery, '=');
+
+          expect(result).toEqual('value');
+          expect(processedQuery.currentQuery).toEqual('');
+        });
+      });
+    });
+  });
+
+  // MARK: Parse primitive array
+  describe('parsePrimitiveArray', () => {
+    describe('when the delimiter is a comma', () => {
+      it('should return an array', () => {
+        const value = '[1, 2, 3, TRUE, FALSE, null, undefined, "string"]';
+        const processedQuery: ProcessedQuery = {
+          initialQuery: value,
+          currentQuery: value,
+          depth: 0,
+        };
+
+        const result = parsePrimitiveArray(processedQuery);
+
+        expect(result).toEqual([
+          1,
+          2,
+          3,
+          true,
+          false,
+          null,
+          undefined,
+          'string',
+        ]);
+        expect(processedQuery.currentQuery).toEqual('');
+      });
+    });
+
+    describe('when the delimiter is a semicolon', () => {
+      it('should return an array', () => {
+        const value = '[1; 2; 3; TRUE; FALSE; null; undefined; "string"]';
+        const processedQuery: ProcessedQuery = {
+          initialQuery: value,
+          currentQuery: value,
+          depth: 0,
+        };
+
+        const result = parsePrimitiveArray(processedQuery);
+
+        expect(result).toEqual([
+          1,
+          2,
+          3,
+          true,
+          false,
+          null,
+          undefined,
+          'string',
+        ]);
+        expect(processedQuery.currentQuery).toEqual('');
+      });
+    });
+
+    describe('when the string is empty', () => {
+      it('should throw an error', () => {
+        const processedQuery: ProcessedQuery = {
+          initialQuery: '',
+          currentQuery: '',
+          depth: 0,
+        };
+
+        let error: ParseError | null = null;
+
+        try {
+          parsePrimitiveArray(processedQuery);
+        } catch (e) {
+          error = e as ParseError;
+        }
+
+        expect(error).not.toBeNull();
+        expect(error).toBeInstanceOf(ParseError);
+        expect(error?.message).toEqual(
+          'Empty query encountered on primitive array',
+        );
+        expect(error?.payload).toEqual(processedQuery);
+      });
+    });
+
+    describe('when the opening bracket is missing', () => {
+      it('should throw an error', () => {
+        const value = '1, 2, 3, TRUE, FALSE, null, undefined, "string"]';
+        const processedQuery: ProcessedQuery = {
+          initialQuery: value,
+          currentQuery: value,
+          depth: 0,
+        };
+
+        let error: ParseError | null = null;
+
+        try {
+          parsePrimitiveArray(processedQuery);
+        } catch (e) {
+          error = e as ParseError;
+        }
+
+        expect(error).not.toBeNull();
+        expect(error).toBeInstanceOf(ParseError);
+        expect(error?.message).toEqual('Opening bracket not found');
+        expect(error?.payload).toEqual(processedQuery);
+      });
+    });
+
+    describe('when the closing bracket is missing', () => {
+      it('should throw an error', () => {
+        const value = '[1, 2, 3, TRUE, FALSE, null, undefined, "string"';
+        const processedQuery: ProcessedQuery = {
+          initialQuery: value,
+          currentQuery: value,
+          depth: 0,
+        };
+
+        let error: ParseError | null = null;
+
+        try {
+          parsePrimitiveArray(processedQuery);
+        } catch (e) {
+          error = e as ParseError;
+        }
+
+        expect(error).not.toBeNull();
+        expect(error).toBeInstanceOf(ParseError);
+        expect(error?.message).toEqual('Closing bracket not found');
+        expect(error?.payload).toEqual(processedQuery);
+      });
+    });
+  });
+
   // MARK: Parse primitive value
   describe('parsePrimitiveValue', () => {
+    describe('when the string is empty', () => {
+      it('should throw an error', () => {
+        const processedQuery: ProcessedQuery = {
+          initialQuery: '',
+          currentQuery: '',
+          depth: 0,
+        };
+
+        let error: ParseError | null = null;
+
+        try {
+          parsePrimitiveValue(processedQuery, false);
+        } catch (e) {
+          error = e as ParseError;
+        }
+
+        expect(error).not.toBeNull();
+        expect(error).toBeInstanceOf(ParseError);
+        expect(error?.message).toEqual(
+          'Empty query encountered on primitive value',
+        );
+        expect(error?.payload).toEqual(processedQuery);
+      });
+    });
+
     describe('when the value is a number', () => {
       it('should return a number', () => {
         const value = 123;

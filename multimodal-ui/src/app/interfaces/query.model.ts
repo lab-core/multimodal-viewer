@@ -41,6 +41,10 @@ export const OPERATORS: QueryOperator[] = [
   'DOES NOT INCLUDE',
 ];
 
+export const OPERATORS_IN_DECREASING_LENGTH: QueryOperator[] = OPERATORS.sort(
+  (a, b) => b.length - a.length,
+);
+
 export const SYMBOL_OPERATORS: QueryOperator[] = [
   '=',
   '!=',
@@ -49,6 +53,9 @@ export const SYMBOL_OPERATORS: QueryOperator[] = [
   '>=',
   '<=',
 ];
+
+export const SYMBOL_OPERATORS_IN_DECREASING_LENGTH: QueryOperator[] =
+  SYMBOL_OPERATORS.sort((a, b) => b.length - a.length);
 
 export interface QueryValueByOperator {
   '=': QueryObjectPrimitiveValue;
@@ -642,7 +649,7 @@ export function parseAtomicQuery(processedQuery: ProcessedQuery): Query {
       operator: '=',
       value: true,
       isNot: false,
-      isOptional: false,
+      isOptional: true,
     };
   }
 
@@ -653,7 +660,7 @@ export function parseAtomicQuery(processedQuery: ProcessedQuery): Query {
     operator,
     value,
     isNot: false,
-    isOptional: false,
+    isOptional: true,
   };
 }
 
@@ -671,10 +678,15 @@ export function parseField(processedQuery: ProcessedQuery): string {
 
   while (
     currentQueryCopy.length > 0 &&
-    (!SYMBOL_OPERATORS.some((operator) =>
-      currentQueryCopy.startsWith(operator),
-    ) ||
-      currentQueryCopy.startsWith(' '))
+    !(
+      SYMBOL_OPERATORS_IN_DECREASING_LENGTH.some((operator) =>
+        currentQueryCopy.startsWith(operator),
+      ) ||
+      SHORTHAND_QUERY_AGGREGATORS.some((aggregator) =>
+        currentQueryCopy.startsWith(aggregator),
+      ) ||
+      currentQueryCopy.startsWith(' ')
+    )
   ) {
     field += currentQueryCopy[0];
     currentQueryCopy = currentQueryCopy.slice(1);
@@ -699,7 +711,7 @@ export function parseOperator(
     return null;
   }
 
-  for (const operator of OPERATORS) {
+  for (const operator of OPERATORS_IN_DECREASING_LENGTH) {
     if (
       currentQuery.length >= operator.length &&
       currentQuery.slice(0, operator.length).toLocaleLowerCase() ===
