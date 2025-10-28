@@ -407,6 +407,7 @@ export interface ProcessedQuery {
 
 export type ParseErrorString =
   | 'Empty query encountered on start'
+  | 'Aggregator not found'
   | 'Empty query encountered on field'
   | 'Field not found'
   | 'Empty query encountered on primitive array'
@@ -432,12 +433,15 @@ export function parseQuery(queryString: string): Query;
 export function parseQuery(
   processedQuery: ProcessedQuery,
   isAggregated: boolean,
+  isNot: boolean,
 ): Query;
 export function parseQuery(
   queryStringOrProcessedQuery: string | ProcessedQuery,
   isAggregated = false,
+  isNot = false,
 ): Query {
   let processedQuery: ProcessedQuery;
+  let query: Query;
 
   if (typeof queryStringOrProcessedQuery === 'string') {
     processedQuery = {
@@ -458,22 +462,18 @@ export function parseQuery(
   const hasNegation = parseNegation(processedQuery);
 
   if (hasNegation) {
-    // TODO Query handle negation on condition vs parenthesis
-    const query = parseQuery(processedQuery, false);
-    query.isNot = !query.isNot;
-    return query;
+    query = parseQuery(processedQuery, false, true);
+  } else {
+    const hasParenthesis = parseParenthesis(processedQuery);
+
+    if (hasParenthesis) {
+      query = parseQuery(processedQuery, false, false);
+    } else {
+      query = parseAtomicQuery(processedQuery);
+    }
   }
 
-  const hasParenthesis = parseParenthesis(processedQuery);
-
-  if (hasParenthesis) {
-    // TODO Query handle parenthesis
-    const query = parseQuery(processedQuery, false);
-    return query;
-  }
-
-  // TODO Query handle compound (AND, OR)
-  const query = parseAtomicQuery(processedQuery);
+  query.isNot = isNot ? !query.isNot : query.isNot;
 
   processedQuery.currentQuery = processedQuery.currentQuery.trim();
 
@@ -512,9 +512,10 @@ export function parseQuery(
       aggregator = 'AND';
       processedQuery.currentQuery = processedQuery.currentQuery.slice(1);
     } else if (
-      processedQuery.currentQuery.length >= 'and'.length &&
+      processedQuery.currentQuery.length >= 'and'.length + 1 &&
       processedQuery.currentQuery.slice(0, 'and'.length).toLocaleLowerCase() ===
-        'and'
+        'and' &&
+      [' ', '('].includes(processedQuery.currentQuery['and'.length])
     ) {
       aggregator = 'AND';
       processedQuery.currentQuery = processedQuery.currentQuery.slice(
@@ -524,21 +525,24 @@ export function parseQuery(
       aggregator = 'OR';
       processedQuery.currentQuery = processedQuery.currentQuery.slice(1);
     } else if (
-      processedQuery.currentQuery.length >= 'or'.length &&
+      processedQuery.currentQuery.length >= 'or'.length + 1 &&
       processedQuery.currentQuery.slice(0, 'or'.length).toLocaleLowerCase() ===
-        'or'
+        'or' &&
+      [' ', '('].includes(processedQuery.currentQuery['or'.length])
     ) {
       aggregator = 'OR';
       processedQuery.currentQuery = processedQuery.currentQuery.slice(
         'or'.length,
       );
+    } else {
+      throw new ParseError('Aggregator not found', processedQuery);
     }
 
     processedQuery.currentQuery = processedQuery.currentQuery.trim();
 
     if (aggregator !== null) {
       followingQueries.push({
-        query: parseQuery(processedQuery, true),
+        query: parseQuery(processedQuery, true, false),
         precedingAggregator: aggregator,
       });
     }
@@ -590,8 +594,6 @@ export function parseQuery(
     isNot: false,
   };
 }
-
-// TODO Query test parse
 
 export function parseNegation(processedQuery: ProcessedQuery): boolean {
   processedQuery.currentQuery = processedQuery.currentQuery.trim();
