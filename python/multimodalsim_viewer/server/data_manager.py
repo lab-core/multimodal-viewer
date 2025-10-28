@@ -292,15 +292,15 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
         visualization_time: float,
         complete_state_update_indexes: list[int],
         is_simulation_complete: bool,
-    ) -> tuple[list[dict], dict[list[str]], bool]:
+    ) -> tuple[list[dict], bool]:
         sorted_states = SimulationVisualizationDataManager.get_sorted_states(simulation_id)
 
         if len(sorted_states) == 0:
-            return [], {}, False
+            return [], False
 
         if len(complete_state_update_indexes) == len(sorted_states):
             # If the client has all states, no need to request more
-            return [], {}, True
+            return [], True
 
         necessary_state_index = None
 
@@ -321,7 +321,6 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
         necessary_state_index = max(0, necessary_state_index)
 
         missing_states = []
-        missing_updates = {}
         has_incomplete_states = False
 
         # We want to load the necessary state first, followed by
@@ -361,20 +360,25 @@ class SimulationVisualizationDataManager:  # pylint: disable=too-many-public-met
                         has_incomplete_states = True
                     state["isComplete"] = is_complete
 
-                    missing_states.append(state)
-
                     updates_data = file.readlines()
                     current_state_updates = []
                     for update_data in updates_data:
                         current_state_updates.append(update_data)
 
-                    missing_updates[update_index] = current_state_updates
+                    missing_states.append(
+                        {
+                            "startTimestamp": state_timestamp,
+                            "startUpdateIndex": update_index,
+                            "environment": state,
+                            "updates": current_state_updates,
+                        }
+                    )
 
         has_all_states = (
             len(missing_states) + len(complete_state_update_indexes) == len(sorted_states) and not has_incomplete_states
         )
 
-        return (missing_states, missing_updates, has_all_states)
+        return (missing_states, has_all_states)
 
     # MARK: +- Polylines
 

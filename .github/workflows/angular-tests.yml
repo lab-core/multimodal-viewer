@@ -1,0 +1,34 @@
+name: Angular Tests
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'python/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'python/**'
+
+jobs:
+  angular-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: ./multimodal-ui
+
+      - name: Run tests
+        run: npm run test:ci
+        working-directory: ./multimodal-ui

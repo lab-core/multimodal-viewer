@@ -7,7 +7,8 @@
     "build": "npm run set-env && ng build",
     "set-env": "ts-node scripts/set-environment.ts && prettier --write ./angular.json ./public/environment.json",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test",
+    "test": "ng test --poll 1000",
+    "test:ci": "ng test --no-watch --no-progress --browsers=ChromeHeadless",
     "lint": "ng lint",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

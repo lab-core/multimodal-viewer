@@ -76,73 +76,15 @@ export class VisualizationService {
     private readonly animationService: AnimationService,
     private readonly timerService: TimerService,
   ) {
-    effect(() => {
-      const environmentSlice = this.environmentSignal();
-      this.environmentSlice = environmentSlice;
-    });
+    effect(
+      () =>
+        (this.simulationService.wantedVisualizationTime =
+          this.wantedVisualizationTimeSignal()),
+    );
 
-    effect(() => {
-      const hasAllStates = this.simulationService.hasAllStatesSignal();
-
-      if (hasAllStates) {
-        this.timerService.isLoading = false;
-        return;
-      }
-
-      const simulation = this.simulationService.activeSimulationSignal();
-
-      if (simulation === null) {
-        this.timerService.isLoading = true;
-        return;
-      }
-
-      const wantedVisualizationTime = this._wantedVisualizationTimeSignal();
-
-      if (wantedVisualizationTime === null) {
-        this.timerService.isLoading = true;
-        return;
-      }
-
-      const isFetching = this.simulationService.isFetchingStatesSignal();
-
-      if (!isFetching) {
-        const continuousEnvironments =
-          this.simulationService.continuousEnvironmentsSignal();
-        const completeStateUpdateIndexes = continuousEnvironments
-          .filter((continuousEnvironment) => continuousEnvironment.isComplete)
-          .map(
-            (continuousEnvironment) => continuousEnvironment.startUpdateIndex,
-          );
-
-        this.simulationService.getMissingSimulationStates(
-          simulation.id,
-          wantedVisualizationTime,
-          completeStateUpdateIndexes,
-        );
-      }
-
-      const environmentSlice = this.environmentSignal();
-
-      this.timerService.isLoading = environmentSlice === null;
-    });
-
-    effect(() => {
-      const simulation = this.simulationService.activeSimulationSignal();
-
-      if (simulation === null) {
-        return;
-      }
-
-      const polylines = this.simulationService.simulationPolylinesSignal();
-      const isFetching = this.simulationService.isFetchingPolylinesSignal();
-
-      const needPolylineUpdate =
-        polylines === null || polylines.version !== simulation.polylinesVersion;
-
-      if (needPolylineUpdate && !isFetching) {
-        this.simulationService.getPolylines(simulation.id);
-      }
-    });
+    effect(
+      () => (this.timerService.isLoading = this.sliceEnvironment() === null),
+    );
 
     // MARK: Animation
     effect(() => {
@@ -298,6 +240,8 @@ export class VisualizationService {
     );
 
     this.hasEnvironmentChanged = false;
+
+    this.environmentSlice = environment;
 
     return environment;
   }

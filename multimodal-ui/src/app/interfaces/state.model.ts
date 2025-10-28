@@ -18,100 +18,49 @@ export interface SimulationState extends SimulationEnvironment {
 }
 
 // MARK: Extract State
+
+interface ExtractStateTaskState {
+  environment:
+    | (SimulationEnvironment & Pick<SimulationState, 'isComplete'>)
+    | null;
+  updates: Update[];
+}
+
 export class ExtractStateTask extends CompositeTask {
-  private environments: (SimulationEnvironment &
-    Pick<SimulationState, 'isComplete'>)[] = [];
-  private updatesByFirstUpdateIndex: Record<number, Update[]> = {};
+  private state: ExtractStateTaskState = {
+    environment: null,
+    updates: [],
+  };
 
   constructor(
     queue: SortedList<Task>,
-    private readonly serializedEnvironments: unknown,
+    private readonly serializedEnvironment: unknown,
     private readonly serializedUpdates: unknown,
-    private readonly callback: (states: SimulationState[] | null) => void,
+    private readonly callback: (state: SimulationState | null) => void,
   ) {
     super(EXTRACT_STATE_TASK_PRIORITY, queue);
   }
 
   public override beforeAll(): void {
-    new ExtractEnvironmentsTask(
+    new ExtractEnvironmentTask(
       this.subtasks,
-      this.serializedEnvironments,
-      this.environments,
+      this.serializedEnvironment,
+      this.state,
     ).addToQueue();
 
-    new ExtractAllUpdatesTask(
+    new ExtractUpdatesTask(
       this.subtasks,
       this.serializedUpdates,
-      this.updatesByFirstUpdateIndex,
+      this.state,
     ).addToQueue();
   }
 
   public override afterAll(): void {
-    const states: SimulationState[] = [];
-
-    for (const environment of this.environments) {
-      const updates = this.updatesByFirstUpdateIndex[environment.updateIndex];
-
-      if (updates === undefined) {
-        console.error(
-          'No updates found for environment',
-          environment,
-          'in updates',
-          this.updatesByFirstUpdateIndex,
-          'from serialized updates',
-          this.serializedUpdates,
-          'and serialized environments',
-          this.serializedEnvironments,
-        );
-
-        // TODO #42 Failed
-        this.callback(null);
-        continue;
-      }
-
-      states.push({
-        ...environment,
-        updates,
-      });
-    }
-
-    this.callback(states);
-  }
-}
-
-// MARK: Extract Environments
-class ExtractEnvironmentsTask extends CompositeTask {
-  constructor(
-    queue: SortedList<Task>,
-    private readonly serializedEnvironments: unknown,
-    private readonly environments: (SimulationEnvironment &
-      Pick<SimulationState, 'isComplete'>)[],
-  ) {
-    super(EXTRACT_STATE_TASK_PRIORITY, queue);
-  }
-
-  protected override beforeAll(): void {
-    if (!Array.isArray(this.serializedEnvironments)) {
-      console.error(
-        'Invalid data type for serialized environments',
-        this.serializedEnvironments,
-      );
-
-      // TODO #42 Failed
-      return;
-    }
-
-    for (const serializedEnvironment of this.serializedEnvironments) {
-      new ExtractEnvironmentTask(
-        this.subtasks,
-        serializedEnvironment,
-        this.environments,
-      ).addToQueue();
-    }
-  }
-
-  protected override afterAll(): void {
-    // Nothing to do
+    this.callback(
+      this.state.environment
+        ? { ...this.state.environment, updates: this.state.updates }
+        : null,
+    );
   }
 }
 
@@ -130,8 +79,7 @@ class ExtractEnvironmentTask extends CompositeTask {
   constructor(
     queue: SortedList<Task>,
     private readonly serializedEnvironment: unknown,
-    private readonly environments: (SimulationEnvironment &
-      Pick<SimulationState, 'isComplete'>)[],
+    private readonly state: ExtractStateTaskState,
   ) {
     super(EXTRACT_STATE_TASK_PRIORITY, queue);
   }
@@ -263,7 +211,7 @@ class ExtractEnvironmentTask extends CompositeTask {
   }
 
   protected override afterAll(): void {
-    this.environments.push(this.environment);
+    this.state.environment = this.environment;
   }
 }
 
@@ -339,45 +287,6 @@ class ExtractVehicleTask extends Task {
   }
 }
 
-// MARK: Extract All Updates
-class ExtractAllUpdatesTask extends CompositeTask {
-  constructor(
-    queue: SortedList<Task>,
-    private readonly serializedUpdates: unknown,
-    private readonly updatesByFirstUpdateIndex: Record<number, Update[]>,
-  ) {
-    super(EXTRACT_STATE_TASK_PRIORITY, queue);
-  }
-
-  protected override beforeAll(): void {
-    if (
-      typeof this.serializedUpdates !== 'object' ||
-      this.serializedUpdates === null
-    ) {
-      console.error(
-        'Invalid data type for serialized updates',
-        this.serializedUpdates,
-      );
-
-      // TODO #42 Failed
-      return;
-    }
-
-    for (const [key, value] of Object.entries(this.serializedUpdates)) {
-      new ExtractUpdatesTask(
-        this.subtasks,
-        key,
-        value,
-        this.updatesByFirstUpdateIndex,
-      ).addToQueue();
-    }
-  }
-
-  protected override afterAll(): void {
-    // Nothing to do
-  }
-}
-
 // MARK: Extract Updates
 class ExtractUpdatesTask extends CompositeTask {
   private updates: SortedList<Update> = new SortedList<Update>(
@@ -386,53 +295,22 @@ class ExtractUpdatesTask extends CompositeTask {
 
   constructor(
     queue: SortedList<Task>,
-    private readonly serializedUpdatesKey: unknown,
     private readonly serializedUpdates: unknown,
-    private readonly updatesByFirstUpdateIndex: Record<number, Update[]>,
+    private readonly state: ExtractStateTaskState,
   ) {
     super(EXTRACT_STATE_TASK_PRIORITY, queue);
   }
 
   beforeAll(): void {
-    if (typeof this.serializedUpdatesKey !== 'string') {
-      console.error(
-        'Invalid data type for key',
-        this.serializedUpdatesKey,
-        'with serialized updates',
-        this.serializedUpdates,
-      );
-
-      // TODO #42 Failed
-      return;
-    }
-
-    const key = parseInt(this.serializedUpdatesKey);
-
-    if (isNaN(key)) {
-      console.error(
-        'Key is not a valid number',
-        this.serializedUpdatesKey,
-        'with serialized updates',
-        this.serializedUpdates,
-      );
-
-      // TODO #42 Failed
-      return;
-    }
-
     if (!Array.isArray(this.serializedUpdates)) {
       console.error(
         'Invalid data type for serialized updates',
         this.serializedUpdates,
-        'with key',
-        this.serializedUpdatesKey,
       );
 
       // TODO #42 Failed
       return;
     }
-
-    this.updatesByFirstUpdateIndex[key] = this.updates.editableItems;
 
     for (const serializedUpdate of this.serializedUpdates) {
       new ExtractUpdateTask(
@@ -445,6 +323,7 @@ class ExtractUpdatesTask extends CompositeTask {
 
   protected override afterAll(): void {
     // Nothing to do
+    this.state.updates = this.updates.editableItems;
   }
 }
 

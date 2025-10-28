@@ -70,8 +70,11 @@ export class AnimationService {
   private readonly SAFETY_RATIO = 0.95; // Safety ratio to ensure we don't exceed the frame time
   private readonly MIN_FRAME_RATE = 60; // This can be increased at the cost of a longer load time.
   private readonly MIN_TASK_ALLOCATION = 5;
+  private readonly MIN_TASK_ALLOCATION_PAUSED = 25;
   private readonly MIN_TIME_PER_FRAME =
     (1000 / this.MIN_FRAME_RATE) * this.SAFETY_RATIO;
+
+  private taskAllocationMode: 'normal' | 'paused' = 'normal';
 
   // MARK: Properties
 
@@ -338,7 +341,10 @@ export class AnimationService {
       this.taskService.processTasks(
         Math.max(
           lastRedrawTime + this.MIN_TIME_PER_FRAME,
-          now + this.MIN_TASK_ALLOCATION,
+          now +
+            (this.taskAllocationMode === 'normal'
+              ? this.MIN_TASK_ALLOCATION
+              : this.MIN_TASK_ALLOCATION_PAUSED),
         ),
       );
 
@@ -367,7 +373,12 @@ export class AnimationService {
       return; // No polylines available
     }
 
+    const previousTime = this.animationVisualizationTime;
+
     this.updateAnimationTime();
+
+    this.taskAllocationMode =
+      this.animationVisualizationTime !== previousTime ? 'normal' : 'paused';
 
     const environment = this.updateEnvironment();
 

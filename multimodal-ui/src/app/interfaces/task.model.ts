@@ -1,7 +1,7 @@
 import { SortedList } from './performances.model';
 
 export const EXTRACT_STATE_TASK_PRIORITY = 1;
-export const BUILD_CONTINUOUS_ENVIRONMENT_TASK_PRIORITY = 2;
+export const BUILD_CONTINUOUS_ENVIRONMENT_TASK_PRIORITY = 1;
 
 export function emptyTaskQueue(): SortedList<Task> {
   return new SortedList<Task>((a, b) => b.priority - a.priority);
@@ -13,13 +13,18 @@ export function emptyTaskQueue(): SortedList<Task> {
  * Tasks should be quick to process.
  */
 export abstract class Task {
-  constructor(
-    public readonly priority: number,
-    protected readonly queue: SortedList<Task>,
-  ) {}
+  protected _priority: number;
 
-  public addToQueue(): void {
+  constructor(
+    priority: number,
+    protected readonly queue: SortedList<Task>,
+  ) {
+    this._priority = priority;
+  }
+
+  public addToQueue<T extends Task>(this: T): T {
     this.queue.add(this);
+    return this;
   }
 
   /**
@@ -32,6 +37,19 @@ export abstract class Task {
   // eslint-disable-next-line @typescript-eslint/class-literal-property-style
   public get numberOfTasks(): number {
     return 1;
+  }
+
+  public get priority(): number {
+    return this._priority;
+  }
+
+  public updatePriority(newPriority: number): void {
+    if (this._priority !== newPriority) {
+      this.queue.remove(this);
+
+      this._priority = newPriority;
+      this.addToQueue();
+    }
   }
 }
 

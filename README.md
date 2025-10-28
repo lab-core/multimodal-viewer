@@ -259,6 +259,8 @@ The most useful environment variables are `CLIENT_PORT`, `SERVER_PORT`, `INPUT_D
 - `OUTPUT_DATA_DIRECTORY_PATH` (default `output`): The path to the output data directory.
 - `NUMBER_OF_UPDATES_BETWEEN_STATES` (default `1000`): The number of updates between simulation states. The lower the number, the larger the save file will be. However, increasing this number may cause the animation to freeze when receiving new states from the server.
 - `NUMBER_OF_STATES_TO_SEND_AT_ONCE` (default `1`): The number of states to send at once. Increasing this number may cause the animation to freeze when receiving new states from the server.
+- `MAX_STATES_EXTRACTION_CONCURRENT_TASKS` (default `10`): The maximum number of states being extracted at the same time. Increasing this number might impact the memory usage during the loading only for a slight increase in performance.
+- `DEBUG_TASKS` (default `false`): If set to `true`, debug logs regarding the tasks will be printed in the client console.
 
 ## Frontend
 

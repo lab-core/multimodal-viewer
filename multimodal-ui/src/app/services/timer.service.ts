@@ -20,8 +20,10 @@ import {
   setVisualizationSpeedPowerLocalStorage,
   setVisualizationTimeLocalStorage,
 } from '../interfaces/local-storage';
-import { RUNNING_SIMULATION_STATUSES } from '../interfaces/simulation.model';
-import { SimulationService } from './simulation.service';
+import {
+  RUNNING_SIMULATION_STATUSES,
+  Simulation,
+} from '../interfaces/simulation.model';
 
 @Injectable({
   providedIn: 'root',
@@ -32,7 +34,8 @@ export class TimerService {
   private readonly MAX_TIME_STEP = 1 / this.MIN_FRAME_RATE; // seconds
   private _visualizationTime: number | null = null;
   private isEnvironmentLoaded = false;
-  private _continuousEnvironments: ContinuousEnvironment[] = [];
+
+  continuousEnvironments: ContinuousEnvironment[] = [];
 
   private lastUpdateTime: number | null = null;
 
@@ -48,6 +51,9 @@ export class TimerService {
   private readonly _speedPowerSignal: WritableSignal<number | null> =
     signal(null);
   private readonly _directionSignal: WritableSignal<number | null> =
+    signal(null);
+
+  private readonly simulationSignal: WritableSignal<Simulation | null> =
     signal(null);
 
   readonly isPausedSignal: Signal<boolean> = computed(
@@ -75,38 +81,38 @@ export class TimerService {
   });
 
   // MARK: Constructor
-  constructor(private readonly simulationService: SimulationService) {
+  constructor() {
     effect(() => {
-      const activeSimulation = this.simulationService.activeSimulationSignal();
+      const simulation = this.simulationSignal();
 
-      if (activeSimulation !== null) {
-        this.load(activeSimulation.id);
+      if (simulation !== null) {
+        this.load(simulation.id);
       } else {
         this.reset();
       }
     });
 
     effect(() => {
-      const activeSimulation = this.simulationService.activeSimulationSignal();
+      const simulation = this.simulationSignal();
 
-      if (activeSimulation !== null) {
-        this.saveIsPaused(activeSimulation.id);
+      if (simulation !== null) {
+        this.saveIsPaused(simulation.id);
       }
     });
 
     effect(() => {
-      const activeSimulation = this.simulationService.activeSimulationSignal();
+      const simulation = this.simulationSignal();
 
-      if (activeSimulation !== null) {
-        this.saveSpeedPower(activeSimulation.id);
+      if (simulation !== null) {
+        this.saveSpeedPower(simulation.id);
       }
     });
 
     effect(() => {
-      const activeSimulation = this.simulationService.activeSimulationSignal();
+      const simulation = this.simulationSignal();
 
-      if (activeSimulation !== null) {
-        this.saveDirection(activeSimulation.id);
+      if (simulation !== null) {
+        this.saveDirection(simulation.id);
       }
     });
   }
@@ -128,13 +134,13 @@ export class TimerService {
     this.nextDirection = value;
   }
 
+  set simulation(value: Simulation | null) {
+    this.simulationSignal.set(value);
+  }
+
   // MARK: Getters
   get visualizationTime(): number | null {
     return this._visualizationTime;
-  }
-
-  get continuousEnvironments(): ContinuousEnvironment[] {
-    return this._continuousEnvironments;
   }
 
   // MARK: Time Update
@@ -167,30 +173,25 @@ export class TimerService {
       visualizationTimeOverride,
     );
 
-    const activeSimulation = this.simulationService.activeSimulationSignal();
+    const simulation = this.simulationSignal();
 
     if (
       visualizationTime === null ||
       elapsedTime === null ||
-      activeSimulation === null
+      simulation === null
     ) {
       this.isEnvironmentLoaded = false;
       this._visualizationTime = null;
 
-      if (activeSimulation !== null) {
-        this.saveTime(activeSimulation.id);
+      if (simulation !== null) {
+        this.saveTime(simulation.id);
       }
 
       return null;
     }
 
-    const continuousEnvironments =
-      this.simulationService.continuousEnvironmentsSignal();
-
-    this._continuousEnvironments = continuousEnvironments;
-
     const closestContinuousEnvironment = findClosestContinuousEnvironment(
-      continuousEnvironments,
+      this.continuousEnvironments,
       visualizationTime,
     );
 
@@ -198,7 +199,7 @@ export class TimerService {
 
     this._visualizationTime = visualizationTime;
 
-    this.saveTime(activeSimulation.id);
+    this.saveTime(simulation.id);
 
     return elapsedTime;
   }
@@ -207,7 +208,7 @@ export class TimerService {
     visualizationTime: number | null;
     elapsedTime: number | null;
   } {
-    const simulation = this.simulationService.activeSimulationSignal();
+    const simulation = this.simulationSignal();
 
     if (simulation === null) {
       this.lastUpdateTime = null;
@@ -276,7 +277,7 @@ export class TimerService {
     this._directionSignal.set(null);
     this._visualizationTime = null;
     this.isEnvironmentLoaded = false;
-    this._continuousEnvironments = [];
+    this.continuousEnvironments = [];
     this.lastUpdateTime = null;
   }
 
