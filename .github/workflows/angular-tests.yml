@@ -5,12 +5,12 @@ on:
     branches:
       - main
     paths:
-      - 'python/**'
+      - 'multimodal-ui/**'
   pull_request:
     branches:
       - main
     paths:
-      - 'python/**'
+      - 'multimodal-ui/**'
 
 jobs:
   angular-tests:
