@@ -917,7 +917,6 @@ export function sliceEnvironment(
 
     const vehicleStops = getAllStops(closestVehicleState);
 
-    // TODO Building the stops record and array is slow
     // Faster for loop
     // eslint-disable-next-line @typescript-eslint/prefer-for-of
     for (let j = 0; j < vehicleStops.length; j++) {

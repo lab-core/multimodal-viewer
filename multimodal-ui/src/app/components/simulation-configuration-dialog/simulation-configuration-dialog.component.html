@@ -32,21 +32,42 @@
           </mat-form-field>
 
           <mat-form-field [subscriptSizing]="'dynamic'">
-            <mat-select
+            <input
+              type="text"
+              matInput
               formControlName="data"
-              (openedChange)="refreshAvailableData()"
-            >
-              <mat-option (click)="importInputData()"
-                >➕ Import New Folder</mat-option
-              >
+              [matAutocomplete]="auto"
+            />
+            <mat-autocomplete #auto (opened)="refreshAvailableData()">
+              <mat-option (click)="instanceFolderImport.click()">
+                Import new instance
+                <mat-icon>add</mat-icon>
+              </mat-option>
 
-              @for (data of availableSimulationDataSignal(); track data) {
-                <mat-option [value]="data">{{ data }}</mat-option>
+              <mat-option (click)="instancesFolderImport.click()">
+                Import multiple instances
+                <mat-icon>add</mat-icon>
+              </mat-option>
+
+              @let filteredData = filteredData$ | async;
+              @for (data of filteredData; track data) {
+                <mat-option class="instance" [value]="data">
+                  <mat-icon
+                    class="delete"
+                    tabindex="0"
+                    (click)="onDeleteInstance($event, data)"
+                    >delete</mat-icon
+                  >
+                  {{ data }}
+                </mat-option>
               }
-            </mat-select>
+            </mat-autocomplete>
             <mat-label>Data</mat-label>
             @if (dataFormControl.hasError("required")) {
               <mat-error>Data is required</mat-error>
+            }
+            @if (dataFormControl.hasError("doesNotExist")) {
+              <mat-error>Provided data does not exist</mat-error>
             }
           </mat-form-field>
         </section>
@@ -100,3 +121,23 @@
     }
   </button>
 </mat-dialog-actions>
+
+<input
+  #instanceFolderImport
+  type="file"
+  hidden
+  webkitdirectory
+  directory
+  multiple
+  (change)="onInstanceFolderImport($event)"
+/>
+
+<input
+  #instancesFolderImport
+  type="file"
+  hidden
+  webkitdirectory
+  directory
+  multiple
+  (change)="onInstancesFolderImport($event)"
+/>

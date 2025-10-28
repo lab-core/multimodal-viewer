@@ -1,4 +1,5 @@
-import { Component, Inject, Injector, OnDestroy, Signal } from '@angular/core';
+import { AsyncPipe } from '@angular/common';
+import { Component, Inject, Injector, OnDestroy } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
@@ -10,6 +11,10 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
+import {
+  MatAutocomplete,
+  MatAutocompleteModule,
+} from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import {
@@ -23,11 +28,14 @@ import {
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import JSZip from 'jszip';
 import {
+  combineLatest,
   filter,
   firstValueFrom,
+  map,
+  Observable,
+  startWith,
   Subject,
   take,
   takeUntil,
@@ -36,7 +44,12 @@ import {
 import { SIMULATION_SAVE_FILE_SEPARATOR } from '../../../environments/environment';
 import { SimulationConfiguration } from '../../interfaces/simulation.model';
 import { DataService } from '../../services/data.service';
-import { HttpService } from '../../services/http.service';
+import { DialogService } from '../../services/dialog.service';
+import {
+  HttpService,
+  ImportFolderContent,
+  ImportFolderResponse,
+} from '../../services/http.service';
 import { LoadingService } from '../../services/loading.service';
 import { SnackBarService } from '../../services/snack-bar.service';
 
@@ -64,10 +77,12 @@ export interface SimulationConfigurationDialogResult {
     MatButtonModule,
     MatFormFieldModule,
     ReactiveFormsModule,
-    MatSelectModule,
+    MatAutocompleteModule,
     MatCheckboxModule,
     MatInputModule,
     MatIconModule,
+    MatAutocomplete,
+    AsyncPipe,
   ],
   templateUrl: './simulation-configuration-dialog.component.html',
   styleUrl: './simulation-configuration-dialog.component.css',
@@ -86,6 +101,8 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
 
   private readonly unsubscribe$ = new Subject<void>();
 
+  readonly filteredData$: Observable<string[]>;
+
   constructor(
     @Inject(MAT_DIALOG_DATA)
     public readonly data: SimulationConfigurationDialogData,
@@ -99,6 +116,7 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     private readonly loadingService: LoadingService,
     private readonly snackBarService: SnackBarService,
     private readonly injector: Injector,
+    private readonly dialogService: DialogService,
   ) {
     // Initialize form
     this.nameFormControl = this.formBuilder.control(null, [
@@ -115,7 +133,28 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     if (this.data.mode === 'start') {
       // eslint-disable-next-line @typescript-eslint/unbound-method
       this.dataFormControl.addValidators(Validators.required);
+      this.dataFormControl.addValidators(
+        (control: AbstractControl): ValidationErrors | null =>
+          this.dataService
+            .availableSimulationDataSignal()
+            .includes(control.value as string)
+            ? null
+            : { doesNotExist: true },
+      );
     }
+
+    this.filteredData$ = combineLatest([
+      this.dataFormControl.valueChanges.pipe(startWith('')),
+      toObservable(this.dataService.availableSimulationDataSignal),
+    ]).pipe(
+      map(([value, data]) =>
+        value
+          ? data.filter((name) =>
+              name.toLowerCase().includes(value.toLowerCase()),
+            )
+          : data,
+      ),
+    );
 
     this.shouldRunInBackgroundFormControl = this.formBuilder.control(false);
 
@@ -180,10 +219,6 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     }
   }
 
-  get availableSimulationDataSignal(): Signal<string[]> {
-    return this.dataService.availableSimulationDataSignal;
-  }
-
   refreshAvailableData() {
     this.dataService.queryAvailableData();
   }
@@ -233,78 +268,157 @@ export class SimulationConfigurationDialogComponent implements OnDestroy {
     };
   }
 
-  importInputData() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.webkitdirectory = true;
-    input.multiple = true;
-
-    const handleFileChange = async (event: Event) => {
-      const files = (event.target as HTMLInputElement).files;
-      if (!files || files.length === 0) {
-        return;
-      }
-
-      try {
-        this.loadingService.start('Uploading data folder...');
-
-        const zip = new JSZip();
-        const baseFolder = files[0].webkitRelativePath.split('/')[0];
-
-        for (const file of Array.from(files)) {
-          const relativePath = file.webkitRelativePath.replace(
-            baseFolder + '/',
-            '',
-          );
-          zip.file(relativePath, file);
-        }
-
-        const blob = await zip.generateAsync({ type: 'blob' });
-        const contentType = 'input_data';
-        const formData = new FormData();
-        formData.append('file', blob, 'folder.zip');
-
-        const response = await firstValueFrom(
-          this.httpService.importFolder(contentType, baseFolder, formData),
-        );
-
-        await new Promise((resolve, reject) => {
-          toObservable(this.dataService.availableSimulationDataSignal, {
-            injector: this.injector,
-          })
-            .pipe(
-              filter((data) =>
-                data.some((dataName) => dataName === response.folderName),
-              ),
-              timeout({ first: 3000 }),
-              take(1),
-            )
-            .subscribe({
-              next: (data) => resolve(data),
-              error: () =>
-                reject(new Error('Timeout waiting for available data')),
-            });
-
-          this.dataService.queryAvailableData();
-        });
+  async onInstanceFolderImport(event: Event) {
+    await this.importInstanceOrInstances(
+      event,
+      'Importing instance folder...',
+      'instance',
+      async (response: ImportFolderResponse) => {
+        await this.waitForInstanceToAppear(response.folderName);
 
         this.dataFormControl.setValue(response.folderName);
+      },
+    );
+  }
 
-        this.snackBarService.showMessage('Upload successful', 'success');
-      } catch (error) {
-        console.error('Upload failed:', error);
-        this.snackBarService.showMessage('Upload failed', 'error');
-      } finally {
-        this.loadingService.stop();
+  async onInstancesFolderImport(event: Event) {
+    await this.importInstanceOrInstances(
+      event,
+      'Importing instances folder...',
+      'instances',
+      () => {
+        this.dataService.queryAvailableData();
+      },
+    );
+  }
+
+  async onDeleteInstance(event: Event, instanceName: string) {
+    event.stopPropagation();
+
+    const shouldContinue = await firstValueFrom(
+      this.dialogService
+        .openInformationDialog({
+          title: 'Deleting Instance ' + instanceName,
+          message:
+            'Are you sure you want to delete this instance? This action cannot be undone.',
+          type: 'warning',
+          confirmButtonOverride: null,
+          cancelButtonOverride: null,
+          canCancel: true,
+        })
+        .afterClosed(),
+    );
+
+    if (!shouldContinue) {
+      return;
+    }
+
+    try {
+      this.loadingService.start('Deleting instance folder...');
+
+      await firstValueFrom(
+        this.httpService.deleteFolder('instance', instanceName),
+      );
+
+      await this.waitForInstanceToDisappear(instanceName);
+
+      this.snackBarService.showMessage('Deletion successful', 'success');
+    } catch (error) {
+      console.error('HTTP error during deletion:', error);
+      this.snackBarService.showMessage('Deletion failed', 'error');
+    } finally {
+      this.loadingService.stop();
+    }
+  }
+
+  private async importInstanceOrInstances(
+    event: Event,
+    loadingLabel: string,
+    importFolderContent: ImportFolderContent,
+    afterImport: (response: ImportFolderResponse) => Promise<void> | void,
+  ) {
+    const files = (event.target as HTMLInputElement).files;
+    if (!files || files.length === 0) {
+      return;
+    }
+
+    try {
+      this.loadingService.start(loadingLabel);
+
+      const zip = new JSZip();
+      const baseFolder = files[0].webkitRelativePath.split('/')[0];
+
+      for (const file of Array.from(files)) {
+        const relativePath = file.webkitRelativePath.replace(
+          baseFolder + '/',
+          '',
+        );
+        zip.file(relativePath, file);
       }
-    };
 
-    input.addEventListener('change', (event: Event) => {
-      handleFileChange(event).catch((error) => {
-        console.error('Error handling file change:', error);
-      });
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const formData = new FormData();
+      formData.append('file', blob, 'folder.zip');
+
+      const response = await firstValueFrom(
+        this.httpService.importFolder(
+          importFolderContent,
+          baseFolder,
+          formData,
+        ),
+      );
+
+      const maybePromise = afterImport(response);
+
+      if (maybePromise instanceof Promise) {
+        await maybePromise;
+      }
+
+      this.snackBarService.showMessage('Import successful', 'success');
+    } catch (error) {
+      console.error('Import failed:', error);
+      this.snackBarService.showMessage('Import failed', 'error');
+    } finally {
+      const target = event.target as HTMLInputElement;
+      target.value = '';
+      this.loadingService.stop();
+    }
+  }
+  private async waitForInstanceToAppear(instanceName: string) {
+    return new Promise((resolve, reject) => {
+      toObservable(this.dataService.availableSimulationDataSignal, {
+        injector: this.injector,
+      })
+        .pipe(
+          filter((data) => data.some((dataName) => dataName === instanceName)),
+          timeout({ first: 3000 }),
+          take(1),
+        )
+        .subscribe({
+          next: (data) => resolve(data),
+          error: () => reject(new Error('Timeout waiting for available data')),
+        });
+
+      this.dataService.queryAvailableData();
     });
+  }
 
-    input.click();
+  private async waitForInstanceToDisappear(instanceName: string) {
+    return new Promise((resolve, reject) => {
+      toObservable(this.dataService.availableSimulationDataSignal, {
+        injector: this.injector,
+      })
+        .pipe(
+          filter((data) => data.every((dataName) => dataName !== instanceName)),
+          timeout({ first: 3000 }),
+          take(1),
+        )
+        .subscribe({
+          next: (data) => resolve(data),
+          error: () => reject(new Error('Timeout waiting for available data')),
+        });
+
+      this.dataService.queryAvailableData();
+    });
   }
 }

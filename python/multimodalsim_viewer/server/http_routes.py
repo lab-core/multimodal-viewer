@@ -41,7 +41,13 @@ def http_routes(simulation_manager: SimulationManager):  # pylint: disable=too-m
 
         return zip_path
 
-    def save_and_extract_zip(path: str, files):
+    def extract_zip_content(files) -> str | None:
+        zip_path = None
+
+        extracted_content_directory_path = os.path.join(tempfile.gettempdir(), "extracted_content")
+
+        os.makedirs(extracted_content_directory_path, exist_ok=True)
+
         try:
             if "file" not in files:
                 raise InvalidFilesRequestError("No file part")
@@ -56,14 +62,16 @@ def http_routes(simulation_manager: SimulationManager):  # pylint: disable=too-m
 
             # Extract files
             with zipfile.ZipFile(zip_path, "r") as zip_ref:
-                zip_ref.extractall(path)
+                zip_ref.extractall(extracted_content_directory_path)
                 logging.info("Extracted files: %s", zip_ref.namelist())
 
         # Let the exception propagate
         finally:
             # Remove temporary zip file
-            if os.path.exists(zip_path):
+            if zip_path is not None and os.path.exists(zip_path):
                 os.remove(zip_path)
+
+        return extracted_content_directory_path
 
     def handle_zip_upload(folder_path, on_success: Callable | None = None):
         parent_dir = os.path.dirname(folder_path)
@@ -74,12 +82,23 @@ def http_routes(simulation_manager: SimulationManager):  # pylint: disable=too-m
 
         os.makedirs(actual_folder_path, exist_ok=True)
 
+        extracted_content_directory_path = None
+
         try:
-            save_and_extract_zip(actual_folder_path, request.files)
+            extracted_content_directory_path = extract_zip_content(request.files)
+
+            for file in os.listdir(extracted_content_directory_path):
+                shutil.move(
+                    os.path.join(extracted_content_directory_path, file),
+                    actual_folder_path,
+                )
         except InvalidFilesRequestError as error:
             return jsonify({"error": error.error_message}), 400
         except zipfile.BadZipFile:
             return jsonify({"error": "Invalid ZIP file"}), 400
+        finally:
+            if extracted_content_directory_path is not None and os.path.exists(extracted_content_directory_path):
+                shutil.rmtree(extracted_content_directory_path)
 
         response_message = f"Folder '{unique_folder_name}' uploaded successfully"
         if unique_folder_name != base_folder_name:
@@ -93,25 +112,50 @@ def http_routes(simulation_manager: SimulationManager):  # pylint: disable=too-m
             201,
         )
 
+    def handle_zip_multiple_upload(parent_directory_path):
+        extracted_content_directory_path = None
+
+        try:
+            extracted_content_directory_path = extract_zip_content(request.files)
+
+            uploaded_directories = os.listdir(extracted_content_directory_path)
+
+            print(f"Uploaded directories: {uploaded_directories}")
+
+            for directory in uploaded_directories:
+                unique_folder_name = get_unique_folder_name(parent_directory_path, directory)
+                actual_folder_path = os.path.join(parent_directory_path, unique_folder_name)
+                os.makedirs(actual_folder_path, exist_ok=True)
+                for file in os.listdir(os.path.join(extracted_content_directory_path, directory)):
+                    shutil.move(
+                        os.path.join(extracted_content_directory_path, directory, file),
+                        actual_folder_path,
+                    )
+        except InvalidFilesRequestError as error:
+            return jsonify({"error": error.error_message}), 400
+        except zipfile.BadZipFile:
+            return jsonify({"error": "Invalid ZIP file"}), 400
+        finally:
+            if extracted_content_directory_path is not None and os.path.exists(extracted_content_directory_path):
+                shutil.rmtree(extracted_content_directory_path)
+
+        return (
+            jsonify({"message": "Folders uploaded successfully"}),
+            201,
+        )
+
     # MARK: Instances
-    @blueprint.route("/api/input_data/<folder_name>", methods=["GET"])
-    def export_input_data(folder_name):
-        folder_path = SimulationVisualizationDataManager.get_input_data_directory_path(folder_name)
-        logging.info("Requested folder: %s", folder_path)
-
-        zip_path = zip_folder(folder_path, folder_name)
-        if not zip_path:
-            return jsonify({"error": "Folder not found"}), 404
-
-        return send_file(zip_path, as_attachment=True)
-
-    @blueprint.route("/api/input_data/<folder_name>", methods=["POST"])
-    def import_input_data(folder_name):
+    @blueprint.route("/api/instance/<folder_name>", methods=["POST"])
+    def import_instance(folder_name):
         folder_path = SimulationVisualizationDataManager.get_input_data_directory_path(folder_name)
         return handle_zip_upload(folder_path)
 
-    @blueprint.route("/api/input_data/<folder_name>", methods=["DELETE"])
-    def delete_input_data(folder_name):
+    @blueprint.route("/api/instances/<folder_name>", methods=["POST"])
+    def import_instances(folder_name):  # pylint: disable=unused-argument
+        return handle_zip_multiple_upload(SimulationVisualizationDataManager.get_input_data_directory_path())
+
+    @blueprint.route("/api/instance/<folder_name>", methods=["DELETE"])
+    def delete_instance(folder_name):
         folder_path = SimulationVisualizationDataManager.get_input_data_directory_path(folder_name)
         if not os.path.isdir(folder_path):
             return jsonify({"error": "Folder not found"}), 404
