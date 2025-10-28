@@ -1,15 +1,18 @@
 import {
-  AnyAtomicQuery,
-  execute,
   ExecuteAtomicError,
+  ExtractFieldError,
+  execute,
   executeAtomicWithoutIsNot,
   executeWithoutIsNot,
   extractField,
-  ExtractFieldError,
+} from './execute-query.model';
+import {
   JAVA_SCRIPT_NUMBER_REGEX,
-  OPERATORS,
-  parseAtomicQuery,
   ParseError,
+  ProcessedQuery,
+  SHORTHAND_QUERY_AGGREGATORS,
+  SYMBOL_OPERATORS,
+  parseAtomicQuery,
   parseField,
   parseNegation,
   parseNumber,
@@ -20,14 +23,15 @@ import {
   parseQuery,
   parseString,
   parseValue,
-  ProcessedQuery,
+  stringBreakCharacter,
+} from './parse-query.model';
+import {
+  AnyAtomicQuery,
+  OPERATORS,
   Query,
   QueryObject,
   QueryObjectFieldValue,
   QueryOperator,
-  SHORTHAND_QUERY_AGGREGATORS,
-  stringBreakCharacter,
-  SYMBOL_OPERATORS,
 } from './query.model';
 
 describe('Query model', () => {

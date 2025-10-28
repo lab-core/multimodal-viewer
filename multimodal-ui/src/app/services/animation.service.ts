@@ -43,9 +43,10 @@ import {
   sliceEnvironment,
 } from '../interfaces/continuous.model';
 import { EntityMetadata } from '../interfaces/entity.model';
+import { execute } from '../interfaces/execute-query.model';
 import { getAllLegs, Passenger } from '../interfaces/passenger.model';
 import { AllPolylines, Polyline } from '../interfaces/polylines.model';
-import { execute, Query, QueryObject } from '../interfaces/query.model';
+import { Query, QueryObject } from '../interfaces/query.model';
 import { Stop } from '../interfaces/stop.model';
 import { getAllStops, Vehicle } from '../interfaces/vehicle.model';
 import { FavoriteEntitiesService } from './favorite-entities.service';
