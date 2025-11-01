@@ -1,5 +1,3 @@
-// MARK: Types
-
 import {
   OPERATORS,
   Query,
@@ -7,10 +5,25 @@ import {
   QueryObjectPrimitiveValue,
   QueryOperator,
 } from './query.model';
+import {
+  ANY_AMOUNT_OF_WHITESPACE$$,
+  concatenate,
+  END_CHARACTER$$,
+  exclude,
+  ignoreCase,
+  ANY_AMOUNT_OF_WHITESPACE$$ as ONE_OR_MORE_WHITESPACE$$,
+  some,
+  startsWith,
+  zeroOrMore,
+} from './reg-exp.model';
 
-export const OPERATORS_IN_DECREASING_LENGTH: QueryOperator[] = OPERATORS.sort(
-  (a, b) => b.length - a.length,
-);
+// Number regexp
+export const JAVA_SCRIPT_NUMBER_REGEXP =
+  /[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]*)?/;
+
+const JAVA_SCRIPT_FIELD_REGEXP = /[a-zA-Z_$][a-zA-Z0-9_$]*/;
+
+// Operators regexp
 
 export const SYMBOL_OPERATORS: QueryOperator[] = [
   '=',
@@ -21,44 +34,84 @@ export const SYMBOL_OPERATORS: QueryOperator[] = [
   '<=',
 ];
 
-export const SYMBOL_OPERATORS_IN_DECREASING_LENGTH: QueryOperator[] =
-  SYMBOL_OPERATORS.sort((a, b) => b.length - a.length);
+const OPERATORS$$ = some(...OPERATORS);
+const SYMBOL_OPERATORS$$ = some(...SYMBOL_OPERATORS);
 
-export type ArrayValueSeparator = ',' | ';';
+// Array regexp
+const ARRAY_OPENING_BRACKETS_FOR_REGEXP = ['\\[']; // Needs to be escaped for regexp
+const ARRAY_CLOSING_BRACKETS_FOR_REGEXP = ['\\]']; // Needs to be escaped for regexp
 
-export const ARRAY_VALUE_SEPARATORS: ArrayValueSeparator[] = [';', ','];
+const ARRAY_OPENING_BRACKETS$$ = some(...ARRAY_OPENING_BRACKETS_FOR_REGEXP);
+const ARRAY_CLOSING_BRACKETS$$ = some(...ARRAY_CLOSING_BRACKETS_FOR_REGEXP);
 
-export type LiteralValue = 'TRUE' | 'FALSE' | 'NULL' | 'UNDEFINED';
+type ArrayValueSeparator = ',' | ';';
 
-export const LITERAL_VALUES: LiteralValue[] = [
-  'TRUE',
-  'FALSE',
-  'NULL',
-  'UNDEFINED',
+const ARRAY_VALUE_SEPARATORS: ArrayValueSeparator[] = [',', ';'];
+const ARRAY_VALUE_SEPARATORS$$ = some(...ARRAY_VALUE_SEPARATORS);
+
+// Scope regexp
+const SCOPE_OPENING_BRACKETS_FOR_REGEXP = ['\\(']; // Needs to be escaped for regexp
+const SCOPE_CLOSING_BRACKETS_FOR_REGEXP = ['\\)']; // Needs to be escaped for regexp
+
+const SCOPE_OPENING_BRACKETS$$ = some(...SCOPE_OPENING_BRACKETS_FOR_REGEXP);
+const SCOPE_CLOSING_BRACKETS$$ = some(...SCOPE_CLOSING_BRACKETS_FOR_REGEXP);
+
+// String regexp
+type StringDelimiter = '"' | "'" | '`';
+
+export const STRING_DELIMITERS: StringDelimiter[] = ['"', "'", '`'];
+
+const ESCAPE_CHARACTER = '\\';
+const ESCAPE_CHARACTER$$ = /\\/;
+
+// Negation regexp
+const TEXT_NEGATIONS = ['NOT'];
+const SHORTHAND_NEGATIONS = ['!', '~'];
+
+const TEXT_NEGATIONS$$ = some(...TEXT_NEGATIONS);
+const SHORTHAND_NEGATIONS$$ = some(...SHORTHAND_NEGATIONS);
+
+// Aggregator regexp
+const TEXT_CONJUNCTION_AGGREGATORS = ['AND'];
+const TEXT_DISJUNCTION_AGGREGATORS = ['OR'];
+
+export const SHORTHAND_CONJUNCTION_AGGREGATORS = ['&', '&&'];
+export const SHORTHAND_DISJUNCTION_AGGREGATORS = ['|', '||'];
+const SHORTHAND_DISJUNCTION_AGGREGATORS_FOR_REGEXP = ['\\|', '\\|\\|']; // Needs to be escaped for regexp
+
+const TEXT_AGGREGATORS = [
+  ...TEXT_CONJUNCTION_AGGREGATORS,
+  ...TEXT_DISJUNCTION_AGGREGATORS,
+];
+export const SHORTHAND_AGGREGATORS = [
+  ...SHORTHAND_CONJUNCTION_AGGREGATORS,
+  ...SHORTHAND_DISJUNCTION_AGGREGATORS,
 ];
 
-export const LITERAL_VALUES_REAL_VALUE: Record<
-  LiteralValue,
-  QueryObjectPrimitiveValue
-> = {
+const SHORTHAND_AGGREGATORS_FOR_REGEXP = [
+  ...SHORTHAND_CONJUNCTION_AGGREGATORS,
+  ...SHORTHAND_DISJUNCTION_AGGREGATORS_FOR_REGEXP,
+];
+
+const TEXT_AGGREGATORS$$ = some(...TEXT_AGGREGATORS);
+const SHORTHAND_AGGREGATORS$$ = some(...SHORTHAND_AGGREGATORS_FOR_REGEXP);
+
+// Literal regexp
+type QueryObjectLiteral = boolean | null | undefined;
+
+type LiteralValue = 'TRUE' | 'FALSE' | 'NULL' | 'UNDEFINED';
+
+const LITERALS: LiteralValue[] = ['TRUE', 'FALSE', 'NULL', 'UNDEFINED'];
+
+const LITERALS$$ = some(...LITERALS);
+
+const VALUE_BY_LITERALS: Record<LiteralValue, QueryObjectLiteral> = {
   TRUE: true,
   FALSE: false,
   NULL: null,
   UNDEFINED: undefined,
 };
 
-export type StringDelimiter = '"' | "'";
-
-export const STRING_DELIMITERS: StringDelimiter[] = ['"', "'"];
-
-export const stringBreakCharacter = '\\';
-
-export type ShorthandQueryAggregator = '&' | '|';
-
-export const SHORTHAND_QUERY_AGGREGATORS: ShorthandQueryAggregator[] = [
-  '&',
-  '|',
-];
 // MARK: Parse query
 export interface ProcessedQuery {
   initialQuery: string;
@@ -69,16 +122,10 @@ export interface ProcessedQuery {
 export type ParseErrorString =
   | 'Empty query encountered on start'
   | 'Aggregator not found'
-  | 'Empty query encountered on field'
   | 'Field not found'
-  | 'Empty query encountered on primitive array'
-  | 'Empty query encountered on primitive value'
   | 'Opening bracket not found'
   | 'Closing bracket not found'
-  | 'Breakable character not found after string break character'
-  | 'Closing string delimiter not found'
-  | 'String does not match number format'
-  | 'Number not found'
+  | 'Primitive value not found'
   | 'Closing bracket encountered without opening bracket';
 
 export class ParseError extends Error {
@@ -125,9 +172,9 @@ export function parseQuery(
   if (hasNegation) {
     query = parseQuery(processedQuery, false, true);
   } else {
-    const hasParenthesis = parseParenthesis(processedQuery);
+    const hasScopeOpening = parseScopeOpening(processedQuery);
 
-    if (hasParenthesis) {
+    if (hasScopeOpening) {
       query = parseQuery(processedQuery, false, false);
     } else {
       query = parseAtomicQuery(processedQuery);
@@ -136,16 +183,24 @@ export function parseQuery(
 
   query.isNot = isNot ? !query.isNot : query.isNot;
 
-  processedQuery.currentQuery = processedQuery.currentQuery.trim();
-
   if (isAggregated) {
     return query;
   }
+
+  processedQuery.currentQuery = processedQuery.currentQuery.trim();
 
   if (processedQuery.currentQuery === '') {
     return query;
   }
 
+  return parseAggregated(processedQuery, query);
+}
+
+// MARK: Parse aggregated
+export function parseAggregated(
+  processedQuery: ProcessedQuery,
+  firstQuery: Query,
+): Query {
   let aggregator: QueryAggregator | null = null;
 
   const followingQueries: {
@@ -154,52 +209,23 @@ export function parseQuery(
   }[] = [];
 
   do {
-    if (processedQuery.currentQuery.startsWith(')')) {
-      if (processedQuery.depth === 0) {
+    const hasScopeClosing = parseScopeClosing(processedQuery);
+
+    if (hasScopeClosing) {
+      if (processedQuery.depth === -1) {
         throw new ParseError(
           'Closing bracket encountered without opening bracket',
           processedQuery,
         );
       }
-
-      processedQuery.depth -= 1;
-      processedQuery.currentQuery = processedQuery.currentQuery.slice(1);
       break;
     }
 
-    aggregator = null;
+    aggregator = parseAggregator(processedQuery);
 
-    if (processedQuery.currentQuery.startsWith('&')) {
-      aggregator = 'AND';
-      processedQuery.currentQuery = processedQuery.currentQuery.slice(1);
-    } else if (
-      processedQuery.currentQuery.length >= 'and'.length + 1 &&
-      processedQuery.currentQuery.slice(0, 'and'.length).toLocaleLowerCase() ===
-        'and' &&
-      [' ', '('].includes(processedQuery.currentQuery['and'.length])
-    ) {
-      aggregator = 'AND';
-      processedQuery.currentQuery = processedQuery.currentQuery.slice(
-        'and'.length,
-      );
-    } else if (processedQuery.currentQuery.startsWith('|')) {
-      aggregator = 'OR';
-      processedQuery.currentQuery = processedQuery.currentQuery.slice(1);
-    } else if (
-      processedQuery.currentQuery.length >= 'or'.length + 1 &&
-      processedQuery.currentQuery.slice(0, 'or'.length).toLocaleLowerCase() ===
-        'or' &&
-      [' ', '('].includes(processedQuery.currentQuery['or'.length])
-    ) {
-      aggregator = 'OR';
-      processedQuery.currentQuery = processedQuery.currentQuery.slice(
-        'or'.length,
-      );
-    } else {
+    if (aggregator === null) {
       throw new ParseError('Aggregator not found', processedQuery);
     }
-
-    processedQuery.currentQuery = processedQuery.currentQuery.trim();
 
     if (aggregator !== null) {
       followingQueries.push({
@@ -209,13 +235,24 @@ export function parseQuery(
     }
   } while (aggregator !== null && processedQuery.currentQuery.length > 0);
 
+  return mergeAggregated(firstQuery, followingQueries);
+}
+
+// MARK: Merge aggregated
+export function mergeAggregated(
+  firstQuery: Query,
+  followingQueries: {
+    query: Query;
+    precedingAggregator: QueryAggregator;
+  }[],
+): Query {
   if (followingQueries.length === 0) {
-    return query;
+    return firstQuery;
   }
 
   const conjunctions: Query[] = [];
 
-  let currentConjunctionConditions: Query[] = [query];
+  let currentConjunctionConditions: Query[] = [firstQuery];
 
   for (const followingQuery of followingQueries) {
     if (followingQuery.precedingAggregator === 'AND') {
@@ -256,52 +293,162 @@ export function parseQuery(
   };
 }
 
+// MARK: Parse aggregator
+export function parseAggregator(
+  processedQuery: ProcessedQuery,
+): QueryAggregator | null {
+  processedQuery.currentQuery = processedQuery.currentQuery.trim();
+
+  const shorthandAggregatorMatches = startsWith(SHORTHAND_AGGREGATORS$$).exec(
+    processedQuery.currentQuery,
+  );
+
+  if (shorthandAggregatorMatches !== null) {
+    processedQuery.currentQuery = processedQuery.currentQuery.slice(
+      shorthandAggregatorMatches[0].length,
+    );
+
+    if (
+      SHORTHAND_CONJUNCTION_AGGREGATORS.includes(shorthandAggregatorMatches[0])
+    ) {
+      return 'AND';
+    }
+    if (
+      SHORTHAND_DISJUNCTION_AGGREGATORS.includes(shorthandAggregatorMatches[0])
+    ) {
+      return 'OR';
+    }
+
+    return null;
+  }
+
+  const allowedFollowingText: (string | RegExp)[] = [
+    ANY_AMOUNT_OF_WHITESPACE$$,
+    SCOPE_OPENING_BRACKETS$$,
+  ];
+
+  const textAggregatorWithFollowingMatches = ignoreCase(
+    startsWith(concatenate(TEXT_AGGREGATORS$$, some(...allowedFollowingText))),
+  ).exec(processedQuery.currentQuery);
+
+  if (textAggregatorWithFollowingMatches === null) {
+    return null;
+  }
+
+  const textAggregatorMatches = ignoreCase(startsWith(TEXT_AGGREGATORS$$)).exec(
+    processedQuery.currentQuery,
+  );
+
+  if (textAggregatorMatches === null) {
+    return null;
+  }
+
+  processedQuery.currentQuery = processedQuery.currentQuery.slice(
+    textAggregatorMatches[0].length,
+  );
+
+  return textAggregatorMatches[0].toLocaleUpperCase() as QueryAggregator;
+}
+
+// MARK: Parse negation
 export function parseNegation(processedQuery: ProcessedQuery): boolean {
   processedQuery.currentQuery = processedQuery.currentQuery.trim();
 
-  const currentQuery = processedQuery.currentQuery;
+  const shorthandNegationMatches = startsWith(SHORTHAND_NEGATIONS$$).exec(
+    processedQuery.currentQuery,
+  );
 
-  if (currentQuery === '') {
+  if (shorthandNegationMatches !== null) {
+    processedQuery.currentQuery = processedQuery.currentQuery.slice(
+      shorthandNegationMatches[0].length,
+    );
+    return true;
+  }
+
+  const allowedFollowingText: (string | RegExp)[] = [
+    SHORTHAND_NEGATIONS$$,
+    ANY_AMOUNT_OF_WHITESPACE$$,
+    SCOPE_OPENING_BRACKETS$$,
+  ];
+
+  const textNegationWithFollowingMatches = ignoreCase(
+    startsWith(concatenate(TEXT_NEGATIONS$$, some(...allowedFollowingText))),
+  ).exec(processedQuery.currentQuery);
+
+  if (textNegationWithFollowingMatches === null) {
     return false;
   }
 
-  if (currentQuery.startsWith('!') || currentQuery.startsWith('~')) {
-    processedQuery.currentQuery = currentQuery.slice(1);
-    return true;
+  const textNegationMatches = ignoreCase(startsWith(TEXT_NEGATIONS$$)).exec(
+    processedQuery.currentQuery,
+  );
+
+  if (textNegationMatches === null) {
+    return false;
   }
 
-  if (
-    currentQuery.length >= 4 &&
-    currentQuery.slice(0, 3).toLocaleLowerCase() === 'not' &&
-    [' ', '(', '!', '~'].includes(currentQuery[3])
-  ) {
-    processedQuery.currentQuery = currentQuery.slice(3);
-    return true;
-  }
+  processedQuery.currentQuery = processedQuery.currentQuery.slice(
+    textNegationMatches[0].length,
+  );
 
-  return false;
+  return true;
 }
 
-export function parseParenthesis(processedQuery: ProcessedQuery): boolean {
+// MARK: Parse scope opening
+export function parseScopeOpening(processedQuery: ProcessedQuery): boolean {
   processedQuery.currentQuery = processedQuery.currentQuery.trim();
 
   const currentQuery = processedQuery.currentQuery;
 
-  if (currentQuery === '') {
+  const scopeOpeningMatches = ignoreCase(
+    startsWith(SCOPE_OPENING_BRACKETS$$),
+  ).exec(currentQuery);
+
+  if (scopeOpeningMatches === null) {
     return false;
   }
 
-  if (currentQuery.startsWith('(')) {
-    processedQuery.currentQuery = currentQuery.slice(1);
-    processedQuery.depth++;
-    return true;
-  }
+  processedQuery.currentQuery = currentQuery.slice(
+    scopeOpeningMatches[0].length,
+  );
 
-  return false;
+  ++processedQuery.depth;
+
+  return true;
 }
 
+// MARK: Parse scope closing
+export function parseScopeClosing(processedQuery: ProcessedQuery): boolean {
+  processedQuery.currentQuery = processedQuery.currentQuery.trim();
+
+  const currentQuery = processedQuery.currentQuery;
+
+  const scopeClosingMatches = ignoreCase(
+    startsWith(SCOPE_CLOSING_BRACKETS$$),
+  ).exec(currentQuery);
+
+  if (scopeClosingMatches === null) {
+    return false;
+  }
+
+  processedQuery.currentQuery = currentQuery.slice(
+    scopeClosingMatches[0].length,
+  );
+
+  --processedQuery.depth;
+
+  return true;
+}
+
+// MARK: Parse atomic query
 export function parseAtomicQuery(processedQuery: ProcessedQuery): Query {
+  processedQuery.currentQuery = processedQuery.currentQuery.trim();
+
   const field = parseField(processedQuery);
+
+  if (field === null) {
+    throw new ParseError('Field not found', processedQuery);
+  }
 
   const operator = parseOperator(processedQuery);
 
@@ -327,71 +474,74 @@ export function parseAtomicQuery(processedQuery: ProcessedQuery): Query {
   };
 }
 
-export function parseField(processedQuery: ProcessedQuery): string {
+// MARK: Parse field
+export function parseField(processedQuery: ProcessedQuery): string | null {
   processedQuery.currentQuery = processedQuery.currentQuery.trim();
 
-  const currentQuery = processedQuery.currentQuery;
+  const allowedFollowing = [
+    END_CHARACTER$$,
+    SYMBOL_OPERATORS$$,
+    SHORTHAND_AGGREGATORS$$,
+    SCOPE_CLOSING_BRACKETS$$,
+    ONE_OR_MORE_WHITESPACE$$,
+  ];
 
-  if (currentQuery === '') {
-    throw new ParseError('Empty query encountered on field', processedQuery);
+  const fieldWithFollowingMatches = ignoreCase(
+    startsWith(
+      concatenate(JAVA_SCRIPT_FIELD_REGEXP, some(...allowedFollowing)),
+    ),
+  ).exec(processedQuery.currentQuery);
+
+  if (fieldWithFollowingMatches === null) {
+    return null;
   }
 
-  let field = '';
-  let currentQueryCopy = currentQuery;
+  const fieldMatches = startsWith(JAVA_SCRIPT_FIELD_REGEXP).exec(
+    processedQuery.currentQuery,
+  );
 
-  while (
-    currentQueryCopy.length > 0 &&
-    !(
-      SYMBOL_OPERATORS_IN_DECREASING_LENGTH.some((operator) =>
-        currentQueryCopy.startsWith(operator),
-      ) ||
-      SHORTHAND_QUERY_AGGREGATORS.some((aggregator) =>
-        currentQueryCopy.startsWith(aggregator),
-      ) ||
-      currentQueryCopy.startsWith(' ')
-    )
-  ) {
-    field += currentQueryCopy[0];
-    currentQueryCopy = currentQueryCopy.slice(1);
+  if (fieldMatches === null) {
+    return null;
   }
 
-  if (field === '') {
-    throw new ParseError('Field not found', processedQuery);
-  }
+  processedQuery.currentQuery = processedQuery.currentQuery.slice(
+    fieldMatches[0].length,
+  );
 
-  processedQuery.currentQuery = currentQueryCopy;
-  return field;
+  return fieldMatches[0];
 }
 
+// MARK: Parse operator
 export function parseOperator(
   processedQuery: ProcessedQuery,
 ): QueryOperator | null {
   processedQuery.currentQuery = processedQuery.currentQuery.trim();
 
-  const currentQuery = processedQuery.currentQuery;
-
-  if (currentQuery === '') {
+  if (processedQuery.currentQuery === '') {
     return null;
   }
 
-  for (const operator of OPERATORS_IN_DECREASING_LENGTH) {
-    if (
-      currentQuery.length >= operator.length &&
-      currentQuery.slice(0, operator.length).toLocaleLowerCase() ===
-        operator.toLocaleLowerCase()
-    ) {
-      processedQuery.currentQuery = currentQuery.slice(operator.length);
-      return operator;
-    }
+  const operatorMatches = ignoreCase(startsWith(some(OPERATORS$$))).exec(
+    processedQuery.currentQuery,
+  );
+
+  if (operatorMatches !== null) {
+    processedQuery.currentQuery = processedQuery.currentQuery.slice(
+      operatorMatches[0].length,
+    );
+    return operatorMatches[0].toLocaleUpperCase() as QueryOperator;
   }
 
   return null;
 }
 
+// MARK: Parse value
 export function parseValue(
   processedQuery: ProcessedQuery,
   operator: QueryOperator,
 ): QueryObjectPrimitiveValue | QueryObjectPrimitiveValue[] {
+  processedQuery.currentQuery = processedQuery.currentQuery.trim();
+
   if (operator === 'IN' || operator === 'NOT IN') {
     return parsePrimitiveArray(processedQuery);
   }
@@ -399,189 +549,231 @@ export function parseValue(
   return parsePrimitiveValue(processedQuery, false);
 }
 
+// MARK: Parse primitive array
 export function parsePrimitiveArray(
   processedQuery: ProcessedQuery,
 ): QueryObjectPrimitiveValue[] {
   processedQuery.currentQuery = processedQuery.currentQuery.trim();
 
-  if (processedQuery.currentQuery === '') {
-    throw new ParseError(
-      'Empty query encountered on primitive array',
-      processedQuery,
-    );
-  }
+  const openingBracketMatches = startsWith(some(ARRAY_OPENING_BRACKETS$$)).exec(
+    processedQuery.currentQuery,
+  );
 
-  if (!processedQuery.currentQuery.startsWith('[')) {
+  if (openingBracketMatches === null) {
     throw new ParseError('Opening bracket not found', processedQuery);
   }
 
-  processedQuery.currentQuery = processedQuery.currentQuery.slice(1);
+  processedQuery.currentQuery = processedQuery.currentQuery.slice(
+    openingBracketMatches[0].length,
+  );
 
   const values: QueryObjectPrimitiveValue[] = [];
 
   while (processedQuery.currentQuery.length > 0) {
+    processedQuery.currentQuery = processedQuery.currentQuery.trim();
+
     values.push(parsePrimitiveValue(processedQuery, true));
 
     processedQuery.currentQuery = processedQuery.currentQuery.trim();
 
-    if (
-      ARRAY_VALUE_SEPARATORS.some((separator) =>
-        processedQuery.currentQuery.startsWith(separator),
-      )
-    ) {
-      processedQuery.currentQuery = processedQuery.currentQuery.slice(1);
-    } else if (processedQuery.currentQuery.startsWith(']')) {
-      processedQuery.currentQuery = processedQuery.currentQuery.slice(1);
-      return values;
-    } else {
-      break;
+    const separatorMatches = startsWith(some(ARRAY_VALUE_SEPARATORS$$)).exec(
+      processedQuery.currentQuery,
+    );
+    if (separatorMatches !== null) {
+      processedQuery.currentQuery = processedQuery.currentQuery.slice(
+        separatorMatches[0].length,
+      );
+      continue;
     }
+
+    const closingBracketMatches = startsWith(
+      some(ARRAY_CLOSING_BRACKETS$$),
+    ).exec(processedQuery.currentQuery);
+    if (closingBracketMatches !== null) {
+      processedQuery.currentQuery = processedQuery.currentQuery.slice(
+        closingBracketMatches[0].length,
+      );
+      return values;
+    }
+
+    break;
   }
 
   throw new ParseError('Closing bracket not found', processedQuery);
 }
 
+// MARK: Parse primitive value
 export function parsePrimitiveValue(
   processedQuery: ProcessedQuery,
   isInArray: boolean,
 ): QueryObjectPrimitiveValue {
   processedQuery.currentQuery = processedQuery.currentQuery.trim();
 
-  if (processedQuery.currentQuery === '') {
-    throw new ParseError(
-      'Empty query encountered on primitive value',
-      processedQuery,
-    );
+  const parsedLiteral = parseLiteral(processedQuery);
+  if (parsedLiteral !== 'no-literal-match') {
+    return parsedLiteral;
   }
 
-  for (const literalValue of LITERAL_VALUES) {
-    if (
-      processedQuery.currentQuery.length >= literalValue.length &&
-      processedQuery.currentQuery
-        .slice(0, literalValue.length)
-        .toLocaleLowerCase() === literalValue.toLocaleLowerCase()
-    ) {
-      processedQuery.currentQuery = processedQuery.currentQuery.slice(
-        literalValue.length,
-      );
-      return LITERAL_VALUES_REAL_VALUE[literalValue];
-    }
+  const parsedString = parseString(processedQuery);
+  if (parsedString !== null) {
+    return parsedString;
   }
+
+  const parsedNumber = parseNumber(processedQuery, isInArray);
+  if (parsedNumber !== null) {
+    return parsedNumber;
+  }
+
+  throw new ParseError('Primitive value not found', processedQuery);
+}
+
+// MARK: Parse literal
+export function parseLiteral(
+  processedQuery: ProcessedQuery,
+): QueryObjectLiteral | 'no-literal-match' {
+  processedQuery.currentQuery = processedQuery.currentQuery.trim();
+
+  const literalMatches = ignoreCase(startsWith(LITERALS$$)).exec(
+    processedQuery.currentQuery,
+  );
+
+  if (literalMatches === null) {
+    return 'no-literal-match';
+  }
+
+  const literalMatch = literalMatches[0];
+
+  processedQuery.currentQuery = processedQuery.currentQuery.slice(
+    literalMatch.length,
+  );
+
+  return VALUE_BY_LITERALS[literalMatch.toLocaleUpperCase() as LiteralValue];
+}
+
+// MARK: Parse string
+export function parseString(processedQuery: ProcessedQuery): string | null {
+  // This regexp is more complex than the others
+  //
+  // We want to match any string that :
+  // - starts and ends with a string delimiter (the same delimiter)
+  // - contains anything but the escape character and the string delimiter
+  // - if an escape character is found, the next character is either the string delimiter or another escape character
+
+  processedQuery.currentQuery = processedQuery.currentQuery.trim();
+
+  let stringMatchDelimiter: StringDelimiter | null = null;
+  let stringMatch: string | null = null;
 
   for (const stringDelimiter of STRING_DELIMITERS) {
-    if (processedQuery.currentQuery.startsWith(stringDelimiter)) {
-      processedQuery.currentQuery = processedQuery.currentQuery.slice(1);
-      return parseString(processedQuery, stringDelimiter);
-    }
-  }
+    const anyCharacterButNotStringDelimiterOrEscapeCharacter$$ = exclude(
+      stringDelimiter,
+      ESCAPE_CHARACTER$$,
+    );
 
-  return parseNumber(processedQuery, isInArray);
-}
+    const escapedStringDelimiter$$ = concatenate(
+      ESCAPE_CHARACTER$$,
+      stringDelimiter,
+    );
 
-export function parseString(
-  processedQuery: ProcessedQuery,
-  stringDelimiter: string,
-): string {
-  let stringValue = '';
+    const escapedEscapeCharacter$$ = concatenate(
+      ESCAPE_CHARACTER$$,
+      ESCAPE_CHARACTER$$,
+    );
 
-  let currentQuery = processedQuery.currentQuery;
-
-  while (currentQuery.length > 0) {
-    if (currentQuery.startsWith(stringDelimiter)) {
-      currentQuery = currentQuery.slice(1);
-      processedQuery.currentQuery = currentQuery;
-      return stringValue;
-    } else if (currentQuery.startsWith(stringBreakCharacter)) {
-      let hasFoundBreakableCharacter = false;
-      for (const breakableCharacter of [
-        stringBreakCharacter,
+    const string$$ = startsWith(
+      concatenate(
         stringDelimiter,
-      ]) {
-        const remainder = currentQuery.slice(stringBreakCharacter.length);
-        if (remainder.startsWith(breakableCharacter)) {
-          hasFoundBreakableCharacter = true;
-          stringValue += breakableCharacter;
-          currentQuery = remainder.slice(breakableCharacter.length);
-          break;
-        }
-      }
+        zeroOrMore(
+          some(
+            anyCharacterButNotStringDelimiterOrEscapeCharacter$$,
+            escapedStringDelimiter$$,
+            escapedEscapeCharacter$$,
+          ),
+        ),
+        stringDelimiter,
+      ),
+    );
 
-      if (!hasFoundBreakableCharacter) {
-        throw new ParseError(
-          'Breakable character not found after string break character',
-          processedQuery,
-        );
-      }
-    } else {
-      stringValue += currentQuery[0];
-      currentQuery = currentQuery.slice(1);
+    const stringMatches = string$$.exec(processedQuery.currentQuery);
+
+    if (stringMatches !== null) {
+      stringMatchDelimiter = stringDelimiter;
+      stringMatch = stringMatches[0];
+      break;
     }
   }
 
-  throw new ParseError('Closing string delimiter not found', processedQuery);
-}
-
-export const JAVA_SCRIPT_NUMBER_REGEX =
-  /^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]*)?$/;
-
-export function parseNumber(
-  processedQuery: ProcessedQuery,
-  isInArray: boolean,
-): number {
-  const possibleFollowingCharactersAfterNumber: string[] = [
-    ' ',
-    ...SHORTHAND_QUERY_AGGREGATORS,
-  ];
-
-  if (processedQuery.depth > 0) {
-    possibleFollowingCharactersAfterNumber.push(')');
-  }
-
-  if (isInArray) {
-    possibleFollowingCharactersAfterNumber.push(...ARRAY_VALUE_SEPARATORS, ']');
-  }
-
-  const possibleFollowingCharactersAfterNumberIndexes =
-    possibleFollowingCharactersAfterNumber.map((character) =>
-      processedQuery.currentQuery.indexOf(character),
-    );
-
-  let followingCharacterIndex = Infinity;
-  let followingCharacter: string | null = null;
-  for (const possibleFollowingCharacterIndex of possibleFollowingCharactersAfterNumberIndexes) {
-    if (
-      possibleFollowingCharacterIndex > 0 &&
-      possibleFollowingCharacterIndex < followingCharacterIndex
-    ) {
-      followingCharacterIndex = possibleFollowingCharacterIndex;
-      followingCharacter =
-        possibleFollowingCharactersAfterNumber[possibleFollowingCharacterIndex];
-    }
-  }
-
-  let numberString: string;
-  if (followingCharacter === null) {
-    numberString = processedQuery.currentQuery;
-  } else {
-    numberString = processedQuery.currentQuery.slice(
-      0,
-      followingCharacterIndex,
-    );
-  }
-
-  if (numberString.match(JAVA_SCRIPT_NUMBER_REGEX) === null) {
-    throw new ParseError('Number not found', processedQuery);
-  }
-
-  const number = Number(numberString);
-
-  if (isNaN(number)) {
-    throw new ParseError('Number not found', processedQuery);
+  if (stringMatch === null || stringMatchDelimiter === null) {
+    return null;
   }
 
   processedQuery.currentQuery = processedQuery.currentQuery.slice(
-    numberString.length,
+    stringMatch.length,
+  );
+  return stringMatch
+    .slice(1, -1)
+    .replaceAll(
+      `${ESCAPE_CHARACTER}${ESCAPE_CHARACTER}`,
+      `${ESCAPE_CHARACTER}${ESCAPE_CHARACTER}temp`,
+    )
+    .replaceAll(
+      `${ESCAPE_CHARACTER}${stringMatchDelimiter}`,
+      stringMatchDelimiter,
+    )
+    .replaceAll(
+      `${ESCAPE_CHARACTER}${ESCAPE_CHARACTER}temp`,
+      `${ESCAPE_CHARACTER}`,
+    );
+}
+
+// MARK: Parse number
+export function parseNumber(
+  processedQuery: ProcessedQuery,
+  isInArray: boolean,
+): number | null {
+  processedQuery.currentQuery = processedQuery.currentQuery.trim();
+
+  const allowedFollowing = [
+    END_CHARACTER$$,
+    ONE_OR_MORE_WHITESPACE$$,
+    SHORTHAND_AGGREGATORS$$,
+  ];
+
+  if (processedQuery.depth > 0) {
+    allowedFollowing.push(SCOPE_CLOSING_BRACKETS$$);
+  }
+
+  if (isInArray) {
+    allowedFollowing.push(ARRAY_CLOSING_BRACKETS$$, ARRAY_VALUE_SEPARATORS$$);
+  }
+
+  const numberWithFollowing$$ = startsWith(
+    concatenate(JAVA_SCRIPT_NUMBER_REGEXP, some(...allowedFollowing)),
   );
 
-  return number;
+  if (numberWithFollowing$$.exec(processedQuery.currentQuery) === null) {
+    return null;
+  }
+
+  const number$$ = startsWith(JAVA_SCRIPT_NUMBER_REGEXP);
+
+  const numberMatches = number$$.exec(processedQuery.currentQuery);
+
+  if (numberMatches === null) {
+    return null;
+  }
+
+  const numberMatch = numberMatches[0];
+
+  const parsedNumber = parseFloat(numberMatch);
+
+  if (isNaN(parsedNumber)) {
+    return null;
+  }
+
+  processedQuery.currentQuery = processedQuery.currentQuery.slice(
+    numberMatch.length,
+  );
+
+  return parsedNumber;
 }

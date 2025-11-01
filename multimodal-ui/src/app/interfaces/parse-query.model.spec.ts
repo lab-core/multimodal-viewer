@@ -1,25 +1,31 @@
 import {
-  JAVA_SCRIPT_NUMBER_REGEX,
+  JAVA_SCRIPT_NUMBER_REGEXP,
   ParseError,
   ProcessedQuery,
-  SHORTHAND_QUERY_AGGREGATORS,
+  SHORTHAND_AGGREGATORS,
+  SHORTHAND_CONJUNCTION_AGGREGATORS,
+  SHORTHAND_DISJUNCTION_AGGREGATORS,
+  STRING_DELIMITERS,
   SYMBOL_OPERATORS,
+  mergeAggregated,
+  parseAggregator,
   parseAtomicQuery,
   parseField,
+  parseLiteral,
   parseNegation,
   parseNumber,
   parseOperator,
-  parseParenthesis,
   parsePrimitiveArray,
   parsePrimitiveValue,
   parseQuery,
+  parseScopeClosing,
+  parseScopeOpening,
   parseString,
   parseValue,
-  stringBreakCharacter,
 } from './parse-query.model';
 import { AnyAtomicQuery, OPERATORS, QueryOperator } from './query.model';
 
-describe('Query model', () => {
+describe('Parse query model', () => {
   // MARK: Parse query
   describe('parseQuery', () => {
     describe('when the string represents and atomic query', () => {
@@ -410,6 +416,263 @@ describe('Query model', () => {
     });
   });
 
+  // MARK: Merge aggregated
+  describe('mergeAggregated', () => {
+    const query: AnyAtomicQuery = {
+      field: 'field1',
+      operator: '=',
+      value: 123,
+      isNot: false,
+      isOptional: true,
+    };
+
+    describe('when there is only one query', () => {
+      it('should return the query', () => {
+        const result = mergeAggregated(query, []);
+
+        expect(result).toEqual(query);
+      });
+    });
+
+    describe('when there are only conjunctions', () => {
+      it('should return a conjunction', () => {
+        const result = mergeAggregated(query, [
+          {
+            query,
+            precedingAggregator: 'AND',
+          },
+          {
+            query,
+            precedingAggregator: 'AND',
+          },
+        ]);
+
+        expect(result).toEqual({
+          aggregator: 'AND',
+          conditions: [query, query, query],
+          isNot: false,
+        });
+      });
+    });
+
+    describe('when there are only disjunctions', () => {
+      it('should return a disjunction', () => {
+        const result = mergeAggregated(query, [
+          {
+            query,
+            precedingAggregator: 'OR',
+          },
+          {
+            query,
+            precedingAggregator: 'OR',
+          },
+        ]);
+
+        expect(result).toEqual({
+          aggregator: 'OR',
+          conditions: [query, query, query],
+          isNot: false,
+        });
+      });
+    });
+
+    describe('when there are both conjunctions and disjunctions', () => {
+      it('should return a disjunction of conjunctions', () => {
+        const result = mergeAggregated(query, [
+          {
+            query,
+            precedingAggregator: 'AND',
+          },
+          {
+            query,
+            precedingAggregator: 'OR',
+          },
+          {
+            query,
+            precedingAggregator: 'AND',
+          },
+          {
+            query,
+            precedingAggregator: 'OR',
+          },
+        ]);
+
+        expect(result).toEqual({
+          aggregator: 'OR',
+          conditions: [
+            {
+              aggregator: 'AND',
+              conditions: [query, query],
+              isNot: false,
+            },
+            {
+              aggregator: 'AND',
+              conditions: [query, query],
+              isNot: false,
+            },
+            query,
+          ],
+          isNot: false,
+        });
+      });
+    });
+  });
+
+  // MARK: Parse aggregator
+  describe('parseAggregator', () => {
+    for (const shorthandAggregator of SHORTHAND_CONJUNCTION_AGGREGATORS) {
+      describe(`when the string contains ${shorthandAggregator}`, () => {
+        it('should return AND', () => {
+          const followingString = 'value';
+          const initialQuery = `${shorthandAggregator}${followingString}`;
+          const processedQuery: ProcessedQuery = {
+            initialQuery,
+            currentQuery: initialQuery,
+            depth: 0,
+          };
+
+          const result = parseAggregator(processedQuery);
+
+          expect(result).toEqual('AND');
+          expect(processedQuery.currentQuery).toEqual(followingString);
+        });
+      });
+    }
+
+    for (const shorthandAggregator of SHORTHAND_DISJUNCTION_AGGREGATORS) {
+      describe(`when the string contains ${shorthandAggregator}`, () => {
+        it('should return OR', () => {
+          const followingString = 'value';
+          const initialQuery = `${shorthandAggregator}${followingString}`;
+          const processedQuery: ProcessedQuery = {
+            initialQuery,
+            currentQuery: initialQuery,
+            depth: 0,
+          };
+
+          const result = parseAggregator(processedQuery);
+
+          expect(result).toEqual('OR');
+          expect(processedQuery.currentQuery).toEqual(followingString);
+        });
+      });
+    }
+
+    const textConjunctionAggregators = ['AND', 'and', 'AnD', 'aNd'];
+
+    for (const textConjunctionAggregator of textConjunctionAggregators) {
+      describe(`when the string contains ${textConjunctionAggregator}`, () => {
+        describe('and it is followed by a space', () => {
+          it('should return AND', () => {
+            const followingString = ' value';
+            const initialQuery = `${textConjunctionAggregator}${followingString}`;
+            const processedQuery: ProcessedQuery = {
+              initialQuery,
+              currentQuery: initialQuery,
+              depth: 0,
+            };
+
+            const result = parseAggregator(processedQuery);
+
+            expect(result).toEqual('AND');
+            expect(processedQuery.currentQuery).toEqual(followingString);
+          });
+        });
+
+        describe('and it is followed by (', () => {
+          it('should return AND', () => {
+            const followingString = '(value';
+            const initialQuery = `${textConjunctionAggregator}${followingString}`;
+            const processedQuery: ProcessedQuery = {
+              initialQuery,
+              currentQuery: initialQuery,
+              depth: 0,
+            };
+
+            const result = parseAggregator(processedQuery);
+
+            expect(result).toEqual('AND');
+            expect(processedQuery.currentQuery).toEqual(followingString);
+          });
+        });
+
+        describe('and it is followed by other characters', () => {
+          it('should return null', () => {
+            const followingString = 'value';
+            const initialQuery = `${textConjunctionAggregator}${followingString}`;
+            const processedQuery: ProcessedQuery = {
+              initialQuery,
+              currentQuery: initialQuery,
+              depth: 0,
+            };
+
+            const result = parseAggregator(processedQuery);
+
+            expect(result).toEqual(null);
+            expect(processedQuery.currentQuery).toEqual(initialQuery);
+          });
+        });
+      });
+    }
+
+    const textDisjunctionAggregators = ['OR', 'or', 'Or', 'oR'];
+
+    for (const textDisjunctionAggregator of textDisjunctionAggregators) {
+      describe(`when the string contains ${textDisjunctionAggregator}`, () => {
+        describe('and it is followed by a space', () => {
+          it('should return OR', () => {
+            const followingString = ' value';
+            const initialQuery = `${textDisjunctionAggregator}${followingString}`;
+            const processedQuery: ProcessedQuery = {
+              initialQuery,
+              currentQuery: initialQuery,
+              depth: 0,
+            };
+
+            const result = parseAggregator(processedQuery);
+
+            expect(result).toEqual('OR');
+            expect(processedQuery.currentQuery).toEqual(followingString);
+          });
+        });
+
+        describe('and it is followed by (', () => {
+          it('should return OR', () => {
+            const followingString = '(value';
+            const initialQuery = `${textDisjunctionAggregator}${followingString}`;
+            const processedQuery: ProcessedQuery = {
+              initialQuery,
+              currentQuery: initialQuery,
+              depth: 0,
+            };
+
+            const result = parseAggregator(processedQuery);
+
+            expect(result).toEqual('OR');
+            expect(processedQuery.currentQuery).toEqual(followingString);
+          });
+        });
+
+        describe('and it is followed by other characters', () => {
+          it('should return null', () => {
+            const followingString = 'value';
+            const initialQuery = `${textDisjunctionAggregator}${followingString}`;
+            const processedQuery: ProcessedQuery = {
+              initialQuery,
+              currentQuery: initialQuery,
+              depth: 0,
+            };
+
+            const result = parseAggregator(processedQuery);
+
+            expect(result).toEqual(null);
+            expect(processedQuery.currentQuery).toEqual(initialQuery);
+          });
+        });
+      });
+    }
+  });
+
   // MARK: Parse negation
   describe('parseNegation', () => {
     describe('when the string is empty', () => {
@@ -512,8 +775,8 @@ describe('Query model', () => {
     });
   });
 
-  // MARK: Parse parenthesis
-  describe('parseParenthesis', () => {
+  // MARK: Parse scope opening
+  describe('parseScopeOpening', () => {
     describe('when the string is empty', () => {
       it('should return false', () => {
         const processedQuery: ProcessedQuery = {
@@ -522,7 +785,7 @@ describe('Query model', () => {
           depth: 0,
         };
 
-        const result = parseParenthesis(processedQuery);
+        const result = parseScopeOpening(processedQuery);
 
         expect(result).toEqual(false);
       });
@@ -536,7 +799,7 @@ describe('Query model', () => {
           depth: 0,
         };
 
-        const result = parseParenthesis(processedQuery);
+        const result = parseScopeOpening(processedQuery);
 
         expect(result).toEqual(false);
         expect(processedQuery.currentQuery).toEqual('value');
@@ -551,11 +814,61 @@ describe('Query model', () => {
           depth: 0,
         };
 
-        const result = parseParenthesis(processedQuery);
+        const result = parseScopeOpening(processedQuery);
 
         expect(result).toEqual(true);
         expect(processedQuery.currentQuery).toEqual('value)');
         expect(processedQuery.depth).toEqual(1);
+      });
+    });
+  });
+
+  // MARK: Parse scope closing
+  describe('parseScopeClosing', () => {
+    describe('when the string is empty', () => {
+      it('should return false', () => {
+        const processedQuery: ProcessedQuery = {
+          initialQuery: '',
+          currentQuery: '',
+          depth: 0,
+        };
+
+        const result = parseScopeClosing(processedQuery);
+
+        expect(result).toEqual(false);
+      });
+    });
+
+    describe('when the string does not start with )', () => {
+      it('should return false', () => {
+        const processedQuery: ProcessedQuery = {
+          initialQuery: 'value',
+          currentQuery: 'value',
+          depth: 0,
+        };
+
+        const result = parseScopeClosing(processedQuery);
+
+        expect(result).toEqual(false);
+        expect(processedQuery.currentQuery).toEqual('value');
+      });
+    });
+
+    describe('when the string starts with )', () => {
+      it('should return true', () => {
+        const followingString = ' value';
+        const initialQuery = `)${followingString}`;
+        const processedQuery: ProcessedQuery = {
+          initialQuery: initialQuery,
+          currentQuery: initialQuery,
+          depth: 1,
+        };
+
+        const result = parseScopeClosing(processedQuery);
+
+        expect(result).toEqual(true);
+        expect(processedQuery.currentQuery).toEqual(followingString);
+        expect(processedQuery.depth).toEqual(0);
       });
     });
   });
@@ -634,30 +947,20 @@ describe('Query model', () => {
   // MARK: Parse field
   describe('parseField', () => {
     describe('when the string is empty', () => {
-      it('should throw an error', () => {
+      it('should return null', () => {
         const processedQuery: ProcessedQuery = {
           initialQuery: '',
           currentQuery: '',
           depth: 0,
         };
 
-        let error: ParseError | null = null;
-
-        try {
-          parseField(processedQuery);
-        } catch (e) {
-          error = e as ParseError;
-        }
-
-        expect(error).not.toBeNull();
-        expect(error).toBeInstanceOf(ParseError);
-        expect(error?.message).toEqual('Empty query encountered on field');
-        expect(error?.payload).toEqual(processedQuery);
+        expect(parseField(processedQuery)).toEqual(null);
+        expect(processedQuery.currentQuery).toEqual('');
       });
     });
 
     describe('when the string starts immediately with an operator', () => {
-      it('should throw an error', () => {
+      it('should return null', () => {
         const queryString = '=value';
         const processedQuery: ProcessedQuery = {
           initialQuery: queryString,
@@ -665,18 +968,7 @@ describe('Query model', () => {
           depth: 0,
         };
 
-        let error: ParseError | null = null;
-
-        try {
-          parseField(processedQuery);
-        } catch (e) {
-          error = e as ParseError;
-        }
-
-        expect(error).not.toBeNull();
-        expect(error).toBeInstanceOf(ParseError);
-        expect(error?.message).toEqual('Field not found');
-        expect(error?.payload).toEqual(processedQuery);
+        expect(parseField(processedQuery)).toEqual(null);
         expect(processedQuery.currentQuery).toEqual(queryString);
       });
     });
@@ -699,10 +991,10 @@ describe('Query model', () => {
       });
     }
 
-    for (const shorthandQueryAggregator of SHORTHAND_QUERY_AGGREGATORS) {
-      describe(`when the field is followed by ${shorthandQueryAggregator}`, () => {
+    for (const shorthandAggregator of SHORTHAND_AGGREGATORS) {
+      describe(`when the field is followed by ${shorthandAggregator}`, () => {
         it('should return the field', () => {
-          const queryString = 'field' + shorthandQueryAggregator;
+          const queryString = 'field' + shorthandAggregator;
           const processedQuery: ProcessedQuery = {
             initialQuery: queryString,
             currentQuery: queryString,
@@ -712,7 +1004,7 @@ describe('Query model', () => {
           const result = parseField(processedQuery);
 
           expect(result).toEqual('field');
-          expect(processedQuery.currentQuery).toEqual(shorthandQueryAggregator);
+          expect(processedQuery.currentQuery).toEqual(shorthandAggregator);
         });
       });
     }
@@ -949,7 +1241,7 @@ describe('Query model', () => {
 
           expect(error).not.toBeNull();
           expect(error).toBeInstanceOf(ParseError);
-          expect(error?.message).toEqual('Number not found');
+          expect(error?.message).toEqual('Primitive value not found');
           expect(error?.payload).toEqual(processedQuery);
         });
       });
@@ -1042,9 +1334,7 @@ describe('Query model', () => {
 
         expect(error).not.toBeNull();
         expect(error).toBeInstanceOf(ParseError);
-        expect(error?.message).toEqual(
-          'Empty query encountered on primitive array',
-        );
+        expect(error?.message).toEqual('Opening bracket not found');
         expect(error?.payload).toEqual(processedQuery);
       });
     });
@@ -1118,9 +1408,7 @@ describe('Query model', () => {
 
         expect(error).not.toBeNull();
         expect(error).toBeInstanceOf(ParseError);
-        expect(error?.message).toEqual(
-          'Empty query encountered on primitive value',
-        );
+        expect(error?.message).toEqual('Primitive value not found');
         expect(error?.payload).toEqual(processedQuery);
       });
     });
@@ -1232,141 +1520,240 @@ describe('Query model', () => {
     });
   });
 
+  // MARK: Parse literal
+  describe('parseLiteral', () => {
+    const trueValues = ['true', 'TRUE', 'TrUe'];
+    for (const trueValue of trueValues) {
+      describe(`when the value is ${trueValue}`, () => {
+        it(`should return true`, () => {
+          const processedQuery: ProcessedQuery = {
+            initialQuery: trueValue,
+            currentQuery: trueValue,
+            depth: 0,
+          };
+
+          const result = parseLiteral(processedQuery);
+
+          expect(result).toEqual(true);
+          expect(processedQuery.currentQuery).toEqual('');
+        });
+      });
+    }
+
+    const falseValues = ['false', 'FALSE', 'FaLsE'];
+    for (const falseValue of falseValues) {
+      describe(`when the value is ${falseValue}`, () => {
+        it(`should return false`, () => {
+          const processedQuery: ProcessedQuery = {
+            initialQuery: falseValue,
+            currentQuery: falseValue,
+            depth: 0,
+          };
+
+          const result = parseLiteral(processedQuery);
+
+          expect(result).toEqual(false);
+          expect(processedQuery.currentQuery).toEqual('');
+        });
+      });
+    }
+
+    const nullValues = ['null', 'NULL', 'NuLl'];
+    for (const nullValue of nullValues) {
+      describe(`when the value is ${nullValue}`, () => {
+        it(`should return null`, () => {
+          const processedQuery: ProcessedQuery = {
+            initialQuery: nullValue,
+            currentQuery: nullValue,
+            depth: 0,
+          };
+
+          const result = parseLiteral(processedQuery);
+
+          expect(result).toEqual(null);
+          expect(processedQuery.currentQuery).toEqual('');
+        });
+      });
+    }
+
+    const undefinedValues = ['undefined', 'UNDEFINED', 'UnDeFiNeD'];
+    for (const undefinedValue of undefinedValues) {
+      describe(`when the value is ${undefinedValue}`, () => {
+        it(`should return undefined`, () => {
+          const processedQuery: ProcessedQuery = {
+            initialQuery: undefinedValue,
+            currentQuery: undefinedValue,
+            depth: 0,
+          };
+
+          const result = parseLiteral(processedQuery);
+
+          expect(result).toEqual(undefined);
+          expect(processedQuery.currentQuery).toEqual('');
+        });
+      });
+    }
+  });
+
   // MARK: Parse string
   describe('parseString', () => {
-    describe("when using ' as quote", () => {
-      it('should return a string', () => {
-        const value = 'value';
-        const stringDelimiter = "'";
-        const followingString = ') abc';
-        const queryString = `${value}${stringDelimiter}${followingString}`;
+    describe('when there are no string delimiter', () => {
+      it('should return null', () => {
+        const followingString = ' abc';
+        const stringQuery = 'abc';
+        const initialQuery = `${stringQuery}${followingString}`;
         const processedQuery: ProcessedQuery = {
-          initialQuery: queryString,
-          currentQuery: queryString,
+          initialQuery,
+          currentQuery: initialQuery,
           depth: 0,
         };
 
-        const result = parseString(processedQuery, stringDelimiter);
-
-        expect(result).toEqual(value);
-        expect(processedQuery.currentQuery).toEqual(followingString);
+        expect(parseString(processedQuery)).toBeNull();
+        expect(processedQuery.currentQuery).toEqual(initialQuery);
       });
     });
 
-    describe('when using " as quote', () => {
-      it('should return a string', () => {
-        const value = 'value';
-        const followingString = ') abc';
-        const stringDelimiter = '"';
-        const queryString = `${value}${stringDelimiter}${followingString}`;
-        const processedQuery: ProcessedQuery = {
-          initialQuery: queryString,
-          currentQuery: queryString,
-          depth: 0,
-        };
+    for (const stringDelimiter of STRING_DELIMITERS) {
+      describe(`when the string delimiter is ${stringDelimiter}`, () => {
+        describe('but the starting string delimiter is missing', () => {
+          it('should return null', () => {
+            const followingString = ' abc';
+            const stringQuery = `${stringDelimiter}abc`;
+            const initialQuery = `${stringQuery}${followingString}`;
+            const processedQuery: ProcessedQuery = {
+              initialQuery,
+              currentQuery: initialQuery,
+              depth: 0,
+            };
 
-        const result = parseString(processedQuery, stringDelimiter);
+            expect(parseString(processedQuery)).toBeNull();
+            expect(processedQuery.currentQuery).toEqual(initialQuery);
+          });
+        });
 
-        expect(result).toEqual(value);
-        expect(processedQuery.currentQuery).toEqual(followingString);
+        describe('but the ending string delimiter is missing', () => {
+          it('should return null', () => {
+            const followingString = ' abc';
+            const stringQuery = `abc${stringDelimiter}`;
+            const initialQuery = `${stringQuery}${followingString}`;
+            const processedQuery: ProcessedQuery = {
+              initialQuery,
+              currentQuery: initialQuery,
+              depth: 0,
+            };
+
+            expect(parseString(processedQuery)).toBeNull();
+            expect(processedQuery.currentQuery).toEqual(initialQuery);
+          });
+        });
+
+        describe('and the string is empty', () => {
+          it('should return the string', () => {
+            const followingString = ' abc';
+            const value = '';
+            const stringQuery = `${stringDelimiter}${value}${stringDelimiter}`;
+            const initialQuery = `${stringQuery}${followingString}`;
+            const processedQuery: ProcessedQuery = {
+              initialQuery,
+              currentQuery: initialQuery,
+              depth: 0,
+            };
+
+            expect(parseString(processedQuery)).toEqual(value);
+            expect(processedQuery.currentQuery).toEqual(followingString);
+          });
+        });
+
+        describe('and the string is not empty', () => {
+          it('should return the string', () => {
+            const followingString = ' abc';
+            const value = 'value';
+            const stringQuery = `${stringDelimiter}${value}${stringDelimiter}`;
+            const initialQuery = `${stringQuery}${followingString}`;
+            const processedQuery: ProcessedQuery = {
+              initialQuery,
+              currentQuery: initialQuery,
+              depth: 0,
+            };
+
+            expect(parseString(processedQuery)).toEqual(value);
+            expect(processedQuery.currentQuery).toEqual(followingString);
+          });
+        });
+
+        describe('and the string contains an escape character', () => {
+          describe('that is followed by another escape character', () => {
+            it('should return the string without the first escape character', () => {
+              const followingString = ' abc';
+              const value = 'value\\\\';
+              const stringQuery = `${stringDelimiter}${value}${stringDelimiter}`;
+              const initialQuery = `${stringQuery}${followingString}`;
+              const processedQuery: ProcessedQuery = {
+                initialQuery,
+                currentQuery: initialQuery,
+                depth: 0,
+              };
+
+              expect(parseString(processedQuery)).toEqual('value\\');
+              expect(processedQuery.currentQuery).toEqual(followingString);
+            });
+          });
+
+          describe('that is followed by the string delimiter', () => {
+            it('should return the string without the escape character', () => {
+              const followingString = ' abc';
+              const value = `value\\${stringDelimiter}value`;
+              const stringQuery = `${stringDelimiter}${value}${stringDelimiter}`;
+              const initialQuery = `${stringQuery}${followingString}`;
+              const processedQuery: ProcessedQuery = {
+                initialQuery,
+                currentQuery: initialQuery,
+                depth: 0,
+              };
+
+              expect(parseString(processedQuery)).toEqual(
+                `value${stringDelimiter}value`,
+              );
+              expect(processedQuery.currentQuery).toEqual(followingString);
+            });
+          });
+
+          describe('but contains chain made of an odd number of escape characters', () => {
+            it('should return null', () => {
+              const followingString = ' abc';
+              const value = 'value\\\\\\value';
+              const stringQuery = `${stringDelimiter}${value}${stringDelimiter}`;
+              const initialQuery = `${stringQuery}${followingString}`;
+              const processedQuery: ProcessedQuery = {
+                initialQuery,
+                currentQuery: initialQuery,
+                depth: 0,
+              };
+
+              expect(parseString(processedQuery)).toBeNull();
+              expect(processedQuery.currentQuery).toEqual(initialQuery);
+            });
+          });
+
+          describe('and contains chain made of an even number of escape characters', () => {
+            it('should return the string without every first escape character of each pair', () => {
+              const followingString = ' abc';
+              const value = 'value\\\\\\\\value';
+              const stringQuery = `${stringDelimiter}${value}${stringDelimiter}`;
+              const initialQuery = `${stringQuery}${followingString}`;
+              const processedQuery: ProcessedQuery = {
+                initialQuery,
+                currentQuery: initialQuery,
+                depth: 0,
+              };
+
+              expect(parseString(processedQuery)).toEqual('value\\\\value');
+              expect(processedQuery.currentQuery).toEqual(followingString);
+            });
+          });
+        });
       });
-    });
-
-    describe('when using quote inside the string with a break character', () => {
-      it('should return the string with the quote but without the break character', () => {
-        const stringDelimiter = '"';
-        const value = `value with ${stringBreakCharacter}${stringDelimiter} inside`;
-        const followingString = ') abc';
-        const queryString = `${value}${stringDelimiter}${followingString}`;
-        const processedQuery: ProcessedQuery = {
-          initialQuery: queryString,
-          currentQuery: queryString,
-          depth: 0,
-        };
-
-        const result = parseString(processedQuery, stringDelimiter);
-
-        expect(result).toEqual(value.replace(stringBreakCharacter, ''));
-        expect(processedQuery.currentQuery).toEqual(followingString);
-      });
-    });
-
-    describe('when using the break character doubled inside the string', () => {
-      it('should return the string with only one break character', () => {
-        const stringDelimiter = '"';
-        const value = `value with ${stringBreakCharacter}${stringBreakCharacter} inside`;
-        const followingString = ') abc';
-        const queryString = `${value}${stringDelimiter}${followingString}`;
-        const processedQuery: ProcessedQuery = {
-          initialQuery: queryString,
-          currentQuery: queryString,
-          depth: 0,
-        };
-
-        const result = parseString(processedQuery, stringDelimiter);
-
-        expect(result).toEqual(
-          value.replace(stringBreakCharacter.repeat(2), stringBreakCharacter),
-        );
-        expect(processedQuery.currentQuery).toEqual(followingString);
-      });
-    });
-
-    describe('when using the break character without a breakable string following', () => {
-      it('should throw an error', () => {
-        const stringDelimiter = '"';
-        const value = `value with ${stringBreakCharacter} inside`;
-        const followingString = ') abc';
-        const queryString = `${value}${stringDelimiter}${followingString}`;
-        const processedQuery: ProcessedQuery = {
-          initialQuery: queryString,
-          currentQuery: queryString,
-          depth: 0,
-        };
-
-        let error: ParseError | null = null;
-
-        try {
-          parseString(processedQuery, stringDelimiter);
-        } catch (e) {
-          error = e as ParseError;
-        }
-
-        expect(error).not.toBeNull();
-        expect(error?.message).toEqual(
-          'Breakable character not found after string break character',
-        );
-        expect(error?.payload).toEqual(processedQuery);
-        expect(processedQuery.currentQuery).toEqual(queryString);
-      });
-    });
-
-    describe('when the closing quote is missing', () => {
-      it('should throw an error', () => {
-        const stringDelimiter = '"';
-        const value = `value`;
-        const followingString = ') abc';
-        const queryString = `${value}${followingString}`;
-        const processedQuery: ProcessedQuery = {
-          initialQuery: queryString,
-          currentQuery: queryString,
-          depth: 0,
-        };
-
-        let error: ParseError | null = null;
-
-        try {
-          parseString(processedQuery, stringDelimiter);
-        } catch (e) {
-          error = e as ParseError;
-        }
-
-        expect(error).not.toBeNull();
-        expect(error?.message).toEqual('Closing string delimiter not found');
-        expect(error?.payload).toEqual(processedQuery);
-        expect(processedQuery.currentQuery).toEqual(queryString);
-      });
-    });
+    }
   });
 
   // MARK: Parse number
@@ -1393,7 +1780,7 @@ describe('Query model', () => {
     for (const [number, expectedNumber] of testNumbers) {
       describe('testing number ' + number, () => {
         it('should match the regex', () => {
-          expect(number.match(JAVA_SCRIPT_NUMBER_REGEX)).not.toBeNull();
+          expect(number.match(JAVA_SCRIPT_NUMBER_REGEXP)).not.toBeNull();
         });
 
         describe('when the number is alone', () => {
@@ -1443,6 +1830,21 @@ describe('Query model', () => {
           });
         });
 
+        describe('when the number is followed by a &&', () => {
+          it('should return the number', () => {
+            const followingString = '&& abc';
+            const queryString = number + followingString;
+            const processedQuery: ProcessedQuery = {
+              initialQuery: queryString,
+              currentQuery: queryString,
+              depth: 0,
+            };
+
+            expect(parseNumber(processedQuery, false)).toEqual(expectedNumber);
+            expect(processedQuery.currentQuery).toEqual(followingString);
+          });
+        });
+
         describe('when the number is followed by a |', () => {
           it('should return the number', () => {
             const followingString = '| abc';
@@ -1458,11 +1860,24 @@ describe('Query model', () => {
           });
         });
 
+        describe('when the number is followed by a ||', () => {
+          it('should return the number', () => {
+            const followingString = '|| abc';
+            const queryString = number + followingString;
+            const processedQuery: ProcessedQuery = {
+              initialQuery: queryString,
+              currentQuery: queryString,
+              depth: 0,
+            };
+
+            expect(parseNumber(processedQuery, false)).toEqual(expectedNumber);
+            expect(processedQuery.currentQuery).toEqual(followingString);
+          });
+        });
+
         describe('when the number is followed by a )', () => {
           describe('and the depth is 0', () => {
-            it('should throw an error', () => {
-              let error: ParseError | null = null;
-
+            it('should return null', () => {
               const followingString = ') abc';
               const queryString = number + followingString;
               const processedQuery: ProcessedQuery = {
@@ -1471,15 +1886,7 @@ describe('Query model', () => {
                 depth: 0,
               };
 
-              try {
-                parseNumber(processedQuery, false);
-              } catch (e) {
-                error = e as ParseError;
-              }
-
-              expect(error).toBeInstanceOf(ParseError);
-              expect(error?.payload).toEqual(processedQuery);
-              expect(error?.message).toEqual('Number not found');
+              expect(parseNumber(processedQuery, false)).toBeNull();
               expect(processedQuery.currentQuery).toEqual(queryString);
             });
           });
@@ -1504,9 +1911,7 @@ describe('Query model', () => {
 
         describe('when the number is followed by a ]', () => {
           describe('and is not in an array', () => {
-            it('should throw an error', () => {
-              let error: ParseError | null = null;
-
+            it('should return null', () => {
               const followingString = '] abc';
               const queryString = number + followingString;
               const processedQuery: ProcessedQuery = {
@@ -1515,15 +1920,7 @@ describe('Query model', () => {
                 depth: 0,
               };
 
-              try {
-                parseNumber(processedQuery, false);
-              } catch (e) {
-                error = e as ParseError;
-              }
-
-              expect(error).toBeInstanceOf(ParseError);
-              expect(error?.payload).toEqual(processedQuery);
-              expect(error?.message).toEqual('Number not found');
+              expect(parseNumber(processedQuery, false)).toBeNull();
               expect(processedQuery.currentQuery).toEqual(queryString);
             });
           });
@@ -1546,9 +1943,7 @@ describe('Query model', () => {
 
         describe('when the number is followed by a ,', () => {
           describe('and is not in an array', () => {
-            it('should throw an error', () => {
-              let error: ParseError | null = null;
-
+            it('should return null', () => {
               const followingString = ', abc';
               const queryString = number + followingString;
               const processedQuery: ProcessedQuery = {
@@ -1557,15 +1952,7 @@ describe('Query model', () => {
                 depth: 0,
               };
 
-              try {
-                parseNumber(processedQuery, false);
-              } catch (e) {
-                error = e as ParseError;
-              }
-
-              expect(error).toBeInstanceOf(ParseError);
-              expect(error?.payload).toEqual(processedQuery);
-              expect(error?.message).toEqual('Number not found');
+              expect(parseNumber(processedQuery, false)).toBeNull();
               expect(processedQuery.currentQuery).toEqual(queryString);
             });
           });
@@ -1588,9 +1975,7 @@ describe('Query model', () => {
 
         describe('when the number is followed by ;', () => {
           describe('and is not in an array', () => {
-            it('should throw an error', () => {
-              let error: ParseError | null = null;
-
+            it('should return null', () => {
               const followingString = '; abc';
               const queryString = number + followingString;
               const processedQuery: ProcessedQuery = {
@@ -1599,15 +1984,7 @@ describe('Query model', () => {
                 depth: 0,
               };
 
-              try {
-                parseNumber(processedQuery, false);
-              } catch (e) {
-                error = e as ParseError;
-              }
-
-              expect(error).toBeInstanceOf(ParseError);
-              expect(error?.payload).toEqual(processedQuery);
-              expect(error?.message).toEqual('Number not found');
+              expect(parseNumber(processedQuery, false)).toBeNull();
               expect(processedQuery.currentQuery).toEqual(queryString);
             });
           });

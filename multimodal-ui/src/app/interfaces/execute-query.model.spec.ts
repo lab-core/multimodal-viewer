@@ -14,7 +14,7 @@ import {
   QueryOperator,
 } from './query.model';
 
-describe('Query model', () => {
+describe('Execute query model', () => {
   // MARK: Execute
   describe('execute', () => {
     describe('when isNot is true', () => {
