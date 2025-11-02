@@ -2,75 +2,45 @@ import {
   effect,
   inject,
   Injectable,
-  signal,
   Signal,
-  untracked,
+  signal,
   WritableSignal,
 } from '@angular/core';
+import { ParseError, parseQuery } from '../interfaces/parse-query.model';
+import { Query } from '../interfaces/query.model';
 import { AnimationService } from './animation.service';
-import { VisualizationService } from './visualization.service';
 
 @Injectable()
 export class VisualizationFilterService {
-  readonly visualizationService = inject(VisualizationService);
-  readonly animationService = inject(AnimationService);
+  private readonly animationService = inject(AnimationService);
 
-  private _filters: WritableSignal<Set<string>> = signal(
-    new Set<string>(['stops']),
-  );
+  private readonly _error: WritableSignal<string | null> = signal(null);
 
-  private _vehicleModes: WritableSignal<string[]> = signal([]);
+  private readonly _query: WritableSignal<Query | null> = signal(null);
 
-  get filters(): Signal<Set<string>> {
-    return this._filters;
-  }
-
-  get vehicleModes(): Signal<string[]> {
-    return this._vehicleModes;
-  }
+  readonly error: Signal<string | null> = this._error.asReadonly();
 
   constructor() {
-    effect(() => {
-      this.effectUpdateVehicleModeFilters();
-    });
-
     effect(() => {
       this.effectOnFilterChanged();
     });
   }
 
+  setFilterQuery(queryString: string | null) {
+    try {
+      this._query.set(queryString ? parseQuery(queryString) : null);
+      this._error.set(null);
+    } catch (e) {
+      console.error(e);
+      if (e instanceof ParseError) {
+        this._error.set(e.message);
+      } else {
+        this._error.set('Unknown error');
+      }
+    }
+  }
+
   private effectOnFilterChanged() {
-    // this.animationService.setFilters(this._filters());
-  }
-
-  private effectUpdateVehicleModeFilters() {
-    const environment = this.visualizationService.environmentSignal();
-
-    const vehicleModes = untracked(this._vehicleModes);
-
-    if (environment === null) return;
-
-    // Get unique vehicle modes
-    const currentModes = Object.values(environment.vehicles).map(
-      (vehicle) => vehicle.mode ?? 'unknown',
-    );
-
-    // Combine current modes and previous modes then get uniques
-    const allModes = [...currentModes, ...vehicleModes].filter(
-      (value, index, self) => self.indexOf(value) === index,
-    );
-
-    allModes.sort();
-
-    this._vehicleModes.set(allModes);
-  }
-
-  toggleFilter(name: string) {
-    const filters = this._filters();
-
-    if (filters.has(name)) filters.delete(name);
-    else filters.add(name);
-
-    this._filters.set(new Set(filters));
+    this.animationService.setFilters(this._query());
   }
 }

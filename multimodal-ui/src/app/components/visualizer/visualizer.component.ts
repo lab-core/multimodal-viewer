@@ -493,7 +493,7 @@ export class VisualizerComponent implements OnDestroy, OnInit {
     () => {
       const searchValue = this.searchValueSignal();
       const entitySearchData = this.entitySearchDataSignal();
-      const vehicleModes = this.visualizationFilterService.vehicleModes();
+      // const vehicleModes = this.visualizationFilterService.vehicleModes();
       const selectedMode = this.selectedModeSignal();
 
       const filteredData =
@@ -513,17 +513,17 @@ export class VisualizerComponent implements OnDestroy, OnInit {
       }
 
       if (typeof searchValue === 'string') {
-        if (searchValue.toLowerCase().startsWith('mode:')) {
-          const modeFilter = searchValue.substring(5).trim().toLowerCase();
-          return vehicleModes
-            .filter((mode) => mode.toLowerCase().includes(modeFilter))
-            .map((mode) => ({
-              id: `mode:${mode}`,
-              displayedValue: `[MODE] ${mode}`,
-              type: 'mode' as const,
-              entity: { mode },
-            }));
-        }
+        // if (searchValue.toLowerCase().startsWith('mode:')) {
+        //   const modeFilter = searchValue.substring(5).trim().toLowerCase();
+        //   return vehicleModes
+        //     .filter((mode) => mode.toLowerCase().includes(modeFilter))
+        //     .map((mode) => ({
+        //       id: `mode:${mode}`,
+        //       displayedValue: `[MODE] ${mode}`,
+        //       type: 'mode' as const,
+        //       entity: { mode },
+        //     }));
+        // }
 
         const searchLower = searchValue.toLowerCase();
         return filteredData.filter((entity) => {

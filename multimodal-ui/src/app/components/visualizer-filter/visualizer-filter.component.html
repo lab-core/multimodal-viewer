@@ -1,7 +1,18 @@
-<mat-card appearance="outlined">
-  <mat-card-content>
-    <p class="title">Entity Filters</p>
-    <div class="content">
+<form>
+  <mat-card appearance="outlined">
+    <mat-card-content>
+      <p class="title">Entity Filters</p>
+
+      <mat-form-field>
+        <mat-label>Filters query</mat-label>
+        <textarea matInput [formControl]="filtersQueryFormControl"></textarea>
+
+        @let queryError = queryErrorSignal();
+        @if (queryError) {
+          <mat-error>{{ queryError }}</mat-error>
+        }
+      </mat-form-field>
+      <!-- <div class="content">
       <section class="entity-filters">
         @let vehicle = "vehicle";
         @let passenger = "passenger";
@@ -52,6 +63,7 @@
           >Show complete</mat-slide-toggle
         >
       </section>
-    </div>
-  </mat-card-content>
-</mat-card>
+    </div> -->
+    </mat-card-content>
+  </mat-card>
+</form>
