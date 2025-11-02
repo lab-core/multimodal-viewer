@@ -414,6 +414,71 @@ describe('Parse query model', () => {
         });
       });
     });
+
+    describe('multi-line query', () => {
+      it('should handle line breaks', () => {
+        const query = `
+          field1=123 AND field2=456
+          OR
+          field3=789
+          AND
+          field4
+          =
+          012
+        `;
+
+        const result = parseQuery(query);
+
+        const field1Query: AnyAtomicQuery = {
+          field: 'field1',
+          operator: '=',
+          value: 123,
+          isNot: false,
+          isOptional: true,
+        };
+
+        const field2Query: AnyAtomicQuery = {
+          field: 'field2',
+          operator: '=',
+          value: 456,
+          isNot: false,
+          isOptional: true,
+        };
+
+        const field3Query: AnyAtomicQuery = {
+          field: 'field3',
+          operator: '=',
+          value: 789,
+          isNot: false,
+          isOptional: true,
+        };
+
+        const field4Query: AnyAtomicQuery = {
+          field: 'field4',
+          operator: '=',
+          value: 12,
+          isNot: false,
+          isOptional: true,
+        };
+
+        expect(result).toEqual({
+          aggregator: 'OR',
+          conditions: [
+            {
+              aggregator: 'AND',
+              conditions: [field1Query, field2Query],
+              isNot: false,
+            },
+            {
+              aggregator: 'AND',
+              conditions: [field3Query, field4Query],
+              isNot: false,
+            },
+          ],
+          isNot: false,
+        });
+      });
+    });
   });
 
   // MARK: Merge aggregated
